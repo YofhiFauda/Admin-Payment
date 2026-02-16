@@ -74,11 +74,35 @@ class TransactionController extends Controller
         $base64 = base64_encode(file_get_contents($file));
         $mime = $file->getMimeType();
 
+        $draftTransaction = Transaction::create([
+            'invoice_number' => Transaction::generateInvoiceNumber(),
+            'status' => 'draft',
+            'submitted_by' => Auth::id(),
+            'ai_status' => 'processing',
+        ]);
+
         session([
             'upload_file_base64' => $base64,
             'upload_file_mime' => $mime,
             'upload_file_name' => $file->getClientOriginalName(),
+            'draft_transaction_id' => $draftTransaction->id,
         ]);
+
+        try {
+            Http::timeout(60)
+                ->withHeaders([
+                    'X-SECRET' => env('N8N_SECRET'),
+                ])
+                ->post('https://wases.app.n8n.cloud/webhook/upload-nota', [
+                    'transaction_id' => $draftTransaction->id,
+                    'image_base64' => $base64,
+                ]);
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim ke N8N saat upload', [
+                'transaction_id' => $draftTransaction->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return redirect()->route('transactions.form');
     }
@@ -174,16 +198,37 @@ class TransactionController extends Controller
 
         try {
 
-            $transaction = Transaction::create([
-                'invoice_number' => Transaction::generateInvoiceNumber(),
-                'customer' => $request->customer,
-                'amount' => $request->amount,
-                'items' => $request->items,
-                'date' => $request->date ?? now()->format('Y-m-d'),
-                'file_path' => $storagePath,
-                'status' => 'pending',
-                'submitted_by' => Auth::id(),
-            ]);
+            $draftTransactionId = session('draft_transaction_id');
+            $transaction = null;
+
+            if ($draftTransactionId) {
+                $transaction = Transaction::where('id', $draftTransactionId)
+                    ->where('submitted_by', Auth::id())
+                    ->where('status', 'draft')
+                    ->first();
+            }
+
+            if ($transaction) {
+                $transaction->update([
+                    'customer' => $request->customer,
+                    'amount' => $request->amount,
+                    'items' => $request->items,
+                    'date' => $request->date ?? now()->format('Y-m-d'),
+                    'file_path' => $storagePath,
+                    'status' => 'pending',
+                ]);
+            } else {
+                $transaction = Transaction::create([
+                    'invoice_number' => Transaction::generateInvoiceNumber(),
+                    'customer' => $request->customer,
+                    'amount' => $request->amount,
+                    'items' => $request->items,
+                    'date' => $request->date ?? now()->format('Y-m-d'),
+                    'file_path' => $storagePath,
+                    'status' => 'pending',
+                    'submitted_by' => Auth::id(),
+                ]);
+            }
 
             foreach ($request->branches as $branchData) {
 
@@ -206,32 +251,6 @@ class TransactionController extends Controller
              * ==============================
              */
 
-            try {
-
-                // Ambil file dari storage
-                $fileContent = Storage::disk('public')->get($storagePath);
-
-                // Convert ke base64
-                $imageBase64 = base64_encode($fileContent);
-
-                Http::timeout(60)
-                    ->withHeaders([
-                        'X-SECRET' => env('N8N_SECRET')
-                    ])
-                    ->post('https://wases.app.n8n.cloud/webhook/upload-nota', [
-                        'transaction_id' => $transaction->id,
-                        'image_base64' => $imageBase64,
-                    ]);
-
-            } catch (\Exception $e) {
-
-                Log::error('Gagal kirim ke N8N', [
-                    'transaction_id' => $transaction->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-
-
             /**
              * ==============================
              *  🔥 CLEAR SESSION
@@ -240,7 +259,8 @@ class TransactionController extends Controller
             session()->forget([
                 'upload_file_base64',
                 'upload_file_mime',
-                'upload_file_name'
+                'upload_file_name',
+                'draft_transaction_id'
             ]);
 
             return redirect()->route('transactions.confirm', $transaction->id);
