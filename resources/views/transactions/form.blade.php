@@ -28,15 +28,12 @@
             </div>
         </div>
 
-        {{-- Preview Gambar --}}
-        <img src="data:{{ $mime }};base64,{{ $base64 }}" class="mb-6 rounded-lg">
-
         {{-- Form --}}
-        <form method="POST" action="{{ route('transactions.store') }}" id="transaction-form"
-            class="space-y-6 lg:space-y-12">
+        <form method="POST" action="{{ route('transactions.store') }}" id="transaction-form" enctype="multipart/form-data"
+class="space-y-6 lg:space-y-12">
             @csrf
-            @if(isset($transactionId))
-                <input type="hidden" id="transaction-id" value="{{ $transactionId }}">
+            @if(isset($uploadId))
+                <input type="hidden" id="upload-id" value="{{ $uploadId }}">
             @endif
 
             <div class="space-y-3 md:space-y-4 lg:space-y-5">
@@ -52,8 +49,6 @@
                         <div class="bg-slate-50 rounded-lg overflow-hidden text-center p-4">
                             @if(str_contains($mime, 'image'))
                                 <img src="data:{{ $mime }};base64,{{ $base64 }}" class="w-full max-h-60 object-contain mx-auto" />
-                            @else
-                                <p class="text-sm text-slate-500">File PDF berhasil diupload</p>
                             @endif
                         </div>
                     </div>
@@ -525,20 +520,20 @@
                 
                 recalc();
                 // ========================================
-                // 🔄 POLLING STATUS AI
+                // 🔄 POLLING STATUS AI (from Cache)
                 // ========================================
 
-                const transactionId = document.getElementById('transaction-id')?.value;
+                const uploadId = document.getElementById('upload-id')?.value;
 
-                if (transactionId) {
+                if (uploadId) {
 
                     const interval = setInterval(() => {
 
-                        fetch(`/api/transactions/${transactionId}/ai-status`)
+                        fetch(`/api/ai-status/${uploadId}`)
                             .then(res => res.json())
                             .then(data => {
 
-                                if (data.ai_status === 'completed') {
+                                if (data.status === 'completed') {
 
                                     clearInterval(interval);
 
@@ -563,7 +558,7 @@
                                     console.log("AI Autofill applied");
                                 }
 
-                                if (data.ai_status === 'failed') {
+                                if (data.status === 'failed') {
                                     clearInterval(interval);
                                     console.error('AI processing failed');
                                 }

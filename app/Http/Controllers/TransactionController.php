@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 
 class TransactionController extends Controller
@@ -59,8 +60,8 @@ class TransactionController extends Controller
     }
 
     /**
-     * Handle file upload → redirect to step 2
-     * Route name: transactions.upload
+     * Handle file upload → store temp → send to N8N → redirect to form
+     * NO database insert here — data only saved on form submit
      */
     public function processUpload(Request $request)
     {
@@ -70,39 +71,30 @@ class TransactionController extends Controller
 
         $file = $request->file('file');
 
-        // Encode file ke base64
+        // Generate unique upload ID
+        $uploadId = (string) Str::uuid();
+
+        // Save file to temp storage
+        $extension = $file->getClientOriginalExtension();
+        $fileName = $uploadId . '.' . $extension;
+        $storagePath = 'temp-uploads/' . $fileName;
+
+        Storage::disk('public')->put($storagePath, file_get_contents($file));
+
+        // Encode file to base64 for session preview & N8N
         $base64 = base64_encode(file_get_contents($file));
         $mime = $file->getMimeType();
 
-        $draftTransaction = Transaction::create([
-            'invoice_number' => Transaction::generateInvoiceNumber(),
-            'status' => 'draft',
-            'submitted_by' => Auth::id(),
-            'ai_status' => 'processing',
-        ]);
-
+        // Store in session (for form preview)
         session([
+            'upload_id' => $uploadId,
+            'upload_file_path' => $storagePath,
             'upload_file_base64' => $base64,
             'upload_file_mime' => $mime,
-            'upload_file_name' => $file->getClientOriginalName(),
-            'draft_transaction_id' => $draftTransaction->id,
         ]);
 
-        try {
-            Http::timeout(60)
-                ->withHeaders([
-                    'X-SECRET' => env('N8N_SECRET'),
-                ])
-                ->post('https://wases.app.n8n.cloud/webhook/upload-nota', [
-                    'transaction_id' => $draftTransaction->id,
-                    'image_base64' => $base64,
-                ]);
-        } catch (\Exception $e) {
-            Log::error('Gagal kirim ke N8N saat upload', [
-                'transaction_id' => $draftTransaction->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        // Send to N8N for AI processing (non-blocking)
+        $this->sendToN8N($uploadId, $base64);
 
         return redirect()->route('transactions.form');
     }
@@ -110,27 +102,27 @@ class TransactionController extends Controller
 
     /**
      * Step 2: Form with branch allocation
+     * Loads image from session, passes uploadId for AI polling
      */
     public function showForm()
     {
+        $uploadId = session('upload_id');
         $base64 = session('upload_file_base64');
         $mime = session('upload_file_mime');
-        $transactionId = session('draft_transaction_id');
 
-
-        if (!$base64) {
+        if (!$uploadId || !$base64) {
             return redirect()->route('transactions.create')
                 ->withErrors(['error' => 'Silakan unggah nota terlebih dahulu']);
         }
 
         $branches = Branch::all();
 
-        return view('transactions.form', compact('branches', 'base64', 'mime', 'transactionId'));
+        return view('transactions.form', compact('branches', 'base64', 'mime', 'uploadId'));
     }
 
 
     /**
-     * Store transaction
+     * Store transaction — THIS is where the database insert happens
      */
     public function store(Request $request)
     {
@@ -161,79 +153,44 @@ class TransactionController extends Controller
                 ->withInput();
         }
 
-        /**
-         * ==============================
-         *  🔥 AMBIL FILE DARI SESSION
-         * ==============================
-         */
-        $base64 = session('upload_file_base64');
-        $mime = session('upload_file_mime');
-        $fileName = session('upload_file_name');
+        // Get upload info from session
+        $uploadFilePath = session('upload_file_path');
 
-        if (!$base64 || !$fileName) {
+        if (!$uploadFilePath) {
             return back()
                 ->withErrors(['error' => 'File nota tidak ditemukan. Silakan upload ulang.'])
                 ->withInput();
         }
 
-        /**
-         * ==============================
-         *  🔥 SIMPAN FILE KE STORAGE
-         * ==============================
-         */
-        $decodedFile = base64_decode($base64);
-        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $newFileName = time() . '_' . uniqid() . '.' . $extension;
-
-        $storagePath = 'nota-uploads/' . $newFileName;
-
-        Storage::disk('public')->put($storagePath, $decodedFile);
-
-        /**
-         * ==============================
-         *  🔥 BUAT TRANSACTION
-         * ==============================
-         */
         DB::beginTransaction();
 
         try {
-
-            $draftTransactionId = session('draft_transaction_id');
-            $transaction = null;
-
-            if ($draftTransactionId) {
-                $transaction = Transaction::where('id', $draftTransactionId)
-                    ->where('submitted_by', Auth::id())
-                    ->where('status', 'draft')
-                    ->first();
-            }
-
-            if ($transaction) {
-                $transaction->update([
-                    'customer' => $request->customer,
-                    'amount' => $request->amount,
-                    'items' => $request->items,
-                    'date' => $request->date ?? now()->format('Y-m-d'),
-                    'file_path' => $storagePath,
-                    'status' => 'pending',
-                ]);
+            // Move file from temp to permanent storage
+            $permanentPath = str_replace('temp-uploads/', '', $uploadFilePath);
+            
+            if (Storage::disk('public')->exists($uploadFilePath)) {
+                $fileContent = Storage::disk('public')->get($uploadFilePath);
+                Storage::disk('public')->put($permanentPath, $fileContent);
+                Storage::disk('public')->delete($uploadFilePath);
             } else {
-                $transaction = Transaction::create([
-                    'invoice_number' => Transaction::generateInvoiceNumber(),
-                    'customer' => $request->customer,
-                    'amount' => $request->amount,
-                    'items' => $request->items,
-                    'date' => $request->date ?? now()->format('Y-m-d'),
-                    'file_path' => $storagePath,
-                    'status' => 'pending',
-                    'submitted_by' => Auth::id(),
-                ]);
+                $permanentPath = $uploadFilePath; // fallback
             }
 
+            // CREATE transaction in database (first time!)
+            $transaction = Transaction::create([
+                'invoice_number' => Transaction::generateInvoiceNumber(),
+                'customer' => $request->customer,
+                'amount' => $request->amount,
+                'items' => $request->items,
+                'date' => $request->date ?? now()->format('Y-m-d'),
+                'file_path' => $permanentPath,
+                'status' => 'pending',
+                'submitted_by' => Auth::id(),
+            ]);
+
+            // Attach branches
             foreach ($request->branches as $branchData) {
-
                 $allocPercent = floatval($branchData['allocation_percent']);
-
                 $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
                     ? intval($branchData['allocation_amount'])
                     : intval(round(($transaction->amount * $allocPercent) / 100));
@@ -245,33 +202,51 @@ class TransactionController extends Controller
             }
 
             DB::commit();
-            /**
-             * ==============================
-             * 🔥 KIRIM KE N8N (AI PARSING)
-             * ==============================
-             */
 
-            /**
-             * ==============================
-             *  🔥 CLEAR SESSION
-             * ==============================
-             */
+            // Clear all upload session data
             session()->forget([
+                'upload_id',
+                'upload_file_path',
                 'upload_file_base64',
                 'upload_file_mime',
-                'upload_file_name',
-                'draft_transaction_id'
             ]);
 
             return redirect()->route('transactions.confirm', $transaction->id);
 
         } catch (\Exception $e) {
-
             DB::rollBack();
 
             return back()
                 ->withInput()
                 ->withErrors(['error' => 'Gagal menyimpan transaksi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Send image to N8N for AI processing
+     * Uses upload_id as identifier (no database record yet)
+     */
+    private function sendToN8N(string $uploadId, string $filePath)
+    {
+        try {
+            Http::timeout(60)
+                ->withHeaders([
+                    'X-SECRET' => env('N8N_SECRET')
+                ])
+                ->attach(
+                    'file',                  // field name di n8n
+                    file_get_contents($filePath), // konten file
+                    basename($filePath)      // nama file
+                )
+                ->post('https://wases.app.n8n.cloud/webhook/upload-nota', [
+                    'upload_id' => $uploadId // data tambahan jika perlu
+                ]);
+
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim ke N8N', [
+                'upload_id' => $uploadId,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -393,7 +368,7 @@ class TransactionController extends Controller
      * DEBUGGING: Test upload directly
      * Remove this method in production
      */
-    public function testUpload(Request $request)
+    public function testUpl(Request $request)
     {
         if ($request->hasFile('file')) {
             $file = $request->file('file');

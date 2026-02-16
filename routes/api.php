@@ -1,26 +1,19 @@
 <?php
 
 use App\Http\Controllers\Api\AiAutoFillController;
+use Illuminate\Support\Facades\Cache;
 
+// N8N callback endpoint — stores AI results in Cache
 Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store'])->middleware('throttle:ai-auto-fill');
 
-Route::get('/transactions/{id}/ai-status', function ($id) {
+// Polling endpoint — reads from Cache (no database query)
+Route::get('/ai-status/{uploadId}', function ($uploadId) {
 
-    $transaction = \App\Models\Transaction::find($id);
+    $data = Cache::get("ai_autofill:{$uploadId}");
 
-    if (!$transaction) {
-        return response()->json(['status' => 'not_found']);
+    if (!$data) {
+        return response()->json(['status' => 'processing']);
     }
 
-    return response()->json([
-        'ai_status' => $transaction->ai_status,
-        'customer' => $transaction->customer,
-        'amount' => $transaction->amount,
-        'date' => $transaction->date,
-        'items' => $transaction->items,
-        'confidence' => $transaction->confidence
-    ]);
+    return response()->json($data);
 });
-
-
-

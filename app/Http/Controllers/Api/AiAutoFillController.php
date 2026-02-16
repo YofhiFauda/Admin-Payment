@@ -1,41 +1,42 @@
 <?php
 
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Transaction;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class AiAutoFillController extends Controller
 {
+    /**
+     * Receive AI-extracted data from N8N and store in Cache
+     * NO database write — data stored temporarily for form auto-fill
+     */
     public function store(Request $request)
     {
-        // 🔐 Security - FIXED: Use correct env variable
+        // 🔐 Security
         if ($request->header('X-SECRET') !== env('N8N_SECRET')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // ✅ Validation - FIXED: Use correct field names matching database
+        // ✅ Validation
         $validator = Validator::make($request->all(), [
-            'transaction_id' => 'required|integer|exists:transactions,id',
-            'customer'       => 'nullable|string|max:255',
-            'amount'         => 'nullable|numeric',
-            'date'           => 'nullable|date',
-            'items'          => 'nullable|string',
-            'confidence'     => 'required|integer|min:0|max:100',
+            'upload_id'  => 'required|string',
+            'customer'   => 'nullable|string|max:255',
+            'amount'     => 'nullable|numeric',
+            'date'       => 'nullable|date',
+            'items'      => 'nullable|string',
+            'confidence' => 'required|integer|min:0|max:100',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $transaction = Transaction::find($request->transaction_id);
-
-        // Parse date if provided
+        // Parse date
         $date = null;
         if ($request->date) {
             try {
@@ -45,24 +46,25 @@ class AiAutoFillController extends Controller
             }
         }
 
-        // FIXED: Update with correct field names and set ai_status to completed
-        $transaction->update([
-            'customer'    => $request->customer,
-            'amount'      => $request->amount,
-            'date'        => $date,
-            'items'       => $request->items,
-            'confidence'  => $request->confidence,
-            'ai_status'   => 'completed', // CRITICAL: Mark AI processing as completed
-        ]);
+        // Store in Cache (expires in 30 minutes)
+        $cacheKey = "ai_autofill:{$request->upload_id}";
 
-        Log::info('AI Auto Fill Updated', [
-            'transaction_id' => $transaction->id,
-            'customer' => $request->customer,
-            'amount' => $request->amount,
-            'confidence' => $request->confidence
+        Cache::put($cacheKey, [
+            'status'     => 'completed',
+            'customer'   => $request->customer,
+            'amount'     => $request->amount,
+            'date'       => $date,
+            'items'      => $request->items,
+            'confidence' => $request->confidence,
+        ], now()->addMinutes(30));
+
+        Log::info('AI Auto Fill stored in cache', [
+            'upload_id'  => $request->upload_id,
+            'customer'   => $request->customer,
+            'amount'     => $request->amount,
+            'confidence' => $request->confidence,
         ]);
 
         return response()->json(['success' => true]);
     }
 }
-

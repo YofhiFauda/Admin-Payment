@@ -13,10 +13,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [
-        0,
-        0
-      ],
+      "position": [0, 0],
       "id": "c60b6716-7589-4a65-bc77-05954c0e48c7",
       "name": "Webhook",
       "webhookId": "82d2209f-b1be-48b1-831c-859e56d739c3",
@@ -35,7 +32,7 @@
           "conditions": [
             {
               "id": "418b64a4-cdee-414c-bb92-7a5b715eb4fa",
-              "leftValue": "={{$json[\"headers\"][\"x-secret-key\"]}}",
+              "leftValue": "={{$json[\"headers\"][\"x-secret\"]}}",
               "rightValue": "mySuperSecretKey123",
               "operator": {
                 "type": "string",
@@ -50,10 +47,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [
-        320,
-        0
-      ],
+      "position": [320, 0],
       "id": "0fa2f386-6bb9-4f14-9ae0-b72c54a10280",
       "name": "If"
     },
@@ -89,10 +83,7 @@
       },
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.1,
-      "position": [
-        624,
-        -16
-      ],
+      "position": [624, -16],
       "id": "745299f1-e1a6-4c37-b527-4d639ef35441",
       "name": "Message a model",
       "credentials": {
@@ -105,14 +96,11 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "let raw = $json[\"choices\"][0][\"message\"][\"content\"];\n\ntry {\n  let parsed = JSON.parse(raw);\n  // Return the parsed object directly inside a 'json' key\n  return { \n    json: parsed \n  };\n} catch (e) {\n  // Return the fallback object directly\n  return {\n    json: {\n      nama_penerima: null,\n      nominal: null,\n      tanggal: null,\n      keterangan: null,\n      confidence: 0,\n      error: \"Invalid JSON from AI\"\n    }\n  };\n}"
+        "jsCode": "let raw = $json[\"choices\"][0][\"message\"][\"content\"];\n\ntry {\n  let parsed = JSON.parse(raw);\n  return { \n    json: parsed \n  };\n} catch (e) {\n  return {\n    json: {\n      nama_penerima: null,\n      nominal: null,\n      tanggal: null,\n      keterangan: null,\n      confidence: 0,\n      error: \"Invalid JSON from AI\"\n    }\n  };\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1008,
-        -32
-      ],
+      "position": [1008, -32],
       "id": "6f738a88-1676-4ad4-860e-a047a31c6d72",
       "name": "Code in JavaScript"
     },
@@ -128,12 +116,12 @@
           "conditions": [
             {
               "id": "849de7d2-bf66-4282-bf4a-a78c14f8ab5a",
-              "leftValue": "confidence >= 70",
-              "rightValue": "",
+              "leftValue": "={{$json[\"confidence\"]}}",
+              "rightValue": "70",
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "number",
+                "operation": "gte",
+                "name": "filter.operator.gte"
               }
             }
           ],
@@ -143,16 +131,13 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [
-        1216,
-        -32
-      ],
+      "position": [1216, -32],
       "id": "2cd9a3ed-38d7-4c22-8d78-3aeaf73d1828",
       "name": "If1"
     },
     {
       "parameters": {
-        "url": "http://localhost:8000/api/ai/auto-fill",
+        "url": "https://instruction-prostores-immune-jean.trycloudflare.com/api/ai/auto-fill",
         "method": "POST",
         "sendHeaders": true,
         "headerParameters": {
@@ -169,15 +154,12 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"transaction_id\": \"={{$node['Webhook'].json['transaction_id']}}\",\n  \"customer\": \"={{$json['nama_penerima']}}\",\n  \"amount\": \"={{$json['nominal']}}\",\n  \"date\": \"={{$json['tanggal']}}\",\n  \"items\": \"={{$json['keterangan']}}\",\n  \"confidence\": \"={{$json['confidence']}}\"\n}\n",
+        "jsonBody": "={\n  \"upload_id\": \"={{$node['Webhook'].json['upload_id']}}\",\n  \"customer\": \"={{$json['nama_penerima']}}\",\n  \"amount\": \"={{$json['nominal']}}\",\n  \"date\": \"={{$json['tanggal']}}\",\n  \"items\": \"={{$json['keterangan']}}\",\n  \"confidence\": \"={{$json['confidence']}}\"\n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [
-        1504,
-        -48
-      ],
+      "position": [1504, -48],
       "id": "50fd56ac-d552-480c-a7bb-f89de0c96dbe",
       "name": "HTTP Request"
     }
@@ -246,10 +228,9 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "eab54d0a-fc10-4a44-9fd7-3560776a2457",
+  "versionId": "SESSION_BASED_v2",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "693f4604144f924d9006aedbc3499b72a4a3823a8ca072477c3f97286675ca61"
+    "templateCredsSetupCompleted": true
   },
   "id": "522X4pxgWD2JEbO1sRKXY",
   "tags": []

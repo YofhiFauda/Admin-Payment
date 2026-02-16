@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('ai_status')->default('processing');
             $table->integer('confidence')->nullable();
 
-            // Business Status - Added 'draft' for AI auto-fill flow
-            $table->enum('status', ['draft', 'pending', 'approved', 'completed', 'rejected'])->default('draft');
+            // Business Status
+            $table->enum('status', ['pending', 'approved', 'completed', 'rejected'])->default('pending');
 
             $table->foreignId('submitted_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
