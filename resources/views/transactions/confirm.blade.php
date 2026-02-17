@@ -43,6 +43,12 @@
                             <span class="text-xs text-slate-400">Vendor</span>
                             <span class="text-xs font-bold text-slate-800">{{ $transaction->customer }}</span>
                         </div>
+                        @if($transaction->category)
+                        <div class="flex justify-between py-1.5">
+                            <span class="text-xs text-slate-400">Kategori</span>
+                            <span class="text-xs font-bold text-slate-800">{{ \App\Models\Transaction::CATEGORIES[$transaction->category] ?? $transaction->category }}</span>
+                        </div>
+                        @endif
                         <div class="flex justify-between py-1.5">
                             <span class="text-xs text-slate-400">Nominal</span>
                             <span class="text-xs font-bold text-blue-600">{{ $transaction->formatted_amount }}</span>

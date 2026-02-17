@@ -6,9 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
+    const CATEGORIES = [
+        'pembelian_operasional' => 'Pembelian operasional',
+        'pembelian_aset' => 'Pembelian aset',
+        'pembayaran_vendor' => 'Pembayaran vendor',
+        'biaya_marketing' => 'Biaya marketing',
+        'pembelian_persediaan' => 'Pembelian persediaan',
+        'pembayaran_asuransi' => 'Pembayaran asuransi',
+        'pembayaran_bandwidth' => 'Pembayaran bandwidth',
+        'pembayaran_entertainment' => 'Pembayaran entertainment',
+        'reimbursement' => 'Reimbursement dari teknisi/staff',
+    ];
+
     protected $fillable = [
         'invoice_number',
         'customer',
+        'category',
         'amount',
         'items',
         'date',

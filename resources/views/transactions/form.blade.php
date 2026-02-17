@@ -71,6 +71,21 @@ class="space-y-6 lg:space-y-12">
                                 placeholder="Nama vendor..."
                                 class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm" />
                         </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs md:text-sm
+                                     font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Kategori</label>
+                            <div class="relative">
+                                <select name="category" id="category" required
+                                    class="w-full appearance-none bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 pr-8 md:pr-10 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm">
+                                    <option value="" disabled {{ old('category') ? '' : 'selected' }}>Pilih kategori...</option>
+                                    @foreach(\App\Models\Transaction::CATEGORIES as $key => $label)
+                                        <option value="{{ $key }}" {{ old('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <i data-lucide="chevron-down"
+                                    class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-xs md:text-sm
                                      font-bold text-blue-600 uppercase mb-1 md:mb-1.5 tracking-wider">Total

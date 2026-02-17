@@ -132,6 +132,12 @@
                                                 {{ $t->invoice_number }}</p>
                                             <h5 class="font-black text-slate-800 text-base lg:text-lg tracking-tight mb-1 truncate">{{ $t->customer }}
                                             </h5>
+                                            @if($t->category)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] font-bold uppercase tracking-wider mb-1">
+                                                    <i data-lucide="tag" class="w-2.5 h-2.5"></i>
+                                                    {{ \App\Models\Transaction::CATEGORIES[$t->category] ?? $t->category }}
+                                                </span>
+                                            @endif
                                             <div class="flex items-center gap-3">
                                                 <span
                                                     class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{{ $t->created_at->format('d M Y') }}</span>
@@ -254,9 +260,15 @@
                                 <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5">
                                     {{ $t->invoice_number }}
                                 </p>
-                                <h5 class="font-black text-slate-800 text-base tracking-tight mb-2 break-words">
+                                <h5 class="font-black text-slate-800 text-base tracking-tight mb-1 break-words">
                                     {{ $t->customer }}
                                 </h5>
+                                @if($t->category)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] font-bold uppercase tracking-wider mb-2">
+                                        <i data-lucide="tag" class="w-2.5 h-2.5"></i>
+                                        {{ \App\Models\Transaction::CATEGORIES[$t->category] ?? $t->category }}
+                                    </span>
+                                @endif
                                 <div class="flex items-center gap-2 flex-wrap text-[9px] font-black text-slate-400 uppercase">
                                     <span>{{ $t->created_at->format('d M Y') }}</span>
                                     <div class="w-1 h-1 rounded-full bg-slate-200"></div>

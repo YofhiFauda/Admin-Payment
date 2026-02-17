@@ -128,6 +128,7 @@ class TransactionController extends Controller
     {
         $request->validate([
             'customer' => 'required|string|max:255',
+            'category' => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
             'amount' => 'required|numeric|min:1',
             'items' => 'nullable|string',
             'date' => 'nullable|date',
@@ -180,6 +181,7 @@ class TransactionController extends Controller
             $transaction = Transaction::create([
                 'invoice_number' => Transaction::generateInvoiceNumber(),
                 'customer' => $request->customer,
+                'category' => $request->category,
                 'amount' => $request->amount,
                 'items' => $request->items,
                 'date' => $request->date ?? now()->format('Y-m-d'),
