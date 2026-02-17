@@ -24,6 +24,12 @@ Route::middleware('auth')->group(function () {
     // Transaction History (all roles)
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
+    // Transaction Detail (all roles)
+    Route::get('/transactions/{id}/detail', [TransactionController::class, 'show'])->name('transactions.show');
+
+    // Serve transaction image (all roles)
+    Route::get('/transactions/{id}/image', [TransactionController::class, 'serveImage'])->name('transactions.image');
+
     // Transaction Creation (teknisi, admin, owner)
     Route::middleware('role:teknisi,admin,owner')->group(function () {
         Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
@@ -33,8 +39,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions/{id}/confirm', [TransactionController::class, 'confirmation'])->name('transactions.confirm');
     });
 
-    // Status Management & Delete (admin, atasan, owner)
+    // Status Management, Edit & Delete (admin, atasan, owner)
     Route::middleware('role:admin,atasan,owner')->group(function () {
+        Route::get('/transactions/{id}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
+        Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::patch('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });

@@ -7,20 +7,12 @@
         {{-- Quick Statistics Bar --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             <div class="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-3 md:gap-6">
-                <div class="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-                    <i data-lucide="wallet" class="w-5 h-5 md:w-8 md:h-8"></i>
+                <div class="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="check-circle" class="w-5 h-5 md:w-8 md:h-8"></i>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider md:tracking-widest mb-1">Total Pengeluaran</p>
-                        <div class="relative group">
-                            <h4 class="text-xs sm:text-sm md:text-lg lg:text-2xl font-black text-slate-900 tracking-tighter cursor-default truncate">
-                                {{ \App\Models\Transaction::formatShortRupiah($stats['total']) }}
-                            </h4>
-
-                            <div class="absolute left-0 mt-2 hidden group-hover:block bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap z-10">
-                                Rp {{ number_format($stats['total'], 0, ',', '.') }}
-                            </div>
-                        </div>
+                    <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider md:tracking-widest mb-1">Telah Selesai</p>
+                    <h4 class="text-sm md:text-2xl font-black text-slate-900 tracking-tighter truncate">{{ $stats['completed'] }} </h4>
                 </div>
             </div>
             <div class="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-3 md:gap-6">
@@ -33,12 +25,12 @@
                 </div>
             </div>
             <div class="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-3 md:gap-6">
-                <div class="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
-                    <i data-lucide="check-circle" class="w-5 h-5 md:w-8 md:h-8"></i>
+                <div class="w-10 h-10 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="x-circle" class="w-5 h-5 md:w-8 md:h-8"></i>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider md:tracking-widest mb-1">Telah Selesai</p>
-                    <h4 class="text-sm md:text-2xl font-black text-slate-900 tracking-tighter truncate">{{ $stats['completed'] }} </h4>
+                    <p class="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-wider md:tracking-widest mb-1">Ditolak</p>
+                    <h4 class="text-sm md:text-2xl font-black text-slate-900 tracking-tighter truncate">{{ $stats['rejected'] }} </h4>
                 </div>
             </div>
             <div class="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-3 md:gap-6">
@@ -60,8 +52,9 @@
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-6 w-full">
                     <div class="relative w-full sm:flex-1 sm:max-w-md">
                         <i data-lucide="search" class="w-5 h-5 md:w-6 md:h-6 absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-gray-300"></i>
-                        <input type="text" name="search" placeholder="Cari vendor atau ID nota..."
+                        <input type="text" name="search" id="quick-search" placeholder="Cari cepat nama vendor..."
                             value="{{ request('search') }}"
+                            autocomplete="off"
                             class="w-full pl-12 md:pl-16 pr-4 md:pr-8 py-3 md:py-5 border border-gray-100 rounded-xl md:rounded-[2rem] text-xs md:text-sm outline-none focus:ring-4 focus:ring-blue-100/50 bg-slate-50/50 font-bold transition-all" />
                     </div>
                     <div class="relative w-full sm:w-58">
@@ -115,12 +108,12 @@
                                 ];
                                 $statusLabels = [
                                     'pending' => 'Pending',
-                                    'approved' => 'Disetujui',
-                                    'completed' => 'Selesai',
+                                    'approved' => 'Menunggu Approve Owner',
+                                    'completed' => 'Approve',
                                     'rejected' => 'Ditolak',
                                 ];
                             @endphp
-                            <tr class="hover:bg-slate-50/50 transition-colors group">
+                            <tr class="hover:bg-slate-50/50 transition-colors group transaction-row" data-name="{{ strtolower($t->customer) }}" data-invoice="{{ strtolower($t->invoice_number) }}">
                                 <td class="px-6 lg:px-12 py-6 lg:py-8">
                                     <div class="flex items-center gap-4 lg:gap-5">
                                         <div
@@ -154,47 +147,89 @@
                                 <td class="px-6 lg:px-12 py-6 lg:py-8 text-right">
                                     <p class="font-black text-slate-900 text-xl lg:text-2xl tracking-tighter">{{ $t->formatted_amount }}
                                     </p>
-                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Pajak: Rp 0
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 flex items-center justify-end gap-1">
+                                        <i data-lucide="building-2" class="w-3 h-3"></i>
+                                        {{ $t->branches->count() }} Cabang
                                     </p>
                                 </td>
                                 <td class="px-6 lg:px-12 py-6 lg:py-8">
-                                    @if(Auth::user()->canManageStatus())
-                                        <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}"
-                                            class="inline">
-                                            @csrf
-                                            @method('PATCH')
-                                            <div class="relative w-40 lg:w-48">
-                                                <select name="status" onchange="this.form.submit()"
-                                                    class="w-full appearance-none px-4 lg:px-6 py-3 lg:py-4 rounded-2xl lg:rounded-3xl font-black text-[10px] uppercase tracking-widest outline-none border-2 transition-all cursor-pointer {{ $statusColors[$t->status] ?? '' }}">
-                                                    <option value="pending" {{ $t->status === 'pending' ? 'selected' : '' }}>PENDING
-                                                    </option>
-                                                    <option value="approved" {{ $t->status === 'approved' ? 'selected' : '' }}>
-                                                        DISETUJUI</option>
-                                                    <option value="completed" {{ $t->status === 'completed' ? 'selected' : '' }}>
-                                                        SELESAI</option>
-                                                    <option value="rejected" {{ $t->status === 'rejected' ? 'selected' : '' }}>DITOLAK
-                                                    </option>
-                                                </select>
-                                                <i data-lucide="chevron-down"
-                                                    class="w-3.5 h-3.5 absolute right-4 lg:right-5 top-1/2 -translate-y-1/2 opacity-30"></i>
-                                            </div>
-                                        </form>
-                                    @else
-                                        <div
-                                            class="inline-flex items-center gap-3 px-4 lg:px-6 py-3 lg:py-4 rounded-2xl lg:rounded-3xl border-2 font-black text-[10px] uppercase tracking-widest {{ $statusColors[$t->status] ?? '' }}">
-                                            <div class="w-2 h-2 rounded-full {{ $statusDots[$t->status] ?? '' }} animate-pulse">
-                                            </div>
+                                    <div class="space-y-2">
+                                        <div class="inline-flex items-center gap-2 px-4 lg:px-5 py-2.5 lg:py-3 rounded-xl lg:rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest {{ $statusColors[$t->status] ?? '' }}">
+                                            <div class="w-2 h-2 rounded-full {{ $statusDots[$t->status] ?? '' }} animate-pulse"></div>
                                             {{ $statusLabels[$t->status] ?? $t->status }}
                                         </div>
-                                    @endif
+                                        @if($t->reviewer)
+                                            <p class="text-[9px] font-bold text-slate-400 flex items-center gap-1">
+                                                <i data-lucide="user-check" class="w-3 h-3"></i>
+                                                {{ $t->reviewer->name }} &bull; {{ $t->reviewed_at?->format('d M Y') }}
+                                            </p>
+                                        @endif
+                                        @if($t->status === 'rejected' && $t->rejection_reason)
+                                            <p class="text-[9px] font-bold text-red-500 flex items-center gap-1 max-w-48 truncate" title="{{ $t->rejection_reason }}">
+                                                <i data-lucide="message-circle" class="w-3 h-3 flex-shrink-0"></i>
+                                                {{ $t->rejection_reason }}
+                                            </p>
+                                        @endif
+                                        @if(Auth::user()->canManageStatus() && $t->status === 'pending')
+                                            <div class="flex flex-wrap gap-1.5 mt-1">
+                                                <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="status" value="approved">
+                                                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-600 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all border border-green-200 cursor-pointer">
+                                                        Approve
+                                                    </button>
+                                                </form>
+                                                <button type="button" onclick="openRejectModal({{ $t->id }}, '{{ $t->invoice_number }}')"
+                                                    class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all border border-red-200 cursor-pointer">
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        @endif
+                                        {{-- Owner: approve transactions waiting for owner (>= 1jt, status approved) --}}
+                                        @if(Auth::user()->isOwner() && $t->status === 'approved' && $t->amount >= 1000000)
+                                            <div class="flex flex-wrap gap-1.5 mt-1">
+                                                <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="status" value="approved">
+                                                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-600 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all border border-green-200 cursor-pointer">
+                                                        Approve Final
+                                                    </button>
+                                                </form>
+                                                <button type="button" onclick="openRejectModal({{ $t->id }}, '{{ $t->invoice_number }}')"
+                                                    class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-600 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all border border-red-200 cursor-pointer">
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        @endif
+                                        {{-- Owner: reset to pending --}}
+                                        @if(Auth::user()->isOwner() && !in_array($t->status, ['pending', 'approved']))
+                                            <div class="flex gap-1.5 mt-1">
+                                                <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="inline"
+                                                    onsubmit="return confirm('Ubah status {{ $t->invoice_number }} ke Pending?')">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="status" value="pending">
+                                                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all border border-amber-200 cursor-pointer">
+                                                        Reset
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-6 lg:px-12 py-6 lg:py-8">
                                     <div class="flex items-center justify-center gap-2 lg:gap-3">
-                                        <button onclick="window.print()"
-                                            class="p-3 lg:p-4 bg-slate-50 text-slate-400 rounded-xl lg:rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100 shadow-sm cursor-pointer">
-                                            <i data-lucide="printer" class="w-4 h-4 lg:w-5 lg:h-5"></i>
-                                        </button>
+                                        <a href="{{ route('transactions.show', $t->id) }}"
+                                            class="p-3 lg:p-4 bg-slate-50 text-slate-400 rounded-xl lg:rounded-2xl hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100 shadow-sm">
+                                            <i data-lucide="eye" class="w-4 h-4 lg:w-5 lg:h-5"></i>
+                                        </a>
                                         @if(Auth::user()->canManageStatus())
+                                            <a href="{{ route('transactions.edit', $t->id) }}"
+                                                class="p-3 lg:p-4 bg-slate-50 text-slate-400 rounded-xl lg:rounded-2xl hover:text-amber-600 hover:bg-amber-50 transition-all border border-transparent hover:border-amber-100 shadow-sm">
+                                                <i data-lucide="pencil" class="w-4 h-4 lg:w-5 lg:h-5"></i>
+                                            </a>
                                             <form method="POST" action="{{ route('transactions.destroy', $t->id) }}" class="inline"
                                                 onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
                                                 @csrf
@@ -244,13 +279,13 @@
                         ];
                         $statusLabels = [
                             'pending' => 'Pending',
-                            'approved' => 'Disetujui',
-                            'completed' => 'Selesai',
+                            'approved' => 'Menunggu Approve Owner',
+                            'completed' => 'Approve',
                             'rejected' => 'Ditolak',
                         ];
                     @endphp
                     
-                    <div class="p-4 hover:bg-slate-50/50 transition-colors">
+                    <div class="p-4 hover:bg-slate-50/50 transition-colors transaction-card" data-name="{{ strtolower($t->customer) }}" data-invoice="{{ strtolower($t->invoice_number) }}">
                         {{-- Header with invoice and vendor --}}
                         <div class="flex items-start gap-3 mb-4">
                             <div class="bg-blue-50 text-blue-600 p-3 rounded-xl flex-shrink-0">
@@ -284,43 +319,93 @@
                         <div class="mb-4 p-3 bg-slate-50 rounded-xl">
                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Nominal Transaksi</p>
                             <p class="font-black text-slate-900 text-xl tracking-tighter">{{ $t->formatted_amount }}</p>
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Pajak: Rp 0</p>
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">
+                                <i data-lucide="building-2" class="w-3 h-3"></i>
+                                {{ $t->branches->count() }} Cabang
+                            </p>
                         </div>
 
                         {{-- Status --}}
                         <div class="mb-4">
                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Status</p>
-                            @if(Auth::user()->canManageStatus())
-                                <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="w-full">
-                                    @csrf
-                                    @method('PATCH')
-                                    <div class="relative">
-                                        <select name="status" onchange="this.form.submit()"
-                                            class="w-full appearance-none px-4 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest outline-none border-2 transition-all cursor-pointer {{ $statusColors[$t->status] ?? '' }}">
-                                            <option value="pending" {{ $t->status === 'pending' ? 'selected' : '' }}>PENDING</option>
-                                            <option value="approved" {{ $t->status === 'approved' ? 'selected' : '' }}>DISETUJUI</option>
-                                            <option value="completed" {{ $t->status === 'completed' ? 'selected' : '' }}>SELESAI</option>
-                                            <option value="rejected" {{ $t->status === 'rejected' ? 'selected' : '' }}>DITOLAK</option>
-                                        </select>
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-4 top-1/2 -translate-y-1/2 opacity-30"></i>
-                                    </div>
-                                </form>
-                            @else
-                                <div class="inline-flex items-center gap-2 px-4 py-3 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest {{ $statusColors[$t->status] ?? '' }}">
-                                    <div class="w-2 h-2 rounded-full {{ $statusDots[$t->status] ?? '' }} animate-pulse"></div>
-                                    {{ $statusLabels[$t->status] ?? $t->status }}
+                            <div class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest {{ $statusColors[$t->status] ?? '' }}">
+                                <div class="w-2 h-2 rounded-full {{ $statusDots[$t->status] ?? '' }} animate-pulse"></div>
+                                {{ $statusLabels[$t->status] ?? $t->status }}
+                            </div>
+                            @if($t->reviewer)
+                                <p class="text-[9px] font-bold text-slate-400 mt-2 flex items-center gap-1">
+                                    <i data-lucide="user-check" class="w-3 h-3"></i>
+                                    {{ $t->reviewer->name }} &bull; {{ $t->reviewed_at?->format('d M Y') }}
+                                </p>
+                            @endif
+                            @if($t->status === 'rejected' && $t->rejection_reason)
+                                <p class="text-[9px] font-bold text-red-500 mt-1 flex items-center gap-1">
+                                    <i data-lucide="message-circle" class="w-3 h-3 flex-shrink-0"></i>
+                                    {{ $t->rejection_reason }}
+                                </p>
+                            @endif
+                            @if(Auth::user()->canManageStatus() && $t->status === 'pending')
+                                <div class="flex gap-2 mt-3">
+                                    <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="flex-1">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="approved">
+                                        <button type="submit" class="w-full py-2.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all border border-green-200 cursor-pointer">
+                                            Approve
+                                        </button>
+                                    </form>
+                                    <button type="button" onclick="openRejectModal({{ $t->id }}, '{{ $t->invoice_number }}')"
+                                        class="flex-1 py-2.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-600 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all border border-red-200 cursor-pointer">
+                                        Reject
+                                    </button>
+                                </div>
+                            @endif
+                            {{-- Owner: approve transactions waiting for owner --}}
+                            @if(Auth::user()->isOwner() && $t->status === 'approved' && $t->amount >= 1000000)
+                                <div class="flex gap-2 mt-2">
+                                    <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="flex-1">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="approved">
+                                        <button type="submit" class="w-full py-2.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all border border-green-200 cursor-pointer">
+                                            Approve Final
+                                        </button>
+                                    </form>
+                                    <button type="button" onclick="openRejectModal({{ $t->id }}, '{{ $t->invoice_number }}')"
+                                        class="flex-1 py-2.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-600 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all border border-red-200 cursor-pointer">
+                                        Reject
+                                    </button>
+                                </div>
+                            @endif
+                            {{-- Owner: reset to pending --}}
+                            @if(Auth::user()->isOwner() && !in_array($t->status, ['pending', 'approved']))
+                                <div class="flex gap-2 mt-2">
+                                    <form method="POST" action="{{ route('transactions.updateStatus', $t->id) }}" class="flex-1"
+                                        onsubmit="return confirm('Ubah status ke Pending?')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="pending">
+                                        <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white text-[10px] font-black uppercase tracking-wider transition-all border border-amber-200 cursor-pointer">
+                                            Reset Status
+                                        </button>
+                                    </form>
                                 </div>
                             @endif
                         </div>
 
                         {{-- Actions --}}
                         <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
-                            <button onclick="window.print()"
+                            <a href="{{ route('transactions.show', $t->id) }}"
                                 class="flex-1 flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-600 rounded-xl hover:text-blue-600 hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100 shadow-sm">
-                                <i data-lucide="printer" class="w-4 h-4"></i>
-                                <span class="text-xs font-bold">Print</span>
-                            </button>
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                <span class="text-xs font-bold">Detail</span>
+                            </a>
                             @if(Auth::user()->canManageStatus())
+                                <a href="{{ route('transactions.edit', $t->id) }}"
+                                    class="flex-1 flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-600 rounded-xl hover:text-amber-600 hover:bg-amber-50 transition-all border border-transparent hover:border-amber-100 shadow-sm">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                    <span class="text-xs font-bold">Edit</span>
+                                </a>
                                 <form method="POST" action="{{ route('transactions.destroy', $t->id) }}" class="flex-1"
                                     onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
                                     @csrf
@@ -355,4 +440,113 @@
             @endif
         </div>
     </div>
+
+    {{-- Reject Modal --}}
+    @if(Auth::user()->canManageStatus())
+    <div id="reject-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-slate-900">Tolak Nota</h3>
+                    <p class="text-xs text-slate-400" id="reject-modal-invoice"></p>
+                </div>
+            </div>
+            <form id="reject-form" method="POST" action="">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="rejected">
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Alasan Penolakan <span class="text-red-500">*</span></label>
+                    <textarea name="rejection_reason" rows="3" required placeholder="Tuliskan alasan penolakan..."
+                        class="w-full border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-red-100 resize-none"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeRejectModal()"
+                        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all cursor-pointer border border-slate-200">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        Batal
+                    </button>
+                    <button type="submit"
+                        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all cursor-pointer shadow-lg shadow-red-200">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        Konfirmasi Tolak
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 @endsection
+
+@push('scripts')
+<script>
+    function openRejectModal(transactionId, invoiceNumber) {
+        const modal = document.getElementById('reject-modal');
+        const form = document.getElementById('reject-form');
+        const invoiceEl = document.getElementById('reject-modal-invoice');
+
+        form.action = '/transactions/' + transactionId + '/status';
+        invoiceEl.textContent = invoiceNumber;
+        modal.classList.remove('hidden');
+
+        // Re-init icons in modal
+        lucide.createIcons();
+    }
+
+    function closeRejectModal() {
+        const modal = document.getElementById('reject-modal');
+        modal.classList.add('hidden');
+        // Clear textarea
+        modal.querySelector('textarea').value = '';
+    }
+
+    // Close modal on backdrop click
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('reject-modal');
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) closeRejectModal();
+            });
+        }
+
+        // Quick Search - instant filter as you type
+        const searchInput = document.getElementById('quick-search');
+        if (searchInput) {
+            let debounceTimer;
+            searchInput.addEventListener('keyup', function(e) {
+                // Prevent form submit on Enter
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    return;
+                }
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const query = this.value.toLowerCase().trim();
+                    // Filter desktop rows
+                    document.querySelectorAll('.transaction-row').forEach(row => {
+                        const name = row.getAttribute('data-name') || '';
+                        const invoice = row.getAttribute('data-invoice') || '';
+                        const match = !query || name.includes(query) || invoice.includes(query);
+                        row.style.display = match ? '' : 'none';
+                    });
+                    // Filter mobile cards
+                    document.querySelectorAll('.transaction-card').forEach(card => {
+                        const name = card.getAttribute('data-name') || '';
+                        const invoice = card.getAttribute('data-invoice') || '';
+                        const match = !query || name.includes(query) || invoice.includes(query);
+                        card.style.display = match ? '' : 'none';
+                    });
+                }, 150);
+            });
+
+            // Prevent form submit on Enter for quick search
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+        }
+    });
+</script>
+@endpush

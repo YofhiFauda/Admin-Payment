@@ -28,6 +28,9 @@ class Transaction extends Model
         'file_path',
         'status',
         'submitted_by',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_reason',
         'ai_status',
         'confidence',
     ];
@@ -37,6 +40,7 @@ class Transaction extends Model
         return [
             'amount' => 'integer',
             'date' => 'date',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -51,6 +55,11 @@ class Transaction extends Model
     public function submitter()
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function branches()

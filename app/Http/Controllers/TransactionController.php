@@ -20,13 +20,32 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Transaction::with(['submitter', 'branches'])->latest();
+        $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
 
-        // Search filter
+        // Teknisi hanya melihat transaksi sendiri
+        if (Auth::user()->isTeknisi()) {
+            $query->where('submitted_by', Auth::id());
+        }
+
+        // Search filter (nama, invoice, tanggal)
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('customer', 'like', "%{$search}%")
                   ->orWhere('invoice_number', 'like', "%{$search}%");
+
+                // Coba parse sebagai tanggal
+                $dateFormats = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd M Y'];
+                foreach ($dateFormats as $format) {
+                    try {
+                        $parsed = \Carbon\Carbon::createFromFormat($format, $search);
+                        if ($parsed) {
+                            $q->orWhereDate('date', $parsed->toDateString());
+                            break;
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
             });
         }
 
@@ -37,15 +56,25 @@ class TransactionController extends Controller
             }
         }
 
+        // Category filter
+        if ($category = $request->get('category')) {
+            if ($category !== 'all') {
+                $query->where('category', $category);
+            }
+        }
+
         $transactions = $query->paginate(20);
 
-        // Stats - Efficient SQL aggregates
+        // Stats - scoped per role
+        $statsQuery = Auth::user()->isTeknisi()
+            ? Transaction::where('submitted_by', Auth::id())
+            : new Transaction;
+
         $stats = [
-            'total' => Transaction::sum('amount'),
-            'pending' => Transaction::where('status', 'pending')->count(),
-            'approved' => Transaction::where('status', 'approved')->count(),
-            'completed' => Transaction::where('status', 'completed')->count(),
-            'count' => Transaction::count(),
+            'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+            'pending' => (clone $statsQuery)->where('status', 'pending')->count(),
+            'rejected' => (clone $statsQuery)->where('status', 'rejected')->count(),
+            'count' => (clone $statsQuery)->count(),
         ];
 
         return view('transactions.index', compact('transactions', 'stats'));
@@ -236,13 +265,14 @@ class TransactionController extends Controller
                     'X-SECRET' => env('N8N_SECRET')
                 ])
                 ->attach(
-                    'file',                  // field name di n8n
-                    file_get_contents($filePath), // konten file
-                    basename($filePath)      // nama file
+                    'file',
+                    fopen($filePath, 'r'),
+                    basename($filePath)
                 )
-                ->post('https://wases.app.n8n.cloud/webhook/upload-nota', [
-                    'upload_id' => $uploadId // data tambahan jika perlu
+                ->post('https://n8nwhusnet.connexa.net.id/webhook/upload-foto', [
+                    'upload_id' => $uploadId
                 ]);
+
 
         } catch (\Exception $e) {
             Log::error('Gagal kirim ke N8N', [
@@ -252,6 +282,22 @@ class TransactionController extends Controller
         }
     }
 
+
+    /**
+     * Transaction detail page (all authenticated users)
+     */
+    public function show($id)
+    {
+        try {
+            $transaction = Transaction::with(['submitter', 'reviewer', 'branches'])->findOrFail($id);
+            $fileExists = $transaction->file_path && Storage::disk('public')->exists($transaction->file_path);
+
+            return view('transactions.show', compact('transaction', 'fileExists'));
+        } catch (\Exception $e) {
+            return redirect()->route('transactions.index')
+                ->withErrors(['error' => 'Transaksi tidak ditemukan']);
+        }
+    }
 
     /**
      * Step 3: Confirmation page
@@ -273,29 +319,143 @@ class TransactionController extends Controller
     }
 
     /**
-     * Update transaction status (admin/atasan/owner only)
+     * Edit transaction form (admin, atasan, owner)
+     */
+    public function edit($id)
+    {
+        $transaction = Transaction::with('branches')->findOrFail($id);
+        $branches = Branch::all();
+
+        return view('transactions.edit', compact('transaction', 'branches'));
+    }
+
+    /**
+     * Update transaction details (admin, atasan, owner)
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'customer' => 'required|string|max:255',
+            'category' => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
+            'amount' => 'required|numeric|min:1',
+            'items' => 'nullable|string',
+            'date' => 'nullable|date',
+            'branches' => 'required|array|min:1',
+            'branches.*.branch_id' => 'required|exists:branches,id',
+            'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',
+            'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+        ]);
+
+        $totalPercent = collect($request->branches)->sum('allocation_percent');
+        if (abs($totalPercent - 100) > 1) {
+            return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
+        }
+
+        DB::beginTransaction();
+        try {
+            $transaction = Transaction::findOrFail($id);
+            $transaction->update([
+                'customer' => $request->customer,
+                'category' => $request->category,
+                'amount' => $request->amount,
+                'items' => $request->items,
+                'date' => $request->date ?? $transaction->date,
+            ]);
+
+            // Sync branches
+            $transaction->branches()->detach();
+            foreach ($request->branches as $branchData) {
+                $allocPercent = floatval($branchData['allocation_percent']);
+                $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
+                    ? intval($branchData['allocation_amount'])
+                    : intval(round(($transaction->amount * $allocPercent) / 100));
+
+                $transaction->branches()->attach($branchData['branch_id'], [
+                    'allocation_percent' => $allocPercent,
+                    'allocation_amount' => $allocAmount,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('transactions.index')
+                ->with('success', "Transaksi {$transaction->invoice_number} berhasil diperbarui.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui transaksi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Update transaction status - Two-tier approval:
+     * < 1jt: Admin/Atasan approve → completed (done)
+     * >= 1jt: Admin/Atasan approve → approved (waiting Owner) → Owner approve → completed
      */
     public function updateStatus(Request $request, $id)
     {
+        $user = Auth::user();
+        $newStatus = $request->status;
+
+        // Validate allowed statuses per role
+        $allowedStatuses = $user->isOwner()
+            ? ['pending', 'approved', 'completed', 'rejected']
+            : ['approved', 'rejected'];
+
         $request->validate([
-            'status' => 'required|in:pending,approved,completed,rejected',
+            'status' => 'required|in:' . implode(',', $allowedStatuses),
+            'rejection_reason' => 'required_if:status,rejected|nullable|string|max:1000',
         ]);
 
         try {
             $transaction = Transaction::findOrFail($id);
             $oldStatus = $transaction->status;
-            
-            $transaction->update(['status' => $request->status]);
+
+            // Two-tier approval logic
+            if ($newStatus === 'approved' && !$user->isOwner()) {
+                // Admin/Atasan approving a pending transaction
+                if ($transaction->amount < 1000000) {
+                    // < 1jt: single approval sufficient → directly completed
+                    $newStatus = 'completed';
+                }
+                // >= 1jt: stays 'approved', waiting for Owner approval
+            }
+
+            // Owner approving an already-approved transaction → completed
+            if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
+                $newStatus = 'completed';
+            }
+
+            $updateData = [
+                'status' => $newStatus,
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+            ];
+
+            if ($newStatus === 'rejected') {
+                $updateData['rejection_reason'] = $request->rejection_reason;
+            } else {
+                $updateData['rejection_reason'] = null;
+            }
+
+            $transaction->update($updateData);
             
             Log::info('Transaction status updated', [
                 'transaction_id' => $transaction->id,
                 'invoice_number' => $transaction->invoice_number,
                 'old_status' => $oldStatus,
-                'new_status' => $request->status,
-                'updated_by' => Auth::id(),
+                'new_status' => $newStatus,
+                'reviewed_by' => Auth::id(),
+                'rejection_reason' => $request->rejection_reason,
             ]);
 
-            return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: " . strtoupper($request->status));
+            $statusLabel = match($newStatus) {
+                'approved' => 'DISETUJUI (Menunggu Owner)',
+                'rejected' => 'DITOLAK',
+                'completed' => 'SELESAI',
+                'pending' => 'PENDING',
+                default => strtoupper($newStatus),
+            };
+
+            return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}");
             
         } catch (\Exception $e) {
             Log::error('Status update failed', [
@@ -341,6 +501,23 @@ class TransactionController extends Controller
             
             return back()->withErrors(['error' => 'Gagal menghapus transaksi']);
         }
+    }
+
+    /**
+     * Serve transaction image directly from storage
+     */
+    public function serveImage($id)
+    {
+        $transaction = Transaction::findOrFail($id);
+
+        if (!$transaction->file_path || !Storage::disk('public')->exists($transaction->file_path)) {
+            abort(404, 'Gambar tidak ditemukan');
+        }
+
+        $file = Storage::disk('public')->get($transaction->file_path);
+        $mimeType = Storage::disk('public')->mimeType($transaction->file_path);
+
+        return response($file, 200)->header('Content-Type', $mimeType);
     }
 
     /**

@@ -58,6 +58,7 @@
                     </a>
                 @endif
 
+                @if(!Auth::user()->isTeknisi())
                 <div class="pt-4 md:pt-6 border-t border-slate-800/50 mt-4 md:mt-6">
                     <p class="text-[9px] md:text-[10px] font-black text-slate-600 uppercase tracking-widest px-4 md:px-5 mb-3 md:mb-4">Analytics</p>
                     <div
@@ -66,6 +67,7 @@
                         <span class="text-xs md:text-sm">Laporan Grafik</span>
                     </div>
                 </div>
+                @endif
             </nav>
 
             {{-- User Profile & Logout --}}
@@ -131,8 +133,8 @@
             @endif
 
             {{-- Page Content --}}
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar">
-                <div class="max-w-7xl mx-auto">
+            <div class="flex-1 overflow-y-auto p-2 md:p-2 lg:p-4 custom-scrollbar">
+                <div class="max-w-3xl mx-auto">
                     @yield('content')
                 </div>
             </div>
