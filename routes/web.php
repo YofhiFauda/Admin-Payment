@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:teknisi,admin,owner')->group(function () {
         Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
         Route::post('/transactions/upload', [TransactionController::class, 'processUpload'])->name('transactions.upload');
+        Route::get('/transactions/loading', [TransactionController::class, 'loading'])->name('transactions.loading');
         Route::get('/transactions/form', [TransactionController::class, 'showForm'])->name('transactions.form');
         Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
         Route::get('/transactions/{id}/confirm', [TransactionController::class, 'confirmation'])->name('transactions.confirm');

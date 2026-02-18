@@ -125,9 +125,24 @@ class TransactionController extends Controller
         // Send to N8N for AI processing (non-blocking)
         $this->sendToN8N($uploadId, $base64);
 
-        return redirect()->route('transactions.form');
+        return redirect()->route('transactions.loading');
     }
 
+
+
+    /**
+     * Intermediary Loading Page (Wait for OCR)
+     */
+    public function loading()
+    {
+        $uploadId = session('upload_id');
+
+        if (!$uploadId) {
+            return redirect()->route('transactions.create');
+        }
+
+        return view('transactions.loading', compact('uploadId'));
+    }
 
     /**
      * Step 2: Form with branch allocation
@@ -269,7 +284,7 @@ class TransactionController extends Controller
                     fopen($filePath, 'r'),
                     basename($filePath)
                 )
-                ->post('https://n8nwhusnet.connexa.net.id/webhook/upload-foto', [
+                ->post('http://localhost:5678/webhook-test/ocr-nota', [
                     'upload_id' => $uploadId
                 ]);
 
@@ -515,7 +530,8 @@ class TransactionController extends Controller
         }
 
         $file = Storage::disk('public')->get($transaction->file_path);
-        $mimeType = Storage::disk('public')->mimeType($transaction->file_path);
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($file);
 
         return response($file, 200)->header('Content-Type', $mimeType);
     }

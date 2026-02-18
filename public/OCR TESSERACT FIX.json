@@ -1,0 +1,167 @@
+{
+  "name": "OCR Nota Kontan - Tesseract Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Data sent to API successfully',\n  data: $json\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        816,
+        48
+      ],
+      "id": "edf07804-7627-4896-8fc5-6fbae98770cd",
+      "name": "Return Success Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://transformation-prayer-lucia-kansas.trycloudflare.co",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-SECRET",
+              "value": "mySuperSecretKey123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"upload_id\": \"={{ $json.upload_id || '' }}\",\n  \"customer\": \"={{ $json.nama_penerima || '' }}\",\n  \"amount\": \"={{ $json.nominal || 0 }}\",\n  \"date\": \"={{ $json.tanggal || '' }}\",\n  \"items\": \"={{ $json.keterangan || '' }}\",\n  \"confidence\": \"={{ $json.confidence || 0 }}\"\n}\n",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        640,
+        48
+      ],
+      "id": "8480f7c3-ef75-4fb2-95d4-f7cb890520f4",
+      "name": "Send to API (High Confidence)"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ocr-nota",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "data",
+                "value": "200"
+              }
+            ]
+          }
+        }
+      },
+      "id": "66ee3790-22aa-4617-8048-533253353a3a",
+      "name": "📥 Webhook Input1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        48
+      ],
+      "webhookId": "ocr-nota-input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// ========================\n// Ambil Text OCR\n// ========================\nconst raw = $json.text || $json.stdout || \"\";\n\nif (!raw) {\n  return { json: { error: \"No OCR text received\" } };\n}\n\n// Bersihkan karakter aneh\nconst clean = raw\n  .replace(/[^\\x00-\\x7F]/g, \"\")\n  .replace(/\\r/g, \"\");\n\nconst lines = clean.split('\\n').filter(l => l.trim() !== \"\");\n\n// ========================\n// 1️⃣ Ambil Nama Toko\n// ========================\nconst nama_toko = lines.length > 0 \n  ? lines[0].replace(/[^A-Za-z\\s]/g, \"\").trim().toUpperCase()\n  : null;\n\n\n// ========================\n// 2️⃣ Ambil Nominal (Improved)\n// ========================\nlet nominal = null;\n\n// Regex lebih fleksibel (tanpa perlu kata Total)\nconst numberRegex = /\\b\\d{3,}\\b/g; // ambil angka minimal 3 digit\n\nconst numbers = clean.match(numberRegex);\n\nif (numbers) {\n  nominal = numbers\n    .map(n => parseInt(n))\n    .sort((a, b) => b - a)[0]; // ambil angka terbesar\n}\n\n// ========================\n// 3️⃣ Ambil Keterangan\n// ========================\nconst keterangan = lines.slice(1, 5).join(\" \");\n\n\n// ========================\n// 4️⃣ Validasi\n// ========================\nconst valid = nominal && nominal > 0;\n\nreturn {\n  json: {\n    nama_toko,\n    nominal,\n    keterangan,\n    confidence: $json.confidence || null,\n    valid,\n    raw_text: raw\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        48
+      ],
+      "id": "b88877d0-293d-4f7c-9a4b-09efde9d6a07",
+      "name": "Regex Extraction"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "data0",
+        "options": {}
+      },
+      "type": "n8n-nodes-tesseractjs.tesseractNode",
+      "typeVersion": 1,
+      "position": [
+        208,
+        48
+      ],
+      "id": "05060872-521b-4b7a-9ca5-34d8b3a3f98b",
+      "name": "Tesseract"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send to API (High Confidence)": {
+      "main": [
+        [
+          {
+            "node": "Return Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Webhook Input1": {
+      "main": [
+        [
+          {
+            "node": "Tesseract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regex Extraction": {
+      "main": [
+        [
+          {
+            "node": "Send to API (High Confidence)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tesseract": {
+      "main": [
+        [
+          {
+            "node": "Regex Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fc3b3208-e6bb-4554-92de-fe2b8b528957",
+  "meta": {
+    "instanceId": "3941ca7e6b51ea9391492db828ff7a233be5f64831b04607f719acf7a48fc418"
+  },
+  "id": "0dLcM44itaxPzJrH",
+  "tags": []
+}
