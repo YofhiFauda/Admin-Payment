@@ -92,29 +92,39 @@ class TransactionController extends Controller
      * Handle file upload → store temp → send to N8N → redirect to form
      * NO database insert here — data only saved on form submit
      */
-    public function processUpload(Request $request)
+   public function processUpload(Request $request)
     {
+        Log::channel('ocr')->info('=== START UPLOAD PROCESS ===');
+
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
         ]);
 
         $file = $request->file('file');
 
-        // Generate unique upload ID
-        $uploadId = (string) Str::uuid();
+        $uploadId = 'nota-' . round(microtime(true) * 1000);
 
-        // Save file to temp storage
+        Log::channel('ocr')->info('Upload ID generated', [
+            'upload_id' => $uploadId,
+            'original_name' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType(),
+            'size' => $file->getSize(),
+        ]);
+
         $extension = $file->getClientOriginalExtension();
         $fileName = $uploadId . '.' . $extension;
         $storagePath = 'temp-uploads/' . $fileName;
 
         Storage::disk('public')->put($storagePath, file_get_contents($file));
 
-        // Encode file to base64 for session preview & N8N
+        Log::channel('ocr')->info('File saved to storage', [
+            'path' => $storagePath,
+            'exists' => Storage::disk('public')->exists($storagePath),
+        ]);
+
         $base64 = base64_encode(file_get_contents($file));
         $mime = $file->getMimeType();
 
-        // Store in session (for form preview)
         session([
             'upload_id' => $uploadId,
             'upload_file_path' => $storagePath,
@@ -122,13 +132,16 @@ class TransactionController extends Controller
             'upload_file_mime' => $mime,
         ]);
 
-        // Send to N8N for AI processing (non-blocking)
-        $this->sendToN8N($uploadId, $base64);
+        Log::channel('ocr')->info('Session stored', [
+            'upload_id' => session('upload_id'),
+        ]);
+
+        $this->sendToN8N($uploadId, storage_path('app/public/' . $storagePath));
+
+        Log::channel('ocr')->info('Redirecting to loading page');
 
         return redirect()->route('transactions.loading');
     }
-
-
 
     /**
      * Intermediary Loading Page (Wait for OCR)
@@ -157,6 +170,18 @@ class TransactionController extends Controller
         if (!$uploadId || !$base64) {
             return redirect()->route('transactions.create')
                 ->withErrors(['error' => 'Silakan unggah nota terlebih dahulu']);
+        }
+
+        // ✅ CEK CACHE AI DAN SIMPAN KE SESSION
+        $cacheKey = "ai_autofill:{$uploadId}";
+        $aiData = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        
+        if ($aiData) {
+            session(['ai_data' => $aiData]);
+            \Log::info('AI Data loaded from cache to session', [
+                'upload_id' => $uploadId,
+                'customer' => $aiData['customer'] ?? null,
+            ]);
         }
 
         $branches = Branch::all();
@@ -272,30 +297,68 @@ class TransactionController extends Controller
      * Send image to N8N for AI processing
      * Uses upload_id as identifier (no database record yet)
      */
-    private function sendToN8N(string $uploadId, string $filePath)
+    private function sendToN8N(string $uploadId, string $localFilePath)
     {
+        Log::channel('ocr')->info('Sending to N8N started', [
+            'upload_id' => $uploadId,
+            'file_path' => $localFilePath,
+        ]);
+
         try {
-            Http::timeout(60)
+            // ✅ SOLUSI: Upload ID via QUERY STRING (bukan body!)
+            $webhookUrl = rtrim(env('N8N_WEBHOOK'), '/') . '?upload_id=' . $uploadId;
+            
+            $response = Http::asMultipart()
                 ->withHeaders([
-                    'X-SECRET' => env('N8N_SECRET')
+                    'X-SECRET' => env('N8N_SECRET'),
+                    'X-Upload-ID' => $uploadId,  // ✅ Backup via header
                 ])
-                ->attach(
-                    'file',
-                    fopen($filePath, 'r'),
-                    basename($filePath)
-                )
-                ->post('http://localhost:5678/webhook-test/ocr-nota', [
-                    'upload_id' => $uploadId
+                // ✅ PENTING: Ganti 'data0' menjadi 'data' (sesuai config webhook n8n)
+                ->attach('data', fopen($localFilePath, 'r'), basename($localFilePath))
+                ->timeout(60)
+                ->post($webhookUrl, [
+                'upload_id' => $uploadId  // <--- TAMBAHKAN BARIS INI // ✅ Jangan kirim body, cukup query string
                 ]);
 
+            Log::channel('ocr')->info('N8N Response Received', [
+                'upload_id' => $uploadId,
+                'status_code' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Gagal kirim ke N8N', [
+            Log::channel('ocr')->error('N8N CONNECTION FAILED', [
                 'upload_id' => $uploadId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
+
+
+    // private function sendToN8N(string $uploadId, string $filePath)
+    // {
+    //     try {
+    //         Http::timeout(60)
+    //             ->withHeaders([
+    //                 'X-SECRET' => env('N8N_SECRET')
+    //             ])
+    //             ->attach(
+    //                 'file',
+    //                 fopen($filePath, 'r'),
+    //                 basename($filePath)
+    //             )
+    //             ->post('http://localhost:5678/webhook-test/ocr-nota', [
+    //                 'upload_id' => $uploadId
+    //             ]);
+
+
+    //     } catch (\Exception $e) {
+    //         Log::error('Gagal kirim ke N8N', [
+    //             'upload_id' => $uploadId,
+    //             'error' => $e->getMessage()
+    //         ]);
+    //     }
+    // }
 
 
     /**

@@ -52,6 +52,12 @@ return [
 
     'channels' => [
 
+        'ocr' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/ocr.log'),
+            'level' => 'debug',
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

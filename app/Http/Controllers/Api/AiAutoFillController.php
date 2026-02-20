@@ -13,18 +13,19 @@ class AiAutoFillController extends Controller
 {
     /**
      * Receive AI-extracted data from N8N and store in Cache
-     * NO database write — data stored temporarily for form auto-fill
      */
     public function store(Request $request)
     {
         // 🔐 Security
-        if ($request->header('X-SECRET') !== env('N8N_SECRET')) {
+        if ($request->header('X-SECRET') !== config('services.n8n.secret')) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // ✅ PRIORITASKAN upload_id dari query string (dari N8N webhook)
+        $uploadId = $request->query('upload_id') ?? $request->header('X-Upload-ID') ?? $request->upload_id;
+
         // ✅ Validation
         $validator = Validator::make($request->all(), [
-            'upload_id'  => 'required|string',
             'customer'   => 'nullable|string|max:255',
             'amount'     => 'nullable|numeric',
             'date'       => 'nullable|date',
@@ -34,6 +35,16 @@ class AiAutoFillController extends Controller
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
+        }
+
+        // ✅ VALIDASI upload_id WAJIB ADA
+        if (!$uploadId) {
+            Log::error('AI Auto Fill FAILED - Missing upload_id', [
+                'query' => $request->query('upload_id'),
+                'header' => $request->header('X-Upload-ID'),
+                'body' => $request->upload_id,
+            ]);
+            return response()->json(['message' => 'upload_id is required'], 422);
         }
 
         // Parse date
@@ -47,24 +58,48 @@ class AiAutoFillController extends Controller
         }
 
         // Store in Cache (expires in 30 minutes)
-        $cacheKey = "ai_autofill:{$request->upload_id}";
+        $cacheKey = "ai_autofill:{$uploadId}";
 
-        Cache::put($cacheKey, [
+        $cacheData = [
             'status'     => 'completed',
+            'upload_id'  => $uploadId, // ✅ SIMPAN upload_id DI CACHE
             'customer'   => $request->customer,
             'amount'     => $request->amount,
             'date'       => $date,
             'items'      => $request->items,
             'confidence' => $request->confidence,
-        ], now()->addMinutes(30));
+        ];
 
-        Log::info('AI Auto Fill stored in cache', [
-            'upload_id'  => $request->upload_id,
-            'customer'   => $request->customer,
-            'amount'     => $request->amount,
-            'confidence' => $request->confidence,
-        ]);
+        Cache::put($cacheKey, $cacheData, now()->addMinutes(30));
+
+        Log::channel('ocr')->info('AI Auto Fill stored in cache', $cacheData);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * ✅ POLLING ENDPOINT - Read from Cache
+     * Called by Loading Page to check if AI processing is done
+     */
+    public function status($uploadId)
+    {
+        $cacheKey = "ai_autofill:{$uploadId}";
+        $data = Cache::get($cacheKey);
+
+        Log::info('AI Status Polling', [
+            'upload_id' => $uploadId,
+            'found' => $data !== null,
+        ]);
+
+        if ($data) {
+            return response()->json([
+                'status' => 'completed',
+                'data' => $data,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'processing',
+        ]);
     }
 }

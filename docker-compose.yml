@@ -40,7 +40,6 @@ services:
       - dbdata:/var/lib/mysql
     networks:
       - laravel
-
   
   node:
     image: node:20

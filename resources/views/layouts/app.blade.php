@@ -134,7 +134,7 @@
 
             {{-- Page Content --}}
             <div class="flex-1 overflow-y-auto p-2 md:p-2 lg:p-4 custom-scrollbar">
-                <div class="max-w-3xl mx-auto">
+                <div class="max-w-7.5xl mx-auto">
                     @yield('content')
                 </div>
             </div>

@@ -15,14 +15,8 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('ai-auto-fill', function (Request $request) {
-
-            return [
-                // Maks 30 request per menit per IP
-                Limit::perMinute(30)->by($request->ip()),
-
-                // Tambahan proteksi berdasarkan secret
-                Limit::perMinute(60)->by($request->header('X-SECRET'))
-            ];
+            $key = $request->ip() . ':' . $request->header('X-SECRET', 'no-secret');
+            return Limit::perMinute(60)->by($key);
         });
     }
 }

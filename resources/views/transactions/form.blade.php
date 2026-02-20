@@ -234,191 +234,149 @@ class="space-y-6 lg:space-y-12">
     </div>
 
     @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const branchesJson = @json($branches);
-                let allocMode = 'equal';
-                let branchIndex = 1;
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const branchesJson = @json($branches);
+            let allocMode = 'equal';
+            let branchIndex = 1;
 
-                const container = document.getElementById('branches-container');
-                const totalInput = document.getElementById('total-amount');
-                const summaryTotal = document.getElementById('summary-total');
-                const allocBadge = document.getElementById('alloc-badge');
-                const allocDisplay = document.getElementById('alloc-percent-display');
-                const submitBtn = document.getElementById('submit-btn');
-                let isSubmitting = false;
-                const form = document.getElementById('transaction-form');
+            const container = document.getElementById('branches-container');
+            const totalInput = document.getElementById('total-amount');
+            const summaryTotal = document.getElementById('summary-total');
+            const allocBadge = document.getElementById('alloc-badge');
+            const allocDisplay = document.getElementById('alloc-percent-display');
+            const submitBtn = document.getElementById('submit-btn');
+            let isSubmitting = false;
+            const form = document.getElementById('transaction-form');
 
-                function formatRupiah(num) {
-                    return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
-                }
+            // ==========================================
+            // 🔍 DEBUG PANEL
+            // ==========================================
+            const debugPanel = document.createElement('div');
+            debugPanel.className = "fixed bottom-4 right-4 bg-slate-800 text-white p-3 rounded-lg text-xs max-w-sm max-h-80 overflow-y-auto z-50 shadow-xl font-mono";
+            debugPanel.innerHTML = "<strong>🔍 AI Debug:</strong><br>";
+            document.body.appendChild(debugPanel);
 
-                // Mode buttons
-                document.querySelectorAll('.alloc-mode-btn').forEach(btn => {
-                    btn.addEventListener('click', function () {
-                        allocMode = this.dataset.mode;
-                        document.querySelectorAll('.alloc-mode-btn').forEach(b => {
-                            b.classList.remove('bg-white', 'shadow', 'text-blue-600');
-                            b.classList.add('text-slate-400');
-                        });
-                        this.classList.add('bg-white', 'shadow', 'text-blue-600');
-                        this.classList.remove('text-slate-400');
-                        recalc();
+            function debug(msg, type = 'success') {
+                const color = type === 'error' ? 'text-red-400' : type === 'warning' ? 'text-yellow-400' : 'text-green-400';
+                debugPanel.innerHTML += `<div class="${color}">${msg}</div>`;
+                console.log("[AI Debug]", msg);
+            }
+
+            function formatRupiah(num) {
+                return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
+            }
+
+            // Mode buttons
+            document.querySelectorAll('.alloc-mode-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    allocMode = this.dataset.mode;
+                    document.querySelectorAll('.alloc-mode-btn').forEach(b => {
+                        b.classList.remove('bg-white', 'shadow', 'text-blue-600');
+                        b.classList.add('text-slate-400');
                     });
+                    this.classList.add('bg-white', 'shadow', 'text-blue-600');
+                    this.classList.remove('text-slate-400');
+                    recalc();
                 });
+            });
 
-                // Add Branch
-                document.getElementById('add-branch-btn').addEventListener('click', function () {
+            // Add Branch
+            document.getElementById('add-branch-btn').addEventListener('click', function () {
+                const idx = branchIndex++;
+                const opts = branchesJson
+                    .map(b => `<option value="${b.id}">${b.name}</option>`)
+                    .join('');
 
-                    const idx = branchIndex++;
+                const row = document.createElement('div');
+                row.className = `
+                    branch-row flex flex-col sm:flex-row gap-2 md:gap-3 items-end 
+                    bg-slate-50 p-2.5 md:p-3 lg:p-4 rounded-lg md:rounded-xl border border-slate-100
+                `;
+                row.dataset.index = idx;
 
-                    // Generate options
-                    const opts = branchesJson
-                        .map(b => `<option value="${b.id}">${b.name}</option>`)
-                        .join('');
-
-                    // Create wrapper row
-                    const row = document.createElement('div');
-                    row.className = `
-                    branch-row
-                    flex flex-col sm:flex-row gap-2 md:gap-3
-                    items-end
-                    bg-slate-50
-                    p-2.5 md:p-3 lg:p-4
-                    rounded-lg md:rounded-xl
-                    border border-slate-100
-                    `;
-                    row.dataset.index = idx;
-
-                    // Template HTML
-                    row.innerHTML = `
-                    <!-- Branch Select -->
+                row.innerHTML = `
                     <div class="flex-1 w-full">
-                    <label class="block text-xs md:text-sm
-                    font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">
-                    Cabang
-                    </label>
-
-                    <div class="relative">
-                    <select 
-                    name="branches[${idx}][branch_id]"
-                    class="branch-select w-full appearance-none border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 text-xs md:text-sm font-medium bg-white pr-7 md:pr-8 outline-none focus:ring-2 focus:ring-blue-100"
-                    >
-                    ${opts}
-                    </select>
-
-                    <i 
-                    data-lucide="chevron-down"
-                    class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
-                    ></i>
+                        <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Cabang</label>
+                        <div class="relative">
+                            <select name="branches[${idx}][branch_id]" class="branch-select w-full appearance-none border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 text-xs md:text-sm font-medium bg-white pr-7 md:pr-8 outline-none focus:ring-2 focus:ring-blue-100">
+                                ${opts}
+                            </select>
+                            <i data-lucide="chevron-down" class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                        </div>
                     </div>
-                    </div>
-
-                    <!-- Allocation Input -->
                     <div class="w-full sm:w-32 md:w-36">
-                    <label class="alloc-label block text-xs md:text-sm
-                    font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">
-                    ${allocMode === 'manual' ? 'Nominal' : 'Porsi (%)'}
-                    </label>
-
-                    <div class="relative">
-                    <input
-                    type="number"
-                    step="0.01"
-                    value="0"
-                    class="alloc-percent w-full border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 pr-7 md:pr-8 text-xs md:text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-
-                    <span
-                    class="alloc-suffix absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs md:text-sm pointer-events-none"
-                    >
-                    ${allocMode === 'manual' ? '' : '%'}
-                    </span>
+                        <label class="alloc-label block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">${allocMode === 'manual' ? 'Nominal' : 'Porsi (%)'}</label>
+                        <div class="relative">
+                            <input type="number" step="0.01" value="0" class="alloc-percent w-full border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 pr-7 md:pr-8 text-xs md:text-sm font-bold bg-white outline-none focus:ring-2 focus:ring-blue-100" />
+                            <span class="alloc-suffix absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs md:text-sm pointer-events-none">${allocMode === 'manual' ? '' : '%'}</span>
+                        </div>
                     </div>
-                    </div>
-
-                    <!-- Hidden Inputs -->
-                    <input 
-                    type="hidden"
-                    name="branches[${idx}][allocation_percent]"
-                    class="alloc-percent-hidden"
-                    value="0"
-                    />
-
-                    <input 
-                    type="hidden"
-                    name="branches[${idx}][allocation_amount]"
-                    class="alloc-amount"
-                    value="0"
-                    />
-
-                    <!-- Remove Button -->
-                    <button
-                    type="button"
-                    class="remove-branch-btn p-2 md:p-2.5 text-red-400 hover:bg-red-50 rounded-md md:rounded-lg transition-all cursor-pointer shrink-0"
-                    >
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+                    <input type="hidden" name="branches[${idx}][allocation_percent]" class="alloc-percent-hidden" value="0" />
+                    <input type="hidden" name="branches[${idx}][allocation_amount]" class="alloc-amount" value="0" />
+                    <button type="button" class="remove-branch-btn p-2 md:p-2.5 text-red-400 hover:bg-red-50 rounded-md md:rounded-lg transition-all cursor-pointer shrink-0">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
                     </button>`;
 
-                    container.appendChild(row);
-
-                    lucide.createIcons();
-                    bindRemove();
-                    recalc();
-                    enforceUniqueBranches(); 
-                });
-                function bindRemove() {
-                    document.querySelectorAll('.remove-branch-btn').forEach(btn => {
-                        btn.onclick = function () {
-                            if (container.querySelectorAll('.branch-row').length > 1) {
-                                this.closest('.branch-row').remove();
-                                recalc();
-                                enforceUniqueBranches();
-                            }
-                        };
-                    });
-                }
+                container.appendChild(row);
+                lucide.createIcons();
                 bindRemove();
+                recalc();
+                enforceUniqueBranches();
+            });
 
-                function recalc() {
-                    const rows = container.querySelectorAll('.branch-row');
-                    const totalAmt = parseInt(totalInput.value) || 0;
-                    const count = rows.length;
-
-                    rows.forEach(row => {
-                        const pctInput = row.querySelector('.alloc-percent');
-                        const pctHidden = row.querySelector('.alloc-percent-hidden');
-                        const amtHidden = row.querySelector('.alloc-amount');
-                        const label = row.querySelector('.alloc-label');
-                        const suffix = row.querySelector('.alloc-suffix');
-
-                        if (allocMode === 'equal') {
-                            const eqPct = parseFloat((100 / count).toFixed(2));
-                            pctInput.value = eqPct;
-                            pctInput.readOnly = true;
-                            pctHidden.value = eqPct;
-                            amtHidden.value = Math.round((totalAmt * eqPct) / 100);
-                            if (label) label.textContent = 'Porsi (%)';
-                            if (suffix) suffix.textContent = '%';
-                        } else if (allocMode === 'percent') {
-                            pctInput.readOnly = false;
-                            const pct = parseFloat(pctInput.value) || 0;
-                            pctHidden.value = pct;
-                            amtHidden.value = Math.round((totalAmt * pct) / 100);
-                            if (label) label.textContent = 'Porsi (%)';
-                            if (suffix) suffix.textContent = '%';
-                        } else {
-                            pctInput.readOnly = false;
-                            if (label) label.textContent = 'Nominal';
-                            if (suffix) suffix.textContent = '';
-                            const nominal = parseInt(pctInput.value) || 0;
-                            const pct = totalAmt > 0 ? parseFloat(((nominal / totalAmt) * 100).toFixed(2)) : 0;
-                            pctHidden.value = pct;
-                            amtHidden.value = nominal;
+            function bindRemove() {
+                document.querySelectorAll('.remove-branch-btn').forEach(btn => {
+                    btn.onclick = function () {
+                        if (container.querySelectorAll('.branch-row').length > 1) {
+                            this.closest('.branch-row').remove();
+                            recalc();
+                            enforceUniqueBranches();
                         }
-                    });
-                    updateSummary();
-                }
+                    };
+                });
+            }
+            bindRemove();
+
+            function recalc() {
+                const rows = container.querySelectorAll('.branch-row');
+                const totalAmt = parseInt(totalInput.value) || 0;
+                const count = rows.length;
+
+                rows.forEach(row => {
+                    const pctInput = row.querySelector('.alloc-percent');
+                    const pctHidden = row.querySelector('.alloc-percent-hidden');
+                    const amtHidden = row.querySelector('.alloc-amount');
+                    const label = row.querySelector('.alloc-label');
+                    const suffix = row.querySelector('.alloc-suffix');
+
+                    if (allocMode === 'equal') {
+                        const eqPct = parseFloat((100 / count).toFixed(2));
+                        pctInput.value = eqPct;
+                        pctInput.readOnly = true;
+                        pctHidden.value = eqPct;
+                        amtHidden.value = Math.round((totalAmt * eqPct) / 100);
+                        if (label) label.textContent = 'Porsi (%)';
+                        if (suffix) suffix.textContent = '%';
+                    } else if (allocMode === 'percent') {
+                        pctInput.readOnly = false;
+                        const pct = parseFloat(pctInput.value) || 0;
+                        pctHidden.value = pct;
+                        amtHidden.value = Math.round((totalAmt * pct) / 100);
+                        if (label) label.textContent = 'Porsi (%)';
+                        if (suffix) suffix.textContent = '%';
+                    } else {
+                        pctInput.readOnly = false;
+                        if (label) label.textContent = 'Nominal';
+                        if (suffix) suffix.textContent = '';
+                        const nominal = parseInt(pctInput.value) || 0;
+                        const pct = totalAmt > 0 ? parseFloat(((nominal / totalAmt) * 100).toFixed(2)) : 0;
+                        pctHidden.value = pct;
+                        amtHidden.value = nominal;
+                    }
+                });
+                updateSummary();
+            }
 
             function updateSummary() {
                 const totalAmt = parseInt(totalInput.value) || 0;
@@ -463,7 +421,6 @@ class="space-y-6 lg:space-y-12">
                     }
                 });
 
-
                 allocDisplay.textContent = totalPct.toFixed(1) + '%';
 
                 const ok = Math.abs(totalPct - 100) < 0.5 && totalAmt > 0;
@@ -481,21 +438,16 @@ class="space-y-6 lg:space-y-12">
                 const selects = container.querySelectorAll('.branch-select');
                 const usedBranches = [];
 
-                // Kumpulkan cabang yang sudah dipilih
                 selects.forEach(select => {
                     if (select.value) {
                         usedBranches.push(select.value);
                     }
                 });
 
-                // Loop lagi untuk disable option yang sudah dipakai
                 selects.forEach(select => {
                     const currentValue = select.value;
-
                     select.querySelectorAll('option').forEach(option => {
-                        if (!option.value) return; // skip placeholder
-
-                        // Kalau option sudah dipakai di select lain → disable
+                        if (!option.value) return;
                         if (usedBranches.includes(option.value) && option.value !== currentValue) {
                             option.disabled = true;
                         } else {
@@ -503,14 +455,14 @@ class="space-y-6 lg:space-y-12">
                         }
                     });
                 });
-            }    
-            
+            }
+
             totalInput.addEventListener('input', recalc);
-            
+
             container.addEventListener('input', function (e) {
                 if (e.target.classList.contains('alloc-percent')) recalc();
             });
-            
+
             container.addEventListener('change', function(e) {
                 if (e.target.classList.contains('branch-select')) {
                     enforceUniqueBranches();
@@ -518,75 +470,202 @@ class="space-y-6 lg:space-y-12">
                 }
             });
 
-                // On submit, ensure hidden fields are synced
-                form.addEventListener('submit', function () {
-
-                    recalc();
-
-                    if (submitBtn.disabled || isSubmitting) return;
-
-                    isSubmitting = true;
-                    submitBtn.disabled = true;
-
-                    document.getElementById('submit-text').textContent = 'Mengirim...';
-                    document.getElementById('submit-spinner').classList.remove('hidden');
-                });
-
-                
+            form.addEventListener('submit', function () {
                 recalc();
-                // ========================================
-                // 🔄 POLLING STATUS AI (from Cache)
-                // ========================================
-
-                const uploadId = document.getElementById('upload-id')?.value;
-
-                if (uploadId) {
-
-                    const interval = setInterval(() => {
-
-                        fetch(`/api/ai-status/${uploadId}`)
-                            .then(res => res.json())
-                            .then(data => {
-
-                                if (data.status === 'completed') {
-
-                                    clearInterval(interval);
-
-                                    if (data.customer) {
-                                        document.getElementById('customer').value = data.customer;
-                                    }
-
-                                    if (data.amount) {
-                                        document.getElementById('total-amount').value = data.amount;
-                                    }
-
-                                    if (data.date) {
-                                        document.getElementById('date').value = data.date;
-                                    }
-
-                                    if (data.items) {
-                                        document.getElementById('items').value = data.items;
-                                    }
-
-                                    recalc();
-
-                                    console.log("AI Autofill applied");
-                                }
-
-                                if (data.status === 'failed') {
-                                    clearInterval(interval);
-                                    console.error('AI processing failed');
-                                }
-
-                            })
-                            .catch(err => {
-                                clearInterval(interval);
-                                console.error('Polling error:', err);
-                            });
-
-                    }, 2000);
-                }
+                if (submitBtn.disabled || isSubmitting) return;
+                isSubmitting = true;
+                submitBtn.disabled = true;
+                document.getElementById('submit-text').textContent = 'Mengirim...';
+                document.getElementById('submit-spinner').classList.remove('hidden');
             });
-        </script>
+
+            recalc();
+
+            // ========================================
+            // 🔄 AI AUTOFILL
+            // ========================================
+
+            const uploadId = document.getElementById('upload-id')?.value;
+            debug(`Upload ID: ${uploadId}`);
+
+            let pollingInterval = null;
+            let pollCount = 0;
+            const maxPolls = 20;
+
+            function applyAIData(aiData, source) {
+                debug(`✅ Applying AI Data from ${source}`, 'success');
+                debug(`   Customer: ${aiData.customer || 'N/A'}`);
+                debug(`   Amount: ${aiData.amount || 'N/A'}`);
+                debug(`   Date: ${aiData.date || 'N/A'}`);
+                debug(`   Confidence: ${aiData.confidence || 'N/A'}%`);
+
+                let filled = false;
+
+                if (aiData.customer) {
+                    document.getElementById('customer').value = aiData.customer;
+                    filled = true;
+                }
+
+                if (aiData.amount) {
+                    document.getElementById('total-amount').value = aiData.amount;
+                    filled = true;
+                }
+
+                if (aiData.date) {
+                    document.getElementById('date').value = aiData.date;
+                    filled = true;
+                }
+
+                if (aiData.items) {
+                    document.getElementById('items').value = aiData.items;
+                    filled = true;
+                }
+
+                if (filled) {
+                    recalc();
+                    showAutoFillNotification(aiData.confidence || 90);
+                    debug("✅ Form auto-filled successfully!", 'success');
+                    
+                    if (pollingInterval) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                    }
+                } else {
+                    debug("❌ No valid data to fill", 'error');
+                }
+            }
+
+            function showAutoFillNotification(confidence) {
+                const notification = document.createElement('div');
+                notification.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50";
+                notification.innerHTML = `
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Data terisi otomatis (AI: ${confidence}%)</span>
+                `;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(() => notification.remove(), 500);
+                }, 3000);
+            }
+
+            function startPolling() {
+                debug("🔄 Starting API polling...", 'warning');
+                
+                pollingInterval = setInterval(() => {
+                    pollCount++;
+                    debug(`Polling ${pollCount}/${maxPolls}...`);
+
+                    fetch(`/api/ai/ai-status/${uploadId}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            debug(`API: ${JSON.stringify(data)}`);
+
+                            if (data.status === 'completed' && data.data) {
+                                applyAIData(data.data, 'Server API');
+                            }
+
+                            if (data.status === 'failed') {
+                                debug('AI processing failed', 'error');
+                                stopPolling();
+                                showManualFillButton();
+                            }
+
+                            if (pollCount >= maxPolls) {
+                                debug("⚠️ Polling timeout - AI data not received", 'warning');
+                                showManualFillButton();
+                                stopPolling();
+                            }
+                        })
+                        .catch(err => {
+                            debug(`Error: ${err.message}`, 'error');
+                            if (pollCount >= maxPolls) {
+                                showManualFillButton();
+                                stopPolling();
+                            }
+                        });
+                }, 2000);
+            }
+
+            function stopPolling() {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+            }
+
+            function showManualFillButton() {
+                const existingBtn = document.getElementById('manual-fill-btn');
+                if (existingBtn) return;
+
+                const manualBtn = document.createElement('button');
+                manualBtn.id = 'manual-fill-btn';
+                manualBtn.type = 'button';
+                manualBtn.className = "fixed bottom-20 right-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50 text-sm font-bold transition-all";
+                manualBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span>Refresh AI Data</span>
+                `;
+                manualBtn.onclick = function() {
+                    pollCount = 0;
+                    debug("🔄 Manual refresh triggered", 'warning');
+                    startPolling();
+                    this.remove();
+                };
+                document.body.appendChild(manualBtn);
+            }
+
+            // ==========================================
+            // ✅ START PROCESS
+            // ==========================================
+            if (uploadId) {
+                const possibleKeys = [
+                    `ai_autofill_${uploadId}`,
+                    `ai_autofill:null`,
+                    `ai_autofill_latest`,
+                    `ai_autofill`,
+                ];
+
+                debug(`Checking ${possibleKeys.length} cache keys...`);
+
+                let foundData = null;
+                let foundKey = null;
+
+                for (const key of possibleKeys) {
+                    const data = sessionStorage.getItem(key);
+                    if (data) {
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed && (parsed.customer || parsed.amount || parsed.confidence)) {
+                                foundData = parsed;
+                                foundKey = key;
+                                debug(`✅ Found: ${key}`, 'success');
+                                break;
+                            }
+                        } catch (e) {
+                            debug(`Invalid JSON: ${key}`, 'error');
+                        }
+                    }
+                }
+
+                if (foundData) {
+                    applyAIData(foundData, `Browser Cache (${foundKey})`);
+                } else {
+                    debug("No cache found, starting polling...", 'warning');
+                    startPolling();
+                }
+            } else {
+                debug("No upload_id found!", 'error');
+            }
+
+            lucide.createIcons();
+        });
+    </script>
     @endpush
 @endsection

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'n8n' => [
+        'secret' => env('N8N_SECRET'),
+    ],
+
 ];
