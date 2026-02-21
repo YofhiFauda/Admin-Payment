@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->string('customer')->nullable();
             $table->bigInteger('amount')->nullable();
-            $table->text('items')->nullable();
+            $table->json('items')->nullable();
             $table->date('date')->nullable();
             $table->string('file_path')->nullable();
             $table->string('ai_status')->default('processing');

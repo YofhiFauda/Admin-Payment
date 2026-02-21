@@ -29,7 +29,12 @@ class AiAutoFillController extends Controller
             'customer'   => 'nullable|string|max:255',
             'amount'     => 'nullable|numeric',
             'date'       => 'nullable|date',
-            'items'      => 'nullable|string',
+            'items' => 'nullable|array',
+            'items.*.nama_barang' => 'nullable|string',
+            'items.*.qty' => 'nullable|numeric',
+            'items.*.satuan' => 'nullable|string',
+            'items.*.harga_satuan' => 'nullable|numeric',
+            'items.*.total_harga' => 'nullable|numeric',
             'confidence' => 'required|integer|min:0|max:100',
         ]);
 
@@ -66,7 +71,7 @@ class AiAutoFillController extends Controller
             'customer'   => $request->customer,
             'amount'     => $request->amount,
             'date'       => $date,
-            'items'      => $request->items,
+            'items'      => $request->items, // ✅ SIMPAN items DI CACHE
             'confidence' => $request->confidence,
         ];
 

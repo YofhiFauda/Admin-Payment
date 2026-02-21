@@ -41,6 +41,7 @@ class Transaction extends Model
             'amount' => 'integer',
             'date' => 'date',
             'reviewed_at' => 'datetime',
+            'items' => 'array',
         ];
     }
 
