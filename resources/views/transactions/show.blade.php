@@ -171,8 +171,8 @@
                     @endif
                 </div>
 
-                {{-- Admin Actions --}}
-                @if(Auth::user()->canManageStatus() && $transaction->status === 'pending')
+                {{-- Admin/Atasan Actions (pending) --}}
+                @if(Auth::user()->canManageStatus() && !Auth::user()->isOwner() && $transaction->status === 'pending')
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6">
                         <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <i data-lucide="settings" class="w-4 h-4 text-blue-500"></i> Tindakan
@@ -184,7 +184,8 @@
                                 <input type="hidden" name="status" value="approved">
                                 <button type="submit"
                                     class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-green-200 hover:border-green-600 cursor-pointer">
-                                    <i data-lucide="check" class="w-4 h-4"></i> Setujui Nota
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                    {{ $transaction->effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui Nota' }}
                                 </button>
                             </form>
                             <button type="button" onclick="document.getElementById('reject-modal-detail').classList.remove('hidden')"
@@ -193,6 +194,57 @@
                             </button>
                         </div>
                     </div>
+                @endif
+
+                {{-- Owner Actions (pending/approved/completed/rejected) --}}
+                @if(Auth::user()->isOwner())
+                    @if(in_array($transaction->status, ['pending', 'approved']))
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="settings" class="w-4 h-4 text-blue-500"></i>
+                            {{ $transaction->status === 'approved' ? 'Tindakan Owner' : 'Tindakan' }}
+                        </h3>
+                        @if($transaction->status === 'approved')
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+                            <p class="text-xs font-bold text-amber-700 flex items-center gap-2">
+                                <i data-lucide="clock" class="w-3.5 h-3.5"></i> Menunggu persetujuan Anda (nominal ≥ Rp 1.000.000)
+                            </p>
+                        </div>
+                        @endif
+                        <div class="space-y-2">
+                            <form method="POST" action="{{ route('transactions.updateStatus', $transaction->id) }}">
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="status" value="approved">
+                                <button type="submit"
+                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-green-200 hover:border-green-600 cursor-pointer">
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                    {{ $transaction->status === 'approved' ? 'Approve Final' : 'Setujui Nota' }}
+                                </button>
+                            </form>
+                            <button type="button" onclick="document.getElementById('reject-modal-detail').classList.remove('hidden')"
+                                class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-700 hover:bg-red-600 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-red-200 hover:border-red-600 cursor-pointer">
+                                <i data-lucide="x" class="w-4 h-4"></i> Tolak Nota
+                            </button>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Reset button for completed/rejected/approved --}}
+                    @if(in_array($transaction->status, ['completed', 'rejected', 'approved']))
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6">
+                        <form method="POST" action="{{ route('transactions.updateStatus', $transaction->id) }}"
+                              onsubmit="return confirm('Reset status ke Pending?')">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="pending">
+                            <button type="submit"
+                                class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-amber-200 hover:border-amber-600 cursor-pointer">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset Status ke Pending
+                            </button>
+                        </form>
+                    </div>
+                    @endif
                 @endif
             </div>
         </div>

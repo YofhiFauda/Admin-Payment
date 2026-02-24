@@ -1,148 +1,436 @@
 @extends('layouts.app')
 
-@section('page-title', 'Buat Pengajuan')
+@php
+    $hideHeader = true;
+@endphp
 
 @section('content')
-    <div>
-        {{-- Stepper --}}
-        <div class="flex items-center justify-center mb-4 md:mb-5 lg:mb-6">
-            <div class="flex flex-col items-center">
-                <div
-                    class="w-7 h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 rounded-lg md:rounded-xl flex items-center justify-center border-2 border-blue-600 bg-blue-600 text-white">
-                    <i data-lucide="upload" class="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4"></i>
-                </div>
-                <span
-                    class="mt-1 md:mt-1.5 text-[7px] md:text-[8px] lg:text-[9px] font-bold uppercase tracking-wider text-blue-600">1.
-                    Scan</span>
-            </div>
-            <div class="w-8 md:w-12 lg:w-16 h-0.5 mx-1.5 md:mx-2 rounded-full bg-gray-200"></div>
-            <div class="flex flex-col items-center">
-                <div
-                    class="w-7 h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 rounded-lg md:rounded-xl flex items-center justify-center border-2 border-gray-200 bg-white text-gray-300">
-                    <i data-lucide="calculator" class="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-4 lg:h-4"></i>
-                </div>
-                <span
-                    class="mt-1 md:mt-1.5 text-[7px] md:text-[8px] lg:text-[9px] font-bold uppercase tracking-wider text-gray-400">2.
-                    Alokasi</span>
-            </div>
-        </div>
 
-        {{-- Upload Zone --}}
-        <div class="max-w-lg mx-auto py-3 md:py-4 lg:py-6 px-3 md:px-0">
-            <form action="{{ route('transactions.upload') }}" method="POST" enctype="multipart/form-data" id="upload-form">
-                @csrf
-                    <div class="bg-white rounded-xl md:rounded-2xl lg:rounded-3xl border-2 border-dashed border-gray-200 
-                        p-6 md:p-8 lg:p-12 text-center hover:border-blue-400 hover:bg-blue-50/20 
-                        transition-all group cursor-pointer relative shadow-sm"
-                        id="upload-area">
+    
+<div class="min-h-screen flex items-start sm:items-center justify-center
+            bg-gradient-to-br from-slate-50 to-slate-100
+            px-4 sm:px-6 lg:px-8
+            pt-16 sm:pt-0 pb-10">
+    <div class="w-full max-w-xl sm:max-w-2xl lg:max-w-4xl mx-auto text-center py-10 sm:py-14 lg:py-20">
 
-                        {{-- Loading state --}}
-                        <div id="upload-loading" class="hidden flex-col items-center">
-                            <i data-lucide="loader-2"
-                                class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 text-blue-600 animate-spin mb-2 md:mb-3"></i>
-                            <h3 class="text-sm md:text-base lg:text-lg font-bold text-slate-800">Memproses...</h3>
-                            <p class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mt-1">
-                                Mengunggah Nota
-                            </p>
-                        </div>
+        {{-- TITLE --}}
+        <h1 class="text-3xl sm:text-4xl lg:text-6xl font-extrabold tracking-tight mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-teal-500 drop-shadow-sm pb-2">
+            Mulai Pengajuan Anda
+        </h1>
 
-                        {{-- Default state --}}
-                        <div id="upload-default">
-                            <div
-                                class="bg-gradient-to-br from-blue-500 to-indigo-600 w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 
-                                rounded-lg md:rounded-xl lg:rounded-2xl flex items-center justify-center 
-                                mx-auto mb-3 md:mb-4 lg:mb-5 group-hover:scale-105 transition-transform 
-                                shadow-lg shadow-blue-500/30">
-                                <i data-lucide="upload" class="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-white"></i>
-                            </div>
+        <p class="text-sm sm:text-base text-slate-500 max-w-md sm:max-w-xl lg:max-w-2xl mx-auto mb-8 sm:mb-10">
+            Upload foto nota atau referensi barang untuk memulai klaim reimbursement atau pengajuan beli. 
+            <span class="text-indigo-600 font-semibold">
+                ✨ Didukung oleh AI
+            </span>
+        </p>
 
-                            <h3 class="text-base md:text-lg lg:text-xl font-bold mb-1.5 md:mb-2 text-slate-800">
-                                Unggah Nota
-                            </h3>
+        {{-- UPLOAD FORM --}}
+        <form id="uploadForm"
+              action="{{ route('rembush.upload') }}"
+              method="POST"
+              enctype="multipart/form-data">
+            @csrf
 
-                            <p class="text-slate-400 mb-4 md:mb-5 lg:mb-6 text-xs md:text-sm font-medium leading-relaxed max-w-xs mx-auto">
-                                Letakkan file nota digital Anda di sini
-                            </p>
+            <div id="uploadArea"
+                class="relative w-full border-2 border-dashed border-indigo-300 rounded-3xl p-8 sm:p-12 lg:p-16 cursor-pointer transition hover:border-indigo-500 hover:bg-indigo-50/30 flex flex-col items-center justify-center gap-4 sm:gap-6">
 
-                            <button type="button"
-                                class="bg-slate-900 hover:bg-blue-600 text-white px-5 md:px-6 lg:px-8 
-                                py-2.5 md:py-3 rounded-lg md:rounded-xl font-bold 
-                                transition-all shadow-lg inline-block text-xs md:text-sm active:scale-95"
-                                id="select-file-btn">
-                                Pilih Berkas Nota
-                            </button>
-
-                            <input type="file" id="file-input" name="file" class="hidden" accept="image/*,.pdf">
-
-                            <p class="text-slate-300 text-[9px] md:text-[10px] font-medium mt-3 md:mt-4">
-                                Format: JPG, PNG, PDF • Maksimal 10MB
-                            </p>
-                        </div>
+                <div id="uploadDefault" class="text-center">
+                    <div class="w-16 h-16 mx-auto bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-600"></i>
                     </div>
-                @error('file')
-                    <div class="mt-2 md:mt-3 text-center">
-                        <p class="text-red-500 font-bold text-[10px] md:text-xs">{{ $message }}</p>
-                    </div>
-                @enderror
-            </form>
+
+                    <p class="font-semibold text-slate-700 mb-1">
+                        Klik atau Drag File ke Sini
+                    </p>
+                    <p class="text-xs text-slate-400">
+                        JPG, PNG (Max 1MB)
+                    </p>
+                </div>
+
+                <div id="uploadPreview" class="hidden text-center">
+                    <p class="text-green-600 font-semibold">File siap digunakan</p>
+                    <p id="fileName" class="text-sm text-slate-600 mt-1"></p>
+                </div>
+
+                <button type="button" id="select-file-btn" class="mt-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all">
+                    Pilih Foto Dokumen
+                </button>
+
+                <input type="file" 
+                    id="file-input" 
+                    name="file" 
+                    class="hidden" 
+                    accept="image/*">
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{{-- MODAL PILIH TUJUAN --}}
+<div id="choiceModal"
+     class="fixed inset-0 hidden items-center justify-center
+     bg-black/40 backdrop-blur-md z-50
+     opacity-0 transition-opacity duration-300">
+
+    <div id="modalBox"
+        class="bg-white/80 backdrop-blur-xl rounded-3xl w-full max-w-md p-8
+        transform scale-95 opacity-0
+        transition-all duration-300 shadow-2xl">
+
+        <h2 class="text-xl font-bold mb-6 text-slate-800">
+            Pilih Tujuan
+        </h2>
+
+        <div class="space-y-4">
+
+            {{-- PILIHAN REIMBURSEMENT --}}
+            <button id="btnRembush"
+                class="w-full group relative bg-white p-5 rounded-3xl border-2 border-slate-100 hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 transition-all duration-300 text-left flex items-center gap-5 shadow-sm hover:shadow-xl hover:shadow-indigo-500/20"
+              >
+                <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                  <i data-lucide="receipt" class="w-7 h-7"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-slate-900 group-hover:text-white text-lg transition-colors">Reimbursement</h4>
+                  <p class="text-sm text-slate-500 group-hover:text-indigo-100 transition-colors">Klaim dana dengan nota</p>
+                </div>
+              </button>
+
+              {{-- PILIHAN PENGAJUAN BELI --}}
+              <button id="btnPengajuan"
+                class="w-full group relative bg-white p-5 rounded-3xl border-2 border-slate-100 hover:border-transparent hover:bg-gradient-to-r hover:from-teal-400 hover:to-emerald-500 transition-all duration-300 text-left flex items-center gap-5 shadow-sm hover:shadow-xl hover:shadow-teal-500/20"
+              >
+                <div class="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                  <i data-lucide="shopping-cart" class="w-7 h-7"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-slate-900 group-hover:text-white text-lg transition-colors">Pengajuan Beli</h4>
+                  <p class="text-sm text-slate-500 group-hover:text-teal-100 transition-colors">Beli barang (Referensi)</p>
+                </div>
+              </button>
+            
+
+            <button id="btnCancel"
+                class="mt-6 w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 bg-slate-100/50 hover:bg-rose-500 rounded-2xl transition-colors">
+                Batal
+            </button>
+
         </div>
     </div>
+</div>
 
-    @push('scripts')
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const fileInput = document.getElementById('file-input');
-        const form = document.getElementById('upload-form');
-        const loading = document.getElementById('upload-loading');
-        const defaultView = document.getElementById('upload-default');
-        const uploadArea = document.getElementById('upload-area');
-        const selectBtn = document.getElementById('select-file-btn');
+{{-- LOADING OVERLAY --}}
+<div id="loadingOverlay"
+     class="fixed inset-0 hidden items-center justify-center
+     bg-white z-[60] opacity-0 transition-opacity duration-300">
 
-        // Klik area upload
-        uploadArea.addEventListener('click', function (e) {
-            if (e.target !== selectBtn) {
-                fileInput.click();
-            }
-        });
+    <div class="text-center">
+        <div class="w-14 h-14 border-4 border-indigo-500
+            border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
 
-        // Klik tombol
-        selectBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            fileInput.click();
-        });
+        <p class="text-slate-700 font-semibold">
+            Memproses Nota dengan AI...
+        </p>
+        <p class="text-sm text-slate-400">
+            Mohon tunggu sebentar
+        </p>
+    </div>
+</div>
 
-        fileInput.addEventListener('change', function () {
-            if (!this.files.length) return;
+{{-- GLOBAL DRAG OVERLAY --}}
+<div id="globalDragOverlay"
+     class="fixed inset-0 hidden items-center justify-center
+     bg-indigo-600/10 backdrop-blur-sm z-[70]
+     transition-opacity duration-200 opacity-0">
 
-            const file = this.files[0];
-            const maxSize = 10 * 1024 * 1024;
-            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    <div class="bg-white rounded-3xl shadow-2xl px-12 py-10 text-center border border-indigo-100">
+        <div class="w-20 h-20 mx-auto bg-indigo-100 rounded-2xl flex items-center justify-center mb-6">
+            <i data-lucide="image-plus" class="w-10 h-10 text-indigo-600"></i>
+        </div>
 
-            if (!allowedTypes.includes(file.type)) {
-                alert('Format file tidak didukung. Gunakan JPG, PNG, atau PDF.');
-                this.value = '';
-                return;
-            }
+        <h3 class="text-2xl font-bold text-slate-800 mb-2">
+            Drop file di sini
+        </h3>
+        <p class="text-slate-500">
+            Maksimal ukuran 1MB
+        </p>
+    </div>
+</div>
 
-            if (file.size > maxSize) {
-                alert('Ukuran file terlalu besar. Maksimal 10MB.');
-                this.value = '';
-                return;
-            }
+{{-- TOAST --}}
+<div id="toast"
+     class="fixed top-6 right-6 hidden z-[80]
+     bg-red-500 text-white px-6 py-4 rounded-xl
+     shadow-xl transition-all duration-300
+     translate-y-[-20px] opacity-0">
+</div>
 
-            // Tampilkan loading
-            defaultView.classList.add('hidden');
-            loading.classList.remove('hidden');
-            loading.classList.add('flex');
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
 
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
-            form.submit();
-        });
+    const fileInput = document.getElementById('file-input');
+    const selectBtn = document.getElementById('select-file-btn');
+    const uploadPreview = document.getElementById('uploadPreview');
+    const uploadDefault = document.getElementById('uploadDefault');
+    const fileName = document.getElementById('fileName');
+
+    const modal = document.getElementById('choiceModal');
+    const modalBox = document.getElementById('modalBox');
+
+    const btnRembush = document.getElementById('btnRembush');
+    const btnPengajuan = document.getElementById('btnPengajuan');
+    const btnCancel = document.getElementById('btnCancel');
+
+    const form = document.getElementById('uploadForm');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const uploadArea = document.getElementById('uploadArea');
+    const globalOverlay = document.getElementById('globalDragOverlay');
+    const toast = document.getElementById('toast');
+
+    const MAX_SIZE = 1024 * 1024; // 1MB
+
+    let selectedFile = null;
+
+    // =============================
+    // SHOW MODAL WITH ANIMATION
+    // =============================
+    function openModal() {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+
+            modalBox.classList.remove('scale-95','opacity-0');
+            modalBox.classList.add('scale-100','opacity-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        modal.classList.add('opacity-0');
+        modalBox.classList.add('scale-95','opacity-0');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+
+    // =============================
+    // FILE SELECT
+    // =============================
+    fileInput.addEventListener('change', function() {
+
+        if (!this.files[0]) return;
+
+        const file = this.files[0];
+
+        // 🔥 VALIDASI UKURAN
+        if (file.size > MAX_SIZE) {
+            showToast("Ukuran file maksimal 1MB!");
+            fileInput.value = '';
+            return;
+        }
+
+        selectedFile = file;
+
+        uploadDefault.classList.add('hidden');
+        uploadPreview.classList.remove('hidden');
+        fileName.textContent = selectedFile.name;
+
+        openModal();
     });
-    </script>
-    @endpush
+
+    // =============================
+    // FILE SELECT BUTTON
+    // =============================
+    selectBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        fileInput.click();
+    });
+
+    // =============================
+    // DRAG AND DROP
+    // =============================
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('bg-indigo-100/40');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('bg-indigo-100/40');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('bg-indigo-100/40');
+
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // =============================
+    // GLOBAL DRAG EVENTS
+    // =============================
+
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+
+        globalOverlay.classList.remove('hidden');
+        globalOverlay.classList.add('flex');
+
+        setTimeout(() => {
+            globalOverlay.classList.remove('opacity-0');
+            globalOverlay.classList.add('opacity-100');
+        }, 10);
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        dragCounter--;
+
+        if (dragCounter === 0) {
+            globalOverlay.classList.add('opacity-0');
+            setTimeout(() => {
+                globalOverlay.classList.add('hidden');
+                globalOverlay.classList.remove('flex');
+            }, 200);
+        }
+    });
+
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+
+        globalOverlay.classList.add('opacity-0');
+        setTimeout(() => {
+            globalOverlay.classList.add('hidden');
+            globalOverlay.classList.remove('flex');
+        }, 200);
+
+        if (e.dataTransfer.files.length) {
+            const file = e.dataTransfer.files[0];
+
+            if (file.size > MAX_SIZE) {
+                showToast("Ukuran file maksimal 1MB!");
+                return;
+            }
+
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // =============================
+    // SHOW TOAST
+    // =============================
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+
+        setTimeout(() => {
+            toast.classList.remove('opacity-0','translate-y-[-20px]');
+            toast.classList.add('opacity-100','translate-y-0');
+        }, 10);
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0','translate-y-[-20px]');
+            setTimeout(() => toast.classList.add('hidden'), 300);
+        }, 3000);
+    }
+
+    // =============================
+    // REMBUSH CLICK
+    // =============================
+    btnRembush.addEventListener('click', function() {
+        if (!selectedFile) return;
+
+        closeModal();
+
+        setTimeout(() => {
+
+            // show loading overlay smooth
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
+            setTimeout(() => {
+                loadingOverlay.classList.remove('opacity-0');
+                loadingOverlay.classList.add('opacity-100');
+            }, 10);
+
+            // delay sedikit biar smooth
+            setTimeout(() => {
+                form.submit();
+            }, 400);
+
+        }, 300);
+    });
+
+    // =============================
+    // PENGAJUAN CLICK
+    // =============================
+    btnPengajuan.addEventListener('click', function() {
+        if (!selectedFile) return;
+
+        closeModal();
+
+        setTimeout(() => {
+            showLoading(
+                "Menyiapkan Form Pengajuan...",
+                "Mohon tunggu sebentar"
+            );
+
+            setTimeout(() => {
+                form.action = "{{ route('pengajuan.upload') }}";
+                form.submit();
+            }, 400);
+
+        }, 300);
+    });
+
+
+    function showLoading(title, subtitle) {
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+
+        setTimeout(() => {
+            loadingOverlay.classList.remove('opacity-0');
+            loadingOverlay.classList.add('opacity-100');
+        }, 10);
+
+        loadingOverlay.querySelector('p.font-semibold').textContent = title;
+        loadingOverlay.querySelector('p.text-sm').textContent = subtitle;
+    }
+
+    // =============================
+    // CANCEL
+    // =============================
+    btnCancel.addEventListener('click', function() {
+
+        closeModal();
+
+        fileInput.value = '';
+        uploadPreview.classList.add('hidden');
+        uploadDefault.classList.remove('hidden');
+    });
+
+});
+</script>
+@endpush
 
 @endsection

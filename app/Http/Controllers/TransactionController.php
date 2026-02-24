@@ -9,15 +9,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-
 
 class TransactionController extends Controller
 {
-    /**
-     * History / List page with stats
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  INDEX — Riwayat Transaksi (Rembush + Pengajuan)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function index(Request $request)
     {
         $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
@@ -27,13 +25,13 @@ class TransactionController extends Controller
             $query->where('submitted_by', Auth::id());
         }
 
-        // Search filter (nama, invoice, tanggal)
+        // Search filter
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('customer', 'like', "%{$search}%")
-                  ->orWhere('invoice_number', 'like', "%{$search}%");
+                  ->orWhere('invoice_number', 'like', "%{$search}%")
+                  ->orWhere('vendor', 'like', "%{$search}%");
 
-                // Coba parse sebagai tanggal
                 $dateFormats = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd M Y'];
                 foreach ($dateFormats as $format) {
                     try {
@@ -56,6 +54,13 @@ class TransactionController extends Controller
             }
         }
 
+        // Type filter (rembush / pengajuan)
+        if ($type = $request->get('type')) {
+            if ($type !== 'all') {
+                $query->where('type', $type);
+            }
+        }
+
         // Category filter
         if ($category = $request->get('category')) {
             if ($category !== 'all') {
@@ -71,299 +76,29 @@ class TransactionController extends Controller
             : new Transaction;
 
         $stats = [
+            'count'     => (clone $statsQuery)->count(),
+            'pending'   => (clone $statsQuery)->where('status', 'pending')->count(),
+            'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
             'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
-            'pending' => (clone $statsQuery)->where('status', 'pending')->count(),
-            'rejected' => (clone $statsQuery)->where('status', 'rejected')->count(),
-            'count' => (clone $statsQuery)->count(),
+            'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
         ];
 
         return view('transactions.index', compact('transactions', 'stats'));
     }
 
-    /**
-     * Step 1: Upload page
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  CREATE — Halaman Pilih Jenis (Rembush / Pengajuan)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function create()
     {
         return view('transactions.create');
     }
 
-    /**
-     * Handle file upload → store temp → send to N8N → redirect to form
-     * NO database insert here — data only saved on form submit
-     */
-   public function processUpload(Request $request)
-    {
-        Log::channel('ocr')->info('=== START UPLOAD PROCESS ===');
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  DETAIL / CONFIRMATION
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
-        ]);
-
-        $file = $request->file('file');
-
-        $uploadId = 'nota-' . round(microtime(true) * 1000);
-
-        Log::channel('ocr')->info('Upload ID generated', [
-            'upload_id' => $uploadId,
-            'original_name' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
-            'size' => $file->getSize(),
-        ]);
-
-        $extension = $file->getClientOriginalExtension();
-        $fileName = $uploadId . '.' . $extension;
-        $storagePath = 'temp-uploads/' . $fileName;
-
-        Storage::disk('public')->put($storagePath, file_get_contents($file));
-
-        Log::channel('ocr')->info('File saved to storage', [
-            'path' => $storagePath,
-            'exists' => Storage::disk('public')->exists($storagePath),
-        ]);
-
-        $base64 = base64_encode(file_get_contents($file));
-        $mime = $file->getMimeType();
-
-        session([
-            'upload_id' => $uploadId,
-            'upload_file_path' => $storagePath,
-            'upload_file_base64' => $base64,
-            'upload_file_mime' => $mime,
-        ]);
-
-        Log::channel('ocr')->info('Session stored', [
-            'upload_id' => session('upload_id'),
-        ]);
-
-        $this->sendToN8N($uploadId, storage_path('app/public/' . $storagePath));
-
-        Log::channel('ocr')->info('Redirecting to loading page');
-
-        return redirect()->route('transactions.loading');
-    }
-
-    /**
-     * Intermediary Loading Page (Wait for OCR)
-     */
-    public function loading()
-    {
-        $uploadId = session('upload_id');
-
-        if (!$uploadId) {
-            return redirect()->route('transactions.create');
-        }
-
-        return view('transactions.loading', compact('uploadId'));
-    }
-
-    /**
-     * Step 2: Form with branch allocation
-     * Loads image from session, passes uploadId for AI polling
-     */
-    public function showForm()
-    {
-        $uploadId = session('upload_id');
-        $base64 = session('upload_file_base64');
-        $mime = session('upload_file_mime');
-
-        if (!$uploadId || !$base64) {
-            return redirect()->route('transactions.create')
-                ->withErrors(['error' => 'Silakan unggah nota terlebih dahulu']);
-        }
-
-        // ✅ CEK CACHE AI DAN SIMPAN KE SESSION
-        $cacheKey = "ai_autofill:{$uploadId}";
-        $aiData = \Illuminate\Support\Facades\Cache::get($cacheKey);
-        
-        if ($aiData) {
-            session(['ai_data' => $aiData]);
-            \Log::info('AI Data loaded from cache to session', [
-                'upload_id' => $uploadId,
-                'customer' => $aiData['customer'] ?? null,
-            ]);
-        }
-
-        $branches = Branch::all();
-
-        return view('transactions.form', compact('branches', 'base64', 'mime', 'uploadId'));
-    }
-
-
-    /**
-     * Store transaction — THIS is where the database insert happens
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'customer' => 'required|string|max:255',
-            'category' => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
-            'amount' => 'required|numeric|min:1',
-            'items' => 'nullable|array',
-            'date' => 'nullable|date',
-            'branches' => 'required|array|min:1',
-            'branches.*.branch_id' => 'required|exists:branches,id',
-            'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',
-            'branches.*.allocation_amount' => 'nullable|numeric|min:0',
-        ]);
-
-        // Validate unique branches
-        $branchIds = collect($request->branches)->pluck('branch_id');
-        if ($branchIds->count() !== $branchIds->unique()->count()) {
-            return back()
-                ->withErrors(['branches' => 'Cabang tidak boleh duplikat.'])
-                ->withInput();
-        }
-
-        // Validate total allocation is ~100%
-        $totalPercent = collect($request->branches)->sum('allocation_percent');
-        if (abs($totalPercent - 100) > 1) {
-            return back()
-                ->withErrors(['branches' => 'Total alokasi harus 100%.'])
-                ->withInput();
-        }
-
-        // Get upload info from session
-        $uploadFilePath = session('upload_file_path');
-
-        if (!$uploadFilePath) {
-            return back()
-                ->withErrors(['error' => 'File nota tidak ditemukan. Silakan upload ulang.'])
-                ->withInput();
-        }
-
-        DB::beginTransaction();
-
-        try {
-            // Move file from temp to permanent storage
-            $permanentPath = str_replace('temp-uploads/', '', $uploadFilePath);
-            
-            if (Storage::disk('public')->exists($uploadFilePath)) {
-                $fileContent = Storage::disk('public')->get($uploadFilePath);
-                Storage::disk('public')->put($permanentPath, $fileContent);
-                Storage::disk('public')->delete($uploadFilePath);
-            } else {
-                $permanentPath = $uploadFilePath; // fallback
-            }
-
-            // CREATE transaction in database (first time!)
-            $transaction = Transaction::create([
-                'invoice_number' => Transaction::generateInvoiceNumber(),
-                'customer' => $request->customer,
-                'category' => $request->category,
-                'amount' => $request->amount,
-                'items'      => $request->items,
-                'date' => $request->date ?? now()->format('Y-m-d'),
-                'file_path' => $permanentPath,
-                'status' => 'pending',
-                'submitted_by' => Auth::id(),
-            ]);
-
-            // Attach branches
-            foreach ($request->branches as $branchData) {
-                $allocPercent = floatval($branchData['allocation_percent']);
-                $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
-                    ? intval($branchData['allocation_amount'])
-                    : intval(round(($transaction->amount * $allocPercent) / 100));
-
-                $transaction->branches()->attach($branchData['branch_id'], [
-                    'allocation_percent' => $allocPercent,
-                    'allocation_amount' => $allocAmount,
-                ]);
-            }
-
-            DB::commit();
-
-            // Clear all upload session data
-            session()->forget([
-                'upload_id',
-                'upload_file_path',
-                'upload_file_base64',
-                'upload_file_mime',
-            ]);
-
-            return redirect()->route('transactions.confirm', $transaction->id);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return back()
-                ->withInput()
-                ->withErrors(['error' => 'Gagal menyimpan transaksi: ' . $e->getMessage()]);
-        }
-    }
-
-    /**
-     * Send image to N8N for AI processing
-     * Uses upload_id as identifier (no database record yet)
-     */
-    private function sendToN8N(string $uploadId, string $localFilePath)
-    {
-        Log::channel('ocr')->info('Sending to N8N started', [
-            'upload_id' => $uploadId,
-            'file_path' => $localFilePath,
-        ]);
-
-        try {
-            // ✅ SOLUSI: Upload ID via QUERY STRING (bukan body!)
-            $webhookUrl = rtrim(env('N8N_WEBHOOK'), '/') . '?upload_id=' . $uploadId;
-            
-            $response = Http::asMultipart()
-                ->withHeaders([
-                    'X-SECRET' => env('N8N_SECRET'),
-                    'X-Upload-ID' => $uploadId,  // ✅ Backup via header
-                ])
-                // ✅ PENTING: Ganti 'data0' menjadi 'data' (sesuai config webhook n8n)
-                ->attach('data', fopen($localFilePath, 'r'), basename($localFilePath))
-                ->timeout(60)
-                ->post($webhookUrl, [
-                'upload_id' => $uploadId  // <--- TAMBAHKAN BARIS INI // ✅ Jangan kirim body, cukup query string
-                ]);
-
-            Log::channel('ocr')->info('N8N Response Received', [
-                'upload_id' => $uploadId,
-                'status_code' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-        } catch (\Exception $e) {
-            Log::channel('ocr')->error('N8N CONNECTION FAILED', [
-                'upload_id' => $uploadId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-
-    // private function sendToN8N(string $uploadId, string $filePath)
-    // {
-    //     try {
-    //         Http::timeout(60)
-    //             ->withHeaders([
-    //                 'X-SECRET' => env('N8N_SECRET')
-    //             ])
-    //             ->attach(
-    //                 'file',
-    //                 fopen($filePath, 'r'),
-    //                 basename($filePath)
-    //             )
-    //             ->post('http://localhost:5678/webhook-test/ocr-nota', [
-    //                 'upload_id' => $uploadId
-    //             ]);
-
-
-    //     } catch (\Exception $e) {
-    //         Log::error('Gagal kirim ke N8N', [
-    //             'upload_id' => $uploadId,
-    //             'error' => $e->getMessage()
-    //         ]);
-    //     }
-    // }
-
-
-    /**
-     * Transaction detail page (all authenticated users)
-     */
     public function show($id)
     {
         try {
@@ -377,28 +112,70 @@ class TransactionController extends Controller
         }
     }
 
-    /**
-     * Step 3: Confirmation page
-     */
+    public function detailJson($id)
+    {
+        $t = Transaction::with(['submitter', 'reviewer', 'branches'])->findOrFail($id);
+
+        return response()->json([
+            'id'              => $t->id,
+            'type'            => $t->type,
+            'type_label'      => $t->type_label,
+            'invoice_number'  => $t->invoice_number,
+            'customer'        => $t->customer,
+            'vendor'          => $t->vendor,
+            'category'        => $t->category,
+            'category_label'  => $t->category ? (Transaction::CATEGORIES[$t->category] ?? $t->category) : null,
+            'description'     => $t->description,
+            'payment_method'  => $t->payment_method,
+            'payment_method_label' => $t->payment_method ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method) : null,
+            'amount'          => $t->amount,
+            'formatted_amount'=> $t->formatted_amount,
+            'items'           => $t->items,
+            'date'            => $t->date ? $t->date->format('d M Y') : null,
+            'status'          => $t->status,
+            'status_label'    => $t->status_label,
+            'specs'           => $t->specs,
+            'quantity'        => $t->quantity,
+            'estimated_price' => $t->estimated_price,
+            'purchase_reason' => $t->purchase_reason,
+            'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason) : null,
+            'file_path'       => $t->file_path,
+            'image_url'       => $t->file_path ? route('transactions.image', $t->id) : null,
+            'submitter'       => $t->submitter ? ['name' => $t->submitter->name] : null,
+            'reviewer'        => $t->reviewer ? ['name' => $t->reviewer->name] : null,
+            'reviewed_at'     => $t->reviewed_at ? $t->reviewed_at->format('d M Y H:i') : null,
+            'rejection_reason'=> $t->rejection_reason,
+            'branches'        => $t->branches->map(fn($b) => [
+                'name'    => $b->name,
+                'percent' => $b->pivot->allocation_percent,
+                'amount'  => 'Rp ' . number_format($b->pivot->allocation_amount, 0, ',', '.'),
+            ]),
+            'effective_amount' => $t->effective_amount,
+            'created_at'      => $t->created_at->format('d M Y H:i'),
+            // Current user context for action buttons
+            'user_role'       => Auth::user()->role,
+            'can_manage'      => Auth::user()->canManageStatus(),
+            'is_owner'        => Auth::user()->isOwner(),
+        ]);
+    }
+
     public function confirmation($id)
     {
         try {
             $transaction = Transaction::with(['submitter', 'branches'])->findOrFail($id);
-            
-            // Verify file exists
             $fileExists = $transaction->file_path && Storage::disk('public')->exists($transaction->file_path);
-            
+
             return view('transactions.confirm', compact('transaction', 'fileExists'));
-            
         } catch (\Exception $e) {
             return redirect()->route('transactions.index')
                 ->withErrors(['error' => 'Transaksi tidak ditemukan']);
         }
     }
 
-    /**
-     * Edit transaction form (admin, atasan, owner)
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  EDIT / UPDATE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function edit($id)
     {
         $transaction = Transaction::with('branches')->findOrFail($id);
@@ -407,56 +184,92 @@ class TransactionController extends Controller
         return view('transactions.edit', compact('transaction', 'branches'));
     }
 
-    /**
-     * Update transaction details (admin, atasan, owner)
-     */
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'customer' => 'required|string|max:255',
-            'category' => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
-            'amount' => 'required|numeric|min:1',
-            'items'      => 'nullable|array',
-            'items.*.nama_barang'   => 'nullable|string',
-            'items.*.qty'           => 'nullable|numeric',
-            'items.*.satuan'        => 'nullable|string',
-            'items.*.harga_satuan'  => 'nullable|numeric',
-            'items.*.total_harga'   => 'nullable|numeric',
-            'date' => 'nullable|date',
-            'branches' => 'required|array|min:1',
-            'branches.*.branch_id' => 'required|exists:branches,id',
-            'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',
-            'branches.*.allocation_amount' => 'nullable|numeric|min:0',
-        ]);
+        $transaction = Transaction::findOrFail($id);
 
-        $totalPercent = collect($request->branches)->sum('allocation_percent');
-        if (abs($totalPercent - 100) > 1) {
-            return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
+        // Validation depends on type
+        if ($transaction->isPengajuan()) {
+            $request->validate([
+                'customer'        => 'required|string|max:255',
+                'vendor'          => 'nullable|string|max:255',
+                'specs'           => 'nullable|array',
+                'quantity'        => 'required|integer|min:1',
+                'estimated_price' => 'required|numeric|min:1',
+                'purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+                'branches'        => 'nullable|array',
+                'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
+                'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
+                'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+            ]);
+        } else {
+            $request->validate([
+                'customer'       => 'required|string|max:255',
+                'category'       => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
+                'amount'         => 'required|numeric|min:1',
+                'description'    => 'nullable|string|max:2000',
+                'payment_method' => 'nullable|string|in:' . implode(',', array_keys(Transaction::PAYMENT_METHODS)),
+                'items'          => 'nullable|array',
+                'items.*.nama_barang' => 'nullable|string',
+                'items.*.qty' => 'nullable|numeric',
+                'items.*.satuan' => 'nullable|string',
+                'items.*.harga_satuan' => 'nullable|numeric',
+                'items.*.total_harga' => 'nullable|numeric',
+                'date'           => 'nullable|date',
+                'branches'       => 'nullable|array',
+                'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
+                'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
+                'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+            ]);
+        }
+
+        // Validate branches if provided
+        if ($request->branches && count($request->branches) > 0) {
+            $totalPercent = collect($request->branches)->sum('allocation_percent');
+            if (abs($totalPercent - 100) > 1) {
+                return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
+            }
         }
 
         DB::beginTransaction();
         try {
-            $transaction = Transaction::findOrFail($id);
-            $transaction->update([
-                'customer' => $request->customer,
-                'category' => $request->category,
-                'amount' => $request->amount,
-                'items' => $request->items,
-                'date' => $request->date ?? $transaction->date,
-            ]);
+            if ($transaction->isPengajuan()) {
+                $transaction->update([
+                    'customer'        => $request->customer,
+                    'vendor'          => $request->vendor,
+                    'specs'           => $request->specs,
+                    'quantity'        => $request->quantity,
+                    'estimated_price' => $request->estimated_price,
+                    'purchase_reason' => $request->purchase_reason,
+                    'amount'          => $request->estimated_price * $request->quantity,
+                ]);
+            } else {
+                $transaction->update([
+                    'customer'       => $request->customer,
+                    'category'       => $request->category,
+                    'description'    => $request->description,
+                    'payment_method' => $request->payment_method,
+                    'amount'         => $request->amount,
+                    'items'          => $request->items,
+                    'date'           => $request->date ?? $transaction->date,
+                ]);
+            }
 
             // Sync branches
             $transaction->branches()->detach();
-            foreach ($request->branches as $branchData) {
-                $allocPercent = floatval($branchData['allocation_percent']);
-                $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
-                    ? intval($branchData['allocation_amount'])
-                    : intval(round(($transaction->amount * $allocPercent) / 100));
+            if ($request->branches && count($request->branches) > 0) {
+                $effectiveAmount = $transaction->amount;
+                foreach ($request->branches as $branchData) {
+                    $allocPercent = floatval($branchData['allocation_percent']);
+                    $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
+                        ? intval($branchData['allocation_amount'])
+                        : intval(round(($effectiveAmount * $allocPercent) / 100));
 
-                $transaction->branches()->attach($branchData['branch_id'], [
-                    'allocation_percent' => $allocPercent,
-                    'allocation_amount' => $allocAmount,
-                ]);
+                    $transaction->branches()->attach($branchData['branch_id'], [
+                        'allocation_percent' => $allocPercent,
+                        'allocation_amount'  => $allocAmount,
+                    ]);
+                }
             }
 
             DB::commit();
@@ -468,17 +281,24 @@ class TransactionController extends Controller
         }
     }
 
-    /**
-     * Update transaction status - Two-tier approval:
-     * < 1jt: Admin/Atasan approve → completed (done)
-     * >= 1jt: Admin/Atasan approve → approved (waiting Owner) → Owner approve → completed
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  STATUS UPDATE — Approval Logic
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //
+    //  REMBUSH:
+    //    - Berapapun nominal → Admin/Atasan approve → completed
+    //
+    //  PENGAJUAN:
+    //    - < 1jt  → Admin approve → completed
+    //    - >= 1jt → Admin approve → approved (menunggu Owner) → Owner approve → completed
+    //
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function updateStatus(Request $request, $id)
     {
         $user = Auth::user();
         $newStatus = $request->status;
 
-        // Validate allowed statuses per role
         $allowedStatuses = $user->isOwner()
             ? ['pending', 'approved', 'completed', 'rejected']
             : ['approved', 'rejected'];
@@ -492,23 +312,30 @@ class TransactionController extends Controller
             $transaction = Transaction::findOrFail($id);
             $oldStatus = $transaction->status;
 
-            // Two-tier approval logic
-            if ($newStatus === 'approved' && !$user->isOwner()) {
-                // Admin/Atasan approving a pending transaction
-                if ($transaction->amount < 1000000) {
-                    // < 1jt: single approval sufficient → directly completed
+            // ─── Approval Logic ───────────────────────────
+            // Admin/Atasan approving a pending transaction:
+            //   - Amount < 1jt  → langsung 'completed'
+            //   - Amount >= 1jt → stays 'approved' (menunggu Owner)
+            if ($newStatus === 'approved' && !$user->isOwner() && $oldStatus === 'pending') {
+                $amount = $transaction->effective_amount;
+                if ($amount < 1000000) {
                     $newStatus = 'completed';
                 }
-                // >= 1jt: stays 'approved', waiting for Owner approval
+                // >= 1jt: stays 'approved', waiting for Owner
             }
 
-            // Owner approving an already-approved transaction → completed
+            // Owner approving a pending transaction → langsung completed
+            if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'pending') {
+                $newStatus = 'completed';
+            }
+
+            // Owner approving an already-approved (waiting owner) → completed
             if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
                 $newStatus = 'completed';
             }
 
             $updateData = [
-                'status' => $newStatus,
+                'status'      => $newStatus,
                 'reviewed_by' => Auth::id(),
                 'reviewed_at' => now(),
             ];
@@ -520,39 +347,41 @@ class TransactionController extends Controller
             }
 
             $transaction->update($updateData);
-            
+
             Log::info('Transaction status updated', [
-                'transaction_id' => $transaction->id,
-                'invoice_number' => $transaction->invoice_number,
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-                'reviewed_by' => Auth::id(),
+                'transaction_id'   => $transaction->id,
+                'invoice_number'   => $transaction->invoice_number,
+                'type'             => $transaction->type,
+                'old_status'       => $oldStatus,
+                'new_status'       => $newStatus,
+                'reviewed_by'      => Auth::id(),
                 'rejection_reason' => $request->rejection_reason,
             ]);
 
             $statusLabel = match($newStatus) {
-                'approved' => 'DISETUJUI (Menunggu Owner)',
-                'rejected' => 'DITOLAK',
+                'approved'  => 'DISETUJUI (Menunggu Owner)',
+                'rejected'  => 'DITOLAK',
                 'completed' => 'SELESAI',
-                'pending' => 'PENDING',
-                default => strtoupper($newStatus),
+                'pending'   => 'PENDING',
+                default     => strtoupper($newStatus),
             };
 
             return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}");
-            
+
         } catch (\Exception $e) {
             Log::error('Status update failed', [
                 'error' => $e->getMessage(),
                 'transaction_id' => $id,
             ]);
-            
+
             return back()->withErrors(['error' => 'Gagal mengubah status']);
         }
     }
 
-    /**
-     * Delete transaction (admin/atasan/owner only)
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  DELETE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function destroy($id)
     {
         try {
@@ -560,14 +389,12 @@ class TransactionController extends Controller
             $invoiceNumber = $transaction->invoice_number;
             $filePath = $transaction->file_path;
 
-            // Delete uploaded file if exists
             if ($filePath && Storage::disk('public')->exists($filePath)) {
                 Storage::disk('public')->delete($filePath);
-                Log::info('File deleted', ['path' => $filePath]);
             }
 
             $transaction->delete();
-            
+
             Log::info('Transaction deleted', [
                 'transaction_id' => $id,
                 'invoice_number' => $invoiceNumber,
@@ -575,20 +402,21 @@ class TransactionController extends Controller
             ]);
 
             return back()->with('success', "Transaksi {$invoiceNumber} berhasil dihapus");
-            
+
         } catch (\Exception $e) {
             Log::error('Transaction deletion failed', [
                 'error' => $e->getMessage(),
                 'transaction_id' => $id,
             ]);
-            
+
             return back()->withErrors(['error' => 'Gagal menghapus transaksi']);
         }
     }
 
-    /**
-     * Serve transaction image directly from storage
-     */
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  IMAGE SERVING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function serveImage($id)
     {
         $transaction = Transaction::findOrFail($id);
@@ -602,52 +430,5 @@ class TransactionController extends Controller
         $mimeType = $finfo->buffer($file);
 
         return response($file, 200)->header('Content-Type', $mimeType);
-    }
-
-    /**
-     * DEBUGGING: Check image path and existence
-     * Remove this method in production
-     */
-    public function debugImage($id)
-    {
-        $transaction = Transaction::findOrFail($id);
-        $path = $transaction->file_path;
-        
-        return response()->json([
-            'transaction_id' => $transaction->id,
-            'invoice_number' => $transaction->invoice_number,
-            'path_from_db' => $path,
-            'full_storage_path' => storage_path('app/public/' . $path),
-            'file_exists_storage' => Storage::disk('public')->exists($path),
-            'file_exists_filesystem' => file_exists(storage_path('app/public/' . $path)),
-            'public_url' => asset('storage/' . $path),
-            'storage_url' => Storage::url($path),
-            'symlink_exists' => file_exists(public_path('storage')),
-            'symlink_target' => is_link(public_path('storage')) ? readlink(public_path('storage')) : 'not a symlink',
-        ]);
-    }
-
-    /**
-     * DEBUGGING: Test upload directly
-     * Remove this method in production
-     */
-    public function testUpl(Request $request)
-    {
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $fileName = 'test_' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('nota-uploads', $fileName, 'public');
-            
-            return response()->json([
-                'success' => true,
-                'filename' => $fileName,
-                'path' => $path,
-                'full_path' => storage_path('app/public/' . $path),
-                'exists' => Storage::disk('public')->exists($path),
-                'url' => asset('storage/' . $path),
-            ]);
-        }
-        
-        return response()->json(['error' => 'No file uploaded'], 400);
     }
 }

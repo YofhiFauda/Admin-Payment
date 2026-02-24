@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\RembushController;
+use App\Http\Controllers\PengajuanController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
@@ -17,30 +19,48 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 });
 
+
+// routes/web.php — tambah sementara
+Route::get('/debug-session', function () {
+    $path = session('pengajuan_file_path');
+    return [
+        'session_path' => $path,
+        'file_exists'  => $path ? Storage::disk('public')->exists($path) : false,
+        'full_url'     => $path ? asset('storage/' . $path) : null,
+        'storage_path' => $path ? storage_path('app/public/' . $path) : null,
+        'real_exists'  => $path ? file_exists(storage_path('app/public/' . $path)) : false,
+    ];
+});
+
 // Authenticated routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Transaction History (all roles)
+    // ── Shared Transaction Routes (all roles) ──────────────
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-
-    // Transaction Detail (all roles)
     Route::get('/transactions/{id}/detail', [TransactionController::class, 'show'])->name('transactions.show');
-
-    // Serve transaction image (all roles)
+    Route::get('/transactions/{id}/detail-json', [TransactionController::class, 'detailJson'])->name('transactions.detail.json');
     Route::get('/transactions/{id}/image', [TransactionController::class, 'serveImage'])->name('transactions.image');
 
-    // Transaction Creation (teknisi, admin, owner)
+    // ── Transaction Creation (teknisi, admin, owner) ───────
     Route::middleware('role:teknisi,admin,owner')->group(function () {
+        // Selection page
         Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
-        Route::post('/transactions/upload', [TransactionController::class, 'processUpload'])->name('transactions.upload');
-        Route::get('/transactions/loading', [TransactionController::class, 'loading'])->name('transactions.loading');
-        Route::get('/transactions/form', [TransactionController::class, 'showForm'])->name('transactions.form');
-        Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
         Route::get('/transactions/{id}/confirm', [TransactionController::class, 'confirmation'])->name('transactions.confirm');
+
+        // Rembush flow: upload → OCR → loading → form → store
+        Route::post('/rembush/upload', [RembushController::class, 'processUpload'])->name('rembush.upload');
+        Route::get('/rembush/loading', [RembushController::class, 'loading'])->name('rembush.loading');
+        Route::get('/rembush/form', [RembushController::class, 'showForm'])->name('rembush.form');
+        Route::post('/rembush/store', [RembushController::class, 'store'])->name('rembush.store');
+
+        // Pengajuan flow: form → store (no OCR)
+        Route::get('/pengajuan/form', [PengajuanController::class, 'showForm'])->name('pengajuan.form');
+        Route::post('/pengajuan/upload', [PengajuanController::class, 'uploadPhoto'])->name('pengajuan.upload');
+        Route::post('/pengajuan/store', [PengajuanController::class, 'store'])->name('pengajuan.store');
     });
 
-    // Status Management, Edit & Delete (admin, atasan, owner)
+    // ── Status Management, Edit & Delete (admin, atasan, owner) ──
     Route::middleware('role:admin,atasan,owner')->group(function () {
         Route::get('/transactions/{id}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
         Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
@@ -48,4 +68,3 @@ Route::middleware('auth')->group(function () {
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
 });
-

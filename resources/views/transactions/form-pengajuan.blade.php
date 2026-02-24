@@ -1,0 +1,535 @@
+@extends('layouts.app')
+@section('page-title', 'Form Pengajuan Beli')
+@section('content')
+    {{-- Form Container --}}
+    <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 md:p-8 lg:p-10">
+
+        {{-- Header --}}
+        <div class="mb-8 md:mb-10 flex items-center gap-4">
+            <a href="{{ route('transactions.create') }}" 
+               class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </a>
+            <div>
+                <h2 class="text-lg md:text-xl font-extrabold text-slate-800">Form Pengajuan Beli</h2>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">Lengkapi data barang/jasa yang ingin diajukan</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('pengajuan.store') }}" id="pengajuan-form" enctype="multipart/form-data">
+            @csrf
+            <input type="hidden" name="type" value="pengajuan">
+            <input type="hidden" name="estimated_price" id="form-estimated-price" value="{{ old('estimated_price', 0) }}">
+            <input type="hidden" name="has_reference_photo" value="{{ $filePath ? '1' : '0' }}">
+            
+            {{-- Container untuk input tersembunyi distribusi (PENTING) --}}
+            <div id="distribution-hidden-inputs"></div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 1. FOTO REFERENSI --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
+                    Foto Referensi <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
+                </label>
+                
+                @if($filePath && Storage::disk('public')->exists($filePath))
+                    <div class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden group">
+                        <img id="ref-img-preview"
+                            src="{{ Storage::url($filePath) }}"
+                            class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm relative z-10 cursor-zoom-in" 
+                            alt="Preview Foto Referensi" />
+                        <div class="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="zoom-in" class="w-4 h-4 text-emerald-600"></i>
+                        </div>
+                    </div>
+                @else
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
+                        <i data-lucide="image" class="w-12 h-12 mb-3 opacity-30"></i>
+                        <span class="text-sm font-medium">Tidak ada foto referensi</span>
+                    </div>
+                @endif
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 2. INFORMASI BARANG --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">
+                    Informasi Barang / Jasa
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
+                        <input type="text" name="customer" value="{{ old('customer') }}" required
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Router Mikrotik">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
+                        <input type="text" name="vendor" value="{{ old('vendor') }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Toko Komputer Jaya">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 3. SPESIFIKASI --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Merk</label><input type="text" name="specs[merk]" value="{{ old('specs.merk') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Tipe / Seri</label><input type="text" name="specs[tipe]" value="{{ old('specs.tipe') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Ukuran</label><input type="text" name="specs[ukuran]" value="{{ old('specs.ukuran') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Warna</label><input type="text" name="specs[warna]" value="{{ old('specs.warna') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 4. JUMLAH & HARGA --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Jumlah & Estimasi Harga</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Jumlah *</label>
+                        <input type="number" name="quantity" value="{{ old('quantity', 1) }}" required min="1" id="input-quantity" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
+                            <input type="text" id="input-price-display" required class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" value="{{ old('estimated_price') ? number_format(old('estimated_price'), 0, ',', '.') : '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-teal-50 border border-teal-100 rounded-xl p-4 flex justify-between items-center">
+                    <span class="text-sm font-bold text-teal-700">Total Estimasi</span>
+                    <div id="total-estimate" class="transition-transform duration-200 text-xl font-bold text-emerald-600">Rp 0</div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 5. ALASAN --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                <div class="relative">
+                    <select name="purchase_reason" id="purchase-reason" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                        <option value="">— Pilih alasan —</option>
+                        @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
+                            <option value="{{ $key }}" {{ old('purchase_reason') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 6. DISTRIBUSI CABANG --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-10">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Pembagian Cabang</label>
+
+                {{-- Branch Pills --}}
+                <div class="flex flex-wrap gap-3 mb-6" id="branch-pills-container">
+                    @foreach($branches as $branch)
+                        <button type="button"
+                            data-id="{{ $branch->id }}"
+                            data-name="{{ $branch->name }}"
+                            class="branch-pill px-4 py-2 rounded-full text-sm font-bold border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:border-teal-300 transition-all cursor-pointer">
+                            {{ $branch->name }}
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- Metode Distribusi --}}
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Metode Distribusi</span>
+                        <div class="flex bg-slate-200 rounded-xl p-1 text-xs font-bold">
+                            <button type="button" data-method="equal" class="method-btn px-4 py-1.5 rounded-lg bg-white shadow text-slate-700 transition-all">Bagi Rata</button>
+                            <button type="button" data-method="percent" class="method-btn px-4 py-1.5 rounded-lg text-slate-500 transition-all">Persentase</button>
+                            <button type="button" data-method="manual" class="method-btn px-4 py-1.5 rounded-lg text-slate-500 transition-all">Manual</button>
+                        </div>
+                    </div>
+                    <div id="distribution-list" class="space-y-3"></div>
+                    <div id="percent-warning" class="text-red-500 text-xs mt-2 hidden font-bold">⚠ Total persen harus 100%</div>
+                </div>
+            </div>
+
+            {{-- Divider --}}
+            <div class="relative flex justify-center items-center mb-8">
+                <div class="w-full h-px bg-slate-100 absolute"></div>
+                <span class="bg-white px-4 relative z-10 text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">Summary Billing</span>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- SUMMARY BILLING --}}
+            {{-- ══════════════════════════════════ --}}
+            <div id="summary-billing-section" class="bg-[#1a1c23] rounded-3xl p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl hidden">
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8 md:mb-10 relative z-10">
+                    {{-- Left Side: Total --}}
+                    <div>
+                        <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Total Pengajuan</span>
+                        <div class="text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 md:mb-6 tracking-tight" id="summary-total">Rp 0</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="bg-white/10 text-slate-300 px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider" id="summary-method">Metode: -</span>
+                            <span class="bg-white/10 text-slate-300 px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider" id="summary-branch-count">0 Cabang</span>
+                        </div>
+                    </div>
+                    
+                    {{-- Right Side: Details --}}
+                    <div class="md:border-l border-white/10 md:pl-8 lg:pl-12 flex flex-col justify-center">
+                        <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-4">Rincian Distribusi Cabang</span>
+                        <div class="space-y-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar" id="summary-branches-list">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Submit Button --}}
+                <button type="submit" id="summary-submit" disabled
+                    class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-4 md:py-5 rounded-xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none text-xs md:text-sm uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <span id="submit-text">Kirim Pengajuan Rembush</span>
+                    <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            @if($errors->any())
+                <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-4">
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 mt-0.5 shrink-0"></i>
+                        <div class="text-xs text-red-600">
+                            @foreach($errors->all() as $error)
+                                <p>{{ $error }}</p>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </form>
+    </div>
+
+    {{-- IMAGE VIEWER MODAL --}}
+    <div id="image-viewer" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-6">
+        <div class="relative max-w-3xl w-full">
+            <button id="close-viewer" class="absolute -top-10 right-0 text-white hover:text-red-400 transition">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <img id="viewer-image" src="" class="w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl bg-white p-2">
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // ─────────────────────────────
+        // VARIABLES & SELECTORS
+        // ─────────────────────────────
+        const priceDisplay      = document.getElementById('input-price-display');
+        const priceHidden       = document.getElementById('form-estimated-price');
+        const quantityInput     = document.getElementById('input-quantity');
+        const totalEstimate     = document.getElementById('total-estimate');
+        
+        const branchPills       = document.querySelectorAll('.branch-pill');
+        const methodBtns        = document.querySelectorAll('.method-btn');
+        const distributionList  = document.getElementById('distribution-list');
+        const hiddenInputsContainer = document.getElementById('distribution-hidden-inputs');
+        const percentWarning    = document.getElementById('percent-warning');
+        
+        const summarySection    = document.getElementById('summary-billing-section');
+        const summaryTotal      = document.getElementById('summary-total');
+        const summaryMethod     = document.getElementById('summary-method');
+        const summaryBranchCount = document.getElementById('summary-branch-count');
+        const summaryBranchesList = document.getElementById('summary-branches-list');
+        const summarySubmit     = document.getElementById('summary-submit');
+
+        let selectedBranches = []; // { id, name, value, percent }
+        let currentMethod    = 'equal';
+
+        // ─────────────────────────────
+        // HELPER FUNCTIONS
+        // ─────────────────────────────
+        function parseRupiah(str) {
+            return parseInt((str || '').replace(/\D/g, '') || '0');
+        }
+
+        function formatRupiah(num) {
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function getTotal() {
+            const price = parseRupiah(priceHidden.value);
+            const qty   = parseInt(quantityInput.value) || 1;
+            return price * qty;
+        }
+
+        function updateTotalDisplay() {
+            const total = getTotal();
+            totalEstimate.textContent = 'Rp ' + formatRupiah(total);
+            renderDistribution();
+        }
+
+        // ─────────────────────────────
+        // EVENT LISTENERS: PRICE & QTY
+        // ─────────────────────────────
+        priceDisplay.addEventListener('input', function () {
+            const raw = parseRupiah(this.value);
+            this.value = raw > 0 ? formatRupiah(raw) : '';
+            priceHidden.value = raw;
+            updateTotalDisplay();
+        });
+
+        quantityInput.addEventListener('input', updateTotalDisplay);
+
+        // ─────────────────────────────
+        // EVENT LISTENERS: BRANCH PILLS
+        // ─────────────────────────────
+        branchPills.forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id   = this.dataset.id;
+                const name = this.dataset.name;
+                const index = selectedBranches.findIndex(b => b.id == id);
+
+                if (index > -1) {
+                    // Deselect
+                    selectedBranches.splice(index, 1);
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                } else {
+                    // Select
+                    selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                }
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────
+        // EVENT LISTENERS: METHODS
+        // ─────────────────────────────
+        methodBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // Update UI Buttons
+                methodBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                    b.classList.add('text-slate-500');
+                });
+                this.classList.remove('text-slate-500');
+                this.classList.add('bg-white', 'shadow', 'text-slate-700');
+
+                // Update Logic
+                currentMethod = this.dataset.method;
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────
+        // CORE LOGIC: RENDER DISTRIBUTION
+        // ─────────────────────────────
+        function renderDistribution() {
+            // 1. Reset Containers
+            distributionList.innerHTML = '';
+            summaryBranchesList.innerHTML = '';
+            hiddenInputsContainer.innerHTML = ''; // Clear old hidden inputs
+
+            // 2. Handle Empty State
+            if (selectedBranches.length === 0) {
+                summarySection.classList.add('hidden');
+                summarySubmit.disabled = true;
+                percentWarning.classList.add('hidden');
+                return;
+            }
+
+            // 3. Show Summary Section
+            summarySection.classList.remove('hidden');
+            const totalAmount = getTotal();
+
+            // 4. Loop Through Selected Branches
+            selectedBranches.forEach((branch, index) => {
+                let displayValue = 0;
+                let rowHtml = '';
+                let inputHtml = '';
+
+                // --- LOGIC PER METODE ---
+                if (currentMethod === 'equal') {
+                    displayValue = totalAmount / selectedBranches.length;
+                    branch.value = displayValue; // Store calculated value
+                    
+                    rowHtml = `
+                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
+                            <div class="font-medium text-slate-700 flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                ${branch.name}
+                            </div>
+                            <div class="font-bold text-emerald-600">Rp ${formatRupiah(displayValue)}</div>
+                        </div>
+                    `;
+
+                    // Generate Hidden Input for Backend (PENTING)
+                    inputHtml = `
+                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
+                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
+                    `;
+                } 
+                else if (currentMethod === 'percent') {
+                    // Calculate based on stored percent
+                    const percent = parseFloat(branch.percent) || 0;
+                    displayValue = totalAmount * (percent / 100);
+                    branch.value = displayValue;
+
+                    rowHtml = `
+                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
+                            <div class="font-medium text-slate-700">${branch.name}</div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" 
+                                    class="dist-input-percent w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                    data-index="${index}" 
+                                    value="${percent}" 
+                                    min="0" max="100">
+                                <span class="text-xs font-bold text-slate-400">%</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    inputHtml = `
+                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
+                        <input type="hidden" name="distribution[${index}][percent]" value="${percent}">
+                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
+                    `;
+                } 
+                else if (currentMethod === 'manual') {
+                    displayValue = parseFloat(branch.value) || 0;
+                    
+                    rowHtml = `
+                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
+                            <div class="font-medium text-slate-700">${branch.name}</div>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Rp</span>
+                                <input type="text" 
+                                    class="dist-input-manual w-32 text-right text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                    data-index="${index}" 
+                                    value="${displayValue > 0 ? formatRupiah(displayValue) : ''}">
+                            </div>
+                        </div>
+                    `;
+
+                    inputHtml = `
+                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
+                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
+                    `;
+                }
+
+                // Append to List & Hidden Inputs
+                distributionList.insertAdjacentHTML('beforeend', rowHtml);
+                hiddenInputsContainer.insertAdjacentHTML('beforeend', inputHtml);
+
+                // ─────────────────────────────
+                // PERBAIKAN: HITUNG & TAMPILKAN PERSENTASE DI SUMMARY
+                // ─────────────────────────────
+                let percentDisplay = 0;
+                if (totalAmount > 0) {
+                    percentDisplay = (displayValue / totalAmount) * 100;
+                }
+                
+                // Format persen 1 desimal (contoh: 33.3%)
+                const percentString = percentDisplay.toFixed(1) + '%';
+
+                // Append to Summary List (Right Side) dengan detail persen
+                const summaryRow = `
+                    <div class="flex justify-between items-start text-sm border-b border-white/10 pb-3 last:border-0 last:pb-0">
+                        <div class="flex flex-col">
+                            <span class="text-slate-300 font-medium">${branch.name}</span>
+                            <span class="text-[10px] text-emerald-400/70 mt-0.5">${percentString}</span>
+                        </div>
+                        <span class="text-emerald-400 font-bold">Rp ${formatRupiah(displayValue)}</span>
+                    </div>
+                `;
+                summaryBranchesList.insertAdjacentHTML('beforeend', summaryRow);
+            });
+
+            // 5. Update Summary Header
+            summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
+            summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
+            
+            const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
+            summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
+
+            // 6. Validation
+            validateAndSubmit();
+        }
+
+        // ─────────────────────────────
+        // DYNAMIC INPUT HANDLERS (Delegation)
+        // ─────────────────────────────
+        distributionList.addEventListener('input', function(e) {
+            if (e.target.classList.contains('dist-input-percent')) {
+                const index = e.target.dataset.index;
+                const val = parseFloat(e.target.value) || 0;
+                selectedBranches[index].percent = val;
+                renderDistribution(); // Re-render to update amounts
+            }
+            if (e.target.classList.contains('dist-input-manual')) {
+                const index = e.target.dataset.index;
+                const raw = parseRupiah(e.target.value);
+                e.target.value = raw > 0 ? formatRupiah(raw) : '';
+                selectedBranches[index].value = raw;
+                // No full re-render needed for manual to avoid cursor jump, 
+                // but we need to update summary.
+                renderDistribution(); 
+            }
+        });
+
+        function validateAndSubmit() {
+            let isValid = true;
+
+            if (currentMethod === 'percent') {
+                const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
+                if (Math.abs(totalPercent - 100) > 0.1) {
+                    isValid = false;
+                    percentWarning.classList.remove('hidden');
+                    percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent}%. Harus 100%`;
+                } else {
+                    percentWarning.classList.add('hidden');
+                }
+            } else {
+                percentWarning.classList.add('hidden');
+            }
+
+            summarySubmit.disabled = !isValid;
+        }
+
+        // ─────────────────────────────
+        // FORM SUBMISSION
+        // ─────────────────────────────
+        document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
+            if (summarySubmit.disabled) {
+                e.preventDefault();
+                return;
+            }
+            
+            // UI Feedback
+            summarySubmit.disabled = true;
+            document.getElementById('submit-text').textContent = 'Memproses...';
+            document.getElementById('submit-spinner').classList.remove('hidden');
+        });
+
+        // Initialize
+        updateTotalDisplay();
+    });
+    </script>
+    @endpush
+@endsection

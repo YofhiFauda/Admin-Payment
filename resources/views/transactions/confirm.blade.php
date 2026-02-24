@@ -1,91 +1,287 @@
 @extends('layouts.app')
 
-@section('page-title', 'Langkah 3: Selesai')
+@php
+    $hideHeader = true;
+@endphp
 
 @section('content')
-    <div class="max-w-md mx-auto py-6 sm:py-10">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {{-- Gradient Progress Bar --}}
-            <div class="h-2 w-full bg-gradient-to-r from-green-400 via-blue-500 to-amber-400"></div>
+    {{-- Container dengan background dekoratif --}}
+    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 relative overflow-hidden">
+        
+        {{-- Background Blobs (Animasi halus) --}}
+        <div class="absolute top-0 left-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2 animate-blob"></div>
+        <div class="absolute top-0 right-0 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 translate-x-1/2 -translate-y-1/2 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
 
-            {{-- Content --}}
-            <div class="p-6 sm:p-8 flex flex-col items-center text-center">
-                {{-- Success Icon --}}
-                <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5">
-                    <i data-lucide="party-popper" class="w-8 h-8 text-green-600"></i>
-                </div>
+        <div class="max-w-md w-full relative z-10">
+            
+            {{-- Main Card --}}
+            <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+                
+                {{-- Gradient Top Border --}}
+                <div class="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
 
-                <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-1">Nota Berhasil Dikirim!</h2>
-                <p class="text-slate-400 text-sm mb-6">ID Transaksi: <span
-                        class="font-bold text-slate-700">{{ $transaction->invoice_number }}</span></p>
-
-                {{-- Status Card --}}
-                <div class="w-full bg-slate-50 rounded-xl border border-slate-100 p-5 mb-6">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Status Pengajuan Anda</p>
-                    <div
-                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm border border-amber-200">
-                        <i data-lucide="clock" class="w-4 h-4"></i>
-                        PENDING
+                <div class="p-8 flex flex-col items-center text-center">
+                    
+                    {{-- Success Icon with Glow --}}
+                    <div class="relative mb-6 group">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                        <div class="relative w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
+                            <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500"></i>
+                        </div>
                     </div>
-                    <p class="text-slate-500 text-xs mt-4 leading-relaxed">
-                        Nota Anda sedang dalam tahap peninjauan oleh tim finance.<br>
-                        Terima kasih, <span class="font-bold">{{ Auth::user()->name }}</span>.
-                    </p>
-                </div>
 
-                {{-- Detail (collapsible) --}}
-                <div class="w-full text-left mb-5">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">
-                        Detail Transaksi
+                    <h2 class="text-2xl font-extrabold text-slate-800 mb-1 tracking-tight">Nota Berhasil Dikirim!</h2>
+                    <p class="text-slate-500 text-sm mb-8 font-medium">
+                        ID Transaksi: <span class="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs border border-slate-200">{{ $transaction->invoice_number }}</span>
                     </p>
-                    <div class="space-y-1.5 border-t border-gray-100 pt-3">
-                        <div class="flex justify-between py-1.5">
-                            <span class="text-xs text-slate-400">Vendor</span>
-                            <span class="text-xs font-bold text-slate-800">{{ $transaction->customer }}</span>
-                        </div>
-                        @if($transaction->category)
-                        <div class="flex justify-between py-1.5">
-                            <span class="text-xs text-slate-400">Kategori</span>
-                            <span class="text-xs font-bold text-slate-800">{{ \App\Models\Transaction::CATEGORIES[$transaction->category] ?? $transaction->category }}</span>
-                        </div>
-                        @endif
-                        <div class="flex justify-between py-1.5">
-                            <span class="text-xs text-slate-400">Nominal</span>
-                            <span class="text-xs font-bold text-blue-600">{{ $transaction->formatted_amount }}</span>
-                        </div>
-                        <div class="flex justify-between py-1.5">
-                            <span class="text-xs text-slate-400">Tanggal</span>
-                            <span
-                                class="text-xs font-bold text-slate-800">{{ $transaction->date ? $transaction->date->format('d M Y') : '-' }}</span>
-                        </div>
-                        @if($transaction->items)
-                            <div class="flex justify-between py-1.5">
-                                <span class="text-xs text-slate-400">Keterangan</span>
-                                <span class="text-xs font-bold text-slate-800 text-right ml-4">{{ $transaction->items }}</span>
+
+                    {{-- Status Card (Floating Style) --}}
+                    <div class="w-full bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100 p-5 mb-6 shadow-sm relative overflow-hidden">
+                        {{-- Subtle pattern overlay --}}
+                        <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-slate-100 rounded-full opacity-50 blur-2xl"></div>
+                        
+                        <div class="relative z-10">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-left">Status Pengajuan Anda</p>
+                            
+                            {{-- ID ADDED: status-badge-container --}}
+                            <div id="status-badge-container" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full font-bold text-xs border border-amber-100 shadow-sm mb-3 transition-all duration-500">
+                                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                                <span id="status-text">PENDING REVIEW</span>
                             </div>
-                        @endif
-                        @if($transaction->branches->count() > 0)
-                            <div class="pt-2 border-t border-gray-50">
-                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2">Distribusi Cabang
+
+                            <div class="text-left bg-white/60 p-3 rounded-lg border border-slate-50 backdrop-blur-sm">
+                                <p id="status-description" class="text-slate-500 text-xs leading-relaxed">
+                                    Nota Anda sedang dalam tahap peninjauan oleh tim finance. Kami akan menghubungi Anda segera setelah proses selesai.
                                 </p>
-                                @foreach($transaction->branches as $branch)
-                                    <div class="flex items-center justify-between py-1">
-                                        <span class="text-xs text-slate-600">{{ $branch->name }}</span>
-                                        <span
-                                            class="text-xs font-bold text-slate-800">{{ $branch->pivot->allocation_percent }}%</span>
-                                    </div>
-                                @endforeach
+                                <p class="text-slate-400 text-xs mt-2 font-medium">
+                                    Terima kasih, <span class="text-slate-600">{{ Auth::user()->name }}</span>.
+                                </p>
                             </div>
-                        @endif
+                        </div>
                     </div>
-                </div>
 
-                {{-- Action Button --}}
-                <a href="{{ route('transactions.create') }}"
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 text-sm active:scale-95">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Input Nota Lagi
-                </a>
+                    {{-- Detail Section --}}
+                    <div class="w-full text-left mb-8">
+                        <div class="flex items-center justify-between mb-4 px-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail Transaksi</p>
+                            <div class="h-px bg-slate-200 flex-grow ml-4"></div>
+                        </div>
+
+                        <div class="space-y-4">
+                            {{-- Type Badge Row --}}
+                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                <span class="text-xs font-medium text-slate-500">Jenis Transaksi</span>
+                                @if($transaction->type === 'pengajuan')
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-100">
+                                        <i data-lucide="file-plus" class="w-3 h-3"></i> Pengajuan
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Rembush
+                                    </span>
+                                @endif
+                            </div>
+
+                            {{-- Key Metrics Grid --}}
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">{{ $transaction->isPengajuan() ? 'Nama Barang' : 'Vendor' }}</span>
+                                    <p class="text-sm font-bold text-slate-800 truncate" title="{{ $transaction->customer }}">{{ $transaction->customer }}</p>
+                                </div>
+                                <div class="space-y-1 text-right">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Total Nominal</span>
+                                    <p class="text-sm font-bold text-blue-600">Rp {{ number_format($transaction->amount ?? 0, 0, ',', '.') }}</p>
+                                </div>
+                            </div>
+
+                            {{-- Dynamic Fields Container --}}
+                            <div class="bg-slate-50/80 rounded-xl p-4 border border-slate-100 space-y-3">
+                                @if($transaction->isRembush() && $transaction->category)
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-slate-500">Kategori</span>
+                                        <span class="text-xs font-semibold text-slate-700">{{ \App\Models\Transaction::CATEGORIES[$transaction->category] ?? $transaction->category }}</span>
+                                    </div>
+                                @endif
+
+                                @if($transaction->isPengajuan())
+                                    @if($transaction->vendor)
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-slate-500">Vendor</span>
+                                            <span class="text-xs font-semibold text-slate-700">{{ $transaction->vendor }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-slate-500">Jumlah</span>
+                                        <span class="text-xs font-semibold text-slate-700">{{ $transaction->quantity ?? 1 }} {{ $transaction->unit ?? 'pcs' }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-xs text-slate-500">Estimasi Harga</span>
+                                        <span class="text-xs font-semibold text-slate-700">Rp {{ number_format($transaction->estimated_price ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    @if($transaction->purchase_reason)
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-slate-500">Alasan</span>
+                                            <span class="text-xs font-semibold text-slate-700">{{ \App\Models\Transaction::PURCHASE_REASONS[$transaction->purchase_reason] ?? $transaction->purchase_reason }}</span>
+                                        </div>
+                                    @endif
+                                @endif
+
+                                <div class="flex justify-between items-center pt-2 border-t border-slate-200/60 mt-2">
+                                    <span class="text-xs text-slate-500">Tanggal</span>
+                                    <span class="text-xs font-semibold text-slate-700">{{ $transaction->date ? $transaction->date->format('d M Y') : '-' }}</span>
+                                </div>
+
+                                @if($transaction->description)
+                                    <div class="pt-2">
+                                        <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Keterangan</span>
+                                        <p class="text-xs text-slate-600 bg-white p-2 rounded border border-slate-100 leading-relaxed">{{ $transaction->description }}</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            @if($transaction->branches->count() > 0)
+                                <div class="pt-2">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Distribusi Cabang</p>
+                                    <div class="space-y-2">
+                                        @foreach($transaction->branches as $branch)
+                                            <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
+                                                <span class="text-xs text-slate-600 font-medium">{{ $branch->name }}</span>
+                                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{{ $branch->pivot->allocation_percent }}%</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Action Button --}}
+                    <a href="{{ route('transactions.create') }}"
+                        class="group w-full relative overflow-hidden bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20 text-sm active:scale-[0.98]">
+                        <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                        <i data-lucide="plus" class="w-4 h-4 transition-transform group-hover:rotate-90"></i> 
+                        Input Nota Lagi
+                    </a>
+                </div>
             </div>
+            
+            {{-- Footer Text --}}
+            <p class="text-center text-slate-400 text-xs mt-6 font-medium">
+                &copy; {{ date('Y') }} Finance System. Secure & Encrypted.
+            </p>
         </div>
     </div>
 @endsection
+
+@push('styles')
+<style>
+    /* Custom Animation for Shimmer Effect */
+    @keyframes shimmer {
+        100% {
+            transform: translateX(100%);
+        }
+    }
+    /* Blob Animation */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 7s infinite;
+    }
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    // --- REALTIME STATUS UPDATER ---
+    const transactionId = {{ $transaction->id }};
+    const checkStatusUrl = "{{ route('transactions.detail.json', $transaction->id) }}";
+    
+    // Simpan status awal saat halaman dimuat agar tidak berkedip
+    let currentStatus = "{{ $transaction->status }}";
+
+    function updateStatusUI(data) {
+        const badgeContainer = document.getElementById('status-badge-container');
+        const statusText = document.getElementById('status-text');
+        const statusDesc = document.getElementById('status-description');
+        const icon = badgeContainer.querySelector('i');
+
+        // Jika status dari server sama dengan yang ada di layar, tidak perlu update
+        if (data.status === currentStatus) return;
+
+        // Update status lokal
+        currentStatus = data.status;
+
+        // Reset Classes
+        badgeContainer.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs border shadow-sm mb-3 transition-all duration-500';
+        icon.className = 'w-3.5 h-3.5'; // Reset icon classes
+
+        let newIcon = '';
+        let newDesc = '';
+
+        // Logic Tampilan Berdasarkan Status Baru
+        switch(data.status) {
+            case 'pending':
+                badgeContainer.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-100');
+                newIcon = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>';
+                statusText.innerText = 'PENDING REVIEW';
+                newDesc = 'Nota Anda sedang dalam tahap peninjauan oleh tim finance. Kami akan menghubungi Anda segera setelah proses selesai.';
+                break;
+            
+            case 'approved':
+                badgeContainer.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-100');
+                newIcon = '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i>';
+                statusText.innerText = 'DISETUJUI';
+                newDesc = 'Nota telah disetujui oleh tim finance/atasan dan sedang diproses lebih lanjut.';
+                break;
+
+            case 'completed':
+                badgeContainer.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-100');
+                newIcon = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+                statusText.innerText = 'SELESAI';
+                newDesc = 'Transaksi telah selesai diproses sepenuhnya.';
+                break;
+
+            case 'rejected':
+                badgeContainer.classList.add('bg-red-50', 'text-red-700', 'border-red-100');
+                newIcon = '<i data-lucide="x-circle" class="w-3.5 h-3.5"></i>';
+                statusText.innerText = 'DITOLAK';
+                newDesc = data.rejection_reason ? `Alasan: ${data.rejection_reason}` : 'Nota ditolak oleh tim finance.';
+                break;
+            
+            default:
+                statusText.innerText = data.status.toUpperCase();
+        }
+
+        // Update DOM
+        icon.innerHTML = newIcon;
+        if(statusDesc) statusDesc.innerText = newDesc;
+
+        // Re-init Lucide icons untuk icon baru
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    // Jalankan polling setiap 3 detik
+    setInterval(() => {
+        fetch(checkStatusUrl)
+            .then(response => response.json())
+            .then(data => {
+                updateStatusUI(data);
+            })
+            .catch(error => console.error('Error checking status:', error));
+    }, 3000); // 3000ms = 3 detik
+
+</script>
+@endpush
