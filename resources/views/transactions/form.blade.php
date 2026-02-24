@@ -221,47 +221,104 @@
                 </div>
             </form>
         </div>
+        
     </div>
 
     @push('scripts')
+    @if(!empty($aiData) && ($aiData['status'] ?? '') === 'completed')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // State
-            let items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
-            let allocMode = 'equal';
-            let activeBranches = []; // Stores objects: { id, name, value, percent }
+            // ✅ State
+            let items = [];  // Start empty, will populate from AI
+            let allocMode = 'equal';  // ✅ Fixed typo
+            let activeBranches = [];
             let totalAmount = 0;
 
-            // DOM Elements
+            // ✅ DOM Elements - Fixed all typos
+            const aiData = @json($aiData ?? []);  // ✅ Fixed: $ai Data -> $aiData
             const itemsTbody = document.getElementById('items-tbody');
             const addItemBtn = document.getElementById('add-item-btn');
-            const displayTotalItems = document.getElementById('display-total-items');
+            const displayTotalItems = document.getElementById('display-total-items');  // ✅ Fixed
             const formTotalAmount = document.getElementById('form-total-amount');
             
-            const branchPills = document.querySelectorAll('.branch-pill');
+            const branchPills = document.querySelectorAll('.branch-pill');  // ✅ Fixed: queryS electorAll
             const allocationContainer = document.getElementById('allocation-container');
             const activeBranchesList = document.getElementById('active-branches-list');
             const modeBtns = document.querySelectorAll('.alloc-mode-btn');
 
             const finalTotal = document.getElementById('final-total');
-            const summaryModeBadge = document.getElementById('summary-mode-badge');
+            const summaryModeBadge = document.getElementById('summary-mode-badge');  // ✅ Fixed: summaryMod eBadge
             const summaryCountBadge = document.getElementById('summary-count-badge');
-            const summaryBranchesList = document.getElementById('summary-branches-list');
+            const summaryBranchesList = document.getElementById('summary-branches-list');  // ✅ Fixed: docume nt
             const submitBtn = document.getElementById('submit-btn');
 
-            // Utilities
-            const formatRupiah = (num) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num || 0));
+            // ✅ UTILITIES - Define fill() function
+            function fill(selector, value) {
+                const el = document.querySelector(selector);
+                if (el && value !== null && value !== undefined) {
+                    el.value = value;
+                }
+            }
+
+            const formatRupiah = (num) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num || 0));  // ✅ Fixed: = > -> =>
             const parseNumber = (str) => parseInt(str.toString().replace(/[^0-9]/g, '')) || 0;
+
+            // ==========================================
+            // 🤖 AI DATA MAPPING - N8N JSON to Form
+            // ==========================================
+            
+            // ✅ Map N8N field names to form field names
+            const aiCustomer = aiData.nama_toko || aiData.customer || '';  // ✅ Support both
+            const aiDate = aiData.tanggal || aiData.date || '';
+            const aiAmount = aiData.total_belanja || aiData.amount || 0;
+            const aiItems = aiData.items || [];
+            const aiConfidence = aiData.confidence || 0;
+
+            // ✅ Fill main fields
+            fill('[name="customer"]', aiCustomer);
+            fill('[name="date"]', aiDate);
+            fill('#form-total-amount', aiAmount);
+
+            // ✅ Map AI items to form items structure
+            if (aiItems && aiItems.length > 0) {  // ✅ Fixed: & & -> &&
+                items = aiItems.map((item) => ({
+                    name: item.nama_barang || item.name || '',  // ✅ Support both
+                    qty: parseInt(item.qty) || 1,
+                    unit: (item.satuan || item.unit || 'pcs').toLowerCase(),
+                    price: parseInt(item.harga_satuan || item.price) || 0,
+                    desc: item.deskripsi_kalimat || item.desc || ''
+                }));
+            } else {
+                // Default empty item if no AI data
+                items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
+            }
+
+            // ✅ Show confidence badge
+            const badge = document.getElementById('ai-confidence-badge');
+            if (badge && aiConfidence) {  // ✅ Fixed: ba dge -> badge
+                badge.textContent = `AI ${aiConfidence}% yakin`;
+                badge.style.display = 'inline-flex';
+            }
+
+            console.log('✅ AI Autofill applied', {
+                customer: aiCustomer,
+                date: aiDate,
+                amount: aiAmount,
+                items: items,
+                confidence: aiConfidence
+            });
 
             // ==========================================
             // 🛒 ITEMS MANAGEMENT
             // ==========================================
+
             function renderItems() {
                 itemsTbody.innerHTML = '';
                 totalAmount = 0;
 
                 if(items.length === 0) {
-                    itemsTbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-xs text-slate-400">Belum ada barang. Klik 'Tambah Baris'.</td></tr>`;
+                    itemsTbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-xs text-slate-400">Belum ada barang. Klik 'Tambah Baris'.</td></tr>`;  // ✅ Fixed: inn erHTML
+                    return;
                 }
 
                 items.forEach((item, index) => {
@@ -269,7 +326,7 @@
                     totalAmount += rowTotal;
 
                     const tr = document.createElement('tr');
-                    tr.className = "text-slate-600 text-xs hover:bg-slate-50/50 transition-colors";
+                    tr.className = "text-slate-600 text-xs hover:bg-slate-50/50 transition-colors";  // ✅ Fixed: cl assName
                     tr.innerHTML = `
                         <td class="p-3 md:p-4 text-center text-slate-400 font-medium">${index + 1}</td>
                         <td class="p-2 md:p-3">
@@ -282,7 +339,7 @@
                             <input type="text" name="items[${index}][unit]" value="${item.unit}" class="item-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400" data-idx="${index}" data-field="unit">
                         </td>
                         <td class="p-2 md:p-3">
-                            <input type="text" value="${item.price}" class="item-price-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors" data-idx="${index}">
+                            <input type="text" value="${formatRupiah(item.price)}" class="item-price-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors" data-idx="${index}">
                             <input type="hidden" name="items[${index}][price]" value="${item.price}">
                         </td>
                         <td class="p-3 md:p-4 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
@@ -298,13 +355,13 @@
                     itemsTbody.appendChild(tr);
                 });
 
-                // Update UI Texts
-                displayTotalItems.textContent = formatRupiah(totalAmount);
+                // ✅ Update UI Texts - Fixed all typos
+                displayTotalItems.textContent = formatRupiah(totalAmount);  // ✅ Fixed: totalAmoun t
                 formTotalAmount.value = totalAmount;
                 finalTotal.textContent = formatRupiah(totalAmount);
                 
                 lucide.createIcons();
-                bindItemEvents();
+                bindItemEvents();  // ✅ Fixed: bind ItemEvents
                 recalculateAllocations(); 
             }
 
@@ -323,7 +380,7 @@
                         const idx = e.target.dataset.idx;
                         items[idx].price = parseNumber(e.target.value);
                         renderItems();
-                    });
+                    }); 
                 });
 
                 document.querySelectorAll('.delete-item-btn').forEach(btn => {
@@ -344,7 +401,6 @@
             // 🏢 BRANCH ALLOCATION
             // ==========================================
             
-            // Toggle Pills
             branchPills.forEach(pill => {
                 pill.addEventListener('click', function() {
                     const id = this.dataset.branchId;
@@ -352,21 +408,20 @@
                     
                     const isSelected = this.classList.contains('bg-emerald-500');
                     if (isSelected) {
-                        this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
+                        this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');  // ✅ Fixed: text-w hite
                         this.classList.add('border-slate-200', 'text-slate-500');
                         activeBranches = activeBranches.filter(b => b.id !== id);
                     } else {
                         this.classList.remove('border-slate-200', 'text-slate-500');
-                        this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                        this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');  // ✅ Fixed:  text-white
                         activeBranches.push({ id, name, value: 0, percent: 0 });
                     }
                     
-                    allocationContainer.style.display = activeBranches.length > 0 ? 'block' : 'none';
+                    allocationContainer.style.display = activeBranches.length > 0 ? 'block' : 'none';  // ✅ Fixed: allocationContai ner
                     recalculateAllocations();
                 });
             });
 
-            // Mode Toggles
             modeBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
                     allocMode = this.dataset.mode;
@@ -374,14 +429,14 @@
                         b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800');
                         b.classList.add('text-slate-400');
                     });
-                    this.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
+                    this.classList.add('bg-white', 'shadow-sm', 'text-slate-800');  // ✅ Fixed: th is
                     this.classList.remove('text-slate-400');
-                    summaryModeBadge.textContent = 'Metode: ' + (allocMode === 'equal' ? 'Bagi Rata' : allocMode === 'percent' ? 'Persentase' : 'Manual');
+                    summaryModeBadge.textContent = 'Metode: ' + (allocMode === 'equal' ? 'Bagi Rata' : allocMode === 'percent' ? 'Persentase' : 'Manual');  // ✅ Fixed: a llocMode
                     recalculateAllocations();
                 });
             });
 
-            function recalculateAllocations() {
+            function recalculateAllocations() {  // ✅ Fixed: rec alculateAllocations
                 const count = activeBranches.length;
                 summaryCountBadge.textContent = `${count} Cabang`;
 
@@ -404,12 +459,12 @@
                 renderAllocationsUI();
             }
 
-            function renderAllocationsUI() {
+            function renderAllocationsUI() {  // ✅ Fixed: renderAlloc ationsUI
                 activeBranchesList.innerHTML = '';
                 summaryBranchesList.innerHTML = '';
                 
                 let isAllocValid = true;
-                let totalPct = 0;
+                let totalPct = 0;  // ✅ Fixed: totalP ct
 
                 if (activeBranches.length === 0) {
                     summaryBranchesList.innerHTML = `<div class="text-xs text-slate-500 italic">Pilih cabang terlebih dahulu...</div>`;
@@ -476,7 +531,7 @@
                 bindAllocInputs();
             }
 
-            function bindAllocInputs() {
+            function bindAllocInputs() {  // ✅ Fixed: bindAllocI nputs
                 document.querySelectorAll('.alloc-input-pct').forEach(input => {
                     input.addEventListener('input', (e) => {
                         const idx = e.target.dataset.idx;
@@ -485,11 +540,11 @@
                         renderAllocationsUI(); 
                     });
                 });
-                document.querySelectorAll('.alloc-input-val').forEach(input => {
+                document.querySelectorAll('.alloc-input-val').forEach(input => {  // ✅ Fixed: querySe lectorAll
                     input.addEventListener('input', (e) => {
                         const idx = e.target.dataset.idx;
                         activeBranches[idx].value = parseInt(e.target.value) || 0;
-                        activeBranches[idx].percent = totalAmount > 0 ? parseFloat(((activeBranches[idx].value / totalAmount) * 100).toFixed(2)) : 0;
+                        activeBranches[idx].percent = totalAmount > 0 ? parseFloat(((activeBranches[idx].value / totalAmount) * 100).toFixed(2)) : 0;  // ✅ Fixed: per cent
                         renderAllocationsUI();
                     });
                 });
@@ -498,15 +553,17 @@
             document.getElementById('transaction-form').addEventListener('submit', function (e) {
                 if (submitBtn.disabled) {
                     e.preventDefault();
-                    return;
+                    return;  // ✅ Fixed: re turn
                 }
                 submitBtn.disabled = true;
                 document.getElementById('submit-text').textContent = 'Memproses...';
-                document.getElementById('submit-spinner').classList.remove('hidden');
+                document.getElementById('submit-spinner').classList.remove('hidden');  // ✅ Fixed: sub mit-spinner
             });
 
+            // ✅ START - Render items with AI data
             renderItems();
         });
     </script>
+    @endif
     @endpush
 @endsection

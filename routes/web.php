@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\RembushController;
 use App\Http\Controllers\PengajuanController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
@@ -66,5 +67,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::patch('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    });
+
+    // ── User Management (admin, atasan, owner) ──
+    Route::middleware('role:admin,atasan,owner')->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
     });
 });

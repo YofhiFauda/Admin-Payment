@@ -20,7 +20,10 @@ class RembushController extends Controller
 
     public function processUpload(Request $request)
     {
-        Log::channel('ocr')->info('=== START REMBUSH UPLOAD ===');
+        Log::channel('ocr')->info('=== START REMBUSH UPLOAD ===', [
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+        ]);
 
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
@@ -52,7 +55,18 @@ class RembushController extends Controller
             'upload_file_mime' => $mime,
         ]);
 
-        $this->sendToN8N($uploadId, storage_path('app/public/' . $storagePath));
+        // ✅ Set initial processing status in cache so polling gets immediate feedback
+        Cache::put("ai_autofill:{$uploadId}", [
+            'status' => 'processing',
+            'phase'  => 'scanning',
+        ], now()->addMinutes(30));  // ✅ Ubah dari 10 menit jadi 30 menit (sama dengan AiAutoFillController)
+
+        // ✅ ASYNC: Send to N8N AFTER response is sent to browser
+        // User sees loading page instantly, N8N call runs in background
+        $localFilePath = storage_path('app/public/' . $storagePath);
+        dispatch(function () use ($uploadId, $localFilePath) {
+            $this->sendToN8N($uploadId, $localFilePath);
+        })->afterResponse();
 
         return redirect()->route('rembush.loading');
     }
@@ -101,7 +115,7 @@ class RembushController extends Controller
 
         $branches = Branch::all();
 
-        return view('transactions.form', compact('branches', 'base64', 'mime', 'uploadId'));
+        return view('transactions.form', compact('branches', 'base64', 'mime', 'uploadId', 'aiData'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -221,19 +235,28 @@ class RembushController extends Controller
             'file_path' => $localFilePath,
         ]);
 
+        // Update phase to 'parsing' — loading page will show step 2
+        Cache::put("ai_autofill:{$uploadId}", [
+            'status' => 'processing',
+            'phase'  => 'parsing',
+        ], now()->addMinutes(30));  // ✅ Ubah dari 10 menit jadi 30 menit
+
         try {
-            $webhookUrl = rtrim(env('N8N_WEBHOOK'), '/') . '?upload_id=' . $uploadId;
+            $webhookUrl = rtrim(config('services.n8n.webhook_url'), '/') . '?upload_id=' . $uploadId;
+
+            // Build callback URL with upload_id in query string for N8N to use
+            $callbackUrl = rtrim(config('app.url'), '/') . '/api/ai/auto-fill?upload_id=' . $uploadId;
 
             $response = Http::asMultipart()
                 ->withHeaders([
-                    'X-SECRET' => env('N8N_SECRET'),
+                    'X-SECRET' => config('services.n8n.secret'),
                     'X-Upload-ID' => $uploadId,
                 ])
                 ->attach('data', fopen($localFilePath, 'r'), basename($localFilePath))
-                ->timeout(60)
-                ->post($webhookUrl, [
-                    'upload_id' => $uploadId
-                ]);
+                ->attach('upload_id', $uploadId)
+                ->attach('callback_url', $callbackUrl)
+                ->timeout(30)
+                ->post($webhookUrl);
 
             Log::channel('ocr')->info('N8N Response Received', [
                 'upload_id' => $uploadId,
@@ -241,11 +264,26 @@ class RembushController extends Controller
                 'body' => $response->body(),
             ]);
 
+            // ✅ Hanya update ke 'validating' jika belum 'completed'
+            $current = Cache::get("ai_autofill:{$uploadId}");
+            if (($current['status'] ?? '') !== 'completed') {
+                Cache::put("ai_autofill:{$uploadId}", [
+                    'status' => 'processing',
+                    'phase'  => 'validating',
+                ], now()->addMinutes(10));  
+            }
+
         } catch (\Exception $e) {
             Log::channel('ocr')->error('N8N CONNECTION FAILED', [
                 'upload_id' => $uploadId,
                 'error' => $e->getMessage(),
             ]);
+
+            // ✅ Set error status so loading page can show fallback instead of infinite polling
+            Cache::put("ai_autofill:{$uploadId}", [
+                'status' => 'error',
+                'message' => 'Koneksi ke AI gagal. Silakan isi manual.',
+            ], now()->addMinutes(10));
         }
     }
 }

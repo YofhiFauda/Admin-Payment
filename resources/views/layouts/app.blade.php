@@ -148,8 +148,10 @@
                 </a>
 
                 {{-- Tambah menu khusus Admin/Atasan/Owner di sini --}}
-                @if(Auth::user()->role === 'admin')
-                <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium hover:bg-slate-100 text-slate-600 transition-all">
+                @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
+                <a href="{{ route('users.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-4 h-4"></i> Kelola Pengguna
                 </a>
                 @endif

@@ -36,7 +36,8 @@ return [
     ],
 
     'n8n' => [
-        'secret' => env('N8N_SECRET'),
+        'webhook_url' => env('N8N_WEBHOOK'),
+        'secret'      => env('N8N_SECRET'),
     ],
 
 ];

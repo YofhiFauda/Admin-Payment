@@ -47,6 +47,11 @@ class User extends Authenticatable
         return in_array($this->role, ['admin', 'atasan', 'owner']);
     }
 
+    public function canManageUsers(): bool
+    {
+        return in_array($this->role, ['admin', 'atasan', 'owner']);
+    }
+
     public function canViewHistory(): bool
     {
         return true; // all roles
