@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\ActivityLog;
+
 
 class TransactionController extends Controller
 {
@@ -273,6 +275,16 @@ class TransactionController extends Controller
             }
 
             DB::commit();
+
+            // Log activity
+            ActivityLog::create([
+                'user_id'        => Auth::id(),
+                'action'         => 'edit',
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => "Mengedit data Nota " . $transaction->invoice_number,
+            ]);
+
             return redirect()->route('transactions.index')
                 ->with('success', "Transaksi {$transaction->invoice_number} berhasil diperbarui.");
         } catch (\Exception $e) {
@@ -347,6 +359,20 @@ class TransactionController extends Controller
             }
 
             $transaction->update($updateData);
+
+            // Log activity
+            $actionLabel = $newStatus === 'rejected' ? 'Reject' : 'Approve';
+            $description = $newStatus === 'rejected' 
+                ? "Menolak status Transaksi " . $transaction->invoice_number . " dengan alasan: " . $request->rejection_reason
+                : "Menyetujui status Transaksi " . $transaction->invoice_number;
+
+            ActivityLog::create([
+                'user_id'        => Auth::id(),
+                'action'         => strtolower($actionLabel),
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => $description,
+            ]);
 
             Log::info('Transaction status updated', [
                 'transaction_id'   => $transaction->id,

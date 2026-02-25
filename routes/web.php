@@ -5,6 +5,8 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\RembushController;
 use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ActivityLogController;
+
 use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
@@ -69,8 +71,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
 
-    // ── User Management (admin, atasan, owner) ──
+    // ── User & Activity Management (admin, atasan, owner) ──
     Route::middleware('role:admin,atasan,owner')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
     });
+
 });

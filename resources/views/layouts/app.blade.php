@@ -147,12 +147,19 @@
                     <i data-lucide="clock" class="w-4 h-4"></i> Riwayat
                 </a>
 
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrasi</p>
                 {{-- Tambah menu khusus Admin/Atasan/Owner di sini --}}
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-4 h-4"></i> Kelola Pengguna
+                </a>
+
+                <a href="{{ route('activity-logs.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Log Aktivitas
                 </a>
                 @endif
             </nav>
