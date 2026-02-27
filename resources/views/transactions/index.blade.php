@@ -149,29 +149,46 @@
                                     
                                     {{-- ✅ TAMBAHKAN AI BADGE DI SINI (Setelah status badge, sebelum inline actions) --}}
                                     {{-- ✅ AI STATUS BADGE - TABLE VIEW --}}
-                                    @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
-                                        @php
-                                            $aiBadge = match($t->ai_status) {
-                                                'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false, 'title' => 'Menunggu diproses'],
-                                                'pending'    => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Pending', false, 'Menunggu upload selesai'],
-                                                'processing' => ['bg-purple-50 text-purple-600 border-purple-200', 'loader-2', 'OCR...', true, 'Sedang memproses...'],
-                                                'completed'  => ['bg-green-50 text-green-600 border-green-200', 'check-circle', 'AI ✓', false, 'Selesai • Confidence: '.$t->confidence.'%'],
-                                                'error'      => ['bg-red-50 text-red-600 border-red-200', 'alert-circle', 'AI ✗', false, 'Gagal • Silakan isi manual'],
-                                                default      => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Unknown', false, 'Status tidak diketahui'],
-                                            };
-                                        @endphp
-                                        <span class="ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-help transition-all hover:scale-105 {{ $aiBadge['class'] }} {{ $aiBadge['pulse'] ? 'animate-pulse' : '' }}"
-                                            data-upload-id="{{ $t->upload_id }}"
-                                            data-transaction-id="{{ $t->id }}"
-                                            data-status="{{ $t->ai_status }}"
-                                            title="{{ $aiBadge['title'] }}">
-                                            <i data-lucide="{{ $aiBadge['icon'] }}" class="w-2.5 h-2.5 {{ $aiBadge['pulse'] ? 'animate-spin' : '' }}"></i>
-                                            {{ $aiBadge['label'] }}
-                                            @if($t->ai_status === 'completed' && $t->confidence)
-                                                <span class="ml-0.5 opacity-70">({{ $t->confidence }}%)</span>
+                                        @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
+                                            @php
+                                                // Default value untuk menghindari error undefined
+                                                $aiBadge = match($t->ai_status) {
+                                                    'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => 'Antrian', 'pulse' => false],
+                                                    'pending'    => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => 'Pending', 'pulse' => false],
+                                                    'processing' => ['class' => 'bg-purple-50 text-purple-600 border-purple-200', 'icon' => 'loader-2',   'label' => 'OCR...',  'pulse' => true],
+                                                    'completed'  => ['class' => 'bg-green-50 text-green-600 border-green-200',  'icon' => 'check-circle', 'label' => 'AI ✓',   'pulse' => false],
+                                                    'error'      => ['class' => 'bg-red-50 text-red-600 border-red-200',        'icon' => 'alert-circle', 'label' => 'AI ✗',   'pulse' => false],
+                                                    default      => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => '?',       'pulse' => false],
+                                                };
+
+                                                if ($t->ai_status === 'queued') {
+                                                    $aiBadge = ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false, 'title' => 'Menunggu diproses'];
+                                                } elseif ($t->ai_status === 'pending') {
+                                                    $aiBadge = ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Pending', 'pulse' => false, 'title' => 'Menunggu upload selesai'];
+                                                } elseif ($t->ai_status === 'processing') {
+                                                    $aiBadge = ['class' => 'bg-purple-50 text-purple-600 border-purple-200', 'icon' => 'loader-2', 'label' => 'OCR...', 'pulse' => true, 'title' => 'Sedang memproses...'];
+                                                } elseif ($t->ai_status === 'completed') {
+                                                    $aiBadge = ['class' => 'bg-green-50 text-green-600 border-green-200', 'icon' => 'check-circle', 'label' => 'AI ✓', 'pulse' => false, 'title' => 'Selesai • Confidence: '.($t->confidence ?? 0).'%'];
+                                                } elseif ($t->ai_status === 'error') {
+                                                    $aiBadge = ['class' => 'bg-red-50 text-red-600 border-red-200', 'icon' => 'alert-circle', 'label' => 'AI ✗', 'pulse' => false, 'title' => 'Gagal • Silakan isi manual'];
+                                                }
+                                            @endphp
+
+                                            {{-- ✅ Pastikan $aiBadge ada sebelum render HTML --}}
+                                            @if(isset($aiBadge['class']))
+                                                <span class="ai-status-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold border ml-1 {{ $aiBadge['class'] }} {{ $aiBadge['pulse'] ? 'animate-pulse' : '' }}"
+                                                    data-upload-id="{{ $t->upload_id }}"
+                                                    data-transaction-id="{{ $t->id }}"
+                                                    data-status="{{ $t->ai_status }}"
+                                                    title="{{ $aiBadge['title'] }}">
+                                                    <i data-lucide="{{ $aiBadge['icon'] }}" class="w-2.5 h-2.5 {{ $aiBadge['pulse'] ? 'animate-spin' : '' }}"></i>
+                                                    {{ $aiBadge['label'] }}
+                                                    @if($t->ai_status === 'completed' && $t->confidence)
+                                                        <span class="ml-0.5 opacity-70">({{ $t->confidence }}%)</span>
+                                                    @endif
+                                                </span>
                                             @endif
-                                        </span>
-                                    @endif
+                                        @endif
 
                                     @if($t->status === 'rejected' && $t->rejection_reason)
                                         <i data-lucide="info" class="w-3 h-3 text-red-400 cursor-help" title="{{ $t->rejection_reason }}"></i>
@@ -298,17 +315,30 @@
                             {{ $mStatusLabel[$t->status] ?? ucfirst($t->status) }}
                         </span>
                         {{-- ✅ AI STATUS BADGE - MOBILE VIEW --}}
-                        @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
-                            @php
-                                $aiBadge = match($t->ai_status) {
-                                    'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false],
-                                    'pending'    => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Pending', false],
-                                    'processing' => ['bg-purple-50 text-purple-600 border-purple-200', 'loader-2', 'OCR...', true],
-                                    'completed'  => ['bg-green-50 text-green-600 border-green-200', 'check-circle', 'AI ✓', false],
-                                    'error'      => ['bg-red-50 text-red-600 border-red-200', 'alert-circle', 'AI ✗', false],
-                                    default      => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', '?', false],
-                                };
-                            @endphp
+                                @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
+                                            @php
+                                                // Default value untuk menghindari error undefined
+                                                $aiBadge = match($t->ai_status) {
+                                                    'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => 'Antrian', 'pulse' => false],
+                                                    'pending'    => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => 'Pending', 'pulse' => false],
+                                                    'processing' => ['class' => 'bg-purple-50 text-purple-600 border-purple-200', 'icon' => 'loader-2',   'label' => 'OCR...',  'pulse' => true],
+                                                    'completed'  => ['class' => 'bg-green-50 text-green-600 border-green-200',  'icon' => 'check-circle', 'label' => 'AI ✓',   'pulse' => false],
+                                                    'error'      => ['class' => 'bg-red-50 text-red-600 border-red-200',        'icon' => 'alert-circle', 'label' => 'AI ✗',   'pulse' => false],
+                                                    default      => ['class' => 'bg-gray-50 text-gray-600 border-gray-200',     'icon' => 'clock',        'label' => '?',       'pulse' => false],
+                                                };
+
+                                                if ($t->ai_status === 'queued') {
+                                                    $aiBadge = ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false, 'title' => 'Menunggu diproses'];
+                                                } elseif ($t->ai_status === 'pending') {
+                                                    $aiBadge = ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Pending', 'pulse' => false, 'title' => 'Menunggu upload selesai'];
+                                                } elseif ($t->ai_status === 'processing') {
+                                                    $aiBadge = ['class' => 'bg-purple-50 text-purple-600 border-purple-200', 'icon' => 'loader-2', 'label' => 'OCR...', 'pulse' => true, 'title' => 'Sedang memproses...'];
+                                                } elseif ($t->ai_status === 'completed') {
+                                                    $aiBadge = ['class' => 'bg-green-50 text-green-600 border-green-200', 'icon' => 'check-circle', 'label' => 'AI ✓', 'pulse' => false, 'title' => 'Selesai • Confidence: '.($t->confidence ?? 0).'%'];
+                                                } elseif ($t->ai_status === 'error') {
+                                                    $aiBadge = ['class' => 'bg-red-50 text-red-600 border-red-200', 'icon' => 'alert-circle', 'label' => 'AI ✗', 'pulse' => false, 'title' => 'Gagal • Silakan isi manual'];
+                                                }
+                                            @endphp
                             <span class="ai-status-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold border ml-1 {{ $aiBadge['class'] }} {{ $aiBadge['pulse'] ? 'animate-pulse' : '' }}"
                                 data-upload-id="{{ $t->upload_id }}"
                                 data-transaction-id="{{ $t->id }}"
@@ -630,6 +660,40 @@
 <script>
     const csrfToken = '{{ csrf_token() }}';
     let currentTransactionId = null;
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        // Tentukan warna latar belakang dan text berdasarkan tipe
+        let bgColor = 'bg-blue-600';
+        if (type === 'success') bgColor = 'bg-emerald-600';
+        else if (type === 'error') bgColor = 'bg-red-600';
+
+        const toast = document.createElement('div');
+        toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium transform transition-all duration-300 translate-y-[-20px] opacity-0 ${bgColor}`;
+        toast.innerHTML = message;
+
+        container.appendChild(toast);
+
+        // Animasi masuk
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        });
+        
+        // Render icon lucide di dalam pesan yang baru ditambahkan
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({ root: toast });
+        }
+
+        // Animasi keluar & auto-remove (setelah 4 detik)
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-[-20px]', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
 
     (function () {
         const POLL_INTERVAL = 3000;

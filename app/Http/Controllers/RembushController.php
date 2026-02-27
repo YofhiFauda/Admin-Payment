@@ -255,9 +255,8 @@ class RembushController extends Controller
             ],
         ]);
 
-        DB::beginTransaction();
+                DB::beginTransaction();
         try {
-            // Pindah file dari temp ke permanent
             $permanentPath = str_replace('temp-uploads/', '', $uploadFilePath);
 
             if (Storage::disk('public')->exists($uploadFilePath)) {
@@ -265,12 +264,11 @@ class RembushController extends Controller
                 Storage::disk('public')->put($permanentPath, $fileContent);
                 Storage::disk('public')->delete($uploadFilePath);
 
-                                // 📝 LOG: File Moved to Permanent Storage
                 Log::channel('ocr')->info('📁 [OCR FLOW] FILE MOVED TO PERMANENT', [
-                    'step' => '4_file_move',
+                    'step'      => '4_file_move',
                     'upload_id' => $uploadId,
                     'from_path' => $uploadFilePath,
-                    'to_path' => $permanentPath,
+                    'to_path'   => $permanentPath,
                 ]);
             } else {
                 $permanentPath = $uploadFilePath;
@@ -288,34 +286,33 @@ class RembushController extends Controller
                 'date'           => $request->date ?? now()->format('Y-m-d'),
                 'file_path'      => $permanentPath,
                 'status'         => 'pending',
-                'ai_status' => $permanentPath ? 'queued' : 'skipped',
+                'ai_status'      => $permanentPath ? 'queued' : 'skipped',
                 'upload_id'      => $uploadId,
                 'submitted_by'   => Auth::id(),
             ]);
 
-            // 📝 LOG: Transaction Created
             Log::channel('ocr')->info('🆕 [OCR FLOW] TRANSACTION CREATED', [
-                'step' => '4_transaction_created',
-                'upload_id' => $uploadId,
+                'step'           => '4_transaction_created',
+                'upload_id'      => $uploadId,
                 'transaction_id' => $transaction->id,
                 'invoice_number' => $transaction->invoice_number,
-                'ai_status' => $transaction->ai_status,
-                'amount' => $transaction->amount,
+                'ai_status'      => $transaction->ai_status,
+                'amount'         => $transaction->amount,
             ]);
 
-            // ⑥ Dispatch OCR Job setelah data masuk database
-            $absolutePath = storage_path('app/public/' . $permanentPath);
-            OcrProcessingJob::dispatch($uploadId, $absolutePath, 'normal');
+            // ✅ FIX: Kirim RELATIVE path ke job, bukan absolute path
+            // Job akan convert ke absolute path sendiri dengan storage_path()
+            OcrProcessingJob::dispatch($uploadId, $permanentPath, 'normal');
 
-            // 📝 LOG: OCR Job Dispatched
             Log::channel('ocr')->info('🔄 [OCR FLOW] OCR JOB DISPATCHED', [
-                'step' => '4_job_dispatched',
-                'upload_id' => $uploadId,
+                'step'           => '4_job_dispatched',
+                'upload_id'      => $uploadId,
                 'transaction_id' => $transaction->id,
-                'file_path' => $absolutePath,
-                'priority' => 'normal',
-                'queue' => 'ocr_normal',
+                'relative_path'  => $permanentPath,  // ← relative path di log
+                'priority'       => 'normal',
+                'queue'          => 'ocr_normal',
             ]);
+
 
             // Attach branches
             if ($request->branches && count($request->branches) > 0) {

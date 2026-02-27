@@ -52,11 +52,11 @@
             <div class="flex items-center gap-2 min-w-max border-b border-gray-100">
                 @php
                     $tabs = [
-                        'all'       => ['label' => 'All',      'count' => $stats['count']],
-                        'pending'   => ['label' => 'Pending',  'count' => $stats['pending']],
+                        'all'       => ['label' => 'All',      'count' => $stats['count'] ?? 0],
+                        'pending'   => ['label' => 'Pending',  'count' => $stats['pending'] ?? 0],
                         'approved'  => ['label' => 'Approved', 'count' => $stats['approved'] ?? 0],
-                        'completed' => ['label' => 'Paid',     'count' => $stats['completed']],
-                        'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected']],
+                        'completed' => ['label' => 'Paid',     'count' => $stats['completed'] ?? 0],
+                        'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected'] ?? 0],
                     ];
                     $currentStatus = request('status', 'all');
                 @endphp

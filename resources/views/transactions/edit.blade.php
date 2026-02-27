@@ -79,10 +79,49 @@
                                 class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm" />
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Keterangan</label>
-                            <textarea name="items" id="items" rows="2" placeholder="Deskripsi transaksi..."
-                                class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm resize-none">{{ old('items', $transaction->items) }}</textarea>
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Keterangan / Deskripsi</label>
+                            <textarea name="description" id="description" rows="2" placeholder="Deskripsi transaksi..."
+                                class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm resize-none">{{ old('description', $transaction->description) }}</textarea>
                         </div>
+
+                        {{-- DAFTAR BARANG (Khusus Rembush) --}}
+                        @if($transaction->isRembush())
+                        <div class="sm:col-span-2 pt-4 mt-2 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase tracking-wider">Daftar Barang (Item Nota)</label>
+                                <button type="button" id="add-item-btn" class="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-blue-100 transition-colors uppercase tracking-wider">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Baris
+                                </button>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs md:text-sm whitespace-nowrap" id="items-table">
+                                        <thead class="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 border-b border-slate-100 tracking-wider">
+                                            <tr>
+                                                <th class="p-3 text-center w-10">No</th>
+                                                <th class="p-3 min-w-[150px]">Nama Barang</th>
+                                                <th class="p-3 w-20">Qty</th>
+                                                <th class="p-3 w-24">Satuan</th>
+                                                <th class="p-3 w-32">Harga Satuan</th>
+                                                <th class="p-3 w-32">Total</th>
+                                                <th class="p-3 min-w-[150px]">Deskripsi</th>
+                                                <th class="p-3 text-center w-12"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100" id="items-tbody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="bg-slate-50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Harga Item</span>
+                                    <span class="text-sm md:text-base font-black text-blue-600 tracking-tight" id="display-total-items">Rp 0</span>
+                                </div>
+                            </div>
+                        </div>
+                        @else
+                            {{-- Mencegah error old() items jika bukan rembush --}}
+                            <input type="hidden" name="items" value="[]">
+                        @endif
                     </div>
                 </div>
 
@@ -208,6 +247,155 @@
                 function formatRupiah(num) {
                     return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
                 }
+                
+                function esc(str) {
+                    return String(str ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+                
+                function parseNumber(str) {
+                    return parseInt(String(str ?? '').replace(/[^0-9]/g, '')) || 0;
+                }
+
+                // ─────────────────────────────────────────────
+                // ITEMS LOGIC (Khusus Rembush)
+                // ─────────────────────────────────────────────
+                const isRembush = {{ $transaction->isRembush() ? 'true' : 'false' }};
+                let items = [];
+                @if($transaction->isRembush())
+                    // Jika ada data old(), kita pakai old() (bila error validasi), sebaliknya pakai data model
+                    @php
+                        $rawItems = old('items', $transaction->items);
+                        if(is_string($rawItems)) {
+                            $decodedItems = json_decode($rawItems, true);
+                            if(json_last_error() === JSON_ERROR_NONE) {
+                                $rawItems = $decodedItems;
+                            } else {
+                                $rawItems = [];
+                            }
+                        }
+                    @endphp
+                    let initialItems = @json($rawItems ?? []);
+                    if (Array.isArray(initialItems)) {
+                        items = initialItems.map(i => ({
+                            name:  i.name || i.nama_barang || '',
+                            qty:   parseInt(i.qty) || 1,
+                            unit:  (i.unit || i.satuan || 'pcs').toLowerCase(),
+                            price: parseInt(i.price || i.harga_satuan) || 0,
+                            desc:  i.desc || i.deskripsi_kalimat || '',
+                        }));
+                    }
+                    if (items.length === 0) {
+                        items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
+                    }
+                    
+                    const itemsTbody = document.getElementById('items-tbody');
+                    const addItemBtn = document.getElementById('add-item-btn');
+                    const displayTotalItems = document.getElementById('display-total-items');
+
+                    function renderItems() {
+                        if(!itemsTbody) return;
+                        itemsTbody.innerHTML = '';
+                        let calculateTotal = 0;
+
+                        items.forEach((item, i) => {
+                            const rowTotal = (item.qty || 0) * (item.price || 0);
+                            calculateTotal += rowTotal;
+
+                            const tr = document.createElement('tr');
+                            tr.className = 'text-slate-600 text-xs hover:bg-slate-50 transition-colors';
+                            tr.dataset.idx = i;
+                            tr.innerHTML = `
+                                <td class="p-2 md:p-3 text-center text-slate-400 font-medium">${i + 1}</td>
+                                <td class="p-2 md:p-3">
+                                    <input type="text" name="items[${i}][name]" value="${esc(item.name)}"
+                                        placeholder="Nama item..."
+                                        class="item-field w-full bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
+                                        data-field="name">
+                                </td>
+                                <td class="p-2 md:p-3">
+                                    <input type="number" name="items[${i}][qty]" value="${item.qty}" min="1"
+                                        class="item-field w-full bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
+                                        data-field="qty">
+                                </td>
+                                <td class="p-2 md:p-3">
+                                    <input type="text" name="items[${i}][unit]" value="${esc(item.unit)}"
+                                        class="item-field w-full bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
+                                        data-field="unit">
+                                </td>
+                                <td class="p-2 md:p-3">
+                                    <input type="text" value="${formatRupiah(item.price)}"
+                                        class="item-price-display w-full bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:ring-0 px-2 py-1 outline-none transition-colors">
+                                    <input type="hidden" name="items[${i}][price]" value="${item.price}" class="item-price-hidden">
+                                </td>
+                                <td class="p-2 md:p-3 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
+                                <td class="p-2 md:p-3">
+                                    <input type="text" name="items[${i}][desc]" value="${esc(item.desc)}"
+                                        placeholder="Catatan..."
+                                        class="item-field w-full bg-transparent border-0 border-b border-transparent focus:border-blue-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
+                                        data-field="desc">
+                                </td>
+                                <td class="p-2 md:p-3 text-center">
+                                    <button type="button" class="item-delete text-slate-300 hover:text-red-500 transition-colors">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </td>`;
+                            itemsTbody.appendChild(tr);
+                        });
+
+                        if(displayTotalItems) displayTotalItems.textContent = formatRupiah(calculateTotal);
+                        if(totalInput) {
+                            totalInput.value = calculateTotal;
+                            recalc(); // Update the allocation branches total
+                        }
+
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    }
+
+                    if(itemsTbody) {
+                        itemsTbody.addEventListener('input', function (e) {
+                            const tr = e.target.closest('tr[data-idx]');
+                            if (!tr) return;
+                            const idx = parseInt(tr.dataset.idx);
+
+                            if (e.target.classList.contains('item-field')) {
+                                items[idx][e.target.dataset.field] = e.target.value;
+                                if (e.target.dataset.field === 'qty') renderItems();
+                            }
+                            if (e.target.classList.contains('item-price-display')) {
+                                const raw = parseNumber(e.target.value);
+                                items[idx].price = raw;
+                                tr.querySelector('.item-price-hidden').value = raw;
+                            }
+                        });
+
+                        itemsTbody.addEventListener('blur', function (e) {
+                            if (e.target.classList.contains('item-price-display')) {
+                                const tr = e.target.closest('tr[data-idx]');
+                                if (!tr) return;
+                                items[parseInt(tr.dataset.idx)].price = parseNumber(e.target.value);
+                                renderItems();
+                            }
+                        }, true);
+
+                        itemsTbody.addEventListener('click', function (e) {
+                            const btn = e.target.closest('.item-delete');
+                            if (!btn) return;
+                            const tr = btn.closest('tr[data-idx]');
+                            if (!tr) return;
+                            items.splice(parseInt(tr.dataset.idx), 1);
+                            renderItems();
+                        });
+                    }
+
+                    if(addItemBtn) {
+                        addItemBtn.addEventListener('click', () => {
+                            items.push({ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' });
+                            renderItems();
+                        });
+                    }
+                    
+                    renderItems();
+                @endif
 
                 // Mode buttons
                 document.querySelectorAll('.alloc-mode-btn').forEach(btn => {

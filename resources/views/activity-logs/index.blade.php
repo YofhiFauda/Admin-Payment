@@ -1,7 +1,11 @@
 @extends('layouts.app')
 
+@php
+    $hideHeader = true;
+@endphp
+
 @section('content')
-<div class="px-4 py-8 max-w-7xl mx-auto">
+<div class="px-4 py-8 max-w-8xl mx-auto">
     <!-- Header Section -->
     <div class="mb-8">
         <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Log Aktivitas</h1>
