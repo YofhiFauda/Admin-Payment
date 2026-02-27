@@ -133,7 +133,7 @@ class TransactionController extends Controller
             'amount'          => $t->amount,
             'formatted_amount'=> $t->formatted_amount,
             'items'           => $t->items,
-            'date'            => $t->date ? $t->date->format('d M Y') : null,
+            'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
             'status'          => $t->status,
             'status_label'    => $t->status_label,
             'specs'           => $t->specs,
@@ -141,6 +141,8 @@ class TransactionController extends Controller
             'estimated_price' => $t->estimated_price,
             'purchase_reason' => $t->purchase_reason,
             'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason) : null,
+            'ai_status'       => $t->ai_status,
+            'upload_id'       => $t->upload_id,
             'file_path'       => $t->file_path,
             'image_url'       => $t->file_path ? route('transactions.image', $t->id) : null,
             'submitter'       => $t->submitter ? ['name' => $t->submitter->name] : null,
@@ -206,9 +208,9 @@ class TransactionController extends Controller
             ]);
         } else {
             $request->validate([
-                'customer'       => 'required|string|max:255',
+                'customer'       => 'nullable|string|max:255',
                 'category'       => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
-                'amount'         => 'required|numeric|min:1',
+                'amount'         => 'nullable|numeric|min:0',
                 'description'    => 'nullable|string|max:2000',
                 'payment_method' => 'nullable|string|in:' . implode(',', array_keys(Transaction::PAYMENT_METHODS)),
                 'items'          => 'nullable|array',

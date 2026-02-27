@@ -58,8 +58,8 @@
 
                     <div>
                         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Vendor</label>
-                        <input type="text" name="customer" id="customer" required value="{{ old('customer', '') }}"
-                            placeholder="Contoh: Jetis..."
+                        <input type="text" name="customer" id="customer" value="{{ old('customer', '') }}"
+                            placeholder="Opsional (Diisi otomatis oleh sistem nanti)"
                             class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all" />
                     </div>
                     
@@ -174,6 +174,7 @@
                             </div>
                         @error('branches')
                             <p class="mt-2 text-red-500 font-bold text-[10px] md:text-xs">{{ $message }}</p>
+                            <p id="percent-warning" class="mt-2 text-red-500 font-bold text-[10px] md:text-xs hidden"></p>
                         @enderror
                     </div>
                 </div>
@@ -210,8 +211,14 @@
                     </div>
 
                     {{-- Submit Button --}}
-                    <button type="submit" id="submit-btn" disabled
-                        class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-4 md:py-5 rounded-xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none text-xs md:text-sm uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <button type="submit" id="submit-btn"
+                        class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400
+                            disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold
+                            py-4 md:py-5 rounded-xl transition-all
+                            shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none
+                            text-xs md:text-sm uppercase tracking-wider
+                            cursor-pointer disabled:cursor-not-allowed
+                            flex items-center justify-center gap-2">
                         <span id="submit-text">Kirim Pengajuan Rembush</span>
                         <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -221,349 +228,415 @@
                 </div>
             </form>
         </div>
-        
     </div>
 
-    @push('scripts')
-    @if(!empty($aiData) && ($aiData['status'] ?? '') === 'completed')
+{{-- ── 4. GANTI seluruh @push('scripts') dengan ini ─────────────────────── --}}
+@push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // ✅ State
-            let items = [];  // Start empty, will populate from AI
-            let allocMode = 'equal';  // ✅ Fixed typo
-            let activeBranches = [];
-            let totalAmount = 0;
+        {{-- Pass aiData ke JS via window variable (bukan inline @json dalam addEventListener) --}}
+        window._aiData = @json($aiData ?? []);
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
 
-            // ✅ DOM Elements - Fixed all typos
-            const aiData = @json($aiData ?? []);  // ✅ Fixed: $ai Data -> $aiData
-            const itemsTbody = document.getElementById('items-tbody');
-            const addItemBtn = document.getElementById('add-item-btn');
-            const displayTotalItems = document.getElementById('display-total-items');  // ✅ Fixed
-            const formTotalAmount = document.getElementById('form-total-amount');
-            
-            const branchPills = document.querySelectorAll('.branch-pill');  // ✅ Fixed: queryS electorAll
-            const allocationContainer = document.getElementById('allocation-container');
-            const activeBranchesList = document.getElementById('active-branches-list');
-            const modeBtns = document.querySelectorAll('.alloc-mode-btn');
+        // ─────────────────────────────────────────────
+        // STATE
+        // ─────────────────────────────────────────────
+        let items          = [];
+        let currentMethod  = 'equal';
+        let selectedBranches = [];
+        let totalAmount    = 0;
 
-            const finalTotal = document.getElementById('final-total');
-            const summaryModeBadge = document.getElementById('summary-mode-badge');  // ✅ Fixed: summaryMod eBadge
-            const summaryCountBadge = document.getElementById('summary-count-badge');
-            const summaryBranchesList = document.getElementById('summary-branches-list');  // ✅ Fixed: docume nt
-            const submitBtn = document.getElementById('submit-btn');
+        // ─────────────────────────────────────────────
+        // SELECTORS
+        // ─────────────────────────────────────────────
+        const aiData    = window._aiData || {};
+        const aiStatus  = aiData.status ?? '';
 
-            // ✅ UTILITIES - Define fill() function
-            function fill(selector, value) {
-                const el = document.querySelector(selector);
-                if (el && value !== null && value !== undefined) {
-                    el.value = value;
-                }
-            }
+        const itemsTbody            = document.getElementById('items-tbody');
+        const addItemBtn            = document.getElementById('add-item-btn');
+        const displayTotalItems     = document.getElementById('display-total-items');
+        const formTotalAmount       = document.getElementById('form-total-amount');
 
-            const formatRupiah = (num) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num || 0));  // ✅ Fixed: = > -> =>
-            const parseNumber = (str) => parseInt(str.toString().replace(/[^0-9]/g, '')) || 0;
+        const branchPills           = document.querySelectorAll('.branch-pill');
+        const methodBtns            = document.querySelectorAll('.alloc-mode-btn');
+        const allocationContainer   = document.getElementById('allocation-container');
+        const activeBranchesList    = document.getElementById('active-branches-list');
+        const percentWarning        = document.getElementById('percent-warning');
+        const hiddenInputsContainer = document.getElementById('branch-hidden-inputs');
 
-            // ==========================================
-            // 🤖 AI DATA MAPPING - N8N JSON to Form
-            // ==========================================
-            
-            // ✅ Map N8N field names to form field names
-            const aiCustomer = aiData.nama_toko || aiData.customer || '';  // ✅ Support both
-            const aiDate = aiData.tanggal || aiData.date || '';
-            const aiAmount = aiData.total_belanja || aiData.amount || 0;
-            const aiItems = aiData.items || [];
-            const aiConfidence = aiData.confidence || 0;
+        const finalTotal            = document.getElementById('final-total');
+        const summaryModeBadge      = document.getElementById('summary-mode-badge');
+        const summaryCountBadge     = document.getElementById('summary-count-badge');
+        const summaryBranchesList   = document.getElementById('summary-branches-list');
+        const submitBtn             = document.getElementById('submit-btn');
 
-            // ✅ Fill main fields
-            fill('[name="customer"]', aiCustomer);
-            fill('[name="date"]', aiDate);
-            fill('#form-total-amount', aiAmount);
+        // ─────────────────────────────────────────────
+        // HELPERS
+        // ─────────────────────────────────────────────
+        function esc(str) {
+            return String(str ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function parseNumber(str) {
+            return parseInt(String(str ?? '').replace(/[^0-9]/g, '')) || 0;
+        }
+        function formatRupiah(num) {
+            return 'Rp ' + Math.round(num || 0).toLocaleString('id-ID');
+        }
 
-            // ✅ Map AI items to form items structure
-            if (aiItems && aiItems.length > 0) {  // ✅ Fixed: & & -> &&
-                items = aiItems.map((item) => ({
-                    name: item.nama_barang || item.name || '',  // ✅ Support both
-                    qty: parseInt(item.qty) || 1,
-                    unit: (item.satuan || item.unit || 'pcs').toLowerCase(),
-                    price: parseInt(item.harga_satuan || item.price) || 0,
-                    desc: item.deskripsi_kalimat || item.desc || ''
+        // ─────────────────────────────────────────────
+        // AI AUTOFILL
+        // ─────────────────────────────────────────────
+        if (aiStatus === 'completed') {
+            const fillField = (sel, val) => {
+                const node = document.querySelector(sel);
+                if (node && val != null && val !== '') node.value = val;
+            };
+            fillField('[name="customer"]', aiData.nama_toko || aiData.customer || '');
+            fillField('[name="date"]',     aiData.tanggal   || aiData.date     || '');
+            if (Array.isArray(aiData.items) && aiData.items.length > 0) {
+                items = aiData.items.map(i => ({
+                    name:  i.nama_barang || i.name  || '',
+                    qty:   parseInt(i.qty)          || 1,
+                    unit:  (i.satuan || i.unit || 'pcs').toLowerCase(),
+                    price: parseInt(i.harga_satuan  || i.price) || 0,
+                    desc:  i.deskripsi_kalimat || i.desc || '',
                 }));
-            } else {
-                // Default empty item if no AI data
-                items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
             }
+        }
+        if (items.length === 0) {
+            items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
+        }
 
-            // ✅ Show confidence badge
-            const badge = document.getElementById('ai-confidence-badge');
-            if (badge && aiConfidence) {  // ✅ Fixed: ba dge -> badge
-                badge.textContent = `AI ${aiConfidence}% yakin`;
-                badge.style.display = 'inline-flex';
-            }
+        // ─────────────────────────────────────────────
+        // ITEMS — render
+        // ─────────────────────────────────────────────
+        function renderItems() {
+            itemsTbody.innerHTML = '';
+            totalAmount = 0;
 
-            console.log('✅ AI Autofill applied', {
-                customer: aiCustomer,
-                date: aiDate,
-                amount: aiAmount,
-                items: items,
-                confidence: aiConfidence
+            items.forEach((item, i) => {
+                const rowTotal = (item.qty || 0) * (item.price || 0);
+                totalAmount += rowTotal;
+
+                const tr = document.createElement('tr');
+                tr.className = 'text-slate-600 text-xs hover:bg-slate-50/50 transition-colors';
+                tr.dataset.idx = i;
+                tr.innerHTML = `
+                    <td class="p-3 md:p-4 text-center text-slate-400 font-medium">${i + 1}</td>
+                    <td class="p-2 md:p-3">
+                        <input type="text" name="items[${i}][name]" value="${esc(item.name)}"
+                            placeholder="Nama item..."
+                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
+                            data-field="name">
+                    </td>
+                    <td class="p-2 md:p-3">
+                        <input type="number" name="items[${i}][qty]" value="${item.qty}" min="1"
+                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
+                            data-field="qty">
+                    </td>
+                    <td class="p-2 md:p-3">
+                        <input type="text" name="items[${i}][unit]" value="${esc(item.unit)}"
+                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
+                            data-field="unit">
+                    </td>
+                    <td class="p-2 md:p-3">
+                        <input type="text" value="${formatRupiah(item.price)}"
+                            class="item-price-display w-full bg-transparent border-0 border-b border-transparent
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors">
+                        <input type="hidden" name="items[${i}][price]" value="${item.price}" class="item-price-hidden">
+                    </td>
+                    <td class="p-3 md:p-4 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
+                    <td class="p-2 md:p-3">
+                        <input type="text" name="items[${i}][desc]" value="${esc(item.desc)}"
+                            placeholder="Catatan..."
+                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
+                            data-field="desc">
+                    </td>
+                    <td class="p-3 md:p-4 text-center">
+                        <button type="button" class="item-delete text-slate-300 hover:text-red-500 transition-colors">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>`;
+                itemsTbody.appendChild(tr);
             });
 
-            // ==========================================
-            // 🛒 ITEMS MANAGEMENT
-            // ==========================================
+            displayTotalItems.textContent = formatRupiah(totalAmount);
+            formTotalAmount.value         = totalAmount;
+            finalTotal.textContent        = formatRupiah(totalAmount);
 
-            function renderItems() {
-                itemsTbody.innerHTML = '';
-                totalAmount = 0;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            renderDistribution();   // update alokasi saat total berubah
+        }
 
-                if(items.length === 0) {
-                    itemsTbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-xs text-slate-400">Belum ada barang. Klik 'Tambah Baris'.</td></tr>`;  // ✅ Fixed: inn erHTML
-                    return;
-                }
+        // ─────────────────────────────────────────────
+        // ITEMS — event delegation (1x listener, tidak rebind)
+        // ─────────────────────────────────────────────
+        itemsTbody.addEventListener('input', function (e) {
+            const tr = e.target.closest('tr[data-idx]');
+            if (!tr) return;
+            const idx = parseInt(tr.dataset.idx);
 
-                items.forEach((item, index) => {
-                    const rowTotal = item.qty * item.price;
-                    totalAmount += rowTotal;
-
-                    const tr = document.createElement('tr');
-                    tr.className = "text-slate-600 text-xs hover:bg-slate-50/50 transition-colors";  // ✅ Fixed: cl assName
-                    tr.innerHTML = `
-                        <td class="p-3 md:p-4 text-center text-slate-400 font-medium">${index + 1}</td>
-                        <td class="p-2 md:p-3">
-                            <input type="text" name="items[${index}][name]" value="${item.name}" placeholder="Nama item..." class="item-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors" data-idx="${index}" data-field="name">
-                        </td>
-                        <td class="p-2 md:p-3">
-                            <input type="number" name="items[${index}][qty]" value="${item.qty}" min="1" class="item-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors" data-idx="${index}" data-field="qty">
-                        </td>
-                        <td class="p-2 md:p-3">
-                            <input type="text" name="items[${index}][unit]" value="${item.unit}" class="item-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400" data-idx="${index}" data-field="unit">
-                        </td>
-                        <td class="p-2 md:p-3">
-                            <input type="text" value="${formatRupiah(item.price)}" class="item-price-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors" data-idx="${index}">
-                            <input type="hidden" name="items[${index}][price]" value="${item.price}">
-                        </td>
-                        <td class="p-3 md:p-4 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
-                        <td class="p-2 md:p-3">
-                            <input type="text" name="items[${index}][desc]" value="${item.desc}" placeholder="Catatan..." class="item-input w-full bg-transparent border-0 border-b border-transparent focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400" data-idx="${index}" data-field="desc">
-                        </td>
-                        <td class="p-3 md:p-4 text-center">
-                            <button type="button" class="delete-item-btn text-slate-300 hover:text-red-500 transition-colors" data-idx="${index}">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </td>
-                    `;
-                    itemsTbody.appendChild(tr);
-                });
-
-                // ✅ Update UI Texts - Fixed all typos
-                displayTotalItems.textContent = formatRupiah(totalAmount);  // ✅ Fixed: totalAmoun t
-                formTotalAmount.value = totalAmount;
-                finalTotal.textContent = formatRupiah(totalAmount);
-                
-                lucide.createIcons();
-                bindItemEvents();  // ✅ Fixed: bind ItemEvents
-                recalculateAllocations(); 
+            if (e.target.classList.contains('item-field')) {
+                items[idx][e.target.dataset.field] = e.target.value;
+                if (e.target.dataset.field === 'qty') renderItems();
             }
-
-            function bindItemEvents() {
-                document.querySelectorAll('.item-input').forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.idx;
-                        const field = e.target.dataset.field;
-                        items[idx][field] = e.target.value;
-                        if(field === 'qty') renderItems(); 
-                    });
-                });
-
-                document.querySelectorAll('.item-price-input').forEach(input => {
-                    input.addEventListener('blur', (e) => {
-                        const idx = e.target.dataset.idx;
-                        items[idx].price = parseNumber(e.target.value);
-                        renderItems();
-                    }); 
-                });
-
-                document.querySelectorAll('.delete-item-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const idx = e.currentTarget.dataset.idx;
-                        items.splice(idx, 1);
-                        renderItems();
-                    });
-                });
+            if (e.target.classList.contains('item-price-display')) {
+                const raw = parseNumber(e.target.value);
+                items[idx].price = raw;
+                tr.querySelector('.item-price-hidden').value = raw;
             }
+        });
 
-            addItemBtn.addEventListener('click', () => {
-                items.push({ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' });
+        itemsTbody.addEventListener('blur', function (e) {
+            if (e.target.classList.contains('item-price-display')) {
+                const tr = e.target.closest('tr[data-idx]');
+                if (!tr) return;
+                items[parseInt(tr.dataset.idx)].price = parseNumber(e.target.value);
                 renderItems();
-            });
-
-            // ==========================================
-            // 🏢 BRANCH ALLOCATION
-            // ==========================================
-            
-            branchPills.forEach(pill => {
-                pill.addEventListener('click', function() {
-                    const id = this.dataset.branchId;
-                    const name = this.dataset.branchName;
-                    
-                    const isSelected = this.classList.contains('bg-emerald-500');
-                    if (isSelected) {
-                        this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');  // ✅ Fixed: text-w hite
-                        this.classList.add('border-slate-200', 'text-slate-500');
-                        activeBranches = activeBranches.filter(b => b.id !== id);
-                    } else {
-                        this.classList.remove('border-slate-200', 'text-slate-500');
-                        this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');  // ✅ Fixed:  text-white
-                        activeBranches.push({ id, name, value: 0, percent: 0 });
-                    }
-                    
-                    allocationContainer.style.display = activeBranches.length > 0 ? 'block' : 'none';  // ✅ Fixed: allocationContai ner
-                    recalculateAllocations();
-                });
-            });
-
-            modeBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    allocMode = this.dataset.mode;
-                    modeBtns.forEach(b => {
-                        b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800');
-                        b.classList.add('text-slate-400');
-                    });
-                    this.classList.add('bg-white', 'shadow-sm', 'text-slate-800');  // ✅ Fixed: th is
-                    this.classList.remove('text-slate-400');
-                    summaryModeBadge.textContent = 'Metode: ' + (allocMode === 'equal' ? 'Bagi Rata' : allocMode === 'percent' ? 'Persentase' : 'Manual');  // ✅ Fixed: a llocMode
-                    recalculateAllocations();
-                });
-            });
-
-            function recalculateAllocations() {  // ✅ Fixed: rec alculateAllocations
-                const count = activeBranches.length;
-                summaryCountBadge.textContent = `${count} Cabang`;
-
-                if (count === 0) {
-                    renderAllocationsUI();
-                    return;
-                }
-
-                activeBranches.forEach((branch, idx) => {
-                    if (allocMode === 'equal') {
-                        branch.percent = parseFloat((100 / count).toFixed(2));
-                        branch.value = Math.round((totalAmount * branch.percent) / 100);
-                    } else if (allocMode === 'percent') {
-                        branch.value = Math.round((totalAmount * branch.percent) / 100);
-                    } else if (allocMode === 'manual') {
-                        branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
-                    }
-                });
-
-                renderAllocationsUI();
             }
+        }, true);
 
-            function renderAllocationsUI() {  // ✅ Fixed: renderAlloc ationsUI
-                activeBranchesList.innerHTML = '';
-                summaryBranchesList.innerHTML = '';
-                
-                let isAllocValid = true;
-                let totalPct = 0;  // ✅ Fixed: totalP ct
-
-                if (activeBranches.length === 0) {
-                    summaryBranchesList.innerHTML = `<div class="text-xs text-slate-500 italic">Pilih cabang terlebih dahulu...</div>`;
-                    submitBtn.disabled = true;
-                    return;
-                }
-
-                activeBranches.forEach((branch, idx) => {
-                    totalPct += branch.percent;
-
-                    const row = document.createElement('div');
-                    row.className = "flex justify-between items-center text-xs md:text-sm bg-white p-3 rounded-xl border border-slate-100";
-                    
-                    let inputHtml = '';
-                    if (allocMode === 'equal') {
-                        inputHtml = `<span class="text-emerald-500 font-bold">${formatRupiah(branch.value)}</span>`;
-                    } else if (allocMode === 'percent') {
-                        inputHtml = `
-                            <div class="flex items-center gap-2">
-                                <input type="number" step="0.1" value="${branch.percent}" class="alloc-input-pct w-16 text-right border border-slate-200 rounded p-1 text-xs focus:ring-1 outline-none" data-idx="${idx}">
-                                <span class="text-slate-400">%</span>
-                                <span class="text-emerald-500 font-bold ml-2 w-24 text-right">${formatRupiah(branch.value)}</span>
-                            </div>
-                        `;
-                    } else if (allocMode === 'manual') {
-                        inputHtml = `
-                            <div class="flex items-center gap-2">
-                                <span class="text-slate-400 text-[10px]">Rp</span>
-                                <input type="number" value="${branch.value}" class="alloc-input-val w-28 text-right border border-slate-200 rounded p-1 text-xs focus:ring-1 outline-none" data-idx="${idx}">
-                            </div>
-                        `;
-                    }
-
-                    row.innerHTML = `
-                        <span class="text-slate-600 font-medium flex items-center gap-2">
-                            <i data-lucide="building-2" class="w-3.5 h-3.5 text-slate-400"></i>
-                            ${branch.name}
-                        </span>
-                        <div>
-                            ${inputHtml}
-                            <input type="hidden" name="branches[${idx}][branch_id]" value="${branch.id}">
-                            <input type="hidden" name="branches[${idx}][allocation_amount]" value="${branch.value}">
-                            <input type="hidden" name="branches[${idx}][allocation_percent]" value="${branch.percent}">
-                        </div>
-                    `;
-                    activeBranchesList.appendChild(row);
-
-                    const sumRow = document.createElement('div');
-                    sumRow.className = "flex justify-between items-center text-xs";
-                    sumRow.innerHTML = `
-                        <span class="text-slate-300">${branch.name}</span>
-                        <div class="text-right">
-                            <div class="text-emerald-400 font-bold">${formatRupiah(branch.value)}</div>
-                            <div class="text-[9px] text-slate-500">${branch.percent.toFixed(1)}%</div>
-                        </div>
-                    `;
-                    summaryBranchesList.appendChild(sumRow);
-                });
-
-                if (Math.abs(totalPct - 100) > 1 || totalAmount <= 0) isAllocValid = false;
-                submitBtn.disabled = !isAllocValid;
-
-                lucide.createIcons();
-                bindAllocInputs();
-            }
-
-            function bindAllocInputs() {  // ✅ Fixed: bindAllocI nputs
-                document.querySelectorAll('.alloc-input-pct').forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.idx;
-                        activeBranches[idx].percent = parseFloat(e.target.value) || 0;
-                        activeBranches[idx].value = Math.round((totalAmount * activeBranches[idx].percent) / 100);
-                        renderAllocationsUI(); 
-                    });
-                });
-                document.querySelectorAll('.alloc-input-val').forEach(input => {  // ✅ Fixed: querySe lectorAll
-                    input.addEventListener('input', (e) => {
-                        const idx = e.target.dataset.idx;
-                        activeBranches[idx].value = parseInt(e.target.value) || 0;
-                        activeBranches[idx].percent = totalAmount > 0 ? parseFloat(((activeBranches[idx].value / totalAmount) * 100).toFixed(2)) : 0;  // ✅ Fixed: per cent
-                        renderAllocationsUI();
-                    });
-                });
-            }
-
-            document.getElementById('transaction-form').addEventListener('submit', function (e) {
-                if (submitBtn.disabled) {
-                    e.preventDefault();
-                    return;  // ✅ Fixed: re turn
-                }
-                submitBtn.disabled = true;
-                document.getElementById('submit-text').textContent = 'Memproses...';
-                document.getElementById('submit-spinner').classList.remove('hidden');  // ✅ Fixed: sub mit-spinner
-            });
-
-            // ✅ START - Render items with AI data
+        itemsTbody.addEventListener('click', function (e) {
+            const btn = e.target.closest('.item-delete');
+            if (!btn) return;
+            const tr = btn.closest('tr[data-idx]');
+            if (!tr) return;
+            items.splice(parseInt(tr.dataset.idx), 1);
             renderItems();
         });
+
+        addItemBtn.addEventListener('click', () => {
+            items.push({ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' });
+            renderItems();
+        });
+
+        // ─────────────────────────────────────────────
+        // BRANCH PILLS
+        // ─────────────────────────────────────────────
+        branchPills.forEach(pill => {
+            pill.addEventListener('click', function () {
+                const id   = this.dataset.branchId;
+                const name = this.dataset.branchName;
+                const idx  = selectedBranches.findIndex(b => b.id === id);
+
+                if (idx > -1) {
+                    selectedBranches.splice(idx, 1);
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
+                    this.classList.add('border-slate-200', 'text-slate-500');
+                } else {
+                    selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    this.classList.remove('border-slate-200', 'text-slate-500');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                }
+
+                allocationContainer.style.display = selectedBranches.length > 0 ? 'block' : 'none';
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────────────────────
+        // METHOD BUTTONS
+        // ─────────────────────────────────────────────
+        methodBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                currentMethod = this.dataset.mode;
+                methodBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800');
+                    b.classList.add('text-slate-400');
+                });
+                this.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
+                this.classList.remove('text-slate-400');
+                const labels = { equal: 'Bagi Rata', percent: 'Persentase', manual: 'Manual' };
+                summaryModeBadge.textContent = 'Metode: ' + (labels[currentMethod] || '');
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────────────────────
+        // DISTRIBUTION INPUTS — event delegation
+        // ─────────────────────────────────────────────
+        activeBranchesList.addEventListener('input', function (e) {
+            if (e.target.classList.contains('dist-pct')) {
+                const idx = parseInt(e.target.dataset.idx);
+                selectedBranches[idx].percent = parseFloat(e.target.value) || 0;
+                selectedBranches[idx].value   = totalAmount > 0
+                    ? Math.round((totalAmount * selectedBranches[idx].percent) / 100) : 0;
+                updateHiddenInputs();
+                updateSummaryList();
+                validateAndToggleSubmit();
+            }
+            if (e.target.classList.contains('dist-manual')) {
+                const idx = parseInt(e.target.dataset.idx);
+                const raw = parseNumber(e.target.value);
+                e.target.value = raw > 0 ? raw.toLocaleString('id-ID') : '';
+                selectedBranches[idx].value   = raw;
+                selectedBranches[idx].percent = totalAmount > 0
+                    ? parseFloat(((raw / totalAmount) * 100).toFixed(2)) : 0;
+                updateHiddenInputs();
+                updateSummaryList();
+                validateAndToggleSubmit();
+            }
+        });
+
+        // ─────────────────────────────────────────────
+        // RENDER DISTRIBUTION (rows)
+        // ─────────────────────────────────────────────
+        function renderDistribution() {
+            activeBranchesList.innerHTML  = '';
+            summaryBranchesList.innerHTML = '';
+            if (hiddenInputsContainer) hiddenInputsContainer.innerHTML = '';
+
+            summaryCountBadge.textContent = `${selectedBranches.length} Cabang`;
+
+            if (selectedBranches.length === 0) {
+                summaryBranchesList.innerHTML = `<div class="text-xs text-slate-500 italic">Pilih cabang terlebih dahulu...</div>`;
+                validateAndToggleSubmit();
+                return;
+            }
+
+            selectedBranches.forEach((branch, idx) => {
+                // Hitung value
+                if (currentMethod === 'equal') {
+                    branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
+                    branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
+                } else if (currentMethod === 'percent') {
+                    branch.value = totalAmount > 0
+                        ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+                } else if (currentMethod === 'manual') {
+                    branch.percent = totalAmount > 0
+                        ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
+                }
+
+                // Input HTML
+                let inputHtml = '';
+                if (currentMethod === 'equal') {
+                    inputHtml = `<span class="text-emerald-500 font-bold text-sm">${formatRupiah(branch.value)}</span>`;
+                } else if (currentMethod === 'percent') {
+                    inputHtml = `
+                        <div class="flex items-center gap-2">
+                            <input type="number" step="0.1" min="0" max="100"
+                                value="${branch.percent || 0}"
+                                class="dist-pct w-16 text-right text-sm border border-slate-200 rounded-lg
+                                    px-2 py-1.5 focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none"
+                                data-idx="${idx}">
+                            <span class="text-xs font-bold text-slate-400">%</span>
+                            <span class="text-emerald-500 font-bold text-sm w-24 text-right">${formatRupiah(branch.value)}</span>
+                        </div>`;
+                } else if (currentMethod === 'manual') {
+                    const displayVal = branch.value > 0 ? branch.value.toLocaleString('id-ID') : '';
+                    inputHtml = `
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-slate-400 font-bold">Rp</span>
+                            <input type="text" value="${displayVal}" placeholder="0"
+                                class="dist-manual w-28 text-right text-sm border border-slate-200 rounded-lg
+                                    px-2 py-1.5 focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none"
+                                data-idx="${idx}">
+                        </div>`;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center text-xs md:text-sm bg-white p-3 rounded-xl border border-slate-100';
+                row.innerHTML = `
+                    <span class="text-slate-600 font-medium flex items-center gap-2">
+                        <i data-lucide="building-2" class="w-3.5 h-3.5 text-slate-400"></i>
+                        ${esc(branch.name)}
+                    </span>
+                    <div>${inputHtml}</div>`;
+                activeBranchesList.appendChild(row);
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateHiddenInputs();
+            updateSummaryList();
+            validateAndToggleSubmit();
+        }
+
+        // ─────────────────────────────────────────────
+        // UPDATE hidden inputs
+        // ─────────────────────────────────────────────
+        function updateHiddenInputs() {
+            if (!hiddenInputsContainer) return;
+            hiddenInputsContainer.innerHTML = '';
+            selectedBranches.forEach((branch, idx) => {
+                hiddenInputsContainer.insertAdjacentHTML('beforeend', `
+                    <input type="hidden" name="branches[${idx}][branch_id]"          value="${branch.id}">
+                    <input type="hidden" name="branches[${idx}][allocation_amount]"  value="${Math.round(branch.value || 0)}">
+                    <input type="hidden" name="branches[${idx}][allocation_percent]" value="${branch.percent || 0}">
+                `);
+            });
+        }
+
+        // ─────────────────────────────────────────────
+        // UPDATE summary list (tanpa re-render rows)
+        // ─────────────────────────────────────────────
+        function updateSummaryList() {
+            summaryBranchesList.innerHTML = '';
+            selectedBranches.forEach(branch => {
+                const pct = totalAmount > 0
+                    ? ((branch.value / totalAmount) * 100).toFixed(1)
+                    : (branch.percent || 0).toFixed(1);
+                summaryBranchesList.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-300">${esc(branch.name)}</span>
+                        <div class="text-right">
+                            <div class="text-emerald-400 font-bold">${formatRupiah(branch.value)}</div>
+                            <div class="text-[9px] text-slate-500">${pct}%</div>
+                        </div>
+                    </div>`);
+            });
+        }
+
+        // ─────────────────────────────────────────────
+        // VALIDATE & TOGGLE SUBMIT BUTTON
+        // ─────────────────────────────────────────────
+        function validateAndToggleSubmit() {
+            let isValid = true;
+
+            if (selectedBranches.length > 0 && currentMethod === 'percent') {
+                const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
+                if (Math.abs(totalPct - 100) > 0.5) {
+                    isValid = false;
+                    if (percentWarning) {
+                        percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
+                        percentWarning.classList.remove('hidden');
+                    }
+                } else {
+                    if (percentWarning) percentWarning.classList.add('hidden');
+                }
+            } else {
+                if (percentWarning) percentWarning.classList.add('hidden');
+            }
+
+            submitBtn.disabled = !isValid;
+            if (isValid) {
+                submitBtn.classList.remove('bg-slate-700', 'text-slate-500');
+                submitBtn.classList.add('bg-emerald-500');
+            } else {
+                submitBtn.classList.add('bg-slate-700', 'text-slate-500');
+                submitBtn.classList.remove('bg-emerald-500');
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // SUBMIT
+        // ─────────────────────────────────────────────
+        document.getElementById('transaction-form').addEventListener('submit', function (e) {
+            if (submitBtn.disabled) { e.preventDefault(); return; }
+            submitBtn.disabled = true;
+            document.getElementById('submit-text').textContent = 'Memproses...';
+            document.getElementById('submit-spinner').classList.remove('hidden');
+        });
+
+        // ─────────────────────────────────────────────
+        // INIT
+        // ─────────────────────────────────────────────
+        renderItems();
+    });
     </script>
-    @endif
-    @endpush
+@endpush
 @endsection

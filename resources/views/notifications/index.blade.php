@@ -146,29 +146,24 @@
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $statusBadge[$t->status] ?? 'bg-gray-100 text-gray-600 border-gray-200' }}">
                                         {{ $statusLabel[$t->status] ?? ucfirst($t->status) }}
                                     </span>
-                                    
-                                    {{-- ✅ TAMBAHKAN AI BADGE DI SINI (Setelah status badge, sebelum inline actions) --}}
-                                    {{-- ✅ AI STATUS BADGE - TABLE VIEW --}}
-                                    @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
-                                        @php
-                                            $aiBadge = match($t->ai_status) {
-                                                'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false, 'title' => 'Menunggu diproses'],
-                                                'pending'    => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Pending', false, 'Menunggu upload selesai'],
-                                                'processing' => ['bg-purple-50 text-purple-600 border-purple-200', 'loader-2', 'OCR...', true, 'Sedang memproses...'],
-                                                'completed'  => ['bg-green-50 text-green-600 border-green-200', 'check-circle', 'AI ✓', false, 'Selesai • Confidence: '.$t->confidence.'%'],
-                                                'error'      => ['bg-red-50 text-red-600 border-red-200', 'alert-circle', 'AI ✗', false, 'Gagal • Silakan isi manual'],
-                                                default      => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Unknown', false, 'Status tidak diketahui'],
-                                            };
-                                        @endphp
-                                        <span class="ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-help transition-all hover:scale-105 {{ $aiBadge['class'] }} {{ $aiBadge['pulse'] ? 'animate-pulse' : '' }}"
+
+                                    @if($t->type === 'rembush' && in_array($t->ai_status, ['processing', 'pending', 'completed', 'error']))
+                                        <span class="ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border
+                                            {{ $t->ai_status === 'processing' ? 'bg-purple-50 text-purple-600 border-purple-100 animate-pulse' : '' }}
+                                            {{ $t->ai_status === 'completed' ? 'bg-green-50 text-green-600 border-green-100' : '' }}
+                                            {{ $t->ai_status === 'error' ? 'bg-red-50 text-red-600 border-red-100' : '' }}
+                                            {{ $t->ai_status === 'pending' ? 'bg-gray-50 text-gray-600 border-gray-100' : '' }}"
                                             data-upload-id="{{ $t->upload_id }}"
                                             data-transaction-id="{{ $t->id }}"
-                                            data-status="{{ $t->ai_status }}"
-                                            title="{{ $aiBadge['title'] }}">
-                                            <i data-lucide="{{ $aiBadge['icon'] }}" class="w-2.5 h-2.5 {{ $aiBadge['pulse'] ? 'animate-spin' : '' }}"></i>
-                                            {{ $aiBadge['label'] }}
-                                            @if($t->ai_status === 'completed' && $t->confidence)
-                                                <span class="ml-0.5 opacity-70">({{ $t->confidence }}%)</span>
+                                            data-status="{{ $t->ai_status }}">
+                                            @if($t->ai_status === 'processing')
+                                                <i data-lucide="loader-2" class="w-2.5 h-2.5 animate-spin"></i> OCR...
+                                            @elseif($t->ai_status === 'completed')
+                                                <i data-lucide="check-circle" class="w-2.5 h-2.5"></i> AI ✓
+                                            @elseif($t->ai_status === 'error')
+                                                <i data-lucide="alert-circle" class="w-2.5 h-2.5"></i> AI ✗
+                                            @else
+                                                <i data-lucide="clock" class="w-2.5 h-2.5"></i> Pending
                                             @endif
                                         </span>
                                     @endif
@@ -219,7 +214,7 @@
                             </td>
 
                             {{-- 6. Nominal --}}
-                            <td class="px-5 py-4 font-bold text-gray-900">Rp 
+                            <td class="px-5 py-4 font-bold text-gray-900">Rp
                                 {{ number_format($t->amount ?? 0, 0, ',', '.') }}
                             </td>
 
@@ -294,30 +289,31 @@
                                 <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{{ $t->invoice_number }}</p>
                             </div>
                         </div>
-                        <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border {{ $mStatusBadge[$t->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ $mStatusLabel[$t->status] ?? ucfirst($t->status) }}
-                        </span>
-                        {{-- ✅ AI STATUS BADGE - MOBILE VIEW --}}
-                        @if($t->type === 'rembush' && in_array($t->ai_status, ['queued', 'pending', 'processing', 'completed', 'error']))
-                            @php
-                                $aiBadge = match($t->ai_status) {
-                                    'queued'     => ['class' => 'bg-gray-50 text-gray-600 border-gray-200', 'icon' => 'clock', 'label' => 'Antrian', 'pulse' => false],
-                                    'pending'    => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', 'Pending', false],
-                                    'processing' => ['bg-purple-50 text-purple-600 border-purple-200', 'loader-2', 'OCR...', true],
-                                    'completed'  => ['bg-green-50 text-green-600 border-green-200', 'check-circle', 'AI ✓', false],
-                                    'error'      => ['bg-red-50 text-red-600 border-red-200', 'alert-circle', 'AI ✗', false],
-                                    default      => ['bg-gray-50 text-gray-600 border-gray-200', 'clock', '?', false],
-                                };
-                            @endphp
-                            <span class="ai-status-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold border ml-1 {{ $aiBadge['class'] }} {{ $aiBadge['pulse'] ? 'animate-pulse' : '' }}"
-                                data-upload-id="{{ $t->upload_id }}"
-                                data-transaction-id="{{ $t->id }}"
-                                data-status="{{ $t->ai_status }}"
-                                title="{{ $aiBadge['label'] }}">
-                                <i data-lucide="{{ $aiBadge['icon'] }}" class="w-2 h-2 {{ $aiBadge['pulse'] ? 'animate-spin' : '' }}"></i>
+                        <div class="flex items-center gap-1">
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border {{ $mStatusBadge[$t->status] ?? 'bg-gray-100 text-gray-600' }}">
+                                {{ $mStatusLabel[$t->status] ?? ucfirst($t->status) }}
                             </span>
-                        @endif
-                        {{-- ✅ AKHIR AI BADGE --}}
+                            @if($t->type === 'rembush' && in_array($t->ai_status, ['processing', 'pending', 'completed', 'error']))
+                                <span class="ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border ml-1
+                                    {{ $t->ai_status === 'processing' ? 'bg-purple-50 text-purple-600 border-purple-100 animate-pulse' : '' }}
+                                    {{ $t->ai_status === 'completed' ? 'bg-green-50 text-green-600 border-green-100' : '' }}
+                                    {{ $t->ai_status === 'error' ? 'bg-red-50 text-red-600 border-red-100' : '' }}
+                                    {{ $t->ai_status === 'pending' ? 'bg-gray-50 text-gray-600 border-gray-100' : '' }}"
+                                    data-upload-id="{{ $t->upload_id }}"
+                                    data-transaction-id="{{ $t->id }}"
+                                    data-status="{{ $t->ai_status }}">
+                                    @if($t->ai_status === 'processing')
+                                        <i data-lucide="loader-2" class="w-2 h-2 animate-spin"></i>
+                                    @elseif($t->ai_status === 'completed')
+                                        <i data-lucide="check-circle" class="w-2 h-2"></i>
+                                    @elseif($t->ai_status === 'error')
+                                        <i data-lucide="alert-circle" class="w-2 h-2"></i>
+                                    @else
+                                        <i data-lucide="clock" class="w-2 h-2"></i>
+                                    @endif
+                                </span>
+                            @endif
+                        </div>
                     </div>
 
                     @if(Auth::user()->canManageStatus())
@@ -590,471 +586,387 @@
             </div>
         </div>
     </div>
-    {{-- Toast Container (Sebelum @endsection) --}}
-<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-@endsection
+    {{-- Toast Container --}}
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-@section('styles')
-    <style>
-        /* AI Badge Transitions */
-        .ai-status-badge {
-            transition: all 0.2s ease-in-out;
-        }
-
-        .ai-status-badge:hover {
-            transform: scale(1.05);
-            z-index: 10;
-        }
-
-        /* Pulse animation yang lebih halus */
-        @keyframes subtle-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        .ai-status-badge.animate-pulse {
-            animation: subtle-pulse 2s ease-in-out infinite;
-        }
-
-        /* Toast dengan border kiri berwarna */
-        #toast-container .flex.items-center.gap-3 {
-            border-left: 4px solid transparent;
-        }
-        #toast-container .bg-emerald-600 { border-left-color: #34d399; }
-        #toast-container .bg-red-600 { border-left-color: #f87171; }
-        #toast-container .bg-blue-600 { border-left-color: #60a5fa; }
-    </style>
 @endsection
 
 @push('scripts')
 <script>
-    const csrfToken = '{{ csrf_token() }}';
-    let currentTransactionId = null;
+// ─────────────────────────────────────────────────────────────
+// GLOBAL STATE
+// ─────────────────────────────────────────────────────────────
+const csrfToken = '{{ csrf_token() }}';
+let currentTransactionId = null;
 
-    (function () {
-        const POLL_INTERVAL = 3000;
-        const MAX_POLL_TIME = 10 * 60 * 1000;
-        const startTime = Date.now();
-        
-        const BADGE_CONFIG = {
-            queued:     { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Antrian', pulse: false },
-            pending:    { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Pending', pulse: false },
-            processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR...', pulse: true },
-            completed:  { color: 'bg-green-50 text-green-600 border-green-200', icon: 'check-circle', label: 'AI ✓', pulse: false },
-            error:      { color: 'bg-red-50 text-red-600 border-red-200', icon: 'alert-circle', label: 'AI ✗', pulse: false },
-        };
+// ─────────────────────────────────────────────────────────────
+// TOAST HELPER (global agar bisa dipakai dari mana saja)
+// ─────────────────────────────────────────────────────────────
+function showToast(message, type = 'success') {
+    const colors = {
+        success: 'bg-emerald-600',
+        error:   'bg-red-600',
+        info:    'bg-blue-600',
+    };
+    const container = document.getElementById('toast-container');
+    const toast     = document.createElement('div');
 
-        function getPendingBadges() {
-            return [...document.querySelectorAll('.ai-status-badge[data-upload-id]')]
-                .filter(el => ['queued', 'pending', 'processing'].includes(el.dataset.status));
-        }
+    toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium
+        ${colors[type] ?? colors.info} transform translate-x-0 transition-all duration-300`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
 
-        function updateBadge(el, newStatus, confidence = null) {
-            const cfg = BADGE_CONFIG[newStatus] ?? BADGE_CONFIG.processing;
-            
-            // Update classes
-            el.className = `ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all duration-300 ${cfg.color}`;
-            if (cfg.pulse) el.classList.add('animate-pulse');
-            el.dataset.status = newStatus;
-            
-            // Update content with confidence if available
-            const confidenceText = confidence ? ` <span class="ml-0.5 opacity-70">(${confidence}%)</span>` : '';
-            el.innerHTML = `
-                <i data-lucide="${cfg.icon}" class="w-2.5 h-2.5 ${cfg.pulse ? 'animate-spin' : ''}"></i>
-                ${cfg.label}${confidenceText}
-            `;
-            
-            // Update tooltip
-            const titles = {
-                completed: `Selesai • Confidence: ${confidence}%`,
-                error: 'Gagal • Silakan isi manual',
-                processing: 'Sedang memproses...',
-                pending: 'Menunggu upload',
-                queued: 'Dalam antrian',
-            };
-            el.title = titles[newStatus] || '';
-            
-            // Re-init Lucide
-            if (typeof lucide !== 'undefined') lucide.createIcons({ root: el });
-            
-            // Add visual "pop" animation on completion
-            if (newStatus === 'completed') {
-                el.style.transform = 'scale(1.1)';
-                setTimeout(() => el.style.transform = '', 200);
-            }
-        }
+    setTimeout(() => {
+        toast.style.opacity   = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
 
-        async function pollBadge(el) {
-            const uploadId = el.dataset.uploadId;
-            const txId = el.dataset.transactionId;
-            if (!uploadId) return;
-            
-            try {
-                const res = await fetch(`/api/ai/auto-fill/status/${uploadId}`);
-                const data = await res.json();
-                
-                const oldStatus = el.dataset.status;
-                const newStatus = data.status;
-                
-                // ✅ NOTIFIKASI HANYA SAAT STATUS BERUBAH KE COMPLETED/ERROR
-                if (newStatus === 'completed' && oldStatus !== 'completed') {
-                    updateBadge(el, 'completed', data.data?.confidence);
-                    
-                    // Toast dengan detail
-                    showToast(`
-                        <div class="flex items-start gap-2">
-                            <i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
-                            <div>
-                                <strong>AI Selesai!</strong><br>
-                                <span class="text-xs opacity-90">Transaksi #${txId} telah diperbarui.<br>
-                                Confidence: ${data.data?.confidence ?? '-'}%</span>
-                            </div>
-                        </div>
-                    `, 'success');
-                    
-                    // Request browser notification jika diizinkan
-                    if (Notification.permission === 'granted') {
-                        new Notification('✅ AI Auto Fill Selesai', {
-                            body: `Transaksi #${txId} berhasil diproses`,
-                            icon: '/favicon.ico',
-                        });
-                    }
-                    
-                    // Auto refresh halaman setelah 2.5 detik
-                    setTimeout(() => window.location.reload(), 2500);
-                    
-                } else if (newStatus === 'error' && oldStatus !== 'error') {
-                    updateBadge(el, 'error');
-                    
-                    showToast(`
-                        <div class="flex items-start gap-2">
-                            <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
-                            <div>
-                                <strong>AI Gagal</strong><br>
-                                <span class="text-xs opacity-90">${data.message ?? 'Silakan isi data secara manual'}</span>
-                            </div>
-                        </div>
-                    `, 'error');
-                    
-                } else if (['queued', 'pending', 'processing'].includes(newStatus)) {
-                    // Update badge tanpa notifikasi untuk status ongoing
-                    updateBadge(el, newStatus);
-                }
-                
-            } catch (e) {
-                console.warn('Poll error:', e);
-                // Jangan tampilkan error toast untuk network issue agar tidak spam
-            }
-        }
+// ─────────────────────────────────────────────────────────────
+// AI STATUS POLLING (IIFE — tidak perlu diakses dari luar)
+// ─────────────────────────────────────────────────────────────
+(function () {
+    const POLL_INTERVAL = 3000;
+    const MAX_POLL_TIME = 10 * 60 * 1000; // 10 menit
+    const startTime     = Date.now();
 
-        function startPolling() {
-            const pending = getPendingBadges();
-            if (pending.length === 0) return;
-            if (Date.now() - startTime > MAX_POLL_TIME) {
-                console.warn('⏱️ Max poll time reached, stopping.');
-                // Tandai badge yang masih pending sebagai error setelah timeout
-                pending.forEach(el => {
-                    if (el.dataset.status !== 'completed') {
-                        updateBadge(el, 'error');
-                        showToast('⏰ Timeout: Proses AI terlalu lama. Silakan refresh halaman.', 'info');
-                    }
-                });
-                return;
-            }
-            pending.forEach(el => pollBadge(el));
-            setTimeout(startPolling, POLL_INTERVAL);
-        }
+    const BADGE_CONFIG = {
+        completed: { color: 'bg-green-50 text-green-600 border-green-100',   icon: 'check-circle', label: 'AI ✓',  pulse: false },
+        error:     { color: 'bg-red-50 text-red-600 border-red-100',         icon: 'alert-circle', label: 'AI ✗',  pulse: false },
+        processing:{ color: 'bg-purple-50 text-purple-600 border-purple-100',icon: 'loader-2',     label: 'OCR...', pulse: true  },
+    };
 
-        // Init Lucide & start polling on DOM ready
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            
-            // Request permission untuk browser notification (non-blocking)
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
-            }
-            
-            // Show session toast
-            @if(session('success'))
-                showToast(`🚀 {{ session('success') }}`, 'info');
-            @endif
-            
-            startPolling();
-        });
-    })();
-
-    // ═══════════════════════════════════════════
-    // VIEW DETAIL MODAL
-    // ═══════════════════════════════════════════
-    function openViewModal(id) {
-        currentTransactionId = id;
-
-        const modal      = document.getElementById('view-modal');
-        const modalBox   = document.getElementById('view-modal-content');
-        const loading    = document.getElementById('view-loading');
-        const body       = document.getElementById('view-body');
-
-        // Reset state
-        loading.innerHTML = `
-            <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-            <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>`;
-        loading.classList.remove('hidden');
-        body.classList.add('hidden');
-
-        // Show modal
-        modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            modal.classList.remove('opacity-0');
-            modalBox.classList.remove('scale-95');
-            modalBox.classList.add('scale-100');
-        });
-
-        fetch(`/transactions/${id}/detail-json`)
-            .then(r => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then(d => {
-                renderViewModal(d);
-                loading.classList.add('hidden');
-                body.classList.remove('hidden');
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            })
-            .catch(err => {
-                console.error(err);
-                loading.innerHTML = '<p class="text-red-500 text-sm font-bold">Gagal memuat data. Coba lagi.</p>';
-            });
+    function getPendingBadges() {
+        return [...document.querySelectorAll('.ai-status-badge[data-upload-id]')]
+            .filter(el => ['queued', 'processing'].includes(el.dataset.status));
     }
 
-    function closeViewModal() {
-        const modal    = document.getElementById('view-modal');
-        const modalBox = document.getElementById('view-modal-content');
-        modal.classList.add('opacity-0');
-        modalBox.classList.remove('scale-100');
-        modalBox.classList.add('scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 300);
+    function updateBadge(el, newStatus) {
+        const cfg = BADGE_CONFIG[newStatus] ?? BADGE_CONFIG.processing;
+        el.className = `ai-status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all duration-500 ${cfg.color}`;
+        el.dataset.status = newStatus;
+        el.innerHTML = `
+            <i data-lucide="${cfg.icon}" class="w-2.5 h-2.5 ${cfg.pulse ? 'animate-spin' : ''}"></i>
+            ${cfg.label}`;
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: el });
     }
 
-    document.getElementById('view-modal').addEventListener('click', e => {
-        if (e.target.id === 'view-modal') closeViewModal();
+    async function pollBadge(el) {
+        const uploadId = el.dataset.uploadId;
+        const txId     = el.dataset.transactionId;
+        if (!uploadId) return;
+
+        try {
+            const res  = await fetch(`/api/ai/auto-fill/status/${uploadId}`);
+            const data = await res.json();
+
+            if (data.status === 'completed' && el.dataset.status !== 'completed') {
+                updateBadge(el, 'completed');
+                showToast(`✅ <strong>AI selesai!</strong> Transaksi #${txId} telah diperbarui.`, 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            } else if (data.status === 'error' && el.dataset.status !== 'error') {
+                updateBadge(el, 'error');
+                showToast(`❌ <strong>AI gagal.</strong> Silakan isi manual.`, 'error');
+            }
+        } catch (e) {
+            console.warn('Poll error:', e);
+        }
+    }
+
+    function startPolling() {
+        const pending = getPendingBadges();
+        if (pending.length === 0) return;
+        if (Date.now() - startTime > MAX_POLL_TIME) {
+            console.warn('Max poll time reached, stopping.');
+            return;
+        }
+        pending.forEach(el => pollBadge(el));
+        setTimeout(startPolling, POLL_INTERVAL);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        @if(session('success'))
+            showToast(`🚀 {{ session('success') }}`, 'info');
+        @endif
+        startPolling();
+    });
+})();
+
+// ─────────────────────────────────────────────────────────────
+// VIEW DETAIL MODAL  ← GLOBAL (dipanggil dari onclick HTML)
+// ─────────────────────────────────────────────────────────────
+function openViewModal(id) {
+    currentTransactionId = id;
+
+    const modal    = document.getElementById('view-modal');
+    const modalBox = document.getElementById('view-modal-content');
+    const loading  = document.getElementById('view-loading');
+    const body     = document.getElementById('view-body');
+
+    // Reset state
+    loading.innerHTML = `
+        <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>`;
+    loading.classList.remove('hidden');
+    body.classList.add('hidden');
+
+    // Tampilkan modal
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modalBox.classList.remove('scale-95');
+        modalBox.classList.add('scale-100');
     });
 
-    // ─── Render helper ───────────────────────────────────────────
-    function renderViewModal(d) {
-        currentTransactionId = d.id;
-
-        // Title + invoice
-        document.getElementById('v-title').textContent   = d.type === 'pengajuan' ? 'Detail Pengajuan' : 'Detail Reimbursement';
-        document.getElementById('v-invoice').textContent = d.invoice_number + ' • ' + d.created_at;
-
-        // Badges
-        const statusColors = {
-            pending:   'bg-amber-50 text-amber-600 border-amber-200',
-            approved:  'bg-blue-50 text-blue-600 border-blue-200',
-            completed: 'bg-green-50 text-green-600 border-green-200',
-            rejected:  'bg-red-50 text-red-600 border-red-200',
-        };
-        const typeBg      = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100';
-        const statusText  = d.status === 'approved' ? 'Menunggu Approve Owner' : d.status_label;
-        const typeIcon    = d.type === 'pengajuan' ? 'shopping-bag' : 'receipt';
-
-        document.getElementById('v-badges').innerHTML = `
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${statusText}</span>
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
-                <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
-            </span>`;
-
-        // Image
-        const imgWrap = document.getElementById('v-image-wrap');
-        if (d.image_url) {
-            imgWrap.classList.remove('hidden');
-            document.getElementById('v-image').src = d.image_url;
-        } else {
-            imgWrap.classList.add('hidden');
-        }
-
-        // ── Fields ──
-        const fieldsEl = document.getElementById('v-fields');
-        let fieldsHtml = '';
-
-        const addField = (label, value, span2 = false) => {
-            if (value === null || value === undefined || value === '') return;
-            fieldsHtml += `
-                <div class="${span2 ? 'sm:col-span-2' : ''}">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800">${value}</div>
-                </div>`;
-        };
-
-        addField('Pengaju', d.submitter?.name || '-');
-
-        if (d.type === 'rembush') {
-            addField('Nama Vendor',       d.customer);
-            addField('Tanggal Transaksi', d.date);
-            addField('Kategori',          d.category_label);
-            addField('Metode Pencairan',  d.payment_method_label);
-            addField('Keterangan',        d.description, true);
-            addField('Total Nominal',     d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
-        } else {
-            addField('Nama Barang/Jasa',      d.customer, true);
-            addField('Vendor',                d.vendor);
-            addField('Alasan Pembelian',      d.purchase_reason_label);
-            addField('Jumlah',                d.quantity);
-            addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
-            addField('Total Estimasi',        d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
-        }
-
-        fieldsEl.innerHTML = fieldsHtml;
-
-        // ── Items table (Rembush) ──
-        const itemsWrap  = document.getElementById('v-items-wrap');
-        const itemsTbody = document.getElementById('v-items-tbody');
-        if (d.type === 'rembush' && d.items && d.items.length > 0) {
-            itemsWrap.classList.remove('hidden');
-            itemsTbody.innerHTML = d.items.map(item => `
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
-                    <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
-                    <td class="px-3 py-2">${item.unit || '-'}</td>
-                    <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
-                    <td class="px-3 py-2 text-right font-bold">Rp ${Number(item.total_price || 0).toLocaleString('id-ID')}</td>
-                </tr>`).join('');
-        } else {
-            itemsWrap.classList.add('hidden');
-        }
-
-        // ── Specs (Pengajuan) ──
-        const specsWrap = document.getElementById('v-specs-wrap');
-        const specsEl   = document.getElementById('v-specs');
-        if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v)) {
-            specsWrap.classList.remove('hidden');
-            const specLabels = { merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna' };
-            specsEl.innerHTML = Object.entries(specLabels).map(([key, label]) => `
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800">${d.specs[key] || '-'}</div>
-                </div>`).join('');
-        } else {
-            specsWrap.classList.add('hidden');
-        }
-
-        // ── Branches ──
-        const branchesWrap = document.getElementById('v-branches-wrap');
-        const branchesEl   = document.getElementById('v-branches');
-        if (d.branches && d.branches.length > 0) {
-            branchesWrap.classList.remove('hidden');
-            branchesEl.innerHTML = d.branches.map(b => `
-                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                    <span class="text-sm font-bold text-slate-700">${b.name}</span>
-                    <div class="text-right">
-                        <span class="text-xs font-bold text-slate-500">${b.percent}%</span>
-                        <span class="text-xs text-slate-400 ml-2">(${b.amount})</span>
-                    </div>
-                </div>`).join('');
-        } else {
-            branchesWrap.classList.add('hidden');
-        }
-
-        // ── Rejection reason ──
-        const rejWrap = document.getElementById('v-rejection-wrap');
-        if (d.status === 'rejected' && d.rejection_reason) {
-            rejWrap.classList.remove('hidden');
-            document.getElementById('v-rejection').textContent = d.rejection_reason;
-        } else {
-            rejWrap.classList.add('hidden');
-        }
-
-        // ── Waiting owner banner ──
-        const waitOwner = document.getElementById('v-waiting-owner');
-        waitOwner.classList.toggle('hidden', d.status !== 'approved');
-
-        // ── Reviewer info ──
-        const revWrap = document.getElementById('v-reviewer-wrap');
-        if (d.reviewer) {
-            revWrap.classList.remove('hidden');
-            revWrap.classList.add('flex');
-            document.getElementById('v-reviewer').textContent    = d.reviewer.name;
-            document.getElementById('v-reviewed-at').textContent = d.reviewed_at;
-        } else {
-            revWrap.classList.add('hidden');
-            revWrap.classList.remove('flex');
-        }
-
-        // ── Owner action buttons ──
-        const actionsWrap = document.getElementById('v-actions');
-        const btnReset    = document.getElementById('v-btn-reset');
-        if (d.is_owner && d.status !== 'pending') {
-            btnReset.classList.remove('hidden');
-            actionsWrap.classList.remove('hidden');
-        } else {
-            btnReset.classList.add('hidden');
-            actionsWrap.classList.add('hidden');
-        }
-    }
-
-    // ═══════════════════════════════════════════
-    // APPROVAL ACTIONS (from modal)
-    // ═══════════════════════════════════════════
-    function submitApproval(status) {
-        if (!currentTransactionId) return;
-        if (status === 'pending' && !confirm('Reset status ke Pending?')) return;
-
-        const buttons = document.querySelectorAll('#v-actions button');
-        buttons.forEach(b => b.disabled = true);
-
-        fetch(`/transactions/${currentTransactionId}/status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ status, _method: 'PATCH' }),
-        })
+    fetch(`/transactions/${id}/detail-json`)
         .then(r => {
-            if (r.redirected) { window.location.href = r.url; return; }
-            window.location.reload();
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(d => {
+            renderViewModal(d);
+            loading.classList.add('hidden');
+            body.classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         })
         .catch(err => {
             console.error(err);
-            alert('Gagal mengubah status. Coba lagi.');
-            buttons.forEach(b => b.disabled = false);
+            loading.innerHTML = '<p class="text-red-500 text-sm font-bold p-6 text-center">Gagal memuat data. Coba lagi.</p>';
         });
+}
+
+function closeViewModal() {
+    const modal    = document.getElementById('view-modal');
+    const modalBox = document.getElementById('view-modal-content');
+    modal.classList.add('opacity-0');
+    modalBox.classList.remove('scale-100');
+    modalBox.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+function renderViewModal(d) {
+    currentTransactionId = d.id;
+
+    // Title + invoice
+    document.getElementById('v-title').textContent   = d.type === 'pengajuan' ? 'Detail Pengajuan' : 'Detail Reimbursement';
+    document.getElementById('v-invoice').textContent = d.invoice_number + ' • ' + d.created_at;
+
+    // Badges
+    const statusColors = {
+        pending:   'bg-amber-50 text-amber-600 border-amber-200',
+        approved:  'bg-blue-50 text-blue-600 border-blue-200',
+        completed: 'bg-green-50 text-green-600 border-green-200',
+        rejected:  'bg-red-50 text-red-600 border-red-200',
+    };
+    const typeBg     = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100';
+    const statusText = d.status === 'approved' ? 'Menunggu Approve Owner' : d.status_label;
+    const typeIcon   = d.type === 'pengajuan' ? 'shopping-bag' : 'receipt';
+
+    document.getElementById('v-badges').innerHTML = `
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${statusText}</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
+            <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
+        </span>`;
+
+    // Image
+    const imgWrap = document.getElementById('v-image-wrap');
+    if (d.image_url) {
+        imgWrap.classList.remove('hidden');
+        document.getElementById('v-image').src = d.image_url;
+    } else {
+        imgWrap.classList.add('hidden');
     }
 
-    // ═══════════════════════════════════════════
-    // REJECT MODAL
-    // ═══════════════════════════════════════════
-    function openRejectModal(transactionId, invoiceNumber) {
-        const modal = document.getElementById('reject-modal');
-        const inner = modal.querySelector('div');
+    // ── Fields ──
+    const fieldsEl = document.getElementById('v-fields');
+    let fieldsHtml = '';
 
-        document.getElementById('reject-form').action      = '/transactions/' + transactionId + '/status';
-        document.getElementById('reject-modal-invoice').textContent = invoiceNumber;
+    const addField = (label, value, span2 = false) => {
+        if (value === null || value === undefined || value === '') return;
+        fieldsHtml += `
+            <div class="${span2 ? 'sm:col-span-2' : ''}">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800">${value}</div>
+            </div>`;
+    };
 
-        modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            modal.classList.remove('opacity-0');
-            inner.classList.remove('scale-95');
-            inner.classList.add('scale-100');
-        });
+    addField('Pengaju', d.submitter?.name || '-');
+
+    if (d.type === 'rembush') {
+        addField('Nama Vendor',       d.customer);
+        addField('Tanggal Transaksi', d.date);
+        addField('Kategori',          d.category_label);
+        addField('Metode Pencairan',  d.payment_method_label);
+        addField('Keterangan',        d.description, true);
+        addField('Total Nominal',     d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
+    } else {
+        addField('Nama Barang/Jasa',      d.customer, true);
+        addField('Vendor',                d.vendor);
+        addField('Alasan Pembelian',      d.purchase_reason_label);
+        addField('Jumlah',                d.quantity);
+        addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+        addField('Total Estimasi',        d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
     }
 
-    function closeRejectModal() {
-        const modal = document.getElementById('reject-modal');
-        const inner = modal.querySelector('div');
-        modal.classList.add('opacity-0');
-        inner.classList.remove('scale-100');
-        inner.classList.add('scale-95');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            modal.querySelector('textarea').value = '';
-        }, 300);
+    fieldsEl.innerHTML = fieldsHtml;
+
+    // ── Items table (Rembush) ──
+    const itemsWrap  = document.getElementById('v-items-wrap');
+    const itemsTbody = document.getElementById('v-items-tbody');
+    if (d.type === 'rembush' && d.items && d.items.length > 0) {
+        itemsWrap.classList.remove('hidden');
+        itemsTbody.innerHTML = d.items.map(item => `
+            <tr class="hover:bg-slate-50/50">
+                <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
+                <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
+                <td class="px-3 py-2">${item.unit || '-'}</td>
+                <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
+                <td class="px-3 py-2 text-right font-bold">Rp ${Number(item.total_price || 0).toLocaleString('id-ID')}</td>
+            </tr>`).join('');
+    } else {
+        itemsWrap.classList.add('hidden');
     }
 
+    // ── Specs (Pengajuan) ──
+    const specsWrap = document.getElementById('v-specs-wrap');
+    const specsEl   = document.getElementById('v-specs');
+    if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v)) {
+        specsWrap.classList.remove('hidden');
+        const specLabels = { merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna' };
+        specsEl.innerHTML = Object.entries(specLabels).map(([key, label]) => `
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800">${d.specs[key] || '-'}</div>
+            </div>`).join('');
+    } else {
+        specsWrap.classList.add('hidden');
+    }
+
+    // ── Branches ──
+    const branchesWrap = document.getElementById('v-branches-wrap');
+    const branchesEl   = document.getElementById('v-branches');
+    if (d.branches && d.branches.length > 0) {
+        branchesWrap.classList.remove('hidden');
+        branchesEl.innerHTML = d.branches.map(b => `
+            <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                <span class="text-sm font-bold text-slate-700">${b.name}</span>
+                <div class="text-right">
+                    <span class="text-xs font-bold text-slate-500">${b.percent}%</span>
+                    <span class="text-xs text-slate-400 ml-2">(${b.amount})</span>
+                </div>
+            </div>`).join('');
+    } else {
+        branchesWrap.classList.add('hidden');
+    }
+
+    // ── Rejection reason ──
+    const rejWrap = document.getElementById('v-rejection-wrap');
+    if (d.status === 'rejected' && d.rejection_reason) {
+        rejWrap.classList.remove('hidden');
+        document.getElementById('v-rejection').textContent = d.rejection_reason;
+    } else {
+        rejWrap.classList.add('hidden');
+    }
+
+    // ── Waiting owner banner ──
+    document.getElementById('v-waiting-owner').classList.toggle('hidden', d.status !== 'approved');
+
+    // ── Reviewer info ──
+    const revWrap = document.getElementById('v-reviewer-wrap');
+    if (d.reviewer) {
+        revWrap.classList.remove('hidden');
+        revWrap.classList.add('flex');
+        document.getElementById('v-reviewer').textContent    = d.reviewer.name;
+        document.getElementById('v-reviewed-at').textContent = d.reviewed_at;
+    } else {
+        revWrap.classList.add('hidden');
+        revWrap.classList.remove('flex');
+    }
+
+    // ── Owner action buttons ──
+    const actionsWrap = document.getElementById('v-actions');
+    const btnReset    = document.getElementById('v-btn-reset');
+    if (d.is_owner && d.status !== 'pending') {
+        btnReset.classList.remove('hidden');
+        actionsWrap.classList.remove('hidden');
+    } else {
+        btnReset.classList.add('hidden');
+        actionsWrap.classList.add('hidden');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// APPROVAL ACTIONS  ← GLOBAL
+// ─────────────────────────────────────────────────────────────
+function submitApproval(status) {
+    if (!currentTransactionId) return;
+    if (status === 'pending' && !confirm('Reset status ke Pending?')) return;
+
+    const buttons = document.querySelectorAll('#v-actions button');
+    buttons.forEach(b => b.disabled = true);
+
+    fetch(`/transactions/${currentTransactionId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept':       'application/json',
+        },
+        body: JSON.stringify({ status, _method: 'PATCH' }),
+    })
+    .then(r => {
+        if (r.redirected) { window.location.href = r.url; return; }
+        window.location.reload();
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Gagal mengubah status. Coba lagi.');
+        buttons.forEach(b => b.disabled = false);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────
+// REJECT MODAL  ← GLOBAL
+// ─────────────────────────────────────────────────────────────
+function openRejectModal(transactionId, invoiceNumber) {
+    const modal = document.getElementById('reject-modal');
+    const inner = modal.querySelector('div');
+
+    document.getElementById('reject-form').action               = '/transactions/' + transactionId + '/status';
+    document.getElementById('reject-modal-invoice').textContent = invoiceNumber;
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        inner.classList.remove('scale-95');
+        inner.classList.add('scale-100');
+    });
+}
+
+function closeRejectModal() {
+    const modal = document.getElementById('reject-modal');
+    const inner = modal.querySelector('div');
+    modal.classList.add('opacity-0');
+    inner.classList.remove('scale-100');
+    inner.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.querySelector('textarea').value = '';
+    }, 300);
+}
+
+// ─────────────────────────────────────────────────────────────
+// BACKDROP CLICK — tutup modal saat klik area gelap
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('view-modal').addEventListener('click', e => {
+        if (e.target.id === 'view-modal') closeViewModal();
+    });
     document.getElementById('reject-modal').addEventListener('click', e => {
         if (e.target.id === 'reject-modal') closeRejectModal();
     });
-
+});
 </script>
 @endpush

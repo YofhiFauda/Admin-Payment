@@ -55,7 +55,15 @@ return [
         'ocr' => [
             'driver' => 'single',
             'path' => storage_path('logs/ocr.log'),
-            'level' => 'debug',
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+        
+        'ai_autofill' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/ai-autofill.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
         ],
 
         'stack' => [

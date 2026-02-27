@@ -18,5 +18,19 @@ class RouteServiceProvider extends ServiceProvider
             $key = $request->ip() . ':' . $request->header('X-SECRET', 'no-secret');
             return Limit::perMinute(60)->by($key);
         });
+
+        // ─── Rate Limit: Upload Foto ────────────────────────────────
+        // Max 5 upload per menit per user (tambahan dari throttle di controller)
+        RateLimiter::for('upload-foto', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(5)->by('user:' . $request->user()->id)
+                : Limit::perMinute(3)->by($request->ip());
+        });
+
+        // ─── Rate Limit: Polling ────────────────────────────────────
+        // Loading page poll tiap 2 detik = 30/menit, beri limit 60/menit
+        RateLimiter::for('ocr-polling', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
     }
 }

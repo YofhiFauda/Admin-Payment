@@ -70,6 +70,19 @@
                                 <span class="absolute bottom-1.5 w-1 h-1 bg-indigo-600 rounded-full"></span>
                             @endif
                         </a>
+
+                         {{-- ✅ TAMBAHKAN NOTIFIKASI BELL DI SINI (Sebelum Profile Dropdown) --}}
+                        @auth
+                            <div class="relative">
+                                <a href="{{ route('notifications.index') }}" 
+                                   class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all relative">
+                                    <i data-lucide="bell" class="w-5 h-5"></i>
+                                    @if(auth()->user()->unreadNotifications()->where('data->type', 'ocr_status')->count() > 0)
+                                        <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                    @endif
+                                </a>
+                            </div>
+                        @endauth
                     </div>
 
                     {{-- 3. Profile Dropdown --}}
@@ -160,6 +173,12 @@
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-text" class="w-4 h-4"></i> Log Aktivitas
+                </a>
+
+                <a href="{{ route('notifications.index') }}" 
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('notifications.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
                 </a>
                 @endif
             </nav>

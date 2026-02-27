@@ -67,6 +67,7 @@ class Transaction extends Model
         'quantity',
         'estimated_price',
         'purchase_reason',
+        'upload_id',
     ];
 
     protected function casts(): array
