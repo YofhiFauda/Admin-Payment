@@ -172,6 +172,10 @@
                         {{-- Active Branches Allocation Inputs/Display --}}
                         <div class="space-y-3" id="active-branches-list">
                             </div>
+                            
+                        {{-- Hidden inputs temp container --}}
+                        <div id="branch-hidden-inputs"></div>
+
                         @error('branches')
                             <p class="mt-2 text-red-500 font-bold text-[10px] md:text-xs">{{ $message }}</p>
                             <p id="percent-warning" class="mt-2 text-red-500 font-bold text-[10px] md:text-xs hidden"></p>

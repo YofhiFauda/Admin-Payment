@@ -23,6 +23,19 @@
             @csrf
             @method('PUT')
 
+            @if($errors->any())
+                <div class="bg-red-50 border border-red-100 rounded-xl p-4 mb-4">
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 mt-0.5 shrink-0"></i>
+                        <div class="text-xs text-red-600">
+                            @foreach($errors->all() as $error)
+                                <p>{{ $error }}</p>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="space-y-3 md:space-y-4 lg:space-y-5">
 
                 {{-- Nota Image --}}
@@ -42,12 +55,14 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3 lg:gap-4">
                         <div class="sm:col-span-2">
-                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Penerima Dana / Vendor</label>
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">{{ $transaction->isPengajuan() ? 'Nama Barang/Jasa' : 'Penerima Dana / Vendor' }}</label>
                             <input type="text" name="customer" id="customer" required
                                 value="{{ old('customer', $transaction->customer) }}"
-                                placeholder="Nama vendor..."
+                                placeholder="Nama..."
                                 class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm" />
                         </div>
+                        
+                        @if($transaction->isRembush())
                         <div class="sm:col-span-2">
                             <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Kategori</label>
                             <div class="relative">
@@ -62,27 +77,77 @@
                                     class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                             </div>
                         </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Metode Pencairan</label>
+                            <div class="relative">
+                                <select name="payment_method" id="payment_method" required
+                                    class="w-full appearance-none bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 pr-8 md:pr-10 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm">
+                                    <option value="" disabled>Pilih metode...</option>
+                                    @foreach(\App\Models\Transaction::PAYMENT_METHODS as $key => $label)
+                                        <option value="{{ $key }}" {{ old('payment_method', $transaction->payment_method) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <i data-lucide="chevron-down" class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($transaction->isPengajuan())
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Informasi Vendor</label>
+                            <input type="text" name="vendor" value="{{ old('vendor', $transaction->vendor) }}"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm" />
+                        </div>
                         <div>
-                            <label class="block text-xs md:text-sm font-bold text-blue-600 uppercase mb-1 md:mb-1.5 tracking-wider">Total Nominal</label>
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Jumlah (Qty)</label>
+                            <input type="number" name="quantity" required id="input-quantity" min="1"
+                                value="{{ old('quantity', $transaction->quantity) }}"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-bold text-base md:text-lg lg:text-xl text-slate-700" />
+                        </div>
+                        @else
+                        <!-- Hidden inputs for non-pengajuan to appease total formula sharing if needed -->
+                        <input type="hidden" name="quantity" id="input-quantity" value="1">
+                        @endif
+
+                        <div>
+                            <label class="block text-xs md:text-sm font-bold text-blue-600 uppercase mb-1 md:mb-1.5 tracking-wider">{{ $transaction->isPengajuan() ? 'Estimasi Harga Satuan' : 'Total Nominal' }}</label>
                             <div class="relative">
                                 <span class="absolute left-2.5 md:left-3 lg:left-3.5 top-1/2 -translate-y-1/2 font-semibold text-blue-400 text-[10px] md:text-xs lg:text-sm pointer-events-none select-none">Rp</span>
-                                <input type="number" name="amount" required id="total-amount"
-                                    value="{{ old('amount', $transaction->amount) }}"
+                                <input type="number" name="{{ $transaction->isPengajuan() ? 'estimated_price' : 'amount' }}" required id="amount-input"
+                                    value="{{ old($transaction->isPengajuan() ? 'estimated_price' : 'amount', $transaction->isPengajuan() ? $transaction->estimated_price : $transaction->amount) }}"
                                     placeholder="0"
                                     class="w-full bg-blue-50/30 border border-blue-100 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 pl-10 md:pl-12 lg:pl-14 outline-none focus:ring-2 focus:ring-blue-100 font-bold text-base md:text-lg lg:text-xl text-blue-700 placeholder:text-blue-300" />
                             </div>
                         </div>
+
                         <div>
                             <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Tanggal Terbit</label>
                             <input type="date" name="date" id="date"
                                 value="{{ old('date', $transaction->date ? \Carbon\Carbon::parse($transaction->date)->format('Y-m-d') : '') }}"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm" />
                         </div>
+
+                        @if($transaction->isPengajuan())
+                        <div>
+                            <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Alasan Pembelian *</label>
+                            <div class="relative">
+                                <select name="purchase_reason" id="purchase_reason" required
+                                    class="w-full appearance-none bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 pr-8 md:pr-10 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm">
+                                    <option value="" disabled>Pilih alasan...</option>
+                                    @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
+                                        <option value="{{ $key }}" {{ old('purchase_reason', $transaction->purchase_reason) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <i data-lucide="chevron-down" class="w-3 h-3 md:w-3.5 md:h-3.5 absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        @else
                         <div class="sm:col-span-2">
                             <label class="block text-xs md:text-sm font-bold text-slate-400 uppercase mb-1 md:mb-1.5 tracking-wider">Keterangan / Deskripsi</label>
                             <textarea name="description" id="description" rows="2" placeholder="Deskripsi transaksi..."
                                 class="w-full bg-slate-50 border border-slate-200 rounded-md md:rounded-lg p-2 md:p-2.5 lg:p-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-xs md:text-sm resize-none">{{ old('description', $transaction->description) }}</textarea>
                         </div>
+                        @endif
 
                         {{-- DAFTAR BARANG (Khusus Rembush) --}}
                         @if($transaction->isRembush())
@@ -236,7 +301,8 @@
                 let branchIndex = {{ $transaction->branches->count() }};
 
                 const container = document.getElementById('branches-container');
-                const totalInput = document.getElementById('total-amount');
+                const qtyInput = document.getElementById('input-quantity');
+                const amtInput = document.getElementById('amount-input');
                 const summaryTotal = document.getElementById('summary-total');
                 const allocBadge = document.getElementById('alloc-badge');
                 const allocDisplay = document.getElementById('alloc-percent-display');
@@ -343,8 +409,8 @@
                         });
 
                         if(displayTotalItems) displayTotalItems.textContent = formatRupiah(calculateTotal);
-                        if(totalInput) {
-                            totalInput.value = calculateTotal;
+                        if(amtInput) {
+                            amtInput.value = calculateTotal;
                             recalc(); // Update the allocation branches total
                         }
 
@@ -471,7 +537,13 @@
 
                 function recalc() {
                     const rows = container.querySelectorAll('.branch-row');
-                    const totalAmt = parseInt(totalInput.value) || 0;
+                    
+                    const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                    const priceOrTotal = amtInput ? (parseInt(amtInput.value) || 0) : 0;
+                    
+                    const isPengajuan = {{ $transaction->isPengajuan() ? 'true' : 'false' }};
+                    const totalAmt = isPengajuan ? (qty * priceOrTotal) : priceOrTotal;
+                    
                     const count = rows.length;
 
                     rows.forEach(row => {
@@ -510,7 +582,11 @@
                 }
 
                 function updateSummary() {
-                    const totalAmt = parseInt(totalInput.value) || 0;
+                    const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                    const priceOrTotal = amtInput ? (parseInt(amtInput.value) || 0) : 0;
+                    const isPengajuan = {{ $transaction->isPengajuan() ? 'true' : 'false' }};
+                    const totalAmt = isPengajuan ? (qty * priceOrTotal) : priceOrTotal;
+                    
                     summaryTotal.textContent = formatRupiah(totalAmt);
 
                     const summaryBranches = document.getElementById('summary-branches');
@@ -579,7 +655,8 @@
                     });
                 }
 
-                totalInput.addEventListener('input', recalc);
+                if(amtInput) amtInput.addEventListener('input', recalc);
+                if(qtyInput) qtyInput.addEventListener('input', recalc);
                 container.addEventListener('input', function (e) {
                     if (e.target.classList.contains('alloc-percent')) recalc();
                 });

@@ -126,9 +126,8 @@ class PengajuanController extends Controller
                 $effectiveAmount = $transaction->amount;
                 foreach ($request->branches as $branchData) {
                     $allocPercent = floatval($branchData['allocation_percent']);
-                    $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
-                        ? intval($branchData['allocation_amount'])
-                        : intval(round(($effectiveAmount * $allocPercent) / 100));
+                    // Selalu hitung ulang di backend berdasarkan persen untuk akurasi
+                    $allocAmount = intval(round(($effectiveAmount * $allocPercent) / 100));
 
                     $transaction->branches()->attach($branchData['branch_id'], [
                         'allocation_percent' => $allocPercent,

@@ -253,14 +253,16 @@
                                             class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all">
                                             <i data-lucide="pencil" class="w-4 h-4"></i>
                                         </a>
-                                        <form action="{{ route('transactions.destroy', $t->id) }}" method="POST"
-                                            onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" title="Hapus"
-                                                class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
-                                        </form>
+                                        @if(!Auth::user()->isAdmin())
+                                            <form action="{{ route('transactions.destroy', $t->id) }}" method="POST"
+                                                onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" title="Hapus"
+                                                    class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
@@ -422,14 +424,16 @@
                                 class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm text-xs font-bold">
                                 <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Edit
                             </a>
-                            <form action="{{ route('transactions.destroy', $t->id) }}" method="POST"
-                                onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
-                                @csrf @method('DELETE')
-                                <button type="submit"
-                                    class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-red-600 hover:border-red-200 transition-all shadow-sm text-xs font-bold">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus
-                                </button>
-                            </form>
+                            @if(!Auth::user()->isAdmin())
+                                <form action="{{ route('transactions.destroy', $t->id) }}" method="POST"
+                                    onsubmit="return confirm('Hapus transaksi {{ $t->invoice_number }}?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit"
+                                        class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-red-600 hover:border-red-200 transition-all shadow-sm text-xs font-bold">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus
+                                    </button>
+                                </form>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -838,9 +842,34 @@
                 Notification.requestPermission();
             }
             
-            // Show session toast
+            // Show session toasts
             @if(session('success'))
-                showToast(`🚀 {{ session('success') }}`, 'info');
+                showToast(`
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                        <div><strong>Berhasil!</strong><br><span class="text-[11px] opacity-90">{{ session('success') }}</span></div>
+                    </div>
+                `, 'success');
+            @endif
+
+            @if(session('error'))
+                showToast(`
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                        <div><strong>Gagal!</strong><br><span class="text-[11px] opacity-90">{{ session('error') }}</span></div>
+                    </div>
+                `, 'error');
+            @endif
+
+            @if($errors->any())
+                @foreach ($errors->all() as $error)
+                    showToast(`
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                            <div><strong>Error!</strong><br><span class="text-[11px] opacity-90">{{ $error }}</span></div>
+                        </div>
+                    `, 'error');
+                @endforeach
             @endif
             
             startPolling();
@@ -981,9 +1010,10 @@
                     <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
                     <td class="px-3 py-2">${item.unit || '-'}</td>
                     <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
-                    <td class="px-3 py-2 text-right font-bold">Rp ${Number(item.total_price || 0).toLocaleString('id-ID')}</td>
-                </tr>`).join('');
-        } else {
+                    <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price) || 0) ).toLocaleString('id-ID')}</td>
+                    </tr>`).join('');
+                } else {
+            // <td class="px-3 py-2 text-right font-bold">Rp ${Number(item.qty * item.price || 0).toLocaleString('id-ID')}</td>
             itemsWrap.classList.add('hidden');
         }
 

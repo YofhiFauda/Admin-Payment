@@ -318,9 +318,7 @@ class RembushController extends Controller
             if ($request->branches && count($request->branches) > 0) {
                 foreach ($request->branches as $branchData) {
                     $allocPercent = floatval($branchData['allocation_percent']);
-                    $allocAmount  = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
-                        ? intval($branchData['allocation_amount'])
-                        : intval(round(($transaction->amount * $allocPercent) / 100));
+                    $allocAmount  = intval(round(($transaction->amount * $allocPercent) / 100));
 
                     $transaction->branches()->attach($branchData['branch_id'], [
                         'allocation_percent' => $allocPercent,

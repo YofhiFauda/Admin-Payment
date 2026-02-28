@@ -80,10 +80,10 @@
             <div class="mb-8 md:mb-10">
                 <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Merk</label><input type="text" name="specs[merk]" value="{{ old('specs.merk') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
-                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Tipe / Seri</label><input type="text" name="specs[tipe]" value="{{ old('specs.tipe') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
-                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Ukuran</label><input type="text" name="specs[ukuran]" value="{{ old('specs.ukuran') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
-                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Warna</label><input type="text" name="specs[warna]" value="{{ old('specs.warna') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Merk</label><input type="text" name="specs[merk]" value="{{ old('specs.merk') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" placeholder="Contoh: Xpon CDATA"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Tipe / Seri</label><input type="text" name="specs[tipe]" value="{{ old('specs.tipe') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" placeholder="Contoh: FD512XW-R460"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Ukuran</label><input type="text" name="specs[ukuran]" value="{{ old('specs.ukuran') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" placeholder="Contoh: 30x30"></div>
+                    <div><label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Warna</label><input type="text" name="specs[warna]" value="{{ old('specs.warna') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" placeholder="Contoh: Putih"></div>
                 </div>
             </div>
 
@@ -341,12 +341,8 @@
         // CORE LOGIC: RENDER DISTRIBUTION
         // ─────────────────────────────
         function renderDistribution() {
-            // 1. Reset Containers
             distributionList.innerHTML = '';
-            summaryBranchesList.innerHTML = '';
-            hiddenInputsContainer.innerHTML = ''; // Clear old hidden inputs
-
-            // 2. Handle Empty State
+            
             if (selectedBranches.length === 0) {
                 summarySection.classList.add('hidden');
                 summarySubmit.disabled = true;
@@ -354,143 +350,138 @@
                 return;
             }
 
-            // 3. Show Summary Section
             summarySection.classList.remove('hidden');
             const totalAmount = getTotal();
 
-            // 4. Loop Through Selected Branches
-            selectedBranches.forEach((branch, index) => {
-                let displayValue = 0;
-                let rowHtml = '';
-                let inputHtml = '';
-
-                // --- LOGIC PER METODE ---
+            selectedBranches.forEach((branch, idx) => {
                 if (currentMethod === 'equal') {
-                    displayValue = totalAmount / selectedBranches.length;
-                    branch.value = displayValue; // Store calculated value
-                    
-                    rowHtml = `
-                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
-                            <div class="font-medium text-slate-700 flex items-center gap-2">
-                                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                ${branch.name}
-                            </div>
-                            <div class="font-bold text-emerald-600">Rp ${formatRupiah(displayValue)}</div>
+                    branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
+                    branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
+                } else if (currentMethod === 'percent') {
+                    branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+                } else if (currentMethod === 'manual') {
+                    branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
+                }
+
+                let inputHtml = '';
+                if (currentMethod === 'equal') {
+                    inputHtml = `<div class="font-bold text-emerald-600">Rp ${formatRupiah(branch.value)}</div>`;
+                } else if (currentMethod === 'percent') {
+                    inputHtml = `
+                        <div class="flex items-center gap-2">
+                            <input type="number" 
+                                class="dist-input-percent w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                data-index="${idx}" 
+                                value="${branch.percent || 0}" 
+                                min="0" max="100">
+                            <span class="text-xs font-bold text-slate-400">%</span>
+                            <span class="text-emerald-500 font-bold text-sm w-32 text-right">Rp ${formatRupiah(branch.value)}</span>
                         </div>
                     `;
-
-                    // Generate Hidden Input for Backend (PENTING)
+                } else if (currentMethod === 'manual') {
+                    const displayVal = branch.value > 0 ? formatRupiah(branch.value) : '';
                     inputHtml = `
-                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
-                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
-                    `;
-                } 
-                else if (currentMethod === 'percent') {
-                    // Calculate based on stored percent
-                    const percent = parseFloat(branch.percent) || 0;
-                    displayValue = totalAmount * (percent / 100);
-                    branch.value = displayValue;
-
-                    rowHtml = `
-                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
-                            <div class="font-medium text-slate-700">${branch.name}</div>
-                            <div class="flex items-center gap-2">
-                                <input type="number" 
-                                    class="dist-input-percent w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
-                                    data-index="${index}" 
-                                    value="${percent}" 
-                                    min="0" max="100">
-                                <span class="text-xs font-bold text-slate-400">%</span>
-                            </div>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Rp</span>
+                            <input type="text" 
+                                class="dist-input-manual w-32 text-right text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                data-index="${idx}" 
+                                value="${displayVal}" placeholder="0">
                         </div>
-                    `;
-                    
-                    inputHtml = `
-                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
-                        <input type="hidden" name="distribution[${index}][percent]" value="${percent}">
-                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
-                    `;
-                } 
-                else if (currentMethod === 'manual') {
-                    displayValue = parseFloat(branch.value) || 0;
-                    
-                    rowHtml = `
-                        <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
-                            <div class="font-medium text-slate-700">${branch.name}</div>
-                            <div class="relative">
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Rp</span>
-                                <input type="text" 
-                                    class="dist-input-manual w-32 text-right text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-1 focus:ring-2 focus:ring-emerald-500 outline-none" 
-                                    data-index="${index}" 
-                                    value="${displayValue > 0 ? formatRupiah(displayValue) : ''}">
-                            </div>
-                        </div>
-                    `;
-
-                    inputHtml = `
-                        <input type="hidden" name="distribution[${index}][branch_id]" value="${branch.id}">
-                        <input type="hidden" name="distribution[${index}][amount]" value="${displayValue}">
                     `;
                 }
 
-                // Append to List & Hidden Inputs
+                const rowHtml = `
+                    <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
+                        <div class="font-medium text-slate-700 flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                            ${branch.name}
+                        </div>
+                        <div>${inputHtml}</div>
+                    </div>
+                `;
                 distributionList.insertAdjacentHTML('beforeend', rowHtml);
-                hiddenInputsContainer.insertAdjacentHTML('beforeend', inputHtml);
+            });
 
-                // ─────────────────────────────
-                // PERBAIKAN: HITUNG & TAMPILKAN PERSENTASE DI SUMMARY
-                // ─────────────────────────────
-                let percentDisplay = 0;
-                if (totalAmount > 0) {
-                    percentDisplay = (displayValue / totalAmount) * 100;
-                }
-                
-                // Format persen 1 desimal (contoh: 33.3%)
-                const percentString = percentDisplay.toFixed(1) + '%';
+            const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
+            summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
+            
+            updateHiddenInputs();
+            updateSummaryList();
+            validateAndSubmit();
+        }
 
-                // Append to Summary List (Right Side) dengan detail persen
+        // ─────────────────────────────
+        // UPDATE hidden inputs
+        // ─────────────────────────────
+        function updateHiddenInputs() {
+            hiddenInputsContainer.innerHTML = '';
+            selectedBranches.forEach((branch, idx) => {
+                hiddenInputsContainer.insertAdjacentHTML('beforeend', `
+                    <input type="hidden" name="branches[${idx}][branch_id]"          value="${branch.id}">
+                    <input type="hidden" name="branches[${idx}][allocation_amount]"  value="${Math.round(branch.value || 0)}">
+                    <input type="hidden" name="branches[${idx}][allocation_percent]" value="${branch.percent || 0}">
+                `);
+            });
+        }
+
+        // ─────────────────────────────
+        // UPDATE summary list (tanpa re-render rows)
+        // ─────────────────────────────
+        function updateSummaryList() {
+            summaryBranchesList.innerHTML = '';
+            const totalAmount = getTotal();
+
+            selectedBranches.forEach(branch => {
+                const pct = totalAmount > 0
+                    ? ((branch.value / totalAmount) * 100).toFixed(1)
+                    : (branch.percent || 0).toFixed(1);
+                    
                 const summaryRow = `
                     <div class="flex justify-between items-start text-sm border-b border-white/10 pb-3 last:border-0 last:pb-0">
                         <div class="flex flex-col">
                             <span class="text-slate-300 font-medium">${branch.name}</span>
-                            <span class="text-[10px] text-emerald-400/70 mt-0.5">${percentString}</span>
+                            <span class="text-[10px] text-emerald-400/70 mt-0.5">${pct}%</span>
                         </div>
-                        <span class="text-emerald-400 font-bold">Rp ${formatRupiah(displayValue)}</span>
+                        <span class="text-emerald-400 font-bold">Rp ${formatRupiah(branch.value)}</span>
                     </div>
                 `;
                 summaryBranchesList.insertAdjacentHTML('beforeend', summaryRow);
             });
 
-            // 5. Update Summary Header
             summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
             summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
-            
-            const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
-            summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
-
-            // 6. Validation
-            validateAndSubmit();
         }
 
         // ─────────────────────────────
         // DYNAMIC INPUT HANDLERS (Delegation)
         // ─────────────────────────────
         distributionList.addEventListener('input', function(e) {
+            const index = e.target.dataset.index;
+            if (index === undefined) return;
+            const totalAmount = getTotal();
+
             if (e.target.classList.contains('dist-input-percent')) {
-                const index = e.target.dataset.index;
                 const val = parseFloat(e.target.value) || 0;
                 selectedBranches[index].percent = val;
-                renderDistribution(); // Re-render to update amounts
+                selectedBranches[index].value = totalAmount > 0 ? Math.round((totalAmount * val) / 100) : 0;
+                
+                // Update text di samping input persen secara manual
+                const siblingSpan = e.target.parentElement.querySelector('.text-emerald-500');
+                if (siblingSpan) siblingSpan.textContent = 'Rp ' + formatRupiah(selectedBranches[index].value);
             }
             if (e.target.classList.contains('dist-input-manual')) {
-                const index = e.target.dataset.index;
                 const raw = parseRupiah(e.target.value);
                 e.target.value = raw > 0 ? formatRupiah(raw) : '';
                 selectedBranches[index].value = raw;
-                // No full re-render needed for manual to avoid cursor jump, 
-                // but we need to update summary.
-                renderDistribution(); 
+                if (totalAmount > 0) {
+                    selectedBranches[index].percent = parseFloat(((raw / totalAmount) * 100).toFixed(2));
+                }
             }
+
+            updateHiddenInputs();
+            updateSummaryList();
+            validateAndSubmit();
         });
 
         function validateAndSubmit() {

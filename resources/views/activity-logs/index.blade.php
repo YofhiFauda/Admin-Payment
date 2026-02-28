@@ -56,9 +56,13 @@
                                 </span>
                             </td>
                             <td class="px-6 py-5">
-                                <span class="text-sm font-mono font-medium text-slate-500 uppercase">
-                                    {{ $log->target_id ?? '-' }}
-                                </span>
+                                @if($log->target_id)
+                                    <a href="{{ route('transactions.index', ['search' => $log->target_id]) }}" class="text-sm font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline uppercase transition-colors">
+                                        {{ $log->target_id }}
+                                    </a>
+                                @else
+                                    <span class="text-sm font-mono font-medium text-slate-500 uppercase">-</span>
+                                @endif
                             </td>
                             <td class="px-6 py-5">
                                 <p class="text-sm text-slate-600 leading-relaxed max-w-md">

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ActivityLog;
+use App\Notifications\TransactionStatusNotification;
 
 
 class TransactionController extends Controller
@@ -386,6 +387,13 @@ class TransactionController extends Controller
                 'rejection_reason' => $request->rejection_reason,
             ]);
 
+            // Notify submitter if status changed to approved, rejected, or completed
+            if (in_array($newStatus, ['approved', 'rejected', 'completed']) && $oldStatus !== $newStatus) {
+                if ($transaction->submitter) {
+                    $transaction->submitter->notify(new TransactionStatusNotification($transaction, $newStatus));
+                }
+            }
+
             $statusLabel = match($newStatus) {
                 'approved'  => 'DISETUJUI (Menunggu Owner)',
                 'rejected'  => 'DITOLAK',
@@ -412,6 +420,8 @@ class TransactionController extends Controller
 
     public function destroy($id)
     {
+        abort_if(Auth::user()->isAdmin(), 403, 'Unauthorized action.');
+
         try {
             $transaction = Transaction::findOrFail($id);
             $invoiceNumber = $transaction->invoice_number;

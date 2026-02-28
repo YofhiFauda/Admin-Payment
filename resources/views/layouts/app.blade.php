@@ -34,15 +34,23 @@
                     {{-- A. Tampilan Desktop/Tablet (Teks + Icon) --}}
                     {{-- Class: hidden sm:flex (Sembunyi di HP, Muncul di Tablet ke atas) --}}
                     <div class="hidden sm:flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
+                        {{-- Icon Input Pengeluaran --}}
                         <a href="{{ route('transactions.create') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.create') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
-                            <i data-lucide="home" class="w-4 h-4"></i> Beranda
+                            <i data-lucide="file-up" class="w-4 h-4"></i> Input Pengeluaran
                         </a>
+                        {{-- Icon Daftar Transaksi --}}
                         <a href="{{ route('transactions.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
-                            <i data-lucide="clock" class="w-4 h-4"></i> Riwayat
+                            <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
+                        </a>
+                        {{-- Icon Notifikasi --}}
+                        <a href="{{ route('notifications.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
+                            {{ request()->routeIs('notifications.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
+                            <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
                         </a>
                     </div>
 
@@ -71,6 +79,7 @@
                             @endif
                         </a>
 
+                        {{-- Icon Notifikasi --}}
                         <a href="{{ route('notifications.index') }}" 
                             class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
                             {{ request()->routeIs('notifications.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
