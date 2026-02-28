@@ -8,6 +8,156 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    
+    <style>
+        /* Profile Card Styles */
+        .profile-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        
+        .profile-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-color: #cbd5e1;
+        }
+        
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        
+        .profile-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .profile-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .profile-email {
+            font-size: 13px;
+            color: #64748b;
+            margin: 2px 0 0 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Logout Button Styles */
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 16px;
+            margin-top: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            cursor: pointer;
+            /* Blue Gradient Outline */
+            border: 2px solid transparent;
+            background: linear-gradient(#ffffff, #ffffff) padding-box,
+                        linear-gradient(135deg, #3b82f6, #8b5cf6) border-box;
+            color: #3b82f6;
+        }
+        
+        .logout-btn:hover,
+        .logout-btn.active {
+            background: #eef2ff;
+            color: #4f46e5;
+            border-color: #eef2ff;
+        }
+        
+        .logout-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .logout-btn i {
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+            .profile-card {
+                padding: 12px 16px;
+                gap: 12px;
+            }
+            
+            .profile-avatar {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .profile-name {
+                font-size: 14px;
+            }
+            
+            .profile-email {
+                font-size: 12px;
+            }
+            
+            .logout-btn {
+                padding: 10px 14px;
+                font-size: 13px;
+                margin-top: 10px;
+            }
+            
+            .logout-btn i {
+                width: 16px;
+                height: 16px;
+            }
+        }
+        
+        /* Extra Small Mobile */
+        @media (max-width: 380px) {
+            .profile-card {
+                padding: 10px 14px;
+                gap: 10px;
+            }
+            
+            .profile-avatar {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .profile-name {
+                font-size: 13px;
+            }
+            
+            .profile-email {
+                font-size: 11px;
+            }
+            
+            .logout-btn {
+                padding: 9px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
 </head>
 
 <body class="font-sans bg-gradient-to-br from-slate-50 to-slate-100 antialiased">
@@ -32,21 +182,17 @@
                     {{-- === MENU NAVIGASI === --}}
                     
                     {{-- A. Tampilan Desktop/Tablet (Teks + Icon) --}}
-                    {{-- Class: hidden sm:flex (Sembunyi di HP, Muncul di Tablet ke atas) --}}
                     <div class="hidden sm:flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
-                        {{-- Icon Input Pengeluaran --}}
                         <a href="{{ route('transactions.create') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.create') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="file-up" class="w-4 h-4"></i> Input Pengeluaran
                         </a>
-                        {{-- Icon Daftar Transaksi --}}
                         <a href="{{ route('transactions.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
                         </a>
-                        {{-- Icon Notifikasi --}}
                         <a href="{{ route('notifications.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('notifications.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
@@ -55,31 +201,25 @@
                     </div>
 
                     {{-- B. Tampilan Mobile/Smartphone (Hanya Icon) --}}
-                    {{-- Class: flex sm:hidden (Muncul di HP, Sembunyi di Tablet ke atas) --}}
                     <div class="flex sm:hidden items-center gap-2 mr-1">
-                        {{-- Icon Beranda --}}
                         <a href="{{ route('transactions.create') }}"
                             class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
                             {{ request()->routeIs('transactions.create') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="file-up" class="w-5 h-5"></i>
-                            {{-- Indikator titik kecil jika aktif (opsional) --}}
                             @if(request()->routeIs('transactions.create'))
                                 <span class="absolute bottom-1.5 w-1 h-1 bg-indigo-600 rounded-full"></span>
                             @endif
                         </a>
 
-                        {{-- Icon Riwayat --}}
                         <a href="{{ route('transactions.index') }}"
                             class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
                             {{ request()->routeIs('transactions.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="clock" class="w-5 h-5"></i>
-                             {{-- Indikator titik kecil jika aktif (opsional) --}}
                              @if(request()->routeIs('transactions.index'))
                                 <span class="absolute bottom-1.5 w-1 h-1 bg-indigo-600 rounded-full"></span>
                             @endif
                         </a>
 
-                        {{-- Icon Notifikasi --}}
                         <a href="{{ route('notifications.index') }}" 
                             class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
                             {{ request()->routeIs('notifications.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
@@ -88,44 +228,56 @@
                                 <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                             @endif
                         </a>
-
                     </div>
 
-                    {{-- 3. Profile Dropdown --}}
+                    {{-- 3. Profile Dropdown dengan Card Style --}}
                     <div class="relative">
                         <button id="profileBtn" class="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-slate-100 transition-all outline-none border border-transparent hover:border-slate-200">
-                            {{-- Nama User: Sembunyi di HP, Muncul di Tablet --}}
                             <div class="hidden sm:block text-right">
                                 <p class="text-sm font-bold text-slate-800 leading-tight">{{ Auth::user()->name }}</p>
                                 <p class="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Teknisi</p>
                             </div>
                             
-                            {{-- Avatar --}}
                             <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-inner text-sm border-2 border-white">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         </button>
 
-                        <div id="profileDropdown" class="hidden absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-2xl border border-slate-100 py-4 px-4 origin-top-right z-50">
-                            <div class="flex flex-col items-center pb-4 border-b border-slate-100 mb-4">
-                                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-black mb-3 shadow-lg">
-                                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                        {{-- DROPDOWN PROFILE CARD --}}
+                        <div id="profileDropdown" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 py-4 px-4 origin-top-right z-50">
+                            
+                            {{-- Profile Card Component --}}
+                            <div class="profile-card">
+                                {{-- Avatar --}}
+                                @if(Auth::user()->avatar)
+                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
+                                         alt="{{ Auth::user()->name }}" 
+                                         class="profile-avatar">
+                                @else
+                                    <div class="profile-avatar bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                                    </div>
+                                @endif
+                                
+                                {{-- Info --}}
+                                <div class="profile-info">
+                                    <h4 class="profile-name">{{ Auth::user()->name }}</h4>
+                                    <p class="profile-email">{{ Auth::user()->email }}</p>
                                 </div>
-                                <h4 class="font-bold text-slate-800">{{ Auth::user()->name }}</h4>
-                                <p class="text-xs text-slate-400">{{ Auth::user()->email }}</p>
                             </div>
-                            <div class="space-y-1">
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-2xl transition-colors">
-                                        <i data-lucide="log-out" class="w-4 h-4"></i> Logout Akun
-                                    </button>
-                                </form>
-                            </div>
+                            
+                            {{-- Logout Button dengan Gradient Outline --}}
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="logout-btn">
+                                    <i data-lucide="log-out"></i>
+                                    <span>Logout</span>
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>  
         </div>
     </nav>
 
@@ -173,7 +325,6 @@
                 </a>
 
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrasi</p>
-                {{-- Tambah menu khusus Admin/Atasan/Owner di sini --}}
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
@@ -196,29 +347,32 @@
             </nav>
 
             <div class="p-4 md:p-6">
-                <div class="bg-slate-800/40 backdrop-blur-sm rounded-[2rem] p-5 border border-white/5">
-                    <div class="flex items-center gap-4 mb-5">
-                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-lg font-black text-white shadow-lg flex-shrink-0">
+                {{-- Profile Card untuk Sidebar --}}
+                <div class="profile-card mb-3">
+                    @if(Auth::user()->avatar)
+                        <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
+                             alt="{{ Auth::user()->name }}" 
+                             class="profile-avatar">
+                    @else
+                        <div class="profile-avatar bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
-                        <div class="overflow-hidden flex-1 min-w-0">
-                            <p class="text-sm font-black truncate text-white">{{ Auth::user()->name }}</p>
-                            <div class="flex items-center gap-2">
-                                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                                    {{ ucfirst(Auth::user()->role) }}
-                                </p>
-                            </div>
-                        </div>
+                    @endif
+                    
+                    <div class="profile-info">
+                        <h4 class="profile-name">{{ Auth::user()->name }}</h4>
+                        <p class="profile-email">{{ ucfirst(Auth::user()->role) }}</p>
                     </div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit"
-                            class="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-black uppercase tracking-widest cursor-pointer">
-                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout Akun
-                        </button>
-                    </form>
                 </div>
+                
+                {{-- Logout Button untuk Sidebar --}}
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="logout-btn">
+                        <i data-lucide="log-out"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
             </div>
         </aside>
 
@@ -265,7 +419,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
 
-        // Profile dropdown (khusus teknisi)
+        // Profile dropdown
         const profileBtn = document.getElementById('profileBtn');
         const dropdown = document.getElementById('profileDropdown');
         if (profileBtn && dropdown) {
@@ -276,7 +430,7 @@
             document.addEventListener('click', () => dropdown.classList.add('hidden'));
         }
 
-        // Auto-dismiss notification
+        // Auto-dismiss initial flash notification
         const notif = document.getElementById('flash-notification');
         if (notif) {
             setTimeout(() => {
@@ -284,6 +438,124 @@
                 notif.style.transition = 'opacity 0.5s';
                 setTimeout(() => notif.remove(), 500);
             }, 3000);
+        }
+    });
+
+    // ─────────────────────────────────────────────────────────
+    // REAL-TIME BROADCASTING LISTENERS (LARAVEL ECHO)
+    // ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.Echo !== 'undefined') {
+            const userId = {{ Auth::id() }};
+            
+            const showRealtimeToast = (title, message, colorClasses, iconName) => {
+                const toastId = 'toast-' + Date.now();
+                
+                let container = document.getElementById('toast-container-stack');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container-stack';
+                    container.className = 'fixed top-24 right-4 md:right-8 z-[60] flex flex-col gap-3 pointer-events-none items-end w-full max-w-sm';
+                    document.body.appendChild(container);
+                }
+                
+                const html = `
+                    <div id="${toastId}" class="pointer-events-auto flex items-start w-full p-4 space-x-4 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                        <div class="inline-flex items-center justify-center flex-shrink-0 w-12 h-12 rounded-xl ${colorClasses}">
+                            <i data-lucide="${iconName}" class="w-6 h-6"></i>
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                            <h3 class="text-sm font-extrabold text-slate-800 mb-1 leading-tight">${title}</h3>
+                            <p class="text-[13px] text-slate-500 font-medium leading-snug">${message}</p>
+                        </div>
+                        <button type="button" class="flex-shrink-0 ms-auto -mx-1.5 -my-1.5 bg-white text-slate-400 hover:text-slate-900 rounded-xl p-1.5 hover:bg-slate-50 inline-flex items-center justify-center h-8 w-8 transition-colors" onclick="const el = document.getElementById('${toastId}'); if(el){ el.style.opacity='0'; el.style.transform='translateX(100%)'; setTimeout(()=>el.remove(), 500); }">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                
+                container.insertAdjacentHTML('beforeend', html);
+                const el = document.getElementById(toastId);
+                
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+                
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        el.classList.remove('opacity-0', 'translate-x-full');
+                        el.classList.add('opacity-100', 'translate-x-0');
+                    });
+                });
+                
+                setTimeout(() => {
+                    if(document.getElementById(toastId)) {
+                        el.classList.remove('opacity-100', 'translate-x-0');
+                        el.classList.add('opacity-0', 'translate-x-full');
+                        setTimeout(() => { if(document.getElementById(toastId)) el.remove() }, 500);
+                    }
+                }, 5000);
+            };
+
+            window.Echo.private(`ocr.${userId}`)
+                .listen('.ocr.updated', (e) => {
+                    console.log('Real-time OCR Update:', e);
+                    
+                    const isCompleted = e.payload.ai_status === 'completed';
+                    const colorClasses = isCompleted 
+                        ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30' 
+                        : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-500/30';
+                    const iconName = isCompleted ? 'sparkles' : 'alert-triangle';
+                    const titleStr = isCompleted ? 'Pemrosesan OCR Selesai' : 'Pemrosesan OCR Gagal';
+                        
+                    showRealtimeToast(titleStr, e.payload.message || `Sistem AI telah selesai memindai nota Anda.`, colorClasses, iconName);
+                    
+                    if (window.location.href.includes(`/loading/${e.payload.upload_id}`)) {
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                });
+
+            window.Echo.private(`transactions.${userId}`)
+                .listen('.transaction.updated', (e) => {
+                    console.log('Personal Real-time Transaction Update (Toast):', e);
+                    
+                    const statusConfig = {
+                        'approved': { color: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30', icon: 'check-circle-2', title: 'Transaksi Disetujui' },
+                        'rejected': { color: 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-lg shadow-rose-500/30', icon: 'x-circle', title: 'Transaksi Ditolak' },
+                        'completed': { color: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30', icon: 'badge-check', title: 'Transaksi Selesai' },
+                        'pending': { color: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30', icon: 'clock', title: 'Menunggu Persetujuan' },
+                    };
+                    
+                    const config = statusConfig[e.transaction.status] || { color: 'bg-gradient-to-br from-slate-500 to-slate-700 text-white shadow-lg', icon: 'bell', title: 'Pembaruan Transaksi' };
+                    
+                    showRealtimeToast(
+                        config.title,
+                        `Nota dengan ID <b>${e.transaction.invoice_number}</b> saat ini menjadi <span class="uppercase font-bold">${e.transaction.status}</span>.`,
+                        config.color,
+                        config.icon
+                    );
+                });
+
+            window.Echo.private(`transactions`)
+                .listen('.transaction.created', (e) => {
+                    console.log('Global Real-time Transaction Created (Grid):', e);
+                    if (typeof window.handleRealtimeTransactionCreation === 'function') {
+                        window.handleRealtimeTransactionCreation(e.transaction);
+                    }
+                })
+                .listen('.transaction.updated', (e) => {
+                    console.log('Global Real-time Transaction Update (Grid):', e);
+                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
+                        window.handleRealtimeTransactionUpdate(e.transaction);
+                    }
+                });
+                
+            window.Echo.private(`activities`)
+                .listen('.activity.logged', (e) => {
+                    if (typeof window.handleRealtimeActivityLog === 'function') {
+                        window.handleRealtimeActivityLog(e.activityLog);
+                    }
+                });
         }
     });
 </script>

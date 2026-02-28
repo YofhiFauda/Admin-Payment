@@ -189,6 +189,14 @@ class AiAutoFillController extends Controller
                     aiStatus: 'error',
                     confidence: $request->confidence,
                 ));
+                
+                // Trigger WebSocket event
+                broadcast(new \App\Events\OcrStatusUpdated($submitter->id, [
+                    'transaction_id' => $transaction->id,
+                    'invoice_number' => $transaction->invoice_number,
+                    'ai_status' => 'error',
+                    'message' => 'AI tidak dapat membaca nota dengan jelas (confidence: ' . $request->confidence . '%). Silakan isi manual.',
+                ]));
 
                 Log::channel('ai_autofill')->info('📬 [AI CALLBACK] NOTIFICATION SENT (ERROR)', [
                     'step' => '5_notification_error',
@@ -296,6 +304,14 @@ class AiAutoFillController extends Controller
                     aiStatus: 'completed',
                     confidence: $cacheData['confidence'],
                 ));
+                
+                // Trigger WebSocket event
+                broadcast(new \App\Events\OcrStatusUpdated($submitter->id, [
+                    'transaction_id' => $transaction->id,
+                    'invoice_number' => $transaction->invoice_number,
+                    'ai_status' => 'completed',
+                    'message' => 'Auto-fill AI selesai (Confidence: ' . $cacheData['confidence'] . '%).',
+                ]));
 
                 Log::channel('ai_autofill')->info('📬 [AI CALLBACK] NOTIFICATION SENT (SUCCESS)', [
                     'step' => '5_notification_success',

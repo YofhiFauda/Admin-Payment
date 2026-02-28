@@ -170,6 +170,40 @@ services:
       retries: 5
 
   # ─────────────────────────────────────────
+  #  ✅ REVERB — WebSocket Server
+  # ─────────────────────────────────────────
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whusnet-reverb
+    restart: unless-stopped
+    working_dir: /var/www
+    command: >
+      sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && php artisan reverb:start --host=0.0.0.0 --port=8081"
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./:/var/www
+      - storage_data:/var/www/storage
+      - cache_data:/var/www/bootstrap/cache
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: ${APP_ENV}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  # ─────────────────────────────────────────
   #  ✅ SCHEDULER — Laravel Cron
   # ─────────────────────────────────────────
   scheduler:

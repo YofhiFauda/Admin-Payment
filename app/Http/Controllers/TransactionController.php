@@ -186,7 +186,11 @@ class TransactionController extends Controller
         $transaction = Transaction::with('branches')->findOrFail($id);
         $branches = Branch::all();
 
-        return view('transactions.edit', compact('transaction', 'branches'));
+        if ($transaction->isPengajuan()) {
+            return view('transactions.edit-pengajuan', compact('transaction', 'branches'));
+        }
+
+        return view('transactions.edit-rembush', compact('transaction', 'branches'));
     }
 
     public function update(Request $request, $id)
@@ -280,13 +284,15 @@ class TransactionController extends Controller
             DB::commit();
 
             // Log activity
-            ActivityLog::create([
+            $log = ActivityLog::create([
                 'user_id'        => Auth::id(),
                 'action'         => 'edit',
                 'transaction_id' => $transaction->id,
                 'target_id'      => $transaction->invoice_number,
                 'description'    => "Mengedit data Nota " . $transaction->invoice_number,
             ]);
+            broadcast(new \App\Events\ActivityLogged($log));
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             return redirect()->route('transactions.index')
                 ->with('success', "Transaksi {$transaction->invoice_number} berhasil diperbarui.");
@@ -369,13 +375,15 @@ class TransactionController extends Controller
                 ? "Menolak status Transaksi " . $transaction->invoice_number . " dengan alasan: " . $request->rejection_reason
                 : "Menyetujui status Transaksi " . $transaction->invoice_number;
 
-            ActivityLog::create([
+            $log = ActivityLog::create([
                 'user_id'        => Auth::id(),
                 'action'         => strtolower($actionLabel),
                 'transaction_id' => $transaction->id,
                 'target_id'      => $transaction->invoice_number,
                 'description'    => $description,
             ]);
+            broadcast(new \App\Events\ActivityLogged($log));
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             Log::info('Transaction status updated', [
                 'transaction_id'   => $transaction->id,
@@ -469,4 +477,6 @@ class TransactionController extends Controller
 
         return response($file, 200)->header('Content-Type', $mimeType);
     }
+
+
 }

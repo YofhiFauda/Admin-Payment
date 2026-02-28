@@ -332,6 +332,8 @@ class RembushController extends Controller
                     'branches_count' => count($request->branches),
                 ]);
             }
+            
+            broadcast(new \App\Events\TransactionCreated($transaction));
 
             DB::commit();
 

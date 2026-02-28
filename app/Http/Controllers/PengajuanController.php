@@ -136,6 +136,7 @@ class PengajuanController extends Controller
                 }
             }
 
+            broadcast(new \App\Events\TransactionCreated($transaction));
             DB::commit();
 
             session()->forget([

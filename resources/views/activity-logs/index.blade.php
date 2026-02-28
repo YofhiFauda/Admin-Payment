@@ -96,4 +96,29 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // ─────────────────────────────────────────────────────────
+    // REALTIME ECHO HANDLER (ACTIVITY LOGS)
+    // ─────────────────────────────────────────────────────────
+    window.handleRealtimeActivityLog = function(activityLog) {
+        // Fetch the current page HTML via XHR so we don't do a full page reload,
+        // then swap the table body natively to make it feel instant.
+        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newTbody = doc.querySelector('table tbody');
+                const oldTbody = document.querySelector('table tbody');
+                
+                if (newTbody && oldTbody) {
+                    oldTbody.innerHTML = newTbody.innerHTML;
+                }
+            });
+    };
+</script>
+@endpush
 @endsection

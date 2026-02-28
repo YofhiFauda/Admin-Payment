@@ -1150,5 +1150,46 @@
         if (e.target.id === 'reject-modal') closeRejectModal();
     });
 
+    // ─────────────────────────────────────────────────────────
+    // REALTIME ECHO HANDLER (INDEX)
+    // ─────────────────────────────────────────────────────────
+    window.handleRealtimeTransactionUpdate = function(transaction) {
+        // Because the HTML structure with Blade conditionals (Auth checks, roles, etc) 
+        // is too complex to reconstruct purely via JavaScript, we dynamically fetch
+        // the current page and swap the table/list HTML out to keep it seamless.
+        
+        // Show a discrete loading spinner on the table if desired, then fetch:
+        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Swap desktop table body
+                const newTbody = doc.querySelector('table tbody');
+                const oldTbody = document.querySelector('table tbody');
+                if (newTbody && oldTbody) {
+                    oldTbody.innerHTML = newTbody.innerHTML;
+                }
+                
+                // Swap mobile view 
+                const newMobile = doc.querySelector('.lg\\:hidden.divide-y.divide-gray-50');
+                const oldMobile = document.querySelector('.lg\\:hidden.divide-y.divide-gray-50');
+                if (newMobile && oldMobile) {
+                    oldMobile.innerHTML = newMobile.innerHTML;
+                }
+                
+                // Re-initialize lucide icons for the new elements
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
+    };
+    
+    window.handleRealtimeTransactionCreation = function(transaction) {
+        // Just trigger the same reload logic
+        window.handleRealtimeTransactionUpdate(transaction);
+    };
+
 </script>
 @endpush
