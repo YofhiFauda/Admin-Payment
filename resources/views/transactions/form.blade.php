@@ -21,6 +21,16 @@
 
             <form method="POST" action="{{ route('rembush.store') }}" id="transaction-form" enctype="multipart/form-data">
                 @csrf
+                @if ($errors->any())
+                    <div class="mb-8 md:mb-10 bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 md:p-5 text-xs md:text-sm">
+                        <strong class="font-bold">Terjadi Kesalahan:</strong>
+                        <ul class="list-disc pl-5 mt-2 space-y-1">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <input type="hidden" name="type" value="rembush">
                 @if(isset($uploadId))
                     <input type="hidden" id="upload-id" value="{{ $uploadId }}">
