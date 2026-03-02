@@ -128,10 +128,12 @@
         </div>{{-- end #search-results-container --}}
     </div>
 
-    {{-- VIEW DETAIL MODAL - Same as before --}}
+    {{-- VIEW DETAIL MODAL --}}
     <div id="view-modal"
          class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-md p-4 opacity-0 transition-all duration-300"
-         aria-hidden="true">
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="view-modal-title">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform scale-95 transition-all duration-300"
              id="view-modal-content">
 
@@ -143,7 +145,7 @@
             <div id="view-body" class="hidden">
                 <div class="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
                     <div>
-                        <h3 class="text-lg font-extrabold text-slate-900" id="v-title">Detail Transaksi</h3>
+                        <h3 class="text-lg font-extrabold text-slate-900" id="view-modal-title">Detail Transaksi</h3>
                         <p class="text-xs text-slate-400 font-medium mt-0.5" id="v-invoice"></p>
                     </div>
                     <button onclick="closeViewModal()"
@@ -154,12 +156,23 @@
 
                 <div class="p-6 space-y-6">
                     <div class="flex items-center gap-2 flex-wrap" id="v-badges"></div>
+                    
+                    {{-- ✅ UPDATED: Foto dengan Click-to-Zoom --}}
                     <div id="v-image-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Foto Nota / Referensi</label>
-                        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50 flex justify-center">
+                        <div id="v-image-wrapper" 
+                             class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-colors group"
+                             title="Klik untuk memperbesar">
                             <img id="v-image" src="" class="max-h-48 object-contain rounded-xl" alt="Nota">
+                            
+                            {{-- Preview Badge --}}
+                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="expand" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perbesar</span>
+                            </div>
                         </div>
                     </div>
+                    
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="v-fields"></div>
                     <div id="v-items-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Daftar Barang</label>
@@ -221,7 +234,38 @@
         </div>
     </div>
 
-    {{-- REJECT MODAL - Same as before --}}
+    {{-- ✅ IMAGE VIEWER MODAL (Fullscreen Zoom) --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-[60] p-6"
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="viewer-title">
+
+        {{-- Card --}}
+        <div class="relative max-w-4xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto referensi" />
+
+            {{-- Hint --}}
+            <p id="viewer-title" class="text-center text-white/60 text-xs mt-4 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
+        </div>
+    </div>
+
+    {{-- REJECT MODAL --}}
     <div id="reject-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300">
@@ -299,6 +343,90 @@
     const canManage = {{ Auth::user()->canManageStatus() ? 'true' : 'false' }};
     const isOwner = {{ Auth::user()->isOwner() ? 'true' : 'false' }};
     const isAdmin = {{ Auth::user()->isAdmin() ? 'true' : 'false' }};
+
+    // ═══════════════════════════════════════════════════════════════
+    // IMAGE VIEWER MODAL
+    // ═══════════════════════════════════════════════════════════════
+    
+    const imageViewer  = document.getElementById('image-viewer');
+    const viewerImage  = document.getElementById('viewer-image');
+    const closeViewer  = document.getElementById('close-viewer');
+    let lastFocusedElement = null; // Store element that triggered viewer
+
+    function openImageViewer(src) {
+        // Store currently focused element to return focus later
+        lastFocusedElement = document.activeElement;
+        
+        // Set image source
+        viewerImage.src = src;
+        
+        // Show modal FIRST (remove hidden class)
+        imageViewer.classList.remove('hidden');
+        imageViewer.classList.add('flex');
+        
+        // Set aria-hidden AFTER showing (important for timing)
+        requestAnimationFrame(() => {
+            imageViewer.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            
+            // Reinit icons for close button
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons({ root: imageViewer });
+            }
+            
+            // Focus close button AFTER everything is ready
+            setTimeout(() => {
+                if (closeViewer) closeViewer.focus();
+            }, 50);
+        });
+    }
+
+    function closeImageViewer() {
+        // Remove focus from any element inside modal FIRST
+        if (document.activeElement && imageViewer.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+        
+        // Hide modal
+        imageViewer.classList.add('hidden');
+        imageViewer.classList.remove('flex');
+        document.body.style.overflow = '';
+        
+        // Set aria-hidden AFTER hiding
+        imageViewer.setAttribute('aria-hidden', 'true');
+        
+        // Clear image and return focus
+        setTimeout(() => { 
+            viewerImage.src = '';
+            
+            // Return focus to element that opened the viewer
+            if (lastFocusedElement && lastFocusedElement.focus) {
+                lastFocusedElement.focus();
+            }
+        }, 200);
+    }
+
+    // Tombol X → tutup
+    if (closeViewer) {
+        closeViewer.addEventListener('click', function (e) {
+            e.stopPropagation();
+            closeImageViewer();
+        });
+    }
+
+    // Klik backdrop (di luar viewer-card) → tutup
+    if (imageViewer) {
+        imageViewer.addEventListener('click', function (e) {
+            if (e.target === imageViewer) closeImageViewer();
+        });
+    }
+
+    // ESC → tutup
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) {
+            closeImageViewer();
+        }
+    });
 
     // ═══════════════════════════════════════════════════════════════
     // INSTANT SEARCH ENGINE - CLIENT SIDE
@@ -787,6 +915,15 @@
         // Initialize Lucide icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
+        // ✅ Initialize aria-hidden=true for all modals (important for accessibility)
+        const viewModal = document.getElementById('view-modal');
+        const imageViewer = document.getElementById('image-viewer');
+        const rejectModal = document.getElementById('reject-modal');
+        
+        if (viewModal) viewModal.setAttribute('aria-hidden', 'true');
+        if (imageViewer) imageViewer.setAttribute('aria-hidden', 'true');
+        if (rejectModal) rejectModal.setAttribute('aria-hidden', 'true');
+
         // Load data
         SearchEngine.init();
 
@@ -885,7 +1022,7 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // VIEW MODAL & OTHER FUNCTIONS (same as before)
+    // VIEW MODAL & OTHER FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
     
     function openViewModal(id) {
@@ -902,8 +1039,13 @@
         loading.classList.remove('hidden');
         body.classList.add('hidden');
 
+        // Show modal first
         modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // Then set aria-hidden and animate
         requestAnimationFrame(() => {
+            modal.setAttribute('aria-hidden', 'false');
             modal.classList.remove('opacity-0');
             modalBox.classList.remove('scale-95');
             modalBox.classList.add('scale-100');
@@ -918,7 +1060,25 @@
                 renderViewModal(d);
                 loading.classList.add('hidden');
                 body.classList.remove('hidden');
+                
+                // ✅ ATTACH CLICK EVENT TO IMAGE
+                const imgWrapper = document.getElementById('v-image-wrapper');
+                if (imgWrapper) {
+                    imgWrapper.addEventListener('click', function() {
+                        const img = document.getElementById('v-image');
+                        if (img && img.src) {
+                            openImageViewer(img.src);
+                        }
+                    });
+                }
+                
                 if (typeof lucide !== 'undefined') lucide.createIcons();
+                
+                // Focus close button after content loads
+                setTimeout(() => {
+                    const closeBtn = modal.querySelector('button[onclick="closeViewModal()"]');
+                    if (closeBtn) closeBtn.focus();
+                }, 150);
             })
             .catch(err => {
                 console.error(err);
@@ -929,10 +1089,23 @@
     function closeViewModal() {
         const modal    = document.getElementById('view-modal');
         const modalBox = document.getElementById('view-modal-content');
+        
+        // Remove focus from any element inside modal FIRST
+        if (document.activeElement && modal.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+        
+        // Animate close
         modal.classList.add('opacity-0');
         modalBox.classList.remove('scale-100');
         modalBox.classList.add('scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 300);
+        
+        // After animation, hide and set aria-hidden
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }, 300);
     }
 
     document.getElementById('view-modal').addEventListener('click', e => {
@@ -942,7 +1115,7 @@
     function renderViewModal(d) {
         currentTransactionId = d.id;
 
-        document.getElementById('v-title').textContent   = d.type === 'pengajuan' ? 'Detail Pengajuan' : 'Detail Reimbursement';
+        document.getElementById('view-modal-title').textContent = d.type === 'pengajuan' ? 'Detail Pengajuan' : 'Detail Reimbursement';
         document.getElementById('v-invoice').textContent = d.invoice_number + ' • ' + d.created_at;
 
         const statusColors = {
@@ -1122,22 +1295,42 @@
         document.getElementById('reject-form').action      = '/transactions/' + transactionId + '/status';
         document.getElementById('reject-modal-invoice').textContent = invoiceNumber;
 
+        // Show modal first
         modal.classList.remove('hidden');
+        
+        // Then set aria-hidden and animate
         requestAnimationFrame(() => {
+            modal.setAttribute('aria-hidden', 'false');
             modal.classList.remove('opacity-0');
             inner.classList.remove('scale-95');
             inner.classList.add('scale-100');
         });
+        
+        // Focus textarea after animation
+        setTimeout(() => {
+            const textarea = modal.querySelector('textarea[name="rejection_reason"]');
+            if (textarea) textarea.focus();
+        }, 350);
     }
 
     function closeRejectModal() {
         const modal = document.getElementById('reject-modal');
         const inner = modal.querySelector('div');
+        
+        // Remove focus from any element inside modal FIRST
+        if (document.activeElement && modal.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+        
+        // Animate close
         modal.classList.add('opacity-0');
         inner.classList.remove('scale-100');
         inner.classList.add('scale-95');
+        
+        // After animation, hide and set aria-hidden
         setTimeout(() => {
             modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
             modal.querySelector('textarea').value = '';
         }, 300);
     }

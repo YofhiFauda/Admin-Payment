@@ -36,20 +36,90 @@
                     <input type="hidden" id="upload-id" value="{{ $uploadId }}">
                 @endif
                 <input type="hidden" name="amount" id="form-total-amount" value="{{ old('amount', 0) }}">
-
-                {{-- 1. FOTO NOTA --}}
+                
+                {{-- ══════════════════════════════════ --}}
+                {{-- 1. FOTO REFERENSI --}}
+                {{-- ══════════════════════════════════ --}}
                 <div class="mb-8 md:mb-10">
-                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Foto Nota</label>
-                    <div class="border-2 border-dashed border-emerald-400 rounded-2xl p-2 bg-slate-50/50 flex justify-center relative overflow-hidden group">
-                        @if(isset($base64) && str_contains($mime, 'image'))
-                            <img src="data:{{ $mime }};base64,{{ $base64 }}" class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm relative z-10" />
+                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
+                        Foto Referensi 
+                        @if(isset($base64) || isset($filePath))
+                            <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
                         @else
-                            <div class="w-full h-48 md:h-64 flex flex-col items-center justify-center text-slate-400">
-                                <i data-lucide="image" class="w-8 h-8 mb-2 opacity-50"></i>
-                                <span class="text-xs font-medium">Tidak ada nota yang diunggah</span>
-                            </div>
+                            <span class="text-slate-400">(Opsional)</span>
                         @endif
-                    </div>
+                    </label>
+                    
+                    {{-- ✅ CONDITIONAL: Show EITHER photo preview OR empty state --}}
+                    @if((isset($base64) && str_contains($mime, 'image')) || (isset($filePath) && $filePath))
+                        {{-- ═══ PHOTO PREVIEW (Base64 or File Path) ═══ --}}
+                        <div class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-colors group"
+                            id="ref-photo-wrapper"
+                            title="Klik untuk memperbesar">
+                            
+                            @if(isset($base64) && isset($mime) && str_contains($mime, 'image'))
+                                {{-- ✅ PRIORITAS 1: DATA URI (Base64) - Instant Preview --}}
+                                <img src="data:{{ $mime }};base64,{{ $base64 }}"
+                                    class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
+                                    alt="Preview Foto Referensi" 
+                                    id="ref-photo-img"/>
+                            @elseif(isset($filePath) && $filePath)
+                                {{-- ⚠️ FALLBACK: Storage URL (bisa 404 jika symlink belum dibuat) --}}
+                                <img src="{{ Storage::url($filePath) }}" 
+                                    class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
+                                    alt="Preview Foto Referensi"
+                                    id="ref-photo-img"
+                                    onerror="this.parentElement.innerHTML='<div class=\'text-red-500 text-sm\'>❌ Gagal memuat foto</div>'" />
+                            @endif
+                            
+                            {{-- Preview Badge --}}
+                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="expand" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perbesar</span>
+                            </div>
+                            
+                            {{-- Success Indicator --}}
+                            <div class="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg flex items-center gap-1.5">
+                                <i data-lucide="check-circle" class="w-3 h-3 text-white"></i>
+                                <span class="text-[9px] font-bold text-white uppercase tracking-wider">Foto Terupload</span>
+                            </div>
+                        </div>
+
+                        {{-- Tips Jika Ada Foto --}}
+                        <div class="mt-4 bg-blue-50 border border-blue-100/50 rounded-xl p-3 md:p-4 flex gap-3 items-start">
+                            <div class="bg-blue-100 p-1.5 md:p-2 rounded-lg text-blue-500 shrink-0">
+                                <i data-lucide="info" class="w-4 h-4 md:w-5 md:h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-[9px] md:text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Foto Referensi</h4>
+                                <p class="text-[11px] md:text-xs text-blue-600 leading-relaxed">
+                                    Foto ini akan disertakan dalam pengajuan sebagai referensi barang/jasa yang ingin dibeli. 
+                                    Foto membantu admin memahami spesifikasi dengan lebih baik.
+                                </p>
+                            </div>
+                        </div>
+                    @else
+                        {{-- ═══ EMPTY STATE (No Photo) ═══ --}}
+                        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 md:p-12 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
+                            <i data-lucide="image" class="w-10 h-10 md:w-12 md:h-12 mb-3 opacity-30"></i>
+                            <span class="text-xs md:text-sm font-medium mb-1">Tidak ada foto referensi</span>
+                            <span class="text-[10px] md:text-xs text-slate-300">Pengajuan dapat diproses tanpa foto referensi</span>
+                        </div>
+
+                        {{-- Tips Jika Tidak Ada Foto --}}
+                        <div class="mt-4 bg-amber-50 border border-amber-100/50 rounded-xl p-3 md:p-4 flex gap-3 items-start">
+                            <div class="bg-amber-100 p-1.5 md:p-2 rounded-lg text-amber-500 shrink-0">
+                                <i data-lucide="lightbulb" class="w-4 h-4 md:w-5 md:h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-[9px] md:text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Tips</h4>
+                                <p class="text-[11px] md:text-xs text-amber-600 leading-relaxed">
+                                    Jika memiliki foto/screenshot barang yang ingin dibeli, upload terlebih dahulu di halaman sebelumnya. 
+                                    Foto referensi membantu mempercepat proses verifikasi.
+                                </p>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Alert Tips --}}
                     <div class="mt-4 bg-orange-50 border border-orange-100/50 rounded-xl p-3 md:p-4 flex gap-3 md:gap-4 items-start">
@@ -141,7 +211,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100" id="items-tbody">
-                                    </tbody>
+                                </tbody>
                             </table>
                         </div>
                         
@@ -181,7 +251,7 @@
 
                         {{-- Active Branches Allocation Inputs/Display --}}
                         <div class="space-y-3" id="active-branches-list">
-                            </div>
+                        </div>
                             
                         {{-- Hidden inputs temp container --}}
                         <div id="branch-hidden-inputs"></div>
@@ -235,23 +305,141 @@
                             flex items-center justify-center gap-2">
                         <span id="submit-text">Kirim Pengajuan Rembush</span>
                         <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <circle class="opacity-25" cx="12" cy-12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                         </svg>
                     </button>
                 </div>
             </form>
+        </div>{{-- END: Form Container Card --}}
+    </div>{{-- END: Max-width Container --}}
+    
+   {{-- ══════════════════════════════════════════════════ --}}
+    {{-- IMAGE VIEWER MODAL                                --}}
+    {{-- hidden → flex saat dibuka via JS                 --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="viewer-title">
+
+        {{-- Card --}}
+        <div class="relative max-w-3xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto referensi" />
+
+            {{-- Hint --}}
+            <p id="viewer-title" class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
         </div>
     </div>
 
-{{-- ── 4. GANTI seluruh @push('scripts') dengan ini ─────────────────────── --}}
+    <script>
+        lucide.createIcons();
+    </script>
+
+{{-- ── SCRIPTS ─────────────────────── --}}
 @push('scripts')
     <script>
-        {{-- Pass aiData ke JS via window variable (bukan inline @json dalam addEventListener) --}}
+        {{-- Pass aiData ke JS via window variable --}}
         window._aiData = @json($aiData ?? []);
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+        // ═══════════════════════════════════════
+        // IMAGE VIEWER MODAL
+        // ═══════════════════════════════════════
+        const imageViewer  = document.getElementById('image-viewer');
+        const viewerImage  = document.getElementById('viewer-image');
+        const closeViewer  = document.getElementById('close-viewer');
+        const refWrapper   = document.getElementById('ref-photo-wrapper');
+        let lastFocusedElement = null;
+
+        function openViewer(src) {
+            lastFocusedElement = document.activeElement;
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            
+            requestAnimationFrame(() => {
+                imageViewer.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+                
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons({ root: imageViewer });
+                }
+                
+                setTimeout(() => {
+                    if (closeViewer) closeViewer.focus();
+                }, 50);
+            });
+        }
+
+        function closeViewerFn() {
+            if (document.activeElement && imageViewer.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+            
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            imageViewer.setAttribute('aria-hidden', 'true');
+            
+            setTimeout(() => { 
+                viewerImage.src = '';
+                if (lastFocusedElement && lastFocusedElement.focus) {
+                    lastFocusedElement.focus();
+                }
+            }, 200);
+        }
+
+        // Klik wrapper → buka modal
+        if (refWrapper) {
+            refWrapper.addEventListener('click', function () {
+                const img = this.querySelector('img');
+                if (img) openViewer(img.src);
+            });
+        }
+
+        // Tombol X → tutup
+        if (closeViewer) {
+            closeViewer.addEventListener('click', function (e) {
+                e.stopPropagation();
+                closeViewerFn();
+            });
+        }
+
+        // Klik backdrop (di luar viewer-card) → tutup
+        if (imageViewer) {
+            imageViewer.addEventListener('click', function (e) {
+                if (e.target === imageViewer) closeViewerFn();
+            });
+        }
+
+        // ESC → tutup
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) {
+                closeViewerFn();
+            }
+        });
+
+        // Initialize aria-hidden
+        if (imageViewer) imageViewer.setAttribute('aria-hidden', 'true');
 
         // ─────────────────────────────────────────────
         // STATE
@@ -384,11 +572,11 @@
             finalTotal.textContent        = formatRupiah(totalAmount);
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            renderDistribution();   // update alokasi saat total berubah
+            renderDistribution();
         }
 
         // ─────────────────────────────────────────────
-        // ITEMS — event delegation (1x listener, tidak rebind)
+        // ITEMS — event delegation
         // ─────────────────────────────────────────────
         itemsTbody.addEventListener('input', function (e) {
             const tr = e.target.closest('tr[data-idx]');
@@ -498,7 +686,7 @@
         });
 
         // ─────────────────────────────────────────────
-        // RENDER DISTRIBUTION (rows)
+        // RENDER DISTRIBUTION
         // ─────────────────────────────────────────────
         function renderDistribution() {
             activeBranchesList.innerHTML  = '';
@@ -514,7 +702,6 @@
             }
 
             selectedBranches.forEach((branch, idx) => {
-                // Hitung value
                 if (currentMethod === 'equal') {
                     branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
                     branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
@@ -526,7 +713,6 @@
                         ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
                 }
 
-                // Input HTML
                 let inputHtml = '';
                 if (currentMethod === 'equal') {
                     inputHtml = `<span class="text-emerald-500 font-bold text-sm">${formatRupiah(branch.value)}</span>`;
@@ -570,9 +756,6 @@
             validateAndToggleSubmit();
         }
 
-        // ─────────────────────────────────────────────
-        // UPDATE hidden inputs
-        // ─────────────────────────────────────────────
         function updateHiddenInputs() {
             if (!hiddenInputsContainer) return;
             hiddenInputsContainer.innerHTML = '';
@@ -585,9 +768,6 @@
             });
         }
 
-        // ─────────────────────────────────────────────
-        // UPDATE summary list (tanpa re-render rows)
-        // ─────────────────────────────────────────────
         function updateSummaryList() {
             summaryBranchesList.innerHTML = '';
             selectedBranches.forEach(branch => {
@@ -605,9 +785,6 @@
             });
         }
 
-        // ─────────────────────────────────────────────
-        // VALIDATE & TOGGLE SUBMIT BUTTON
-        // ─────────────────────────────────────────────
         function validateAndToggleSubmit() {
             let isValid = true;
 
@@ -636,9 +813,6 @@
             }
         }
 
-        // ─────────────────────────────────────────────
-        // SUBMIT
-        // ─────────────────────────────────────────────
         document.getElementById('transaction-form').addEventListener('submit', function (e) {
             if (submitBtn.disabled) { e.preventDefault(); return; }
             submitBtn.disabled = true;
@@ -646,9 +820,6 @@
             document.getElementById('submit-spinner').classList.remove('hidden');
         });
 
-        // ─────────────────────────────────────────────
-        // INIT
-        // ─────────────────────────────────────────────
         renderItems();
     });
     </script>

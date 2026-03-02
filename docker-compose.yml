@@ -52,6 +52,7 @@ services:
     volumes:
       - ./:/var/www
       - ./docker/nginx:/etc/nginx/conf.d
+      - storage_data:/var/www/storage
     networks:
       - app_network
 

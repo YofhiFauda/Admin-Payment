@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\IdGeneratorService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
@@ -69,6 +70,7 @@ class Transaction extends Model
         'estimated_price',
         'purchase_reason',
         'upload_id',
+        'trace_id',
     ];
 
     protected function casts(): array
@@ -104,11 +106,20 @@ class Transaction extends Model
         static::deleted($clearCache);
     }
 
-    // ─── Invoice Number ───────────────────────────────
+    // ─── ID Generators (delegates to IdGeneratorService) ────────────
     public static function generateInvoiceNumber(): string
     {
-        $count = self::count() + 1;
-        return 'INV-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        return IdGeneratorService::nextInvoiceNumber();
+    }
+
+    public static function generateUploadId(): string
+    {
+        return IdGeneratorService::nextUploadId();
+    }
+
+    public static function generateTraceId(): string
+    {
+        return IdGeneratorService::nextTraceId();
     }
 
     // ─── Relationships ────────────────────────────────

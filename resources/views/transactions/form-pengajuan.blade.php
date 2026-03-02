@@ -30,23 +30,82 @@
             {{-- ══════════════════════════════════ --}}
             <div class="mb-8 md:mb-10">
                 <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
-                    Foto Referensi <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
+                    Foto Referensi 
+                    @if(isset($base64) || isset($filePath))
+                        <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
+                    @else
+                        <span class="text-slate-400">(Opsional)</span>
+                    @endif
                 </label>
                 
-                @if($filePath && Storage::disk('public')->exists($filePath))
-                    <div class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden group">
-                        <img id="ref-img-preview"
-                            src="{{ Storage::url($filePath) }}"
-                            class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm relative z-10 cursor-zoom-in" 
-                            alt="Preview Foto Referensi" />
-                        <div class="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i data-lucide="zoom-in" class="w-4 h-4 text-emerald-600"></i>
+                {{-- ✅ CONDITIONAL: Show EITHER photo preview OR empty state --}}
+                @if((isset($base64) && isset($mime) && str_contains($mime, 'image')) || (isset($filePath) && $filePath))
+                    {{-- ═══ PHOTO PREVIEW (Base64 or File Path) ═══ --}}
+                    <div class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-colors group"
+                        id="ref-photo-wrapper"
+                        title="Klik untuk memperbesar">
+                        
+                        @if(isset($base64) && isset($mime) && str_contains($mime, 'image'))
+                            {{-- ✅ PRIORITAS 1: DATA URI (Base64) - Instant Preview --}}
+                            <img src="data:{{ $mime }};base64,{{ $base64 }}" 
+                                class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
+                                alt="Preview Foto Referensi" 
+                                id="ref-photo-img" />
+                        @elseif(isset($filePath) && $filePath)
+                            {{-- ⚠️ FALLBACK: Storage URL (bisa 404 jika symlink belum dibuat) --}}
+                            <img src="{{ Storage::url($filePath) }}" 
+                                class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
+                                alt="Preview Foto Referensi"
+                                id="ref-photo-img"
+                                onerror="this.parentElement.innerHTML='<div class=\'text-red-500 text-sm\'>❌ Gagal memuat foto</div>'" />
+                        @endif
+                        
+                        {{-- Preview Badge --}}
+                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="expand" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perbesar</span>
+                        </div>
+                        
+                        {{-- Success Indicator --}}
+                        <div class="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg flex items-center gap-1.5">
+                            <i data-lucide="check-circle" class="w-3 h-3 text-white"></i>
+                            <span class="text-[9px] font-bold text-white uppercase tracking-wider">Foto Terupload</span>
+                        </div>
+                    </div>
+
+                    {{-- Tips Jika Ada Foto --}}
+                    <div class="mt-4 bg-blue-50 border border-blue-100/50 rounded-xl p-3 md:p-4 flex gap-3 items-start">
+                        <div class="bg-blue-100 p-1.5 md:p-2 rounded-lg text-blue-500 shrink-0">
+                            <i data-lucide="info" class="w-4 h-4 md:w-5 md:h-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-[9px] md:text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Foto Referensi</h4>
+                            <p class="text-[11px] md:text-xs text-blue-600 leading-relaxed">
+                                Foto ini akan disertakan dalam pengajuan sebagai referensi barang/jasa yang ingin dibeli. 
+                                Foto membantu admin memahami spesifikasi dengan lebih baik.
+                            </p>
                         </div>
                     </div>
                 @else
-                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
-                        <i data-lucide="image" class="w-12 h-12 mb-3 opacity-30"></i>
-                        <span class="text-sm font-medium">Tidak ada foto referensi</span>
+                    {{-- ═══ EMPTY STATE (No Photo) ═══ --}}
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 md:p-12 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
+                        <i data-lucide="image" class="w-10 h-10 md:w-12 md:h-12 mb-3 opacity-30"></i>
+                        <span class="text-xs md:text-sm font-medium mb-1">Tidak ada foto referensi</span>
+                        <span class="text-[10px] md:text-xs text-slate-300">Pengajuan dapat diproses tanpa foto referensi</span>
+                    </div>
+
+                    {{-- Tips Jika Tidak Ada Foto --}}
+                    <div class="mt-4 bg-amber-50 border border-amber-100/50 rounded-xl p-3 md:p-4 flex gap-3 items-start">
+                        <div class="bg-amber-100 p-1.5 md:p-2 rounded-lg text-amber-500 shrink-0">
+                            <i data-lucide="lightbulb" class="w-4 h-4 md:w-5 md:h-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-[9px] md:text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Tips</h4>
+                            <p class="text-[11px] md:text-xs text-amber-600 leading-relaxed">
+                                Jika memiliki foto/screenshot barang yang ingin dibeli, upload terlebih dahulu di halaman sebelumnya. 
+                                Foto referensi membantu mempercepat proses verifikasi.
+                            </p>
+                        </div>
                     </div>
                 @endif
             </div>
@@ -218,13 +277,35 @@
         </form>
     </div>
 
-    {{-- IMAGE VIEWER MODAL --}}
-    <div id="image-viewer" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-6">
-        <div class="relative max-w-3xl w-full">
-            <button id="close-viewer" class="absolute -top-10 right-0 text-white hover:text-red-400 transition">
-                <i data-lucide="x" class="w-6 h-6"></i>
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- IMAGE VIEWER MODAL                                --}}
+    {{-- hidden → flex saat dibuka via JS                 --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
+         role="dialog" aria-modal="true" aria-label="Preview foto referensi">
+
+        {{-- Card --}}
+        <div class="relative max-w-3xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
             </button>
-            <img id="viewer-image" src="" class="w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl bg-white p-2">
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto referensi" />
+
+            {{-- Hint --}}
+            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
         </div>
     </div>
 
@@ -235,9 +316,63 @@
     @push('scripts')
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // ─────────────────────────────
+        
+
+        // ═══════════════════════════════════════
+        // IMAGE VIEWER MODAL
+        // ═══════════════════════════════════════
+        const imageViewer  = document.getElementById('image-viewer');
+        const viewerImage  = document.getElementById('viewer-image');
+        const closeViewer  = document.getElementById('close-viewer');
+        const refWrapper   = document.getElementById('ref-photo-wrapper');
+
+        function openViewer(src) {
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewerFn() {
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            setTimeout(() => { viewerImage.src = ''; }, 200);
+        }
+
+        // Klik wrapper → buka modal
+        if (refWrapper) {
+            refWrapper.addEventListener('click', function () {
+                const img = this.querySelector('img');
+                if (img) openViewer(img.src);
+            });
+        }
+
+        // Tombol X → tutup
+        if (closeViewer) {
+            closeViewer.addEventListener('click', function (e) {
+                e.stopPropagation();
+                closeViewerFn();
+            });
+        }
+
+        // Klik backdrop (di luar viewer-card) → tutup
+        if (imageViewer) {
+            imageViewer.addEventListener('click', function (e) {
+                if (e.target === imageViewer) closeViewerFn();
+            });
+        }
+
+        // ESC → tutup
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) {
+                closeViewerFn();
+            }
+        });
+
+        // ═══════════════════════════════════════
         // VARIABLES & SELECTORS
-        // ─────────────────────────────
+        // ═══════════════════════════════════════
         const priceDisplay      = document.getElementById('input-price-display');
         const priceHidden       = document.getElementById('form-estimated-price');
         const quantityInput     = document.getElementById('input-quantity');
@@ -256,7 +391,7 @@
         const summaryBranchesList = document.getElementById('summary-branches-list');
         const summarySubmit     = document.getElementById('summary-submit');
 
-        let selectedBranches = []; // { id, name, value, percent }
+        let selectedBranches = [];
         let currentMethod    = 'equal';
 
         // ─────────────────────────────
@@ -304,12 +439,10 @@
                 const index = selectedBranches.findIndex(b => b.id == id);
 
                 if (index > -1) {
-                    // Deselect
                     selectedBranches.splice(index, 1);
                     this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                     this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                 } else {
-                    // Select
                     selectedBranches.push({ id, name, value: 0, percent: 0 });
                     this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                     this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
@@ -323,15 +456,12 @@
         // ─────────────────────────────
         methodBtns.forEach(btn => {
             btn.addEventListener('click', function () {
-                // Update UI Buttons
                 methodBtns.forEach(b => {
                     b.classList.remove('bg-white', 'shadow', 'text-slate-700');
                     b.classList.add('text-slate-500');
                 });
                 this.classList.remove('text-slate-500');
                 this.classList.add('bg-white', 'shadow', 'text-slate-700');
-
-                // Update Logic
                 currentMethod = this.dataset.method;
                 renderDistribution();
             });
@@ -411,9 +541,6 @@
             validateAndSubmit();
         }
 
-        // ─────────────────────────────
-        // UPDATE hidden inputs
-        // ─────────────────────────────
         function updateHiddenInputs() {
             hiddenInputsContainer.innerHTML = '';
             selectedBranches.forEach((branch, idx) => {
@@ -425,9 +552,6 @@
             });
         }
 
-        // ─────────────────────────────
-        // UPDATE summary list (tanpa re-render rows)
-        // ─────────────────────────────
         function updateSummaryList() {
             summaryBranchesList.innerHTML = '';
             const totalAmount = getTotal();
@@ -453,9 +577,6 @@
             summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
         }
 
-        // ─────────────────────────────
-        // DYNAMIC INPUT HANDLERS (Delegation)
-        // ─────────────────────────────
         distributionList.addEventListener('input', function(e) {
             const index = e.target.dataset.index;
             if (index === undefined) return;
@@ -465,8 +586,6 @@
                 const val = parseFloat(e.target.value) || 0;
                 selectedBranches[index].percent = val;
                 selectedBranches[index].value = totalAmount > 0 ? Math.round((totalAmount * val) / 100) : 0;
-                
-                // Update text di samping input persen secara manual
                 const siblingSpan = e.target.parentElement.querySelector('.text-emerald-500');
                 if (siblingSpan) siblingSpan.textContent = 'Rp ' + formatRupiah(selectedBranches[index].value);
             }
@@ -503,16 +622,11 @@
             summarySubmit.disabled = !isValid;
         }
 
-        // ─────────────────────────────
-        // FORM SUBMISSION
-        // ─────────────────────────────
         document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
             if (summarySubmit.disabled) {
                 e.preventDefault();
                 return;
             }
-            
-            // UI Feedback
             summarySubmit.disabled = true;
             document.getElementById('submit-text').textContent = 'Memproses...';
             document.getElementById('submit-spinner').classList.remove('hidden');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\OcrProcessingJob;
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Services\IdGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -64,7 +65,10 @@ class RembushController extends Controller
         ]);
 
         $file     = $request->file('file');
-        $uploadId = 'nota-' . round(microtime(true) * 1000);
+
+        // Generate sequence ONCE — both upload_id & invoice_number will share this number
+        $seq      = IdGeneratorService::nextSequence();
+        $uploadId = IdGeneratorService::buildUploadId($seq);
 
         // 📝 LOG: Upload ID Generated
         Log::channel('ocr')->info('📄 [OCR FLOW] UPLOAD ID GENERATED', [
@@ -109,6 +113,7 @@ class RembushController extends Controller
 
         session([
             'upload_id'          => $uploadId,
+            'upload_seq'         => $seq,          // ← shared sequence number
             'upload_file_path'   => $storagePath,
             'upload_file_base64' => $base64,
             'upload_file_mime'   => $mime,
@@ -238,8 +243,11 @@ class RembushController extends Controller
             }
         }
 
-        $uploadId       = session('upload_id') ?? ('nota-' . round(microtime(true) * 1000));
+        $uploadId       = session('upload_id') ?? IdGeneratorService::buildUploadId(IdGeneratorService::nextSequence());
         $uploadFilePath = session('upload_file_path');
+        // Derive invoice number from the SAME sequence used for upload_id
+        $seq            = session('upload_seq') ?? IdGeneratorService::nextSequence();
+        $invoiceNumber  = IdGeneratorService::buildInvoiceNumber($seq);
 
         // 📝 LOG: Store Process Started
         Log::channel('ocr')->info('💾 [OCR FLOW] STORE PROCESS STARTED', [
@@ -276,7 +284,7 @@ class RembushController extends Controller
 
             $transaction = Transaction::create([
                 'type'           => Transaction::TYPE_REMBUSH,
-                'invoice_number' => Transaction::generateInvoiceNumber(),
+                'invoice_number' => $invoiceNumber,
                 'customer'       => $request->customer,
                 'category'       => $request->category,
                 'description'    => $request->description,
@@ -288,6 +296,7 @@ class RembushController extends Controller
                 'status'         => 'pending',
                 'ai_status'      => $permanentPath ? 'queued' : 'skipped',
                 'upload_id'      => $uploadId,
+                'trace_id'       => Transaction::generateTraceId(),
                 'submitted_by'   => Auth::id(),
             ]);
 
@@ -340,6 +349,7 @@ class RembushController extends Controller
             // Bersihkan session
             session()->forget([
                 'upload_id',
+                'upload_seq',
                 'upload_file_path',
                 'upload_file_base64',
                 'upload_file_mime',
