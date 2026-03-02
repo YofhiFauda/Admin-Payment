@@ -69,4 +69,10 @@ class NotificationController extends Controller
         
         return back()->with('success', 'Notifikasi dihapus');
     }
+
+    public function unreadCount()
+    {
+        $count = Auth::user()->unreadNotifications()->count();
+        return response()->json(['count' => $count]);
+    }
 }

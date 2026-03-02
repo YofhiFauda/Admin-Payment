@@ -1,9 +1,5 @@
 @extends('layouts.app')
 
-@php
-    $hideHeader = true;
-@endphp
-
 @section('content')
 <div class="px-4 py-8 max-w-8xl mx-auto">
     <!-- Header Section -->

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <meta name="notif-unread-url" content="{{ route('notifications.unreadCount') }}">
     
     <style>
         /* Profile Card Styles */
@@ -157,6 +158,77 @@
                 font-size: 12px;
             }
         }
+
+        /* Notification Badge Styles */
+        .notif-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            animation: badgePulse 2s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        .notif-badge.badge-hidden {
+            display: none;
+        }
+        .notif-badge-mobile {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 4px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            animation: badgePulse 2s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        .notif-badge-mobile.badge-hidden {
+            display: none;
+        }
+        .notif-badge-sidebar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            margin-left: auto;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            animation: badgePulse 2s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+        .notif-badge-sidebar.badge-hidden {
+            display: none;
+        }
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
     </style>
 </head>
 
@@ -194,9 +266,10 @@
                             <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
                         </a>
                         <a href="{{ route('notifications.index') }}"
-                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
+                            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative
                             {{ request()->routeIs('notifications.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
+                            <span id="notif-count-desktop" class="notif-badge badge-hidden">0</span>
                         </a>
                     </div>
 
@@ -224,9 +297,7 @@
                             class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
                             {{ request()->routeIs('notifications.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="bell" class="w-5 h-5"></i>
-                            @if(auth()->user()->unreadNotifications()->where('data->type', 'ocr_status')->count() > 0)
-                                <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-                            @endif
+                            <span id="notif-count-mobile" class="notif-badge-mobile badge-hidden">0</span>
                         </a>
                     </div>
 
@@ -342,6 +413,7 @@
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('notifications.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
+                    <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>
                 @endif
             </nav>
@@ -376,17 +448,33 @@
             </div>
         </aside>
 
+        @php
+            $hideHeaderOnPc = request()->routeIs('transactions.create') 
+                || request()->routeIs('notifications.index') 
+                || request()->routeIs('activity-logs.index') 
+                || request()->routeIs('transactions.confirm');
+        @endphp
+
         <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden">
-            <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center border-b border-gray-100 shrink-0">
-                <div class="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-                    <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors">
+            @if($hideHeaderOnPc)
+                {{-- Mobile-only: minimal bar with just hamburger --}}
+                <div class="md:hidden bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 py-3 border-b border-gray-100 shrink-0">
+                    <button onclick="toggleMobileSidebar()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                         <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
                     </button>
-                    <h2 class="text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate">
-                        @yield('page-title', 'Dashboard')
-                    </h2>
                 </div>
-            </header>
+            @else
+                <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center border-b border-gray-100 shrink-0">
+                    <div class="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
+                        <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                            <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
+                        </button>
+                        <h2 class="text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate">
+                            @yield('page-title', 'Dashboard')
+                        </h2>
+                    </div>
+                </header>
+            @endif
 
             <div class="flex-1 overflow-y-auto p-4 lg:p-6">
                 <div class="max-w-8xl mx-auto">
@@ -407,6 +495,45 @@
 @endif
 
 <script>
+    // ─────────────────────────────────────────────────────────
+    // NOTIFICATION BADGE COUNTER
+    // ─────────────────────────────────────────────────────────
+    function updateNotificationBadge() {
+        const url = document.querySelector('meta[name="notif-unread-url"]')?.content;
+        if (!url) return;
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const count = data.count || 0;
+            const badges = [
+                document.getElementById('notif-count-desktop'),
+                document.getElementById('notif-count-mobile'),
+                document.getElementById('notif-count-sidebar')
+            ];
+            badges.forEach(badge => {
+                if (!badge) return;
+                
+                // Update text content
+                badge.textContent = count > 99 ? '99+' : count;
+                
+                // Show/Hide badge based on count
+                if (count > 0) {
+                    badge.classList.remove('badge-hidden');
+                } else {
+                    badge.classList.add('badge-hidden');
+                }
+            });
+        })
+        .catch(() => {});
+    }
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', () => updateNotificationBadge());
+
     function toggleMobileSidebar() {
         const sidebar = document.getElementById('mobile-sidebar');
         const overlay = document.getElementById('sidebar-overlay');
@@ -509,6 +636,7 @@
                     const titleStr = isCompleted ? 'Pemrosesan OCR Selesai' : 'Pemrosesan OCR Gagal';
                         
                     showRealtimeToast(titleStr, e.payload.message || `Sistem AI telah selesai memindai nota Anda.`, colorClasses, iconName);
+                    updateNotificationBadge();
                     
                     if (window.location.href.includes(`/loading/${e.payload.upload_id}`)) {
                         setTimeout(() => window.location.reload(), 1500);
@@ -534,6 +662,7 @@
                         config.color,
                         config.icon
                     );
+                    updateNotificationBadge();
                 });
 
             window.Echo.private(`transactions`)

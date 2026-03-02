@@ -1,12 +1,8 @@
 @extends('layouts.app')
 
-@php
-    $hideHeader = true;
-@endphp
-
 @section('content')
     {{-- Container dengan background dekoratif --}}
-    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 relative overflow-hidden">
+    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 overflow-hidden">
         
         {{-- Background Blobs (Animasi halus) --}}
         <div class="absolute top-0 left-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2 animate-blob"></div>

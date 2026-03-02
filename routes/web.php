@@ -79,6 +79,7 @@ Route::middleware('auth')->group(function () {
     });
 
     //Notifications
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
     Route::get('/notifications',          [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
         ->name('notifications.readAll');
@@ -86,4 +87,7 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.read');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])
         ->name('notifications.destroy');
+
+    // ── Search ──
+    Route::get('/transactions/search-data', [TransactionController::class, 'getAllForSearch'])->name('transactions.searchData');
 });

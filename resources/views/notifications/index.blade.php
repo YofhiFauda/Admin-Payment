@@ -122,12 +122,6 @@
 
                             <!-- Actions -->
                             <div class="flex items-center gap-2 justify-end transition-all duration-300 sm:opacity-0 sm:-translate-x-4 sm:group-hover:opacity-100 sm:group-hover:translate-x-0 relative z-20">
-                                @if(isset($data['url']))
-                                    <a href="{{ $data['url'] }}" onclick="event.stopPropagation();" class="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 rounded-xl md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Buka Tautan">
-                                        <i data-lucide="external-link" class="w-4 h-4 text-sm"></i>
-                                    </a>
-                                @endif
-
                                 @if(!$isRead)
                                     <form action="{{ route('notifications.read', $notif->id) }}" method="POST" onclick="event.stopPropagation();">
                                         @csrf
@@ -252,6 +246,11 @@
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
+
+                // Update badge counter in navbar/sidebar
+                if (typeof updateNotificationBadge === 'function') {
+                    updateNotificationBadge();
+                }
             });
     };
     
@@ -265,19 +264,6 @@
         }
     });
 
-    function visitUrl(url, notifId) {
-        if (!url) return;
-        
-        fetch(`/notifications/${notifId}/read`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json'
-            }
-        }).finally(() => {
-            window.location.href = url;
-        });
-    }
 </script>
 @endpush
 @endsection

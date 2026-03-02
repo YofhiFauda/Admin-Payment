@@ -33,14 +33,18 @@ class TransactionController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('customer', 'like', "%{$search}%")
                   ->orWhere('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('vendor', 'like', "%{$search}%");
+                  ->orWhere('vendor', 'like', "%{$search}%")
+                  ->orWhereHas('submitter', function ($sub) use ($search) {
+                      $sub->where('name', 'like', "%{$search}%");
+                  });
 
                 $dateFormats = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd M Y'];
                 foreach ($dateFormats as $format) {
                     try {
                         $parsed = \Carbon\Carbon::createFromFormat($format, $search);
                         if ($parsed) {
-                            $q->orWhereDate('date', $parsed->toDateString());
+                            $q->orWhereDate('date', $parsed->toDateString())
+                          ->orWhereDate('created_at', $parsed->toDateString());
                             break;
                         }
                     } catch (\Exception $e) {
@@ -478,5 +482,82 @@ class TransactionController extends Controller
         return response($file, 200)->header('Content-Type', $mimeType);
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  GET ALL TRANSACTIONS FOR CLIENT-SIDE SEARCH
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+    public function getAllForSearch(Request $request)
+    {
+        $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
+
+        // Teknisi hanya melihat transaksi sendiri
+        if (Auth::user()->isTeknisi()) {
+            $query->where('submitted_by', Auth::id());
+        }
+
+        // Status filter
+        if ($status = $request->get('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        // Type filter
+        if ($type = $request->get('type')) {
+            if ($type !== 'all') {
+                $query->where('type', $type);
+            }
+        }
+
+        // Category filter
+        if ($category = $request->get('category')) {
+            if ($category !== 'all') {
+                $query->where('category', $category);
+            }
+        }
+
+        // Get all transactions (limited to reasonable amount for performance)
+        $transactions = $query->limit(5000)->get();
+
+        // Format data for client-side search
+        $data = $transactions->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'invoice_number' => $t->invoice_number,
+                'submitter_name' => $t->submitter->name ?? '-',
+                'customer' => $t->customer ?? '',
+                'vendor' => $t->vendor ?? '',
+                'type' => $t->type,
+                'type_label' => $t->type_label,
+                'category' => $t->category,
+                'category_label' => $t->type === 'pengajuan' 
+                    ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '-')
+                    : (Transaction::CATEGORIES[$t->category] ?? '-'),
+                'status' => $t->status,
+                'status_label' => $t->status_label,
+                'amount' => $t->amount,
+                'formatted_amount' => number_format($t->amount ?? 0, 0, ',', '.'),
+                'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
+                'created_at' => $t->created_at->format('d M Y'),
+                'created_at_search' => $t->created_at->format('d-m-Y Y-m-d'),
+                'ai_status' => $t->ai_status,
+                'upload_id' => $t->upload_id,
+                'confidence' => $t->confidence,
+                'rejection_reason' => $t->rejection_reason,
+                'effective_amount' => $t->effective_amount,
+                'purchase_reason' => $t->purchase_reason,
+                'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '') : '',
+                // Search string untuk matching
+                'search_text' => strtolower(
+                    ($t->submitter->name ?? '') . ' ' .
+                    $t->invoice_number . ' ' .
+                    ($t->customer ?? '') . ' ' .
+                    ($t->vendor ?? '') . ' ' .
+                    $t->created_at->format('d M Y d-m-Y Y-m-d')
+                ),
+            ];
+        });
+
+        return response()->json($data);
+    }
 }
