@@ -189,12 +189,18 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::with('branches')->findOrFail($id);
         $branches = Branch::all();
-
+        
+        // ✅ Calculate item count based on transaction type
         if ($transaction->isPengajuan()) {
-            return view('transactions.edit-pengajuan', compact('transaction', 'branches'));
+            $itemCount = 1; // Pengajuan = single item
+        } else {
+            $itemCount = $transaction->items ? count($transaction->items) : 0;
         }
-
-        return view('transactions.edit-rembush', compact('transaction', 'branches'));
+        
+        if ($transaction->isPengajuan()) {
+            return view('transactions.edit-pengajuan', compact('transaction', 'branches', 'itemCount'));
+        }
+        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount'));
     }
 
     public function update(Request $request, $id)

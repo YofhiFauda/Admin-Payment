@@ -1,285 +1,533 @@
 @extends('layouts.app')
 
-@php
-    $hideHeader = true;
-    $isPengajuan = $transaction->type === 'pengajuan';
-    $isRembush = $transaction->type === 'rembush';
-@endphp
+@section('page-title', 'Edit Pengajuan')
 
 @section('content')
-    {{-- Container utama --}}
-    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 relative overflow-hidden font-sans">
-        
-        {{-- Background Orbs --}}
-        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-fuchsia-500/20 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow"></div>
-        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/20 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow delay-1000"></div>
+    {{-- Form Container --}}
+    <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 md:p-8 lg:p-10">
 
-        <div class="max-w-4xl w-full relative z-10 anim-fade-in">
-            
-            {{-- Main Glass Card --}}
-            <div class="bg-white/70 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 sm:p-10 md:p-12 overflow-hidden relative">
-                
-                {{-- Header Section --}}
-                <div class="flex flex-col items-center mb-10 anim-slide-down delay-100">
-                    <div class="w-14 h-14 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-violet-500/30 anim-scale-pop delay-200">
-                        <i data-lucide="check" class="w-7 h-7 text-white"></i>
-                    </div>
-                    <h2 class="text-3xl font-black text-slate-800 text-center tracking-tight mb-1">
-                        {{ $isPengajuan ? 'Pengajuan Berhasil!' : 'Invoice Lunas!' }}
-                    </h2>
-                    <div class="px-4 py-1.5 bg-violet-100/60 border border-violet-200/60 text-violet-700 rounded-full text-xs font-bold tracking-wider backdrop-blur-sm">
-                        REF: {{ $transaction->invoice_number }}
-                    </div>
-                </div>
-
-                {{-- Payer & Receiver Info Grid --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 anim-slide-up delay-300">
-                    {{-- Dibayar Oleh --}}
-                    <div class="bg-gradient-to-br from-violet-50/80 to-fuchsia-50/80 backdrop-blur-md rounded-2xl border border-violet-100/60 p-5 shadow-sm">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">DIBAYAR OLEH</p>
-                        <p class="text-base font-bold text-slate-800 mb-2">{{ Auth::user()->name }}</p>
-                        <p class="text-xs text-slate-500 mb-1">{{ Auth::user()->email }}</p>
-                        <p class="text-xs text-slate-500">{{ $isPengajuan ? 'Pengajuan Pembelian' : 'Klaim Reimbursement' }}</p>
-                    </div>
-
-                    {{-- Diterima Oleh / Vendor Info --}}
-                    <div class="bg-gradient-to-br from-violet-50/80 to-fuchsia-50/80 backdrop-blur-md rounded-2xl border border-violet-100/60 p-5 shadow-sm">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-                            {{ $isPengajuan ? 'VENDOR INFO' : 'DITERIMA OLEH' }}
-                        </p>
-                        <p class="text-base font-bold text-slate-800 mb-2">
-                            {{ $isPengajuan ? ($transaction->vendor ?? 'Belum ditentukan') : 'PT Solusi Digital Kreatif' }}
-                        </p>
-                        @if($isPengajuan)
-                            <p class="text-xs text-slate-500 mb-1">
-                                {{ $transaction->customer ?? '-' }}
-                            </p>
-                            <p class="text-xs text-slate-500">
-                                {{ $transaction->specs['merk'] ?? '-' }} {{ $transaction->specs['tipe'] ?? '' }}
-                            </p>
-                        @else
-                            <p class="text-xs text-slate-500 mb-1">Bank Mandiri 123.456.789.0</p>
-                            <p class="text-xs text-slate-500">Gedung Cyber Lt.5, Jakarta Selatan</p>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Rincian Pembelian Header --}}
-                <div class="flex justify-between items-center mb-4 anim-slide-up delay-400">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {{ $isPengajuan ? 'Rincian Pengajuan' : 'Rincian Pembelian' }} 
-                        ({{ $itemCount }})
-                    </p>
-                    <p class="text-xs text-slate-400 font-medium">
-                        {{ $transaction->created_at ? $transaction->created_at->format('d M Y, H:i') : '-' }} WIB
-                    </p>
-                </div>
-
-                {{-- UNIVERSAL Item List --}}
-                <div class="bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm mb-6 overflow-hidden anim-slide-up delay-500">
-                    <div class="divide-y divide-violet-100/50">
-                        @if($isPengajuan)
-                            {{-- PENGAJUAN: Tampilkan sebagai single item --}}
-                            <div class="flex justify-between items-center p-4 hover:bg-violet-50/30 transition-colors">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-violet-100/60 rounded-full flex items-center justify-center">
-                                        <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-bold text-slate-800">{{ $transaction->customer ?? 'Barang/Jasa' }}</p>
-                                        <p class="text-[10px] text-slate-400">
-                                            {{ $transaction->quantity ?? 1 }} {{ $transaction->unit ?? 'pcs' }} 
-                                            @if($transaction->specs)
-                                                • {{ $transaction->specs['merk'] ?? '' }} {{ $transaction->specs['tipe'] ?? '' }}
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
-                                <p class="text-sm font-bold text-slate-700">
-                                    Rp {{ number_format($transaction->estimated_price ?? $transaction->amount ?? 0, 0, ',', '.') }}
-                                </p>
-                            </div>
-                        @elseif($isRembush && $transaction->items && $transaction->items->count() > 0)
-                            {{-- REMBUSH: Tampilkan semua items --}}
-                            @foreach($transaction->items as $index => $item)
-                                <div class="flex justify-between items-center p-4 hover:bg-violet-50/30 transition-colors">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 bg-violet-100/60 rounded-full flex items-center justify-center">
-                                            <i data-lucide="package" class="w-4 h-4 text-violet-600"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-bold text-slate-800">{{ $item->name ?? 'Item ' . ($index + 1) }}</p>
-                                            <p class="text-[10px] text-slate-400">
-                                                {{ $item->qty ?? 1 }} {{ $item->unit ?? 'pcs' }} 
-                                                @if($item->desc) • {{ Str::limit($item->desc, 30) }} @endif
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p class="text-sm font-bold text-slate-700">
-                                        Rp {{ number_format(($item->price ?? 0) * ($item->qty ?? 1), 0, ',', '.') }}
-                                    </p>
-                                </div>
-                            @endforeach
-                        @else
-                            {{-- FALLBACK: Tampilkan amount langsung --}}
-                            <div class="flex justify-between items-center p-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-violet-100/60 rounded-full flex items-center justify-center">
-                                        <i data-lucide="receipt" class="w-4 h-4 text-violet-600"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-bold text-slate-800">{{ $transaction->customer ?? 'Transaksi' }}</p>
-                                        <p class="text-[10px] text-slate-400">{{ $transaction->category ?? 'Umum' }} • 1 Qty</p>
-                                    </div>
-                                </div>
-                                <p class="text-sm font-bold text-slate-700">
-                                    Rp {{ number_format($transaction->amount ?? 0, 0, ',', '.') }}
-                                </p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Additional Info (Conditional) --}}
-                @if($isPengajuan && $transaction->purchase_reason)
-                <div class="bg-violet-50/50 backdrop-blur-md rounded-2xl border border-violet-100/60 p-5 mb-6 anim-slide-up delay-550">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Alasan Pengajuan</p>
-                    <p class="text-sm text-slate-700 font-medium">
-                        {{ \App\Models\Transaction::PURCHASE_REASONS[$transaction->purchase_reason] ?? $transaction->purchase_reason }}
-                    </p>
-                </div>
-                @endif
-
-                @if($transaction->description && $isRembush)
-                <div class="bg-violet-50/50 backdrop-blur-md rounded-2xl border border-violet-100/60 p-5 mb-6 anim-slide-up delay-550">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Keterangan</p>
-                    <p class="text-sm text-slate-700 font-medium">{{ $transaction->description }}</p>
-                </div>
-                @endif
-
-                {{-- Branch Distribution (If exists) --}}
-                @if($transaction->branches && $transaction->branches->count() > 0)
-                <div class="bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 p-5 mb-6 anim-slide-up delay-600">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Distribusi Cabang</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        @foreach($transaction->branches as $branch)
-                            <div class="flex items-center justify-between bg-white/60 px-3 py-2 rounded-xl border border-white/50 shadow-sm">
-                                <span class="text-xs text-slate-700 font-medium">{{ $branch->name }}</span>
-                                <span class="text-xs font-bold text-violet-700 bg-violet-100/50 px-2 py-0.5 rounded border border-violet-200/50">
-                                    {{ $branch->pivot->allocation_percent ?? 0 }}%
-                                </span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Glassy Colorful Total Section --}}
-                <div class="bg-gradient-to-br from-violet-600 to-fuchsia-600 p-6 sm:p-8 rounded-2xl shadow-lg text-white anim-slide-up delay-600 relative overflow-hidden mb-8">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-[20px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
-                        {{-- Subtotal --}}
-                        <div class="text-center sm:text-left">
-                            <p class="text-violet-200 font-medium text-[10px] mb-1 uppercase tracking-wider">Subtotal</p>
-                            <p class="text-sm font-bold">Rp {{ number_format(($transaction->amount ?? 0) / 1.11, 0, ',', '.') }}</p>
-                        </div>
-                        
-                        {{-- Pajak --}}
-                        <div class="text-center sm:text-left">
-                            <p class="text-violet-200 font-medium text-[10px] mb-1 uppercase tracking-wider">Pajak (11%)</p>
-                            <p class="text-sm font-bold">Rp {{ number_format(($transaction->amount ?? 0) - (($transaction->amount ?? 0) / 1.11), 0, ',', '.') }}</p>
-                        </div>
-                        
-                        {{-- Diskon --}}
-                        <div class="text-center sm:text-left">
-                            <p class="text-violet-200 font-medium text-[10px] mb-1 uppercase tracking-wider">Diskon</p>
-                            <p class="text-sm font-bold text-violet-200">-Rp 0</p>
-                        </div>
-                        
-                        {{-- Total Transaksi --}}
-                        <div class="col-span-2 sm:col-span-1 text-center sm:text-right sm:border-l sm:border-white/20 sm:pl-4">
-                            <p class="text-violet-200 font-medium text-[10px] mb-1 uppercase tracking-wider">Total Transaksi</p>
-                            <p class="text-2xl sm:text-3xl font-black">Rp {{ number_format($transaction->amount ?? 0, 0, ',', '.') }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Action Buttons --}}
-                <div class="flex flex-wrap justify-center items-center gap-4 anim-slide-up delay-700">
-                    {{-- Share Button --}}
-                    <button class="w-12 h-12 bg-white/60 hover:bg-white/80 backdrop-blur-md border border-white rounded-full text-slate-700 shadow-sm transition-all hover:scale-110 active:scale-95 flex items-center justify-center" title="Bagikan">
-                        <i data-lucide="share-2" class="w-5 h-5"></i>
-                    </button>
-                    
-                    {{-- Download Button --}}
-                    <button class="w-12 h-12 bg-white/60 hover:bg-white/80 backdrop-blur-md border border-white rounded-full text-slate-700 shadow-sm transition-all hover:scale-110 active:scale-95 flex items-center justify-center" title="Unduh Dokumen">
-                        <i data-lucide="download" class="w-5 h-5"></i>
-                    </button>
-                    
-                    {{-- Primary Button --}}
-                    <a href="{{ route('transactions.index') }}" class="flex items-center gap-2 px-8 py-4 bg-slate-900 rounded-full text-white font-bold hover:bg-slate-800 shadow-xl shadow-slate-900/20 transition-all hover:scale-105 active:scale-95">
-                        <i data-lucide="list" class="w-5 h-5"></i> Daftar Transaksi
-                    </a>
-                </div>
-
+        {{-- Header --}}
+        <div class="mb-8 md:mb-10 flex items-center gap-4">
+            <a href="{{ route('transactions.index') }}"
+               class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </a>
+            <div>
+                <h2 class="text-lg md:text-xl font-extrabold text-slate-800">Edit Pengajuan Beli</h2>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">
+                    Perbarui data pengajuan — Ref: <span class="font-bold text-teal-600">{{ $transaction->invoice_number }}</span>
+                </p>
             </div>
-            
-            {{-- Footer Text --}}
-            <p class="text-center text-slate-400 text-xs mt-8 font-medium anim-fade-in delay-1000">
-                &copy; {{ date('Y') }} Finance System. Secure & Encrypted.
-            </p>
         </div>
+
+        <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="type" value="pengajuan">
+            <input type="hidden" name="estimated_price" id="form-estimated-price" value="{{ old('estimated_price', $transaction->estimated_price ?? $transaction->amount ?? 0) }}">
+
+            {{-- Container untuk input tersembunyi distribusi --}}
+            <div id="distribution-hidden-inputs"></div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 1. INFORMASI BARANG --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">
+                    Informasi Barang / Jasa
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
+                        <input type="text" name="customer"
+                            value="{{ old('customer', $transaction->customer) }}" required
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Router Mikrotik">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
+                        <input type="text" name="vendor"
+                            value="{{ old('vendor', $transaction->vendor) }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Toko Komputer Jaya">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 2. SPESIFIKASI --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Merk</label>
+                        <input type="text" name="specs[merk]"
+                            value="{{ old('specs.merk', $transaction->specs['merk'] ?? '') }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Xpon CDATA">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Tipe / Seri</label>
+                        <input type="text" name="specs[tipe]"
+                            value="{{ old('specs.tipe', $transaction->specs['tipe'] ?? '') }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: FD512XW-R460">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Ukuran</label>
+                        <input type="text" name="specs[ukuran]"
+                            value="{{ old('specs.ukuran', $transaction->specs['ukuran'] ?? '') }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: 30x30">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Warna</label>
+                        <input type="text" name="specs[warna]"
+                            value="{{ old('specs.warna', $transaction->specs['warna'] ?? '') }}"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                            placeholder="Contoh: Putih">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 3. JUMLAH & HARGA --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Jumlah & Estimasi Harga</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Jumlah *</label>
+                        <input type="number" name="quantity"
+                            value="{{ old('quantity', $transaction->quantity ?? 1) }}"
+                            required min="1" id="input-quantity"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
+                            <input type="text" id="input-price-display" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                value="{{ old('estimated_price') ? number_format(old('estimated_price'), 0, ',', '.') : ($transaction->estimated_price ? number_format($transaction->estimated_price, 0, ',', '.') : '') }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-teal-50 border border-teal-100 rounded-xl p-4 flex justify-between items-center">
+                    <span class="text-sm font-bold text-teal-700">Total Estimasi</span>
+                    <div id="total-estimate" class="transition-transform duration-200 text-xl font-bold text-emerald-600">Rp 0</div>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 4. ALASAN --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                <div class="relative">
+                    <select name="purchase_reason" id="purchase-reason" required
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                        <option value="">— Pilih alasan —</option>
+                        @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
+                            <option value="{{ $key }}"
+                                {{ old('purchase_reason', $transaction->purchase_reason) == $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- 5. DISTRIBUSI CABANG --}}
+            {{-- ══════════════════════════════════ --}}
+            <div class="mb-10">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Pembagian Cabang</label>
+
+                {{-- Branch Pills --}}
+                <div class="flex flex-wrap gap-3 mb-6" id="branch-pills-container">
+                    @foreach($branches as $branch)
+                        @php
+                            $isSelected = $transaction->branches->contains('id', $branch->id);
+                        @endphp
+                        <button type="button"
+                            data-id="{{ $branch->id }}"
+                            data-name="{{ $branch->name }}"
+                            data-preselected="{{ $isSelected ? 'true' : 'false' }}"
+                            @if($isSelected)
+                                data-preset-percent="{{ $transaction->branches->find($branch->id)->pivot->allocation_percent ?? 0 }}"
+                                data-preset-amount="{{ $transaction->branches->find($branch->id)->pivot->allocation_amount ?? 0 }}"
+                            @endif
+                            class="branch-pill px-4 py-2 rounded-full text-sm font-bold border transition-all cursor-pointer
+                                {{ $isSelected
+                                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-md'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:border-teal-300' }}">
+                            {{ $branch->name }}
+                        </button>
+                    @endforeach
+                </div>
+
+                {{-- Metode Distribusi --}}
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Metode Distribusi</span>
+                        <div class="flex bg-slate-200 rounded-xl p-1 text-xs font-bold">
+                            <button type="button" data-method="equal" class="method-btn px-4 py-1.5 rounded-lg bg-white shadow text-slate-700 transition-all">Bagi Rata</button>
+                            <button type="button" data-method="percent" class="method-btn px-4 py-1.5 rounded-lg text-slate-500 transition-all">Persentase</button>
+                            <button type="button" data-method="manual" class="method-btn px-4 py-1.5 rounded-lg text-slate-500 transition-all">Manual</button>
+                        </div>
+                    </div>
+                    <div id="distribution-list" class="space-y-3"></div>
+                    <div id="percent-warning" class="text-red-500 text-xs mt-2 hidden font-bold">⚠ Total persen harus 100%</div>
+                </div>
+            </div>
+
+            {{-- Divider --}}
+            <div class="relative flex justify-center items-center mb-8">
+                <div class="w-full h-px bg-slate-100 absolute"></div>
+                <span class="bg-white px-4 relative z-10 text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">Summary Billing</span>
+            </div>
+
+            {{-- ══════════════════════════════════ --}}
+            {{-- SUMMARY BILLING --}}
+            {{-- ══════════════════════════════════ --}}
+            <div id="summary-billing-section" class="bg-[#1a1c23] rounded-3xl p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl hidden">
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8 md:mb-10 relative z-10">
+                    {{-- Left Side: Total --}}
+                    <div>
+                        <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Total Pengajuan</span>
+                        <div class="text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 md:mb-6 tracking-tight" id="summary-total">Rp 0</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="bg-white/10 text-slate-300 px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider" id="summary-method">Metode: -</span>
+                            <span class="bg-white/10 text-slate-300 px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider" id="summary-branch-count">0 Cabang</span>
+                        </div>
+                    </div>
+
+                    {{-- Right Side: Details --}}
+                    <div class="md:border-l border-white/10 md:pl-8 lg:pl-12 flex flex-col justify-center">
+                        <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-4">Rincian Distribusi Cabang</span>
+                        <div class="space-y-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar" id="summary-branches-list">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Submit Button --}}
+                <button type="submit" id="summary-submit" disabled
+                    class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-4 md:py-5 rounded-xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none text-xs md:text-sm uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <span id="submit-text">Simpan Perubahan</span>
+                    <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            @if($errors->any())
+                <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-4">
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 mt-0.5 shrink-0"></i>
+                        <div class="text-xs text-red-600">
+                            @foreach($errors->all() as $error)
+                                <p>{{ $error }}</p>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </form>
     </div>
 @endsection
 
-@push('styles')
-<style>
-    @keyframes slideUpFade {
-        0% { opacity: 0; transform: translateY(40px); }
-        100% { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideDownFade {
-        0% { opacity: 0; transform: translateY(-40px); }
-        100% { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes scaleInPop {
-        0% { opacity: 0; transform: scale(0.5); }
-        60% { transform: scale(1.1); }
-        100% { opacity: 1; transform: scale(1); }
-    }
-    @keyframes fadeIn {
-        0% { opacity: 0; }
-        100% { opacity: 1; }
-    }
-    @keyframes pulseSlow {
-        0% { transform: scale(1); opacity: 0.3; }
-        50% { transform: scale(1.1); opacity: 0.5; }
-        100% { transform: scale(1); opacity: 0.3; }
-    }
-    
-    .anim-slide-up { animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-    .anim-slide-down { animation: slideDownFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-    .anim-scale-pop { animation: scaleInPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; }
-    .anim-fade-in { animation: fadeIn 0.8s ease-out forwards; opacity: 0; }
-    .anim-pulse-slow { animation: pulseSlow 8s ease-in-out infinite; }
-    
-    .delay-100 { animation-delay: 100ms; }
-    .delay-200 { animation-delay: 200ms; }
-    .delay-300 { animation-delay: 300ms; }
-    .delay-400 { animation-delay: 400ms; }
-    .delay-500 { animation-delay: 500ms; }
-    .delay-550 { animation-delay: 550ms; }
-    .delay-600 { animation-delay: 600ms; }
-    .delay-700 { animation-delay: 700ms; }
-    .delay-1000 { animation-delay: 1000ms; }
-</style>
-@endpush
-
 @push('scripts')
 <script>
-    if (window.lucide) {
-        window.lucide.createIcons();
+document.addEventListener('DOMContentLoaded', function () {
+    // ─────────────────────────────
+    // VARIABLES & SELECTORS
+    // ─────────────────────────────
+    const priceDisplay      = document.getElementById('input-price-display');
+    const priceHidden       = document.getElementById('form-estimated-price');
+    const quantityInput     = document.getElementById('input-quantity');
+    const totalEstimate     = document.getElementById('total-estimate');
+
+    const branchPills       = document.querySelectorAll('.branch-pill');
+    const methodBtns        = document.querySelectorAll('.method-btn');
+    const distributionList  = document.getElementById('distribution-list');
+    const hiddenInputsContainer = document.getElementById('distribution-hidden-inputs');
+    const percentWarning    = document.getElementById('percent-warning');
+
+    const summarySection    = document.getElementById('summary-billing-section');
+    const summaryTotal      = document.getElementById('summary-total');
+    const summaryMethod     = document.getElementById('summary-method');
+    const summaryBranchCount = document.getElementById('summary-branch-count');
+    const summaryBranchesList = document.getElementById('summary-branches-list');
+    const summarySubmit     = document.getElementById('summary-submit');
+
+    let selectedBranches = []; // { id, name, value, percent }
+    let currentMethod    = 'equal';
+
+    // ─────────────────────────────
+    // HELPER FUNCTIONS
+    // ─────────────────────────────
+    function parseRupiah(str) {
+        return parseInt((str || '').replace(/\D/g, '') || '0');
     }
+
+    function formatRupiah(num) {
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function getTotal() {
+        const price = parseRupiah(priceHidden.value);
+        const qty   = parseInt(quantityInput.value) || 1;
+        return price * qty;
+    }
+
+    function updateTotalDisplay() {
+        const total = getTotal();
+        totalEstimate.textContent = 'Rp ' + formatRupiah(total);
+        renderDistribution();
+    }
+
+    // ─────────────────────────────
+    // EVENT LISTENERS: PRICE & QTY
+    // ─────────────────────────────
+    priceDisplay.addEventListener('input', function () {
+        const raw = parseRupiah(this.value);
+        this.value = raw > 0 ? formatRupiah(raw) : '';
+        priceHidden.value = raw;
+        updateTotalDisplay();
+    });
+
+    quantityInput.addEventListener('input', updateTotalDisplay);
+
+    // ─────────────────────────────
+    // EVENT LISTENERS: BRANCH PILLS
+    // ─────────────────────────────
+    branchPills.forEach(btn => {
+        // Pre-select from existing transaction data
+        if (btn.dataset.preselected === 'true') {
+            const percent = parseFloat(btn.dataset.presetPercent || 0);
+            const amount  = parseFloat(btn.dataset.presetAmount || 0);
+            selectedBranches.push({
+                id: btn.dataset.id,
+                name: btn.dataset.name,
+                value: amount,
+                percent: percent
+            });
+        }
+
+        btn.addEventListener('click', function () {
+            const id   = this.dataset.id;
+            const name = this.dataset.name;
+            const index = selectedBranches.findIndex(b => b.id == id);
+
+            if (index > -1) {
+                // Deselect
+                selectedBranches.splice(index, 1);
+                this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            } else {
+                // Select
+                selectedBranches.push({ id, name, value: 0, percent: 0 });
+                this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+            }
+            renderDistribution();
+        });
+    });
+
+    // ─────────────────────────────
+    // EVENT LISTENERS: METHODS
+    // ─────────────────────────────
+    methodBtns.forEach(btn => {
+        btn.addEventListener('click', function () {
+            methodBtns.forEach(b => {
+                b.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                b.classList.add('text-slate-500');
+            });
+            this.classList.remove('text-slate-500');
+            this.classList.add('bg-white', 'shadow', 'text-slate-700');
+
+            currentMethod = this.dataset.method;
+            renderDistribution();
+        });
+    });
+
+    // ─────────────────────────────
+    // CORE LOGIC: RENDER DISTRIBUTION
+    // ─────────────────────────────
+    function renderDistribution() {
+        distributionList.innerHTML = '';
+
+        if (selectedBranches.length === 0) {
+            summarySection.classList.add('hidden');
+            summarySubmit.disabled = true;
+            percentWarning.classList.add('hidden');
+            return;
+        }
+
+        summarySection.classList.remove('hidden');
+        const totalAmount = getTotal();
+
+        selectedBranches.forEach((branch, idx) => {
+            if (currentMethod === 'equal') {
+                branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
+                branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
+            } else if (currentMethod === 'percent') {
+                branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+            } else if (currentMethod === 'manual') {
+                branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
+            }
+
+            let inputHtml = '';
+            if (currentMethod === 'equal') {
+                inputHtml = `<div class="font-bold text-emerald-600">Rp ${formatRupiah(branch.value)}</div>`;
+            } else if (currentMethod === 'percent') {
+                inputHtml = `
+                    <div class="flex items-center gap-2">
+                        <input type="number"
+                            class="dist-input-percent w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            data-index="${idx}"
+                            value="${branch.percent || 0}"
+                            min="0" max="100">
+                        <span class="text-xs font-bold text-slate-400">%</span>
+                        <span class="text-emerald-500 font-bold text-sm w-32 text-right">Rp ${formatRupiah(branch.value)}</span>
+                    </div>
+                `;
+            } else if (currentMethod === 'manual') {
+                const displayVal = branch.value > 0 ? formatRupiah(branch.value) : '';
+                inputHtml = `
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Rp</span>
+                        <input type="text"
+                            class="dist-input-manual w-32 text-right text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-1 focus:ring-2 focus:ring-emerald-500 outline-none"
+                            data-index="${idx}"
+                            value="${displayVal}" placeholder="0">
+                    </div>
+                `;
+            }
+
+            const rowHtml = `
+                <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
+                    <div class="font-medium text-slate-700 flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        ${branch.name}
+                    </div>
+                    <div>${inputHtml}</div>
+                </div>
+            `;
+            distributionList.insertAdjacentHTML('beforeend', rowHtml);
+        });
+
+        const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
+        summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
+
+        updateHiddenInputs();
+        updateSummaryList();
+        validateAndSubmit();
+    }
+
+    function updateHiddenInputs() {
+        hiddenInputsContainer.innerHTML = '';
+        selectedBranches.forEach((branch, idx) => {
+            hiddenInputsContainer.insertAdjacentHTML('beforeend', `
+                <input type="hidden" name="branches[${idx}][branch_id]"          value="${branch.id}">
+                <input type="hidden" name="branches[${idx}][allocation_amount]"  value="${Math.round(branch.value || 0)}">
+                <input type="hidden" name="branches[${idx}][allocation_percent]" value="${branch.percent || 0}">
+            `);
+        });
+    }
+
+    function updateSummaryList() {
+        summaryBranchesList.innerHTML = '';
+        const totalAmount = getTotal();
+
+        selectedBranches.forEach(branch => {
+            const pct = totalAmount > 0
+                ? ((branch.value / totalAmount) * 100).toFixed(1)
+                : (branch.percent || 0).toFixed(1);
+
+            const summaryRow = `
+                <div class="flex justify-between items-start text-sm border-b border-white/10 pb-3 last:border-0 last:pb-0">
+                    <div class="flex flex-col">
+                        <span class="text-slate-300 font-medium">${branch.name}</span>
+                        <span class="text-[10px] text-emerald-400/70 mt-0.5">${pct}%</span>
+                    </div>
+                    <span class="text-emerald-400 font-bold">Rp ${formatRupiah(branch.value)}</span>
+                </div>
+            `;
+            summaryBranchesList.insertAdjacentHTML('beforeend', summaryRow);
+        });
+
+        summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
+        summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
+    }
+
+    distributionList.addEventListener('input', function(e) {
+        const index = e.target.dataset.index;
+        if (index === undefined) return;
+        const totalAmount = getTotal();
+
+        if (e.target.classList.contains('dist-input-percent')) {
+            const val = parseFloat(e.target.value) || 0;
+            selectedBranches[index].percent = val;
+            selectedBranches[index].value = totalAmount > 0 ? Math.round((totalAmount * val) / 100) : 0;
+            const siblingSpan = e.target.parentElement.querySelector('.text-emerald-500');
+            if (siblingSpan) siblingSpan.textContent = 'Rp ' + formatRupiah(selectedBranches[index].value);
+        }
+        if (e.target.classList.contains('dist-input-manual')) {
+            const raw = parseRupiah(e.target.value);
+            e.target.value = raw > 0 ? formatRupiah(raw) : '';
+            selectedBranches[index].value = raw;
+            if (totalAmount > 0) {
+                selectedBranches[index].percent = parseFloat(((raw / totalAmount) * 100).toFixed(2));
+            }
+        }
+
+        updateHiddenInputs();
+        updateSummaryList();
+        validateAndSubmit();
+    });
+
+    function validateAndSubmit() {
+        let isValid = true;
+
+        if (currentMethod === 'percent') {
+            const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
+            if (Math.abs(totalPercent - 100) > 0.1) {
+                isValid = false;
+                percentWarning.classList.remove('hidden');
+                percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent}%. Harus 100%`;
+            } else {
+                percentWarning.classList.add('hidden');
+            }
+        } else {
+            percentWarning.classList.add('hidden');
+        }
+
+        summarySubmit.disabled = !isValid;
+    }
+
+    document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
+        if (summarySubmit.disabled) {
+            e.preventDefault();
+            return;
+        }
+        summarySubmit.disabled = true;
+        document.getElementById('submit-text').textContent = 'Memproses...';
+        document.getElementById('submit-spinner').classList.remove('hidden');
+    });
+
+    // ─────────────────────────────
+    // INITIALIZE with existing data
+    // ─────────────────────────────
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    updateTotalDisplay();  // This also calls renderDistribution which shows summary if branches exist
+});
 </script>
 @endpush
