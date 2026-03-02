@@ -9,6 +9,21 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <meta name="notif-unread-url" content="{{ route('notifications.unreadCount') }}">
+    <link href="https://unpkg.com/nprogress@0.2.0/nprogress.css" rel="stylesheet">
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    <style>
+        /* NProgress Override */
+        #nprogress .bar { background: #3b82f6 !important; height: 3px !important; }
+        #nprogress .peg { box-shadow: 0 0 10px #3b82f6, 0 0 5px #3b82f6 !important; }
+        #nprogress .spinner-icon { border-top-color: #3b82f6 !important; border-left-color: #3b82f6 !important; }
+        
+        /* Page Transition Animations */
+        .page-enter { opacity: 0; animation: pageFadeIn 0.3s ease-out forwards; }
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
     
     <style>
         /* Profile Card Styles */
@@ -353,7 +368,7 @@
     </nav>
 
     {{-- Konten Halaman --}}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 page-enter">
         @yield('content')
     </main>
 
@@ -455,7 +470,7 @@
                 || request()->routeIs('transactions.confirm');
         @endphp
 
-        <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden">
+        <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden page-enter">
             @if($hideHeaderOnPc)
                 {{-- Mobile-only: minimal bar with just hamburger --}}
                 <div class="md:hidden bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 py-3 border-b border-gray-100 shrink-0">
@@ -544,6 +559,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        if(typeof NProgress !== 'undefined'){
+            NProgress.configure({ showSpinner: false, minimum: 0.1 });
+            NProgress.done();
+        }
         lucide.createIcons();
 
         // Profile dropdown
@@ -566,6 +585,10 @@
                 setTimeout(() => notif.remove(), 500);
             }, 3000);
         }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if(typeof NProgress !== 'undefined') NProgress.start();
     });
 
     // ─────────────────────────────────────────────────────────
@@ -637,6 +660,11 @@
                         
                     showRealtimeToast(titleStr, e.payload.message || `Sistem AI telah selesai memindai nota Anda.`, colorClasses, iconName);
                     updateNotificationBadge();
+
+                    // Refresh transaction grid so AI badge updates in real-time
+                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
+                        window.handleRealtimeTransactionUpdate(e.payload);
+                    }
                     
                     if (window.location.href.includes(`/loading/${e.payload.upload_id}`)) {
                         setTimeout(() => window.location.reload(), 1500);

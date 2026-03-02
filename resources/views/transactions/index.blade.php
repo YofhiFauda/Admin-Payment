@@ -86,7 +86,7 @@
                         <th class="px-5 py-4 text-center">Tindakan</th>
                     </tr>
                 </thead>
-                <tbody id="desktop-tbody" class="divide-y divide-gray-50 text-sm text-gray-600">
+                <tbody id="desktop-tbody" class="divide-y divide-gray-50 text-sm text-gray-600 transition-all duration-300">
                     {{-- Will be populated by JavaScript --}}
                 </tbody>
             </table>
@@ -103,7 +103,7 @@
         </div>
 
         {{-- Mobile/Tablet Card View --}}
-        <div id="mobile-container" class="lg:hidden divide-y divide-gray-50">
+        <div id="mobile-container" class="lg:hidden divide-y divide-gray-50 transition-all duration-300">
             {{-- Will be populated by JavaScript --}}
         </div>
 
@@ -310,11 +310,18 @@
         let currentPage = 1;
         const itemsPerPage = 20;
         let isLoading = false;
+        let isFirstLoad = true; // Track first load for skeleton
 
         // Load all data from server
         async function loadData() {
             if (isLoading) return;
             isLoading = true;
+            if(typeof NProgress !== 'undefined') NProgress.start();
+            
+            // Only show skeletons on first load, not on real-time re-fetches
+            if (isFirstLoad) {
+                renderSkeletons();
+            }
             
             try {
                 const url = new URL(window.location.href);
@@ -329,9 +336,41 @@
             } catch (error) {
                 console.error('Failed to load transactions:', error);
                 showToast('Gagal memuat data', 'error');
+                renderPage(); // Clear skeletons if failed
             } finally {
                 isLoading = false;
+                isFirstLoad = false;
+                if(typeof NProgress !== 'undefined') NProgress.done();
             }
+        }
+
+        function renderSkeletons() {
+            const tbody = document.getElementById('desktop-tbody');
+            const container = document.getElementById('mobile-container');
+            document.getElementById('table-no-results').classList.add('hidden');
+            document.getElementById('mobile-no-results').classList.add('hidden');
+            
+            tbody.innerHTML = Array(6).fill(`
+                <tr class="animate-pulse bg-white border-b border-gray-50">
+                    <td class="px-4 py-4"><div class="h-4 bg-slate-200 rounded w-6 mx-auto"></div></td>
+                    <td class="px-5 py-4"><div class="flex gap-3 items-center"><div class="w-8 h-8 rounded-full bg-slate-200 shrink-0"></div><div><div class="h-4 bg-slate-200 rounded w-28 mb-1.5"></div><div class="h-3 bg-slate-100 rounded w-16"></div></div></div></td>
+                    <td class="px-5 py-4"><div class="h-6 bg-slate-100 rounded-lg w-20 border border-slate-200"></div></td>
+                    <td class="px-5 py-4"><div class="h-4 bg-slate-200 rounded w-24"></div></td>
+                    <td class="px-5 py-4"><div class="h-6 bg-slate-100 rounded-full w-24 border border-slate-200"></div></td>
+                    <td class="px-5 py-4"><div class="h-4 bg-slate-200 rounded w-20"></div></td>
+                    <td class="px-5 py-4"><div class="h-5 bg-slate-200 rounded w-24"></div></td>
+                    <td class="px-5 py-4"><div class="flex justify-center gap-1"><div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div><div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div></div></td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = Array(4).fill(`
+                <div class="p-4 md:p-5 animate-pulse bg-white border-b border-gray-50">
+                    <div class="flex justify-between items-start mb-3"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-slate-200 shrink-0"></div><div><div class="h-4 bg-slate-200 rounded w-24 mb-1.5"></div><div class="h-3 bg-slate-100 rounded w-16"></div></div></div><div class="h-5 bg-slate-100 rounded-lg w-16 border border-slate-200"></div></div>
+                    <div class="h-3 bg-slate-100 rounded w-48 mb-3"></div>
+                    <div class="h-6 bg-slate-200 rounded w-32 mb-3"></div>
+                    <div class="flex gap-2"><div class="h-8 bg-slate-100 rounded-xl w-20 border border-slate-200"></div></div>
+                </div>
+            `).join('');
         }
 
         // Instant search algorithm (multi-field matching)
@@ -487,7 +526,7 @@
             const inlineActionsHtml = generateInlineActions(t);
 
             return `
-                <tr class="hover:bg-gray-50/50 transition-colors">
+                <tr class="hover:bg-blue-50/30 transition-all duration-200 group">
                     <td class="px-4 py-4 text-center">
                         <span class="text-xs font-bold text-slate-400">${rowNum}</span>
                     </td>
@@ -526,14 +565,14 @@
                         Rp ${t.formatted_amount}
                     </td>
                     <td class="px-5 py-4">
-                        <div class="flex items-center justify-center gap-1">
+                        <div class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                             <button type="button" onclick="openViewModal(${t.id})" title="Lihat Detail"
-                                class="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                                class="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all outline-none">
                                 <i data-lucide="eye" class="w-4 h-4"></i>
                             </button>
                             ${canManage ? `
                                 <a href="/transactions/${t.id}/edit" title="Edit"
-                                    class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all">
+                                      class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 active:scale-95 transition-all outline-none">
                                     <i data-lucide="pencil" class="w-4 h-4"></i>
                                 </a>
                                 ${!isAdmin ? `
@@ -541,7 +580,7 @@
                                         <input type="hidden" name="_token" value="${csrfToken}">
                                         <input type="hidden" name="_method" value="DELETE">
                                         <button type="submit" title="Hapus"
-                                            class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                                            class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all outline-none">
                                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                                         </button>
                                     </form>
@@ -572,7 +611,7 @@
             const mobileActionsHtml = generateMobileActions(t);
 
             return `
-                <div class="p-4 md:p-5 hover:bg-slate-50/50 transition-colors">
+                <div class="p-4 md:p-5 hover:bg-blue-50/30 transition-all duration-200 border-b border-transparent hover:border-blue-100">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex items-center gap-3">
                             <div class="relative">
@@ -616,12 +655,12 @@
 
                     <div class="flex items-center gap-2 mt-2">
                         <button type="button" onclick="openViewModal(${t.id})"
-                            class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm text-xs font-bold">
+                            class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
                             <i data-lucide="eye" class="w-3.5 h-3.5"></i> Lihat
                         </button>
                         ${canManage ? `
                             <a href="/transactions/${t.id}/edit"
-                                class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm text-xs font-bold">
+                                class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-amber-600 hover:border-amber-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
                                 <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Edit
                             </a>
                             ${!isAdmin ? `
@@ -629,7 +668,7 @@
                                     <input type="hidden" name="_token" value="${csrfToken}">
                                     <input type="hidden" name="_method" value="DELETE">
                                     <button type="submit"
-                                        class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-red-600 hover:border-red-200 transition-all shadow-sm text-xs font-bold">
+                                        class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-red-600 hover:border-red-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus
                                     </button>
                                 </form>
@@ -675,11 +714,11 @@
                 html = `
                     <div class="flex items-center gap-1 ml-1">
                         <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
-                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
+                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 active:scale-90 transition-all outline-none">
                             <i data-lucide="check" class="w-3 h-3"></i>
                         </button>
                         <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')" title="Tolak"
-                            class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all">
+                            class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 active:scale-90 transition-all outline-none">
                             <i data-lucide="x" class="w-3 h-3"></i>
                         </button>
                     </div>
@@ -689,11 +728,11 @@
                 html = `
                     <div class="flex items-center gap-1 ml-1">
                         <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
-                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
+                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 active:scale-90 transition-all outline-none">
                             <i data-lucide="check" class="w-3 h-3"></i>
                         </button>
                         <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')" title="Tolak"
-                            class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all">
+                            class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 active:scale-90 transition-all outline-none">
                             <i data-lucide="x" class="w-3 h-3"></i>
                         </button>
                     </div>
@@ -721,11 +760,11 @@
             return `
                 <div class="flex items-center gap-2 mt-2">
                     <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white font-bold text-xs transition-all border border-green-200 hover:border-green-600">
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
                         <i data-lucide="check" class="w-3.5 h-3.5"></i> ${approveTitle}
                     </button>
                     <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-700 hover:bg-red-600 hover:text-white font-bold text-xs transition-all border border-red-200 hover:border-red-600">
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i> Tolak
                     </button>
                 </div>
@@ -810,19 +849,28 @@
         const container = document.getElementById('toast-container');
         if (!container) return;
 
-        let bgColor = 'bg-blue-600';
-        if (type === 'success') bgColor = 'bg-emerald-600';
-        else if (type === 'error') bgColor = 'bg-red-600';
+        let bgColors = 'bg-white border text-slate-800';
+        let accentClasses = 'bg-blue-500';
+        if (type === 'success') {
+            bgColors = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+            accentClasses = 'bg-emerald-500';
+        } else if (type === 'error') {
+            bgColors = 'bg-red-50 border-red-200 text-red-800';
+            accentClasses = 'bg-red-500';
+        }
 
         const toast = document.createElement('div');
-        toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium transform transition-all duration-300 translate-y-[-20px] opacity-0 ${bgColor}`;
-        toast.innerHTML = message;
+        toast.className = `relative flex items-center gap-3 px-4 py-3 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-sm font-medium transform transition-all duration-300 translate-x-[120%] opacity-0 overflow-hidden ${bgColors}`;
+        toast.innerHTML = `
+            <div class="absolute left-0 top-0 bottom-0 w-1 ${accentClasses}"></div>
+            ${message}
+        `;
 
         container.appendChild(toast);
 
         requestAnimationFrame(() => {
-            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
+            toast.classList.remove('translate-x-[120%]', 'opacity-0');
+            toast.classList.add('translate-x-0', 'opacity-100');
         });
         
         if (typeof lucide !== 'undefined') {
@@ -830,8 +878,8 @@
         }
 
         setTimeout(() => {
-            toast.classList.remove('translate-y-0', 'opacity-100');
-            toast.classList.add('translate-y-[-20px]', 'opacity-0');
+            toast.classList.remove('translate-x-0', 'opacity-100');
+            toast.classList.add('translate-x-[120%]', 'opacity-0');
             setTimeout(() => toast.remove(), 300);
         }, 4000);
     }
@@ -1107,6 +1155,7 @@
             const reason = this.querySelector('textarea[name="rejection_reason"]')?.value || '';
             const submitBtn = this.querySelector('button[type="submit"]');
             if (submitBtn) { submitBtn.disabled = true; }
+            if (typeof NProgress !== 'undefined') NProgress.start();
 
             fetch(`/transactions/${id}/status`, {
                 method: 'POST',
@@ -1120,13 +1169,16 @@
             .then(r => r.json().catch(() => ({})))
             .then(() => {
                 closeRejectModal();
-                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Berhasil!</strong><br><span class="text-[11px] opacity-90">Transaksi berhasil ditolak.</span></div></div>`, 'success');
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">Transaksi berhasil ditolak.</span></div></div>`, 'success');
                 SearchEngine.init();
             })
             .catch(err => {
                 console.error(err);
-                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Gagal!</strong><br><span class="text-[11px] opacity-90">Gagal menolak transaksi. Coba lagi.</span></div></div>`, 'error');
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">Gagal menolak transaksi. Coba lagi.</span></div></div>`, 'error');
                 if (submitBtn) { submitBtn.disabled = false; }
+            })
+            .finally(() => {
+                if(typeof NProgress !== 'undefined') NProgress.done();
             });
         });
     }

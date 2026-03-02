@@ -174,6 +174,9 @@ class AiAutoFillController extends Controller
         if ($transaction) {
             $transaction->update(['ai_status' => 'error', 'confidence' => $request->confidence]);
 
+            // Broadcast to global transactions channel so grid auto-refreshes for all viewers
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
             Log::channel('ai_autofill')->info('🔄 [AI CALLBACK] TRANSACTION UPDATED (ERROR)', [
                 'step' => '5_transaction_error',
                 'upload_id' => $uploadId,
@@ -284,6 +287,9 @@ class AiAutoFillController extends Controller
                 'ai_status'  => 'completed',
                 'confidence' => $cacheData['confidence'],
             ]);
+
+            // Broadcast to global transactions channel so grid auto-refreshes for all viewers
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             Log::channel('ai_autofill')->info('🔄 [AI CALLBACK] TRANSACTION UPDATED (SUCCESS)', [
                 'step' => '5_transaction_success',

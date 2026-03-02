@@ -33,7 +33,7 @@ class TransactionSeeder extends Seeder
         $reasonsPengajuan = array_keys(Transaction::PURCHASE_REASONS);
 
         // ─── 1. SEED 10 REMBUSH (AI_STATUS = COMPLETED) ───────────────────
-        for ($i = 1; $i <= 500; $i++) {
+        for ($i = 1; $i <= 1; $i++) {
             $amount = rand(50000, 2000000);
             $user = $users->random();
 
@@ -47,6 +47,9 @@ class TransactionSeeder extends Seeder
                 'amount' => $amount,
                 'items' => [
                     ['name' => 'Barang Dummy 1', 'price' => $amount * 0.4, 'quantity' => 1, 'total' => $amount * 0.4],
+                    ['name' => 'Barang Dummy 2', 'price' => $amount * 0.6, 'quantity' => 1, 'total' => $amount * 0.6],
+                    ['name' => 'Barang Dummy 2', 'price' => $amount * 0.6, 'quantity' => 1, 'total' => $amount * 0.6],
+                    ['name' => 'Barang Dummy 2', 'price' => $amount * 0.6, 'quantity' => 1, 'total' => $amount * 0.6],
                     ['name' => 'Barang Dummy 2', 'price' => $amount * 0.6, 'quantity' => 1, 'total' => $amount * 0.6],
                 ],
                 'date' => Carbon::now()->subDays(rand(1, 30)),
@@ -68,7 +71,7 @@ class TransactionSeeder extends Seeder
         $this->command->info('✅ Berhasil membuat 10 data Rembush (siap konfirmasi, tanpa OCR).');
 
         // ─── 2. SEED 10 PENGAJUAN ──────────────────────────────────────────
-        for ($i = 1; $i <= 500; $i++) {
+        for ($i = 1; $i <= 1; $i++) {
             $estimatedPrice = rand(100000, 5000000);
             $qty = rand(1, 5);
             $totalEstimate = $estimatedPrice * $qty;
