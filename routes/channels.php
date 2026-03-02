@@ -23,3 +23,7 @@ Broadcast::channel('transactions', function ($user) {
 Broadcast::channel('activities', function ($user) {
     return in_array($user->role, ['admin', 'atasan', 'owner']);
 });
+
+Broadcast::channel('notifications.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});

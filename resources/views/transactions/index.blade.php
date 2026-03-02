@@ -76,6 +76,7 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-semibold bg-gray-50/50">
+                        <th class="px-4 py-4 text-center w-10">No.</th>
                         <th class="px-5 py-4">Nama Pengaju</th>
                         <th class="px-5 py-4">Jenis</th>
                         <th class="px-5 py-4">Kategori</th>
@@ -358,8 +359,8 @@
             const endIndex = startIndex + itemsPerPage;
             const pageData = filteredTransactions.slice(startIndex, endIndex);
             
-            renderDesktopTable(pageData);
-            renderMobileCards(pageData);
+            renderDesktopTable(pageData, startIndex);
+            renderMobileCards(pageData, startIndex);
             renderPagination();
             updateShowingText(startIndex, endIndex);
             
@@ -367,7 +368,7 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function renderDesktopTable(data) {
+        function renderDesktopTable(data, startIndex = 0) {
             const tbody = document.getElementById('desktop-tbody');
             const noResults = document.getElementById('table-no-results');
             
@@ -378,11 +379,11 @@
                 document.getElementById('no-result-query').textContent = query;
             } else {
                 noResults.classList.add('hidden');
-                tbody.innerHTML = data.map(t => generateDesktopRow(t)).join('');
+                tbody.innerHTML = data.map((t, i) => generateDesktopRow(t, startIndex + i + 1)).join('');
             }
         }
 
-        function renderMobileCards(data) {
+        function renderMobileCards(data, startIndex = 0) {
             const container = document.getElementById('mobile-container');
             const noResults = document.getElementById('mobile-no-results');
             
@@ -393,7 +394,7 @@
                 document.getElementById('mobile-no-result-query').textContent = query;
             } else {
                 noResults.classList.add('hidden');
-                container.innerHTML = data.map(t => generateMobileCard(t)).join('');
+                container.innerHTML = data.map((t, i) => generateMobileCard(t, startIndex + i + 1)).join('');
             }
         }
 
@@ -468,7 +469,7 @@
         }
 
         // Generate HTML for desktop row
-        function generateDesktopRow(t) {
+        function generateDesktopRow(t, rowNum = '') {
             const statusBadge = {
                 pending:   'bg-amber-50 text-amber-600 border-amber-200',
                 approved:  'bg-blue-50 text-blue-600 border-blue-200',
@@ -487,6 +488,9 @@
 
             return `
                 <tr class="hover:bg-gray-50/50 transition-colors">
+                    <td class="px-4 py-4 text-center">
+                        <span class="text-xs font-bold text-slate-400">${rowNum}</span>
+                    </td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
@@ -550,7 +554,7 @@
         }
 
         // Generate HTML for mobile card
-        function generateMobileCard(t) {
+        function generateMobileCard(t, rowNum = '') {
             const mStatusBadge = {
                 pending:   'bg-amber-50 text-amber-700 border-amber-200',
                 approved:  'bg-blue-50 text-blue-700 border-blue-200',
@@ -571,8 +575,11 @@
                 <div class="p-4 md:p-5 hover:bg-slate-50/50 transition-colors">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
-                                ${t.submitter_name.charAt(0).toUpperCase()}
+                            <div class="relative">
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
+                                    ${t.submitter_name.charAt(0).toUpperCase()}
+                                </div>
+                                ${rowNum ? `<span class="absolute -top-1.5 -left-1.5 w-4 h-4 flex items-center justify-center text-[9px] font-bold bg-slate-200 text-slate-500 rounded-full">${rowNum}</span>` : ''}
                             </div>
                             <div>
                                 <h5 class="font-bold text-slate-900 text-sm">${t.submitter_name}</h5>
@@ -667,15 +674,10 @@
                 const approveTitle = t.effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui';
                 html = `
                     <div class="flex items-center gap-1 ml-1">
-                        <form method="POST" action="/transactions/${t.id}/status">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="status" value="approved">
-                            <button type="submit" title="${approveTitle}"
-                                class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
-                                <i data-lucide="check" class="w-3 h-3"></i>
-                            </button>
-                        </form>
+                        <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
+                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
+                            <i data-lucide="check" class="w-3 h-3"></i>
+                        </button>
                         <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')" title="Tolak"
                             class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all">
                             <i data-lucide="x" class="w-3 h-3"></i>
@@ -686,15 +688,10 @@
                 const approveTitle = t.status === 'approved' ? 'Approve Final' : 'Setujui';
                 html = `
                     <div class="flex items-center gap-1 ml-1">
-                        <form method="POST" action="/transactions/${t.id}/status">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <input type="hidden" name="_method" value="PATCH">
-                            <input type="hidden" name="status" value="approved">
-                            <button type="submit" title="${approveTitle}"
-                                class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
-                                <i data-lucide="check" class="w-3 h-3"></i>
-                            </button>
-                        </form>
+                        <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
+                            class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-200 hover:border-green-600 transition-all">
+                            <i data-lucide="check" class="w-3 h-3"></i>
+                        </button>
                         <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')" title="Tolak"
                             class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 transition-all">
                             <i data-lucide="x" class="w-3 h-3"></i>
@@ -723,15 +720,10 @@
 
             return `
                 <div class="flex items-center gap-2 mt-2">
-                    <form method="POST" action="/transactions/${t.id}/status" class="flex-1">
-                        <input type="hidden" name="_token" value="${csrfToken}">
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="approved">
-                        <button type="submit"
-                            class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white font-bold text-xs transition-all border border-green-200 hover:border-green-600">
-                            <i data-lucide="check" class="w-3.5 h-3.5"></i> ${approveTitle}
-                        </button>
-                    </form>
+                    <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-600 hover:text-white font-bold text-xs transition-all border border-green-200 hover:border-green-600">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i> ${approveTitle}
+                    </button>
                     <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')"
                         class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-700 hover:bg-red-600 hover:text-white font-bold text-xs transition-all border border-red-200 hover:border-red-600">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i> Tolak
@@ -1040,14 +1032,14 @@
         }
     }
 
-    function submitApproval(status) {
-        if (!currentTransactionId) return;
-        if (status === 'pending' && !confirm('Reset status ke Pending?')) return;
-
-        const buttons = document.querySelectorAll('#v-actions button');
-        buttons.forEach(b => b.disabled = true);
-
-        fetch(`/transactions/${currentTransactionId}/status`, {
+    // ─── Central AJAX status update (no page reload) ───────────────
+    function performStatusAction(id, status, triggerEl) {
+        if (triggerEl) {
+            triggerEl.disabled = true;
+            triggerEl.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: triggerEl });
+        }
+        fetch(`/transactions/${id}/status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1056,15 +1048,23 @@
             },
             body: JSON.stringify({ status, _method: 'PATCH' }),
         })
-        .then(r => {
-            if (r.redirected) { window.location.href = r.url; return; }
-            window.location.reload();
+        .then(r => r.json().catch(() => ({})))
+        .then(data => {
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Berhasil!</strong><br><span class="text-[11px] opacity-90">Status transaksi berhasil diperbarui.</span></div></div>`, 'success');
+            SearchEngine.init(); // Refresh grid tanpa full reload
         })
         .catch(err => {
             console.error(err);
-            alert('Gagal mengubah status. Coba lagi.');
-            buttons.forEach(b => b.disabled = false);
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Gagal!</strong><br><span class="text-[11px] opacity-90">Coba lagi.</span></div></div>`, 'error');
+            if (triggerEl) { triggerEl.disabled = false; }
         });
+    }
+
+    function submitApproval(status) {
+        if (!currentTransactionId) return;
+        if (status === 'pending' && !confirm('Reset status ke Pending?')) return;
+        closeViewModal();
+        performStatusAction(currentTransactionId, status, null);
     }
 
     function openRejectModal(transactionId, invoiceNumber) {
@@ -1098,13 +1098,46 @@
         if (e.target.id === 'reject-modal') closeRejectModal();
     });
 
-    // Realtime updates
+    // Convert reject form to AJAX (no page reload)
+    const rejectForm = document.getElementById('reject-form');
+    if (rejectForm) {
+        rejectForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id    = this.action.split('/').at(-2); // extract transaction id from URL
+            const reason = this.querySelector('textarea[name="rejection_reason"]')?.value || '';
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; }
+
+            fetch(`/transactions/${id}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ status: 'rejected', rejection_reason: reason, _method: 'PATCH' }),
+            })
+            .then(r => r.json().catch(() => ({})))
+            .then(() => {
+                closeRejectModal();
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Berhasil!</strong><br><span class="text-[11px] opacity-90">Transaksi berhasil ditolak.</span></div></div>`, 'success');
+                SearchEngine.init();
+            })
+            .catch(err => {
+                console.error(err);
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Gagal!</strong><br><span class="text-[11px] opacity-90">Gagal menolak transaksi. Coba lagi.</span></div></div>`, 'error');
+                if (submitBtn) { submitBtn.disabled = false; }
+            });
+        });
+    }
+
+    // Realtime updates (refresh grid, not full reload)
     window.handleRealtimeTransactionUpdate = function(transaction) {
-        SearchEngine.init(); // Reload data
+        SearchEngine.init();
     };
     
     window.handleRealtimeTransactionCreation = function(transaction) {
-        SearchEngine.init(); // Reload data
+        SearchEngine.init();
     };
 
 </script>

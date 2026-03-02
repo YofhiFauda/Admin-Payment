@@ -13,6 +13,8 @@ use App\Models\ActivityLog;
 use App\Notifications\TransactionStatusNotification;
 
 
+use Illuminate\Support\Facades\Cache;
+
 class TransactionController extends Controller
 {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -77,18 +79,24 @@ class TransactionController extends Controller
 
         $transactions = $query->paginate(20);
 
-        // Stats - scoped per role
-        $statsQuery = Auth::user()->isTeknisi()
-            ? Transaction::where('submitted_by', Auth::id())
-            : new Transaction;
+        // Stats - scoped per role and cached
+        $isTeknisi = Auth::user()->isTeknisi();
+        $userId = Auth::id();
+        $cacheKey = $isTeknisi ? "transactions_stats_teknisi_{$userId}" : "transactions_stats_global";
 
-        $stats = [
-            'count'     => (clone $statsQuery)->count(),
-            'pending'   => (clone $statsQuery)->where('status', 'pending')->count(),
-            'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
-            'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
-            'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
-        ];
+        $stats = Cache::remember($cacheKey, 300, function () use ($isTeknisi, $userId) {
+            $statsQuery = $isTeknisi
+                ? Transaction::where('submitted_by', $userId)
+                : new Transaction;
+
+            return [
+                'count'     => (clone $statsQuery)->count(),
+                'pending'   => (clone $statsQuery)->where('status', 'pending')->count(),
+                'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
+                'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+                'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
+            ];
+        });
 
         return view('transactions.index', compact('transactions', 'stats'));
     }
@@ -420,6 +428,14 @@ class TransactionController extends Controller
                 default     => strtoupper($newStatus),
             };
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}",
+                    'status'  => $newStatus,
+                ]);
+            }
+
             return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}");
 
         } catch (\Exception $e) {
@@ -427,6 +443,10 @@ class TransactionController extends Controller
                 'error' => $e->getMessage(),
                 'transaction_id' => $id,
             ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengubah status'], 500);
+            }
 
             return back()->withErrors(['error' => 'Gagal mengubah status']);
         }

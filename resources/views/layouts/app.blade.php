@@ -685,6 +685,17 @@
                         window.handleRealtimeActivityLog(e.activityLog);
                     }
                 });
+
+            // ── Listener untuk update badge notifikasi secara real-time ──
+            window.Echo.private(`notifications.${userId}`)
+                .listen('.notification.received', (e) => {
+                    // Update badge counter immediately
+                    updateNotificationBadge();
+
+                    // Show toast to the recipient
+                    const colorClasses = 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30';
+                    showRealtimeToast(e.title, e.message, colorClasses, 'bell');
+                });
         }
     });
 </script>

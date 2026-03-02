@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Transaction extends Model
 {
@@ -81,6 +82,26 @@ class Transaction extends Model
             'items' => 'array',
             'specs' => 'array',
         ];
+    }
+
+    /**
+     * Model Events
+     */
+    protected static function booted()
+    {
+        $clearCache = function ($transaction) {
+            // Clear global stats cache (for Admin/Owner)
+            Cache::forget('transactions_stats_global');
+
+            // Clear specific user stats cache (for Teknisi)
+            if ($transaction->submitted_by) {
+                Cache::forget("transactions_stats_teknisi_{$transaction->submitted_by}");
+            }
+        };
+
+        static::created($clearCache);
+        static::updated($clearCache);
+        static::deleted($clearCache);
     }
 
     // ─── Invoice Number ───────────────────────────────

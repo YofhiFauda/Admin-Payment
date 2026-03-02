@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Transaction;
+use App\Events\NotificationReceived;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -41,6 +42,10 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
         if ($this->status === 'rejected' && $this->transaction->rejection_reason) {
             $message .= " Alasan penolakan: {$this->transaction->rejection_reason}";
         }
+
+        // Dispatch real-time badge update event
+        $unreadCount = $notifiable->unreadNotifications()->count() + 1; // +1 karena notifikasi ini belum tersimpan saat broadcast
+        broadcast(new NotificationReceived($notifiable->id, $unreadCount, $title, $message));
 
         return [
             'type'               => 'transaction_status',
