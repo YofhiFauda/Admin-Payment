@@ -134,16 +134,16 @@
          role="dialog"
          aria-modal="true"
          aria-labelledby="view-modal-title">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform scale-95 transition-all duration-300"
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300"
              id="view-modal-content">
 
-            <div id="view-loading" class="p-12 text-center">
+            <div id="view-loading" class="p-12 text-center w-full flex flex-col items-center justify-center min-h-[50vh]">
                 <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
                 <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>
             </div>
 
-            <div id="view-body" class="hidden">
-                <div class="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
+            <div id="view-body" class="hidden flex flex-col flex-auto min-h-0 w-full">
+                <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-white z-10 shrink-0">
                     <div>
                         <h3 class="text-lg font-extrabold text-slate-900" id="view-modal-title">Detail Transaksi</h3>
                         <p class="text-xs text-slate-400 font-medium mt-0.5" id="v-invoice"></p>
@@ -154,7 +154,7 @@
                     </button>
                 </div>
 
-                <div class="p-6 space-y-6">
+                <div class="p-6 space-y-6 overflow-y-auto grow min-h-0">
                     <div class="flex items-center gap-2 flex-wrap" id="v-badges"></div>
                     
                     {{-- ✅ UPDATED: Foto dengan Click-to-Zoom --}}
@@ -224,7 +224,7 @@
                     </div>
                 </div>
 
-                <div class="p-6 border-t border-gray-100 bg-slate-50/50 rounded-b-2xl">
+                <div class="p-6 border-t border-gray-100 bg-slate-50/50 shrink-0">
                     <button onclick="closeViewModal()"
                         class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors">
                         Tutup

@@ -3,10 +3,10 @@
 @section('page-title', 'Edit Reimbursement')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-8 lg:py-12">
+    <div class="max-w-4xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12">
 
         {{-- Form Container --}}
-        <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 md:p-8 lg:p-10">
+        <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10">
             
             {{-- Header --}}
             <div class="mb-8 md:mb-10 flex items-center gap-4">
@@ -172,7 +172,7 @@
                 </div>
 
                 {{-- 5. SUMMARY BILLING --}}
-                <div class="bg-[#1a1c23] rounded-3xl p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl">
+                <div class="bg-[#1a1c23] rounded-[1rem] md:rounded-3xl p-4 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl">
                     {{-- Decorative circle --}}
                     <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
 

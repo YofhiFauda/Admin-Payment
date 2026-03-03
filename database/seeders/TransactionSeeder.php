@@ -33,7 +33,7 @@ class TransactionSeeder extends Seeder
         $reasonsPengajuan = array_keys(Transaction::PURCHASE_REASONS);
 
         // ─── 1. SEED 10 REMBUSH (AI_STATUS = COMPLETED) ───────────────────
-        for ($i = 1; $i <= 1; $i++) {
+        for ($i = 1; $i <= 100; $i++) {
             $amount = rand(50000, 2000000);
             $user = $users->random();
 
@@ -71,7 +71,7 @@ class TransactionSeeder extends Seeder
         $this->command->info('✅ Berhasil membuat 10 data Rembush (siap konfirmasi, tanpa OCR).');
 
         // ─── 2. SEED 10 PENGAJUAN ──────────────────────────────────────────
-        for ($i = 1; $i <= 1; $i++) {
+        for ($i = 1; $i <= 100; $i++) {
             $estimatedPrice = rand(100000, 5000000);
             $qty = rand(1, 5);
             $totalEstimate = $estimatedPrice * $qty;

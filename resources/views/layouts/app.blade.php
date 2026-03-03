@@ -368,7 +368,7 @@
     </nav>
 
     {{-- Konten Halaman --}}
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 page-enter">
+    <main class="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-1 page-enter">
         @yield('content')
     </main>
 
@@ -392,9 +392,9 @@
             <nav class="flex-1 p-6 space-y-3">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Menu Utama</p>
 
-                <a href="{{ route('transactions.create') }}"
+                <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.create') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('dashboard') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="home" class="w-4 h-4"></i> Dashboard
                 </a>
 
@@ -416,6 +416,12 @@
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-4 h-4"></i> Kelola Pengguna
+                </a>
+
+                <a href="{{ route('branches.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('branches.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="building-2" class="w-4 h-4"></i> Kelola Cabang
                 </a>
 
                 <a href="{{ route('activity-logs.index') }}"
@@ -491,7 +497,7 @@
                 </header>
             @endif
 
-            <div class="flex-1 overflow-y-auto p-4 lg:p-6">
+            <div class="flex-1 overflow-y-auto lg:p-6">
                 <div class="max-w-8xl mx-auto">
                     @yield('content')
                 </div>
