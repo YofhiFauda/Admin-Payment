@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ActivityLog;
 use App\Notifications\TransactionStatusNotification;
+use App\Notifications\OwnerApprovalNotification;
 
 
 use Illuminate\Support\Facades\Cache;
@@ -420,6 +422,29 @@ class TransactionController extends Controller
                 }
             }
 
+            // Notify all owners when Admin/Atasan approves >= 1jt (stays 'approved', waiting owner)
+            if ($newStatus === 'approved' && $oldStatus === 'pending' && !$user->isOwner()) {
+                $owners = User::where('role', 'owner')->get();
+                foreach ($owners as $owner) {
+                    $owner->notify(new OwnerApprovalNotification($transaction, $user->name));
+                }
+            }
+
+            // Build toast info for JSON response
+            $toastType = match($newStatus) {
+                'completed' => 'success',
+                'approved'  => 'warning',
+                'rejected'  => 'error',
+                default     => 'info',
+            };
+
+            $toastMessage = match($newStatus) {
+                'completed' => "Transaksi {$transaction->invoice_number} selesai!",
+                'approved'  => "Transaksi {$transaction->invoice_number} disetujui. Menunggu persetujuan Owner.",
+                'rejected'  => "Transaksi {$transaction->invoice_number} ditolak.",
+                default     => "Status transaksi diubah.",
+            };
+
             $statusLabel = match($newStatus) {
                 'approved'  => 'DISETUJUI (Menunggu Owner)',
                 'rejected'  => 'DITOLAK',
@@ -430,9 +455,11 @@ class TransactionController extends Controller
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
-                    'success' => true,
-                    'message' => "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}",
-                    'status'  => $newStatus,
+                    'success'       => true,
+                    'message'       => "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}",
+                    'status'        => $newStatus,
+                    'toast_type'    => $toastType,
+                    'toast_message' => $toastMessage,
                 ]);
             }
 

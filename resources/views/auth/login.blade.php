@@ -138,7 +138,6 @@
                         <div class="space-y-2">
                             <label class="block text-sm font-bold text-slate-900">Email Perusahaan</label>
                             <input type="email" name="email" required autofocus
-                                value="{{ old('email', $selectedRole['email'] ?? '') }}" 
                                 placeholder="nama@financeops.com"
                                 class="w-full px-4 py-3.5 rounded-2xl border-2 border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
                         </div>
@@ -147,7 +146,6 @@
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
                                 <label class="block text-sm font-bold text-slate-900">Password</label>
-                                <a href="#" class="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">Lupa sandi?</a>
                             </div>
                             <input type="password" name="password" required placeholder="••••••••••"
                                 class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-600 font-medium" />
@@ -163,7 +161,7 @@
                     {{-- Footer Form --}}
                     <div class="text-center mt-10">
                         <p class="text-sm font-medium text-slate-500">
-                            Belum punya akun? <a href="#" class="text-indigo-600 font-bold hover:text-indigo-700 transition-colors">Hubungi IT Support</a>
+                            Belum punya akun? <a href="#" class="text-indigo-600 font-bold hover:text-indigo-700 transition-colors">Hubungi Admin</a>
                         </p>
                     </div>
                 </div>

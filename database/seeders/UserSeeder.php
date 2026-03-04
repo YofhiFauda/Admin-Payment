@@ -11,31 +11,12 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
-                'name' => 'User Teknisi',
-                'email' => 'teknisi@adminpay.com',
-                'password' => bcrypt('password'),
-                'role' => 'teknisi',
-            ],
-            [
-                'name' => 'User Admin',
-                'email' => 'admin@adminpay.com',
-                'password' => bcrypt('password'),
-                'role' => 'admin',
-            ],
-            [
-                'name' => 'User Atasan',
-                'email' => 'atasan@adminpay.com',
-                'password' => bcrypt('password'),
-                'role' => 'atasan',
-            ],
-            [
-                'name' => 'User Owner',
-                'email' => 'owner@adminpay.com',
-                'password' => bcrypt('password'),
+                'name' => 'Super Admin',
+                'email' => 'superadmin@whusnet.com',
+                'password' => bcrypt('superadmin'),
                 'role' => 'owner',
             ],
         ];
-
         foreach ($users as $userData) {
             User::firstOrCreate(
                 ['email' => $userData['email']],

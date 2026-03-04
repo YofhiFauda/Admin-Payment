@@ -68,7 +68,7 @@ class TransactionSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('✅ Berhasil membuat 10 data Rembush (siap konfirmasi, tanpa OCR).');
+        $this->command->info('✅ Berhasil membuat 100 data Rembush (siap konfirmasi, tanpa OCR).');
 
         // ─── 2. SEED 10 PENGAJUAN ──────────────────────────────────────────
         for ($i = 1; $i <= 100; $i++) {
@@ -110,6 +110,6 @@ class TransactionSeeder extends Seeder
             }
         }
 
-        $this->command->info('✅ Berhasil membuat 10 data Pengajuan (siap di-review admin).');
+        $this->command->info('✅ Berhasil membuat 100 data Pengajuan (siap di-review admin).');
     }
 }

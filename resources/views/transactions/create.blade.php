@@ -129,7 +129,7 @@
                 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
 
             <p class="text-slate-700 font-semibold">
-                Memproses Nota dengan AI...
+                Menyiapkan Form Rembush...
             </p>
             <p class="text-sm text-slate-400">
                 Mohon tunggu sebentar

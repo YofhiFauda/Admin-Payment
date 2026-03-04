@@ -16,18 +16,30 @@
             <p class="text-sm md:text-base text-slate-500 font-medium whitespace-normal sm:whitespace-nowrap">Pantau pemberitahuan OCR, status transaksi, dan aktivitas terbaru.</p>
         </div>
         
-        @if($stats['unread'] > 0)
-        <form action="{{ route('notifications.readAll') }}" method="POST" class="w-full sm:w-auto mt-2 sm:mt-0 shrink-0">
-            @csrf
-            <input type="hidden" name="type" value="{{ request('type') }}">
-            <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-indigo-600 rounded-xl font-bold text-sm border border-indigo-100 shadow-lg shadow-indigo-200/50 hover:shadow-xl hover:shadow-indigo-300/50 hover:-translate-y-0.5 transition-all duration-200" title="Tandai semua telah dibaca">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                Tandai Semua Dibaca
-            </button>
-        </form>
-        @endif
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0 shrink-0">
+            @if($stats['unread'] > 0)
+            <form action="{{ route('notifications.readAll') }}" method="POST">
+                @csrf
+                <input type="hidden" name="type" value="{{ request('type') }}">
+                <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-indigo-600 rounded-xl font-bold text-sm border border-indigo-100 shadow-lg shadow-indigo-200/50 hover:shadow-xl hover:shadow-indigo-300/50 hover:-translate-y-0.5 transition-all duration-200" title="Tandai semua telah dibaca">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Tandai Semua Dibaca
+                </button>
+            </form>
+            @endif
+
+            @if($stats['total'] > 0)
+            <form action="{{ route('notifications.destroyAll') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SEMUA notifikasi? Tindakan ini tidak dapat dibatalkan.')">
+                @csrf @method('DELETE')
+                <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-rose-600 rounded-xl font-bold text-sm border border-rose-100 shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-300/50 hover:-translate-y-0.5 transition-all duration-200" title="Hapus semua notifikasi">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    Hapus Semua
+                </button>
+            </form>
+            @endif
+        </div>
     </div>
 
     <!-- Filters -->

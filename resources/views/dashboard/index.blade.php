@@ -183,24 +183,30 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ─── Quick Action: Approve / Reject via AJAX ─────────────────────
-    document.querySelectorAll('.btn-quick-approve, .btn-quick-reject').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const id     = this.dataset.id;
-            const status = this.dataset.status;
-            const csrf   = document.querySelector('meta[name="csrf-token"]').content;
-            const row    = document.getElementById('pending-row-' + id);
+    @if($isAdmin)
+    function bindPendingButtons() {
+        document.querySelectorAll('.btn-quick-approve, .btn-quick-reject').forEach(btn => {
+            // skip if already bound
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', function () {
+                const id     = this.dataset.id;
+                const status = this.dataset.status;
+                const csrf   = document.querySelector('meta[name="csrf-token"]').content;
+                const row    = document.getElementById('pending-row-' + id);
 
-            if (status === 'rejected') {
-                const reason = prompt('Alasan penolakan (wajib diisi):');
-                if (!reason) return;
-                doStatus(id, status, csrf, row, reason);
-            } else {
-                doStatus(id, status, csrf, row, null);
-            }
+                if (status === 'rejected') {
+                    const reason = prompt('Alasan penolakan (wajib diisi):');
+                    if (!reason) return;
+                    doStatusAndRefresh(id, status, csrf, row, reason);
+                } else {
+                    doStatusAndRefresh(id, status, csrf, row, null);
+                }
+            });
         });
-    });
+    }
 
-    function doStatus(id, status, csrf, row, reason) {
+    function doStatusAndRefresh(id, status, csrf, row, reason) {
         const body = new URLSearchParams({ _method:'PATCH', _token: csrf, status });
         if (reason) body.append('rejection_reason', reason);
 
@@ -208,13 +214,148 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                row.style.transition = 'opacity 0.4s';
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 400);
+                // Show toast notification
+                if (data.toast_message) {
+                    showDashToast(data.toast_message, data.toast_type || 'info');
+                }
+                // Animate out
+                if (row) {
+                    row.style.transition = 'opacity 0.3s, transform 0.3s';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(-20px)';
+                }
+                // After animation, refresh entire pending list
+                setTimeout(() => refreshPendingList(), 350);
             }
         })
-        .catch(() => alert('Gagal mengubah status.'));
+        .catch(() => showDashToast('Gagal mengubah status.', 'error'));
     }
+
+    function showDashToast(message, type) {
+        const colors = {
+            success: { bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46', icon: 'check-circle' },
+            warning: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', icon: 'alert-triangle' },
+            error:   { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', icon: 'x-circle' },
+            info:    { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', icon: 'info' },
+        };
+        const c = colors[type] || colors.info;
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `position:fixed;top:24px;right:24px;z-index:9999;padding:14px 20px;border-radius:14px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.12);display:flex;align-items:center;gap:10px;max-width:420px;animation:toastSlideIn .3s ease-out;`;
+        toast.innerHTML = `<i data-lucide="${c.icon}" style="width:18px;height:18px;flex-shrink:0"></i><span>${message}</span>`;
+        document.body.appendChild(toast);
+        if (window.lucide) lucide.createIcons();
+
+        setTimeout(() => {
+            toast.style.animation = 'toastSlideOut .3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    function refreshPendingList() {
+        fetch('{{ route("dashboard.pendingListData") }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('pending-tbody');
+            const wrapper = document.getElementById('pending-content-wrapper');
+            const badge = document.getElementById('pending-count-badge');
+            const subtitle = document.getElementById('pending-subtitle');
+            const footer = document.getElementById('pending-footer');
+
+            if (data.count > 0 && tbody) {
+                tbody.innerHTML = data.html;
+                bindPendingButtons();
+                if (window.lucide) lucide.createIcons();
+            } else if (wrapper) {
+                wrapper.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-slate-300">' +
+                    '<i data-lucide="check-circle-2" class="w-10 h-10 mb-2"></i>' +
+                    '<p class="text-sm text-slate-400">Semua transaksi sudah diproses!</p></div>';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            // Update badge & subtitle
+            if (badge) {
+                if (data.totalPending > 0) {
+                    badge.textContent = data.totalPending;
+                    badge.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            if (subtitle) subtitle.textContent = data.totalPending + ' transaksi pending terbaru';
+
+            // Update footer
+            if (footer) {
+                if (data.totalPending > 10) {
+                    footer.style.display = '';
+                    footer.querySelector('a').textContent = 'Lihat ' + (data.totalPending - 10) + ' lainnya →';
+                } else {
+                    footer.style.display = 'none';
+                }
+            }
+        })
+        .catch(() => {});
+    }
+
+    // Bind initial buttons
+    bindPendingButtons();
+
+    // Silent auto-refresh pending list every 15 seconds
+    setInterval(refreshPendingList, 15000);
+    @endif
+
+    // ─── Silent Auto-refresh: Branch Cost Breakdown ──────────────────
+    @if($isAdmin)
+    (function() {
+        const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        const monthSel = document.getElementById('branch-cost-month');
+        const yearSel  = document.getElementById('branch-cost-year');
+        const periodEl = document.getElementById('branch-cost-period');
+
+        function updatePeriodLabel() {
+            if (periodEl && monthSel && yearSel) {
+                periodEl.textContent = monthNames[monthSel.value - 1] + ' ' + yearSel.value;
+            }
+        }
+        updatePeriodLabel();
+
+        function silentRefreshBranchCost() {
+            const grid = document.getElementById('branch-cost-grid');
+            const countEl = document.getElementById('branch-cost-count');
+            if (!grid) return;
+
+            const m = monthSel ? monthSel.value : {{ now()->month }};
+            const y = yearSel  ? yearSel.value  : {{ now()->year }};
+
+            fetch('{{ route("dashboard.branchCostData") }}?month=' + m + '&year=' + y, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.count > 0) {
+                    grid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4';
+                    grid.innerHTML = data.html;
+                } else {
+                    grid.className = 'dash-card p-8 text-center';
+                    grid.innerHTML = '<div class="flex flex-col items-center justify-center text-slate-300"><i data-lucide="building-2" class="w-12 h-12 mb-2"></i><p class="text-sm text-slate-400">Belum ada data rincian cabang untuk periode ini</p></div>';
+                }
+                if (countEl) countEl.textContent = data.count;
+                updatePeriodLabel();
+                if (window.lucide) lucide.createIcons();
+            })
+            .catch(() => {});
+        }
+
+        // Filter change → immediate refresh
+        if (monthSel) monthSel.addEventListener('change', silentRefreshBranchCost);
+        if (yearSel)  yearSel.addEventListener('change', silentRefreshBranchCost);
+
+        // Silent auto-refresh every 15 seconds
+        setInterval(silentRefreshBranchCost, 15000);
+    })();
+    @endif
 });
 </script>
 @endpush
@@ -247,6 +388,9 @@ document.addEventListener('DOMContentLoaded', function () {
     .rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color:#fff; }
     .rank-3 { background: linear-gradient(135deg,#d97706,#fbbf24); color:#fff; }
     .rank-other { background: #f1f5f9; color: #64748b; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes toastSlideIn { from { opacity:0; transform:translateX(100px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes toastSlideOut { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(100px); } }
 </style>
 
 {{-- ══════════════════════════════════════════════════════════════════ --}}
@@ -475,15 +619,17 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="px-5 pt-5 pb-3 flex items-center justify-between">
                 <div>
                     <h3 class="font-bold text-slate-800">Butuh Persetujuan Anda</h3>
-                    <p class="text-xs text-slate-400">{{ $pendingCount }} transaksi pending terbaru</p>
+                    <p class="text-xs text-slate-400" id="pending-subtitle">{{ $pendingCount }} transaksi pending terbaru</p>
                 </div>
                 @if($pendingCount > 0)
-                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-black">
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-black" id="pending-count-badge">
                     {{ $pendingCount }}
                 </span>
+                @else
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-black" id="pending-count-badge" style="display:none">0</span>
                 @endif
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" id="pending-content-wrapper">
                 @if($pendingTransactions->count() > 0)
                 <table class="w-full text-sm">
                     <thead>
@@ -493,42 +639,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             <th class="text-right px-5 py-2 text-xs font-semibold text-slate-400 uppercase">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        @foreach($pendingTransactions as $t)
-                        <tr class="table-row" id="pending-row-{{ $t->id }}">
-                            <td class="px-5 py-3">
-                                <a href="{{ route('transactions.show', $t->id) }}"
-                                   class="font-semibold text-slate-800 hover:text-indigo-600 transition-colors block">
-                                    {{ $t->invoice_number }}
-                                </a>
-                                <span class="text-xs text-slate-400">
-                                    {{ $t->submitter->name ?? '-' }} &bull;
-                                    {{ $t->type === 'rembush' ? 'Rembush' : 'Pengajuan' }}
-                                </span>
-                            </td>
-                            <td class="px-2 py-3 hidden sm:table-cell">
-                                <span class="font-semibold text-slate-700">{{ \App\Models\Transaction::formatShortRupiah($t->effective_amount) }}</span>
-                            </td>
-                            <td class="px-5 py-3">
-                                <div class="flex items-center justify-end gap-1.5">
-                                    <button class="btn-quick-approve flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition-colors"
-                                        data-id="{{ $t->id }}" data-status="approved">
-                                        <i data-lucide="check" class="w-3 h-3"></i>
-                                        <span class="hidden sm:inline">Setuju</span>
-                                    </button>
-                                    <button class="btn-quick-reject flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors"
-                                        data-id="{{ $t->id }}" data-status="rejected">
-                                        <i data-lucide="x" class="w-3 h-3"></i>
-                                        <span class="hidden sm:inline">Tolak</span>
-                                    </button>
-                                    <a href="{{ route('transactions.show', $t->id) }}"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold transition-colors">
-                                        <i data-lucide="eye" class="w-3 h-3"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
+                    <tbody class="divide-y divide-slate-50" id="pending-tbody">
+                        @include('dashboard._pending-rows')
                     </tbody>
                 </table>
                 @else
@@ -538,14 +650,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 @endif
             </div>
-            @if($pendingCount > 10)
-            <div class="px-5 py-3 border-t border-slate-100">
+            <div class="px-5 py-3 border-t border-slate-100" id="pending-footer" @if($pendingCount <= 10) style="display:none" @endif>
                 <a href="{{ route('transactions.index', ['status' => 'pending']) }}"
                    class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-                    Lihat {{ $pendingCount - 10 }} lainnya →
+                    Lihat {{ max(0, $pendingCount - 10) }} lainnya →
                 </a>
             </div>
-            @endif
         </div>
         @endif
 
@@ -634,85 +744,55 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
     </div>
 
-    {{-- ══════════════════════════════════════════════════════════════ --}}
-    {{-- ROW 5 — LEADERBOARD (admin/atasan/owner only)                  --}}
-    {{-- ══════════════════════════════════════════════════════════════ --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- ROW 6 — RINCIAN BIAYA PER CABANG (admin only, auto-refresh)       --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
     @if($isAdmin)
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-
-        {{-- Top Teknisi --}}
-        <div class="dash-card p-5">
-            <div class="flex items-center justify-between mb-4">
+    <div class="mb-6" id="branch-cost-section">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg shadow-teal-500/30 flex items-center justify-center">
+                    <i data-lucide="building-2" class="w-5 h-5 text-white"></i>
+                </div>
                 <div>
-                    <h3 class="font-bold text-slate-800">Top Teknisi</h3>
-                    <p class="text-xs text-slate-400">Terbanyak mengajukan transaksi</p>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                    <i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i>
+                    <h2 class="text-lg font-black text-slate-900">Rincian Biaya per Cabang</h2>
+                    <p class="text-xs text-slate-400">
+                        <span id="branch-cost-period"></span> &bull;
+                        <span id="branch-cost-count">{{ $branchCostBreakdown->count() }}</span> cabang
+                    </p>
                 </div>
             </div>
-            @if($topTeknisi->count() > 0)
-            <div class="space-y-3">
-                @foreach($topTeknisi as $i => $tek)
-                <div class="flex items-center gap-3">
-                    <div class="leaderboard-rank {{ $i === 0 ? 'rank-1' : ($i === 1 ? 'rank-2' : ($i === 2 ? 'rank-3' : 'rank-other')) }}">
-                        {{ $i + 1 }}
-                    </div>
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                        {{ strtoupper(substr($tek->name, 0, 1)) }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm text-slate-800 truncate">{{ $tek->name }}</p>
-                        <p class="text-xs text-slate-400">{{ $tek->trx_count }} transaksi</p>
-                    </div>
-                    @if($tek->trx_total)
-                    <span class="text-xs font-bold text-slate-600 flex-shrink-0">
-                        {{ \App\Models\Transaction::formatShortRupiah($tek->trx_total) }}
-                    </span>
-                    @endif
-                </div>
-                @endforeach
+
+            {{-- Month/Year Filter --}}
+            <div class="flex items-center gap-2">
+                <select id="branch-cost-month" class="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
+                    @php
+                        $bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                    @endphp
+                    @foreach($bulan as $i => $b)
+                        <option value="{{ $i + 1 }}" {{ ($i + 1) == now()->month ? 'selected' : '' }}>{{ $b }}</option>
+                    @endforeach
+                </select>
+                <select id="branch-cost-year" class="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
+                    @for($y = now()->year; $y >= now()->year - 2; $y--)
+                        <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                    @endfor
+                </select>
             </div>
-            @else
-            <p class="text-sm text-slate-400 text-center py-6">Belum ada data teknisi</p>
-            @endif
         </div>
 
-        {{-- Top Vendor/Customer --}}
-        <div class="dash-card p-5">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="font-bold text-slate-800">Top Vendor / Customer</h3>
-                    <p class="text-xs text-slate-400">Paling sering bertransaksi</p>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <i data-lucide="store" class="w-4 h-4 text-emerald-600"></i>
-                </div>
-            </div>
-            @if($topVendor->count() > 0)
-            <div class="space-y-3">
-                @foreach($topVendor as $i => $v)
-                <div class="flex items-center gap-3">
-                    <div class="leaderboard-rank {{ $i === 0 ? 'rank-1' : ($i === 1 ? 'rank-2' : ($i === 2 ? 'rank-3' : 'rank-other')) }}">
-                        {{ $i + 1 }}
-                    </div>
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                        {{ strtoupper(substr($v->customer, 0, 1)) }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm text-slate-800 truncate">{{ $v->customer }}</p>
-                        <p class="text-xs text-slate-400">{{ $v->count }} transaksi</p>
-                    </div>
-                    <span class="text-xs font-bold text-slate-600 flex-shrink-0">
-                        {{ \App\Models\Transaction::formatShortRupiah($v->total) }}
-                    </span>
-                </div>
-                @endforeach
-            </div>
-            @else
-            <p class="text-sm text-slate-400 text-center py-6">Belum ada data vendor</p>
-            @endif
+        @if($branchCostBreakdown->count() > 0)
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="branch-cost-grid">
+            @include('dashboard._branch-cost-cards')
         </div>
+        @else
+        <div class="dash-card p-8 text-center" id="branch-cost-grid">
+            <div class="flex flex-col items-center justify-center text-slate-300">
+                <i data-lucide="building-2" class="w-12 h-12 mb-2"></i>
+                <p class="text-sm text-slate-400">Belum ada data rincian cabang bulan ini</p>
+            </div>
+        </div>
+        @endif
     </div>
     @endif
 

@@ -119,10 +119,19 @@ class DashboardController extends Controller
         // ─────────────────────────────────────────────
         $pendingTransactions = collect();
         if ($isAdmin) {
+            $user = Auth::user();
             $pendingTransactions = Transaction::with(['submitter', 'branches'])
-                ->where('status', 'pending')
+                ->where(function ($q) use ($user) {
+                    if ($user->isOwner()) {
+                        // Owner sees: pending + approved (waiting owner approval for >= 1jt)
+                        $q->whereIn('status', ['pending', 'approved']);
+                    } else {
+                        // Admin/Atasan sees: only pending
+                        $q->where('status', 'pending');
+                    }
+                })
                 ->latest()
-                ->take(5)
+                ->take(10)
                 ->get();
         }
 
@@ -162,6 +171,41 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        // ─────────────────────────────────────────────
+        // 6. BRANCH COST BREAKDOWN (admin only)
+        // ─────────────────────────────────────────────
+        $branchCostBreakdown = collect();
+        if ($isAdmin) {
+            $branchCostBreakdown = Branch::whereHas('transactions', function ($q) {
+                $q->whereIn('status', ['approved', 'completed'])
+                  ->whereMonth('transactions.created_at', now()->month)
+                  ->whereYear('transactions.created_at', now()->year);
+            })
+            ->with(['transactions' => function ($q) {
+                $q->whereIn('status', ['approved', 'completed'])
+                  ->whereMonth('transactions.created_at', now()->month)
+                  ->whereYear('transactions.created_at', now()->year);
+            }])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($branch) {
+                $categories = $branch->transactions->groupBy(function ($t) {
+                    if ($t->type === 'rembush') {
+                        return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
+                    }
+                    return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
+                })->map(function ($group) {
+                    return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
+                })->sortByDesc(fn($v) => $v);
+
+                return (object) [
+                    'name'       => $branch->name,
+                    'categories' => $categories,
+                    'total'      => $categories->sum(),
+                ];
+            });
+        }
+
         return view('dashboard.index', compact(
             'isAdmin',
             // Metrics
@@ -181,7 +225,96 @@ class DashboardController extends Controller
             'recentTransactions',
             // Leaderboard
             'topTeknisi',
-            'topVendor'
+            'topVendor',
+            // Branch Cost Breakdown
+            'branchCostBreakdown'
         ));
+    }
+
+    /**
+     * AJAX endpoint: returns branch cost breakdown HTML partial
+     */
+    public function branchCostData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['html' => '', 'count' => 0]);
+        }
+
+        $month = (int) $request->input('month', now()->month);
+        $year  = (int) $request->input('year', now()->year);
+
+        $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($month, $year) {
+            $q->whereIn('status', ['approved', 'completed'])
+              ->whereMonth('transactions.created_at', $month)
+              ->whereYear('transactions.created_at', $year);
+        })
+        ->with(['transactions' => function ($q) use ($month, $year) {
+            $q->whereIn('status', ['approved', 'completed'])
+              ->whereMonth('transactions.created_at', $month)
+              ->whereYear('transactions.created_at', $year);
+        }])
+        ->orderBy('name')
+        ->get()
+        ->map(function ($branch) {
+            $categories = $branch->transactions->groupBy(function ($t) {
+                if ($t->type === 'rembush') {
+                    return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
+                }
+                return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
+            })->map(function ($group) {
+                return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
+            })->sortByDesc(fn($v) => $v);
+
+            return (object) [
+                'name'       => $branch->name,
+                'categories' => $categories,
+                'total'      => $categories->sum(),
+            ];
+        });
+
+        $html = view('dashboard._branch-cost-cards', compact('branchCostBreakdown'))->render();
+
+        return response()->json([
+            'html'  => $html,
+            'count' => $branchCostBreakdown->count(),
+            'month' => $month,
+            'year'  => $year,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: returns refreshed pending transactions list HTML
+     */
+    public function pendingListData()
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['html' => '', 'count' => 0, 'totalPending' => 0]);
+        }
+
+        $statusFilter = function ($q) use ($user) {
+            if ($user->isOwner()) {
+                $q->whereIn('status', ['pending', 'approved']);
+            } else {
+                $q->where('status', 'pending');
+            }
+        };
+
+        $totalPending = Transaction::where($statusFilter)->count();
+
+        $pendingTransactions = Transaction::with(['submitter', 'branches'])
+            ->where($statusFilter)
+            ->latest()
+            ->take(10)
+            ->get();
+
+        $html = view('dashboard._pending-rows', compact('pendingTransactions'))->render();
+
+        return response()->json([
+            'html'         => $html,
+            'count'        => $pendingTransactions->count(),
+            'totalPending' => $totalPending,
+        ]);
     }
 }

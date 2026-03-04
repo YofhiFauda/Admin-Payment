@@ -47,6 +47,8 @@ Route::middleware('auth')->group(function () {
 
     // ── Dashboard ────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
+    Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
 
     // ── Shared Transaction Routes (all roles) ──────────────
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
@@ -99,6 +101,8 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.readAll');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
         ->name('notifications.read');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])
+        ->name('notifications.destroyAll');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])
         ->name('notifications.destroy');
 

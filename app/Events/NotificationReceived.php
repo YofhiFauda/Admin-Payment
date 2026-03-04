@@ -16,13 +16,15 @@ class NotificationReceived implements ShouldBroadcast
     public int $unreadCount;
     public string $title;
     public string $message;
+    public string $type;
 
-    public function __construct(int $userId, int $unreadCount, string $title, string $message)
+    public function __construct(int $userId, int $unreadCount, string $title, string $message, string $type = 'general')
     {
         $this->userId      = $userId;
         $this->unreadCount = $unreadCount;
         $this->title       = $title;
         $this->message     = $message;
+        $this->type        = $type;
     }
 
     public function broadcastOn(): array

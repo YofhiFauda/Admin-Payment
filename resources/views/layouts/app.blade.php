@@ -681,21 +681,7 @@
                 .listen('.transaction.updated', (e) => {
                     console.log('Personal Real-time Transaction Update (Toast):', e);
                     
-                    const statusConfig = {
-                        'approved': { color: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30', icon: 'check-circle-2', title: 'Transaksi Disetujui' },
-                        'rejected': { color: 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-lg shadow-rose-500/30', icon: 'x-circle', title: 'Transaksi Ditolak' },
-                        'completed': { color: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30', icon: 'badge-check', title: 'Transaksi Selesai' },
-                        'pending': { color: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30', icon: 'clock', title: 'Menunggu Persetujuan' },
-                    };
-                    
-                    const config = statusConfig[e.transaction.status] || { color: 'bg-gradient-to-br from-slate-500 to-slate-700 text-white shadow-lg', icon: 'bell', title: 'Pembaruan Transaksi' };
-                    
-                    showRealtimeToast(
-                        config.title,
-                        `Nota dengan ID <b>${e.transaction.invoice_number}</b> saat ini menjadi <span class="uppercase font-bold">${e.transaction.status}</span>.`,
-                        config.color,
-                        config.icon
-                    );
+                    // The custom toast here was removed in favor of the notification.received toast below
                     updateNotificationBadge();
                 });
 

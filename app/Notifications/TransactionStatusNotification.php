@@ -45,7 +45,7 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
 
         // Dispatch real-time badge update event
         $unreadCount = $notifiable->unreadNotifications()->count() + 1; // +1 karena notifikasi ini belum tersimpan saat broadcast
-        broadcast(new NotificationReceived($notifiable->id, $unreadCount, $title, $message));
+        broadcast(new NotificationReceived($notifiable->id, $unreadCount, $title, $message, 'transaction_status'));
 
         return [
             'type'               => 'transaction_status',
