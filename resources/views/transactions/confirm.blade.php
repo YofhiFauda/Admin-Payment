@@ -1,12 +1,8 @@
 @extends('layouts.app')
 
-@php
-    $hideHeader = true;
-@endphp
-
 @section('content')
     {{-- Container dengan background dekoratif --}}
-    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 relative overflow-hidden">
+    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 overflow-hidden">
         
         {{-- Background Blobs (Animasi halus) --}}
         <div class="absolute top-0 left-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2 animate-blob"></div>
@@ -44,12 +40,6 @@
                         <div class="relative z-10">
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-left">Status Pengajuan Anda</p>
                             
-                            {{-- ID ADDED: status-badge-container --}}
-                            <div id="status-badge-container" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full font-bold text-xs border border-amber-100 shadow-sm mb-3 transition-all duration-500">
-                                <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
-                                <span id="status-text">PENDING REVIEW</span>
-                            </div>
-
                             <div class="text-left bg-white/60 p-3 rounded-lg border border-slate-50 backdrop-blur-sm">
                                 <p id="status-description" class="text-slate-500 text-xs leading-relaxed">
                                     Nota Anda sedang dalam tahap peninjauan oleh tim finance. Kami akan menghubungi Anda segera setelah proses selesai.
@@ -202,86 +192,4 @@
 @endpush
 
 @push('scripts')
-<script>
-    // --- REALTIME STATUS UPDATER ---
-    const transactionId = {{ $transaction->id }};
-    const checkStatusUrl = "{{ route('transactions.detail.json', $transaction->id) }}";
-    
-    // Simpan status awal saat halaman dimuat agar tidak berkedip
-    let currentStatus = "{{ $transaction->status }}";
-
-    function updateStatusUI(data) {
-        const badgeContainer = document.getElementById('status-badge-container');
-        const statusText = document.getElementById('status-text');
-        const statusDesc = document.getElementById('status-description');
-        const icon = badgeContainer.querySelector('i');
-
-        // Jika status dari server sama dengan yang ada di layar, tidak perlu update
-        if (data.status === currentStatus) return;
-
-        // Update status lokal
-        currentStatus = data.status;
-
-        // Reset Classes
-        badgeContainer.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs border shadow-sm mb-3 transition-all duration-500';
-        icon.className = 'w-3.5 h-3.5'; // Reset icon classes
-
-        let newIcon = '';
-        let newDesc = '';
-
-        // Logic Tampilan Berdasarkan Status Baru
-        switch(data.status) {
-            case 'pending':
-                badgeContainer.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-100');
-                newIcon = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>';
-                statusText.innerText = 'PENDING REVIEW';
-                newDesc = 'Nota Anda sedang dalam tahap peninjauan oleh tim finance. Kami akan menghubungi Anda segera setelah proses selesai.';
-                break;
-            
-            case 'approved':
-                badgeContainer.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-100');
-                newIcon = '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i>';
-                statusText.innerText = 'DISETUJUI';
-                newDesc = 'Nota telah disetujui oleh tim finance/atasan dan sedang diproses lebih lanjut.';
-                break;
-
-            case 'completed':
-                badgeContainer.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-100');
-                newIcon = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
-                statusText.innerText = 'SELESAI';
-                newDesc = 'Transaksi telah selesai diproses sepenuhnya.';
-                break;
-
-            case 'rejected':
-                badgeContainer.classList.add('bg-red-50', 'text-red-700', 'border-red-100');
-                newIcon = '<i data-lucide="x-circle" class="w-3.5 h-3.5"></i>';
-                statusText.innerText = 'DITOLAK';
-                newDesc = data.rejection_reason ? `Alasan: ${data.rejection_reason}` : 'Nota ditolak oleh tim finance.';
-                break;
-            
-            default:
-                statusText.innerText = data.status.toUpperCase();
-        }
-
-        // Update DOM
-        icon.innerHTML = newIcon;
-        if(statusDesc) statusDesc.innerText = newDesc;
-
-        // Re-init Lucide icons untuk icon baru
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
-    }
-
-    // Jalankan polling setiap 3 detik
-    setInterval(() => {
-        fetch(checkStatusUrl)
-            .then(response => response.json())
-            .then(data => {
-                updateStatusUI(data);
-            })
-            .catch(error => console.error('Error checking status:', error));
-    }, 3000); // 3000ms = 3 detik
-
-</script>
 @endpush

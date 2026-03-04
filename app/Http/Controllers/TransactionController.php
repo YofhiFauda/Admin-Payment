@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ActivityLog;
+use App\Notifications\TransactionStatusNotification;
+use App\Notifications\OwnerApprovalNotification;
 
+
+use Illuminate\Support\Facades\Cache;
 
 class TransactionController extends Controller
 {
@@ -32,14 +37,18 @@ class TransactionController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('customer', 'like', "%{$search}%")
                   ->orWhere('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('vendor', 'like', "%{$search}%");
+                  ->orWhere('vendor', 'like', "%{$search}%")
+                  ->orWhereHas('submitter', function ($sub) use ($search) {
+                      $sub->where('name', 'like', "%{$search}%");
+                  });
 
                 $dateFormats = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd M Y'];
                 foreach ($dateFormats as $format) {
                     try {
                         $parsed = \Carbon\Carbon::createFromFormat($format, $search);
                         if ($parsed) {
-                            $q->orWhereDate('date', $parsed->toDateString());
+                            $q->orWhereDate('date', $parsed->toDateString())
+                          ->orWhereDate('created_at', $parsed->toDateString());
                             break;
                         }
                     } catch (\Exception $e) {
@@ -72,18 +81,24 @@ class TransactionController extends Controller
 
         $transactions = $query->paginate(20);
 
-        // Stats - scoped per role
-        $statsQuery = Auth::user()->isTeknisi()
-            ? Transaction::where('submitted_by', Auth::id())
-            : new Transaction;
+        // Stats - scoped per role and cached
+        $isTeknisi = Auth::user()->isTeknisi();
+        $userId = Auth::id();
+        $cacheKey = $isTeknisi ? "transactions_stats_teknisi_{$userId}" : "transactions_stats_global";
 
-        $stats = [
-            'count'     => (clone $statsQuery)->count(),
-            'pending'   => (clone $statsQuery)->where('status', 'pending')->count(),
-            'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
-            'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
-            'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
-        ];
+        $stats = Cache::remember($cacheKey, 300, function () use ($isTeknisi, $userId) {
+            $statsQuery = $isTeknisi
+                ? Transaction::where('submitted_by', $userId)
+                : new Transaction;
+
+            return [
+                'count'     => (clone $statsQuery)->count(),
+                'pending'   => (clone $statsQuery)->where('status', 'pending')->count(),
+                'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
+                'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+                'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
+            ];
+        });
 
         return view('transactions.index', compact('transactions', 'stats'));
     }
@@ -133,7 +148,7 @@ class TransactionController extends Controller
             'amount'          => $t->amount,
             'formatted_amount'=> $t->formatted_amount,
             'items'           => $t->items,
-            'date'            => $t->date ? $t->date->format('d M Y') : null,
+            'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
             'status'          => $t->status,
             'status_label'    => $t->status_label,
             'specs'           => $t->specs,
@@ -141,6 +156,8 @@ class TransactionController extends Controller
             'estimated_price' => $t->estimated_price,
             'purchase_reason' => $t->purchase_reason,
             'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason) : null,
+            'ai_status'       => $t->ai_status,
+            'upload_id'       => $t->upload_id,
             'file_path'       => $t->file_path,
             'image_url'       => $t->file_path ? route('transactions.image', $t->id) : null,
             'submitter'       => $t->submitter ? ['name' => $t->submitter->name] : null,
@@ -182,8 +199,18 @@ class TransactionController extends Controller
     {
         $transaction = Transaction::with('branches')->findOrFail($id);
         $branches = Branch::all();
-
-        return view('transactions.edit', compact('transaction', 'branches'));
+        
+        // ✅ Calculate item count based on transaction type
+        if ($transaction->isPengajuan()) {
+            $itemCount = 1; // Pengajuan = single item
+        } else {
+            $itemCount = $transaction->items ? count($transaction->items) : 0;
+        }
+        
+        if ($transaction->isPengajuan()) {
+            return view('transactions.edit-pengajuan', compact('transaction', 'branches', 'itemCount'));
+        }
+        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount'));
     }
 
     public function update(Request $request, $id)
@@ -206,9 +233,9 @@ class TransactionController extends Controller
             ]);
         } else {
             $request->validate([
-                'customer'       => 'required|string|max:255',
+                'customer'       => 'nullable|string|max:255',
                 'category'       => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
-                'amount'         => 'required|numeric|min:1',
+                'amount'         => 'nullable|numeric|min:0',
                 'description'    => 'nullable|string|max:2000',
                 'payment_method' => 'nullable|string|in:' . implode(',', array_keys(Transaction::PAYMENT_METHODS)),
                 'items'          => 'nullable|array',
@@ -277,13 +304,15 @@ class TransactionController extends Controller
             DB::commit();
 
             // Log activity
-            ActivityLog::create([
+            $log = ActivityLog::create([
                 'user_id'        => Auth::id(),
                 'action'         => 'edit',
                 'transaction_id' => $transaction->id,
                 'target_id'      => $transaction->invoice_number,
                 'description'    => "Mengedit data Nota " . $transaction->invoice_number,
             ]);
+            broadcast(new \App\Events\ActivityLogged($log));
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             return redirect()->route('transactions.index')
                 ->with('success', "Transaksi {$transaction->invoice_number} berhasil diperbarui.");
@@ -366,13 +395,15 @@ class TransactionController extends Controller
                 ? "Menolak status Transaksi " . $transaction->invoice_number . " dengan alasan: " . $request->rejection_reason
                 : "Menyetujui status Transaksi " . $transaction->invoice_number;
 
-            ActivityLog::create([
+            $log = ActivityLog::create([
                 'user_id'        => Auth::id(),
                 'action'         => strtolower($actionLabel),
                 'transaction_id' => $transaction->id,
                 'target_id'      => $transaction->invoice_number,
                 'description'    => $description,
             ]);
+            broadcast(new \App\Events\ActivityLogged($log));
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             Log::info('Transaction status updated', [
                 'transaction_id'   => $transaction->id,
@@ -384,6 +415,36 @@ class TransactionController extends Controller
                 'rejection_reason' => $request->rejection_reason,
             ]);
 
+            // Notify submitter if status changed to approved, rejected, or completed
+            if (in_array($newStatus, ['approved', 'rejected', 'completed']) && $oldStatus !== $newStatus) {
+                if ($transaction->submitter) {
+                    $transaction->submitter->notify(new TransactionStatusNotification($transaction, $newStatus));
+                }
+            }
+
+            // Notify all owners when Admin/Atasan approves >= 1jt (stays 'approved', waiting owner)
+            if ($newStatus === 'approved' && $oldStatus === 'pending' && !$user->isOwner()) {
+                $owners = User::where('role', 'owner')->get();
+                foreach ($owners as $owner) {
+                    $owner->notify(new OwnerApprovalNotification($transaction, $user->name));
+                }
+            }
+
+            // Build toast info for JSON response
+            $toastType = match($newStatus) {
+                'completed' => 'success',
+                'approved'  => 'warning',
+                'rejected'  => 'error',
+                default     => 'info',
+            };
+
+            $toastMessage = match($newStatus) {
+                'completed' => "Transaksi {$transaction->invoice_number} selesai!",
+                'approved'  => "Transaksi {$transaction->invoice_number} disetujui. Menunggu persetujuan Owner.",
+                'rejected'  => "Transaksi {$transaction->invoice_number} ditolak.",
+                default     => "Status transaksi diubah.",
+            };
+
             $statusLabel = match($newStatus) {
                 'approved'  => 'DISETUJUI (Menunggu Owner)',
                 'rejected'  => 'DITOLAK',
@@ -392,6 +453,16 @@ class TransactionController extends Controller
                 default     => strtoupper($newStatus),
             };
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success'       => true,
+                    'message'       => "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}",
+                    'status'        => $newStatus,
+                    'toast_type'    => $toastType,
+                    'toast_message' => $toastMessage,
+                ]);
+            }
+
             return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}");
 
         } catch (\Exception $e) {
@@ -399,6 +470,10 @@ class TransactionController extends Controller
                 'error' => $e->getMessage(),
                 'transaction_id' => $id,
             ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal mengubah status'], 500);
+            }
 
             return back()->withErrors(['error' => 'Gagal mengubah status']);
         }
@@ -410,6 +485,8 @@ class TransactionController extends Controller
 
     public function destroy($id)
     {
+        abort_if(Auth::user()->isAdmin(), 403, 'Unauthorized action.');
+
         try {
             $transaction = Transaction::findOrFail($id);
             $invoiceNumber = $transaction->invoice_number;
@@ -456,5 +533,84 @@ class TransactionController extends Controller
         $mimeType = $finfo->buffer($file);
 
         return response($file, 200)->header('Content-Type', $mimeType);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  GET ALL TRANSACTIONS FOR CLIENT-SIDE SEARCH
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    public function getAllForSearch(Request $request)
+    {
+        $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
+
+        // Teknisi hanya melihat transaksi sendiri
+        if (Auth::user()->isTeknisi()) {
+            $query->where('submitted_by', Auth::id());
+        }
+
+        // Status filter
+        if ($status = $request->get('status')) {
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+        }
+
+        // Type filter
+        if ($type = $request->get('type')) {
+            if ($type !== 'all') {
+                $query->where('type', $type);
+            }
+        }
+
+        // Category filter
+        if ($category = $request->get('category')) {
+            if ($category !== 'all') {
+                $query->where('category', $category);
+            }
+        }
+
+        // Get all transactions (limited to reasonable amount for performance)
+        $transactions = $query->limit(5000)->get();
+
+        // Format data for client-side search
+        $data = $transactions->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'invoice_number' => $t->invoice_number,
+                'submitter_name' => $t->submitter->name ?? '-',
+                'customer' => $t->customer ?? '',
+                'vendor' => $t->vendor ?? '',
+                'type' => $t->type,
+                'type_label' => $t->type_label,
+                'category' => $t->category,
+                'category_label' => $t->type === 'pengajuan' 
+                    ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '-')
+                    : (Transaction::CATEGORIES[$t->category] ?? '-'),
+                'status' => $t->status,
+                'status_label' => $t->status_label,
+                'amount' => $t->amount,
+                'formatted_amount' => number_format($t->amount ?? 0, 0, ',', '.'),
+                'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
+                'created_at' => $t->created_at->format('d M Y'),
+                'created_at_search' => $t->created_at->format('d-m-Y Y-m-d'),
+                'ai_status' => $t->ai_status,
+                'upload_id' => $t->upload_id,
+                'confidence' => $t->confidence,
+                'rejection_reason' => $t->rejection_reason,
+                'effective_amount' => $t->effective_amount,
+                'purchase_reason' => $t->purchase_reason,
+                'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '') : '',
+                // Search string untuk matching
+                'search_text' => strtolower(
+                    ($t->submitter->name ?? '') . ' ' .
+                    $t->invoice_number . ' ' .
+                    ($t->customer ?? '') . ' ' .
+                    ($t->vendor ?? '') . ' ' .
+                    $t->created_at->format('d M Y d-m-Y Y-m-d')
+                ),
+            ];
+        });
+
+        return response()->json($data);
     }
 }

@@ -61,7 +61,7 @@ class UserController extends Controller
             'email.email'        => 'Format email tidak valid.',
             'email.unique'       => 'Email sudah terdaftar.',
             'password.required'  => 'Password wajib diisi.',
-            'password.min'       => 'Password minimal 6 karakter.',
+            'password.min'       => 'Password minimal 8 karakter, at least 1 number and 1 capital letter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'role.required'      => 'Role wajib dipilih.',
             'role.in'            => 'Role tidak valid.',

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\IdGeneratorService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Transaction extends Model
 {
@@ -17,15 +19,45 @@ class Transaction extends Model
 
     // ─── Category Constants (Rembush) ─────────────────
     const CATEGORIES = [
-        'pembelian_operasional' => 'Pembelian operasional',
-        'pembelian_aset' => 'Pembelian aset',
-        'pembayaran_vendor' => 'Pembayaran vendor',
-        'biaya_marketing' => 'Biaya marketing',
-        'pembelian_persediaan' => 'Pembelian persediaan',
-        'pembayaran_asuransi' => 'Pembayaran asuransi',
-        'pembayaran_bandwidth' => 'Pembayaran bandwidth',
-        'pembayaran_entertainment' => 'Pembayaran entertainment',
-        'reimbursement' => 'Reimbursement dari teknisi/staff',
+        'beban_entertain' => 'Beban Entertain',
+        'beban_komisi' => 'Beban Komisi',
+        'beban_bensin_parkir_tol_kendaraan' => 'Beban Bensin, Parkir, Tol Kendaraan',
+        'beban_gaji_upah_honorar' => 'Beban Gaji, Upah & Honorar',
+        'beban_pertemuan' => 'Beban Pertemuan',
+        'beban_konsumsi' => 'Beban Konsumsi',
+        'beban_listrik' => 'Beban Listrik',
+        'beban_perlengkapan_kantor' => 'Beban Perlengkapan Kantor',
+        'beban_perawatan_dan_perbaikan' => 'Beban Perawatan dan Perbaikan',
+        'beban_repeter' => 'Beban Repeter',
+        'beban_lain_lain' => 'Beban Lain-lain',
+        'beban_ai' => 'Beban AI',
+        'beban_administrasi_bank' => 'Beban Administrasi Bank',
+        'beban_ekspedisi_pos_materai' => 'Beban Ekspedisi, Pos & Materai',
+        'beban_sewa' => 'Beban Sewa',
+        'beban_tagihan_bpjs_ketenagakerjaan' => 'Beban Tagihan BPJS Ketenagakerjaan',
+        'beban_pembayaran_bpjs_kesehatan' => 'Beban Pembayaran BPJS Kesehatan',
+        'beban_seragam_karyawan' => 'Beban Seragam Karyawan',
+        'beban_promosi_iklan' => 'Beban Promosi/Iklan',
+        'beban_kebersihan_dan_keamanan' => 'Beban Kebersihan dan Keamanan',
+        'beban_konsultan' => 'Beban Konsultan',
+        'pph_final' => 'PPH Final',
+        'pph_21' => 'PPH 21',
+        'beban_sumbangan_amal' => 'Beban Sumbangan / Amal',
+        'beban_telekomunikasi' => 'Beban Telekomunikasi',
+        'pembelian_internet' => 'Pembelian Internet',
+        'peralatan' => 'Peralatan',
+        'persediaan' => 'Persediaan',
+        'piutang_usaha' => 'Piutang Usaha',
+        'piutang_karyawan' => 'Piutang Karyawan',
+        'prive' => 'Prive',
+        'diskon_penjualan' => 'Diskon Penjualan',
+        'kendaraan' => 'Kendaraan',
+        'retur_penjualan' => 'Retur Penjualan',
+        'utang_usaha' => 'Utang Usaha',
+        'perlengkapan' => 'Perlengkapan',
+        'beban_operasional_lainnya' => 'Beban Operasional Lainnya',
+        'beban_vendor' => 'Beban Vendor',
+        'bagi_hasil' => 'Bagi Hasil',
     ];
 
     // ─── Payment Methods (Rembush) ────────────────────
@@ -37,10 +69,45 @@ class Transaction extends Model
 
     // ─── Purchase Reasons (Pengajuan) ─────────────────
     const PURCHASE_REASONS = [
-        'ganti_rusak' => 'Mengganti Barang Rusak',
-        'stock_rutin' => 'Stock Rutin',
-        'kebutuhan_proyek' => 'Kebutuhan Proyek',
-        'alat_bantu_operasional' => 'Alat Bantu Operasional',
+        'beban_entertain' => 'Beban Entertain',
+        'beban_komisi' => 'Beban Komisi',
+        'beban_bensin_parkir_tol_kendaraan' => 'Beban Bensin, Parkir, Tol Kendaraan',
+        'beban_gaji_upah_honorar' => 'Beban Gaji, Upah & Honorar',
+        'beban_pertemuan' => 'Beban Pertemuan',
+        'beban_konsumsi' => 'Beban Konsumsi',
+        'beban_listrik' => 'Beban Listrik',
+        'beban_perlengkapan_kantor' => 'Beban Perlengkapan Kantor',
+        'beban_perawatan_dan_perbaikan' => 'Beban Perawatan dan Perbaikan',
+        'beban_repeter' => 'Beban Repeter',
+        'beban_lain_lain' => 'Beban Lain-lain',
+        'beban_ai' => 'Beban AI',
+        'beban_administrasi_bank' => 'Beban Administrasi Bank',
+        'beban_ekspedisi_pos_materai' => 'Beban Ekspedisi, Pos & Materai',
+        'beban_sewa' => 'Beban Sewa',
+        'beban_tagihan_bpjs_ketenagakerjaan' => 'Beban Tagihan BPJS Ketenagakerjaan',
+        'beban_pembayaran_bpjs_kesehatan' => 'Beban Pembayaran BPJS Kesehatan',
+        'beban_seragam_karyawan' => 'Beban Seragam Karyawan',
+        'beban_promosi_iklan' => 'Beban Promosi/Iklan',
+        'beban_kebersihan_dan_keamanan' => 'Beban Kebersihan dan Keamanan',
+        'beban_konsultan' => 'Beban Konsultan',
+        'pph_final' => 'PPH Final',
+        'pph_21' => 'PPH 21',
+        'beban_sumbangan_amal' => 'Beban Sumbangan / Amal',
+        'beban_telekomunikasi' => 'Beban Telekomunikasi',
+        'pembelian_internet' => 'Pembelian Internet',
+        'peralatan' => 'Peralatan',
+        'persediaan' => 'Persediaan',
+        'piutang_usaha' => 'Piutang Usaha',
+        'piutang_karyawan' => 'Piutang Karyawan',
+        'prive' => 'Prive',
+        'diskon_penjualan' => 'Diskon Penjualan',
+        'kendaraan' => 'Kendaraan',
+        'retur_penjualan' => 'Retur Penjualan',
+        'utang_usaha' => 'Utang Usaha',
+        'perlengkapan' => 'Perlengkapan',
+        'beban_operasional_lainnya' => 'Beban Operasional Lainnya',
+        'beban_vendor' => 'Beban Vendor',
+        'bagi_hasil' => 'Bagi Hasil',
     ];
 
     protected $fillable = [
@@ -67,6 +134,8 @@ class Transaction extends Model
         'quantity',
         'estimated_price',
         'purchase_reason',
+        'upload_id',
+        'trace_id',
     ];
 
     protected function casts(): array
@@ -82,11 +151,40 @@ class Transaction extends Model
         ];
     }
 
-    // ─── Invoice Number ───────────────────────────────
+    /**
+     * Model Events
+     */
+    protected static function booted()
+    {
+        $clearCache = function ($transaction) {
+            // Clear global stats cache (for Admin/Owner)
+            Cache::forget('transactions_stats_global');
+
+            // Clear specific user stats cache (for Teknisi)
+            if ($transaction->submitted_by) {
+                Cache::forget("transactions_stats_teknisi_{$transaction->submitted_by}");
+            }
+        };
+
+        static::created($clearCache);
+        static::updated($clearCache);
+        static::deleted($clearCache);
+    }
+
+    // ─── ID Generators (delegates to IdGeneratorService) ────────────
     public static function generateInvoiceNumber(): string
     {
-        $count = self::count() + 1;
-        return 'INV-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        return IdGeneratorService::nextInvoiceNumber();
+    }
+
+    public static function generateUploadId(): string
+    {
+        return IdGeneratorService::nextUploadId();
+    }
+
+    public static function generateTraceId(): string
+    {
+        return IdGeneratorService::nextTraceId();
     }
 
     // ─── Relationships ────────────────────────────────

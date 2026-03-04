@@ -16,8 +16,12 @@ return new class extends Migration
             $table->json('items')->nullable();
             $table->date('date')->nullable();
             $table->string('file_path')->nullable();
-            $table->string('ai_status')->default('processing');
-            $table->integer('confidence')->nullable();
+
+
+            // ✅ AI Status Columns
+            $table->string('ai_status')->default('pending'); // processing, completed, error
+            $table->integer('confidence')->nullable();        // 0-100
+            $table->string('upload_id')->nullable()->unique(); // ID untuk tracking OCR
 
             // Business Status
             $table->enum('status', ['pending', 'approved', 'completed', 'rejected'])->default('pending');

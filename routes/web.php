@@ -1,19 +1,25 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\RembushController;
 use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\NotificationController;
 
 use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('transactions.index')
-        : redirect()->route('login');
+    if (auth()->check()) {
+        return auth()->user()->role === 'teknisi'
+            ? redirect()->route('transactions.create')
+            : redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 
 // Guest routes
@@ -38,6 +44,11 @@ Route::get('/debug-session', function () {
 // Authenticated routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // ── Dashboard ────────────────────────────────────────────────
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
+    Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
 
     // ── Shared Transaction Routes (all roles) ──────────────
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
@@ -71,10 +82,30 @@ Route::middleware('auth')->group(function () {
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
 
-    // ── User & Activity Management (admin, atasan, owner) ──
+    // ── User, Branch & Activity Management (admin, atasan, owner) ──
     Route::middleware('role:admin,atasan,owner')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
+        // ── Branch Management ─────────────────────────────────────
+        Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
+        Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+        Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
+        Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
     });
 
+    //Notifications
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
+    Route::get('/notifications',          [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.readAll');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
+        ->name('notifications.read');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])
+        ->name('notifications.destroyAll');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])
+        ->name('notifications.destroy');
+
+    // ── Search ──
+    Route::get('/transactions/search-data', [TransactionController::class, 'getAllForSearch'])->name('transactions.searchData');
 });

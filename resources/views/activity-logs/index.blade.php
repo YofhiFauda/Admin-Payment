@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="px-4 py-8 max-w-7xl mx-auto">
+<div class="px-4 py-8 max-w-8xl mx-auto">
     <!-- Header Section -->
     <div class="mb-8">
         <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Log Aktivitas</h1>
@@ -52,9 +52,13 @@
                                 </span>
                             </td>
                             <td class="px-6 py-5">
-                                <span class="text-sm font-mono font-medium text-slate-500 uppercase">
-                                    {{ $log->target_id ?? '-' }}
-                                </span>
+                                @if($log->target_id)
+                                    <a href="{{ route('transactions.index', ['search' => $log->target_id]) }}" class="text-sm font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline uppercase transition-colors">
+                                        {{ $log->target_id }}
+                                    </a>
+                                @else
+                                    <span class="text-sm font-mono font-medium text-slate-500 uppercase">-</span>
+                                @endif
                             </td>
                             <td class="px-6 py-5">
                                 <p class="text-sm text-slate-600 leading-relaxed max-w-md">
@@ -88,4 +92,29 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // ─────────────────────────────────────────────────────────
+    // REALTIME ECHO HANDLER (ACTIVITY LOGS)
+    // ─────────────────────────────────────────────────────────
+    window.handleRealtimeActivityLog = function(activityLog) {
+        // Fetch the current page HTML via XHR so we don't do a full page reload,
+        // then swap the table body natively to make it feel instant.
+        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newTbody = doc.querySelector('table tbody');
+                const oldTbody = document.querySelector('table tbody');
+                
+                if (newTbody && oldTbody) {
+                    oldTbody.innerHTML = newTbody.innerHTML;
+                }
+            });
+    };
+</script>
+@endpush
 @endsection

@@ -1,5 +1,11 @@
+# docker-compose.yml — WHUSNET Admin Payment
+# VERSI UPGRADE: + Redis + Queue Worker (x3) + Scheduler
+
 services:
 
+  # ─────────────────────────────────────────
+  #  APP — Laravel PHP-FPM
+  # ─────────────────────────────────────────
   app:
     build:
       context: .
@@ -7,14 +13,36 @@ services:
     container_name: whusnet-app
     restart: unless-stopped
     working_dir: /var/www
+    command: >
+      sh -c "composer install --no-interaction --optimize-autoloader && php-fpm"
     volumes:
       - ./:/var/www
-      # - ./public/storage:/var/www/public/storage
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
-      - laravel
+      - app_network
 
+  # ─────────────────────────────────────────
+  #  NGINX
+  # ─────────────────────────────────────────
   nginx:
     image: nginx:alpine
     container_name: whusnet-nginx
@@ -24,9 +52,13 @@ services:
     volumes:
       - ./:/var/www
       - ./docker/nginx:/etc/nginx/conf.d
+      - storage_data:/var/www/storage
     networks:
-      - laravel
+      - app_network
 
+  # ─────────────────────────────────────────
+  #  DATABASE MySQL
+  # ─────────────────────────────────────────
   db:
     image: mysql:8.0
     container_name: whusnet-db
@@ -41,8 +73,11 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
     networks:
-      - laravel
-  
+      - app_network
+
+  # ─────────────────────────────────────────
+  #  NODE.JS
+  # ─────────────────────────────────────────
   node:
     image: node:20
     container_name: nodeJS
@@ -51,12 +86,14 @@ services:
       - ./:/var/www
       - /var/www/node_modules
     networks:
-      - laravel
+      - app_network
     ports:
-      - "3000:3000" # port Tailwind dev server
+      - "3000:3000"
     command: bash -c "npm install && npm run dev"
 
-
+  # ─────────────────────────────────────────
+  #  PHPMYADMIN
+  # ─────────────────────────────────────────
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin
@@ -68,12 +105,142 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: root
     networks:
-      - laravel
+      - app_network
+
+  # ─────────────────────────────────────────
+  #  ✅ HORIZON - Queue Monitoring
+  # ─────────────────────────────────────────
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whusnet-horizon
+    restart: unless-stopped
+    working_dir: /var/www
+    command: >
+      sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && php artisan horizon"
+    volumes:
+      - ./:/var/www
+      - storage_data:/var/www/storage
+      - cache_data:/var/www/bootstrap/cache
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: ${APP_ENV}
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_started
+    networks:
+      - app_network
+
+  # ─────────────────────────────────────────
+  #  REDIS — Queue + Cache + Lock + Throttle
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: whusnet-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  #  ✅ REVERB — WebSocket Server
+  # ─────────────────────────────────────────
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whusnet-reverb
+    restart: unless-stopped
+    working_dir: /var/www
+    command: >
+      sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && php artisan reverb:start --host=0.0.0.0 --port=8081"
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./:/var/www
+      - storage_data:/var/www/storage
+      - cache_data:/var/www/bootstrap/cache
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: ${APP_ENV}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  # ─────────────────────────────────────────
+  #  ✅ SCHEDULER — Laravel Cron
+  # ─────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whusnet-scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    command: >
+      sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
+    volumes:
+      - ./:/var/www
+      - storage_data:/var/www/storage
+      - cache_data:/var/www/bootstrap/cache
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: ${APP_ENV}
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
 
 networks:
-  laravel:
+  app_network:
 
 volumes:
   dbdata:
   storage_data:
   cache_data:
+  redis_data:
