@@ -1,0 +1,61 @@
+# Dokumentasi QA Testing: Unit Tests
+
+Dokumen ini berisi rangkuman pengujian otomatis (Automated Unit Testing) yang fokus pada fungsionalitas murni di dalam Model dan Service aplikasi `Admin-Payment`.
+
+## Lingkungan Pengujian (Test Environment)
+- **Framework**: PHPUnit (bawaan Laravel)
+- **Database**: Tidak Membutuhkan Database (Semua instance di-mock di memory).
+- **Test Suite**: `Unit`
+
+## Skenario yang Diuji (Test Cases)
+
+Kami membuat 3 kelas Test yang mencakup 10 fungsi uji (dengan total 38 assertions).
+
+### 1. `Tests\Unit\UserTest`
+Model pengguna ini memegang logika fundamental untuk *Roles* dan hak akses dasar.
+- **[test_user_can_check_its_exact_role](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/UserTest.php#10-26)**: Mengonfirmasi fungsi helper role seperti [isTeknisi()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#33-35), [isOwner()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#37-38) menghasilkan boolean `true` atau `false` mengacu ke array definisi instance [User](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#9-66).
+- **[test_role_permissions_for_input](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/UserTest.php#27-40)**: Mengonfirmasi bahwa fungsi [canInput()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#39-44) hanya diperbolehkan untuk 'teknisi', 'admin', dan 'owner'.
+- **[test_role_permissions_for_manage_status](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/UserTest.php#41-57)**: Memastikan fungsi [canManageStatus()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#45-49) dan [canManageUsers()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/User.php#50-54) terkunci hanya untuk 'admin', 'atasan', dan 'owner'.
+
+### 2. `Tests\Unit\TransactionTest`
+Model mutlak untuk kelancaran aplikasi. Kami mentarget kalkulasi nominal.
+- **[test_type_checkers_work_correctly](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#10-21)**: Memeriksa helper [isRembush()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/Transaction.php#208-210) dan [isPengajuan()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/Transaction.php#210-211).
+- **[test_status_checkers_return_correct_booleans](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#22-36)**: Memeriksa helper [isPending()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/Transaction.php#217-219), [isApproved()](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/app/Models/Transaction.php#219-220), dll.
+- **[test_effective_amount_is_correct_for_rembush](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#37-49)**: Memastikan bahwa properti kalkulasi [effective_amount](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#37-49) mengambil integer dari field [amount](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#37-49).
+- **[test_effective_amount_is_correct_for_pengajuan](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#50-62)**: Memastikan bahwa [effective_amount](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#37-49) mengambil integer dari field `estimated_price` jika tipenya pengajuan.
+- **[test_format_short_rupiah_works_correctly](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/TransactionTest.php#63-79)**: Menguji utilitas view untuk memperpendek Rupiah string. Misal `Rp 1,5 Jt`, `Rp 1,25 M`.
+
+### 3. `Tests\Unit\IdGeneratorServiceTest`
+Layanan yang bertugas membuat string pola ID.
+- **[test_it_builds_correct_upload_id_format](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/IdGeneratorServiceTest.php#10-20)**: Menyuntikkan _sequence number_ (misal `5`) dan memastikan padding array menembakkan string `UP-20260304-00005`.
+- **[test_it_builds_correct_invoice_number_format](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/tests/Unit/IdGeneratorServiceTest.php#21-31)**: Sama seperti upload ID namun memastikan output string untuk _Invoice_ adalah `INV-20260304-00012`.
+
+## Hasil Pengujian (Results)
+Setelah eksekusi `php artisan test --testsuite=Unit`, semua modul melewati tes secara **sempurna**.
+
+```bash
+   PASS  Tests\Unit\ExampleTest
+  ✓ that true is true
+
+   PASS  Tests\Unit\IdGeneratorServiceTest
+  ✓ it builds correct upload id format
+  ✓ it builds correct invoice number format
+
+   PASS  Tests\Unit\TransactionTest
+  ✓ type checkers work correctly
+  ✓ status checkers return correct booleans
+  ✓ effective amount is correct for rembush
+  ✓ effective amount is correct for pengajuan
+  ✓ format short rupiah works correctly
+
+   PASS  Tests\Unit\UserTest
+  ✓ user can check its exact role
+  ✓ role permissions for input
+  ✓ role permissions for manage status
+
+  Tests:    11 passed (38 assertions)
+  Duration: 0.16s
+```
+
+### Kesimpulan
+Model dan helper logic aplikasi telah dikonfigurasi dengan sangat baik dan kuat. Pemisahan *Effective Amount* antara *Rembush* dan *Pengajuan* telah diverifikasi berjalan akurat tanpa kesalahan referensi properti objek. Semua form format string juga aman.
