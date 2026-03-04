@@ -38,7 +38,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
             // ✅ GANTI dengan logika autentikasi Anda
             // Contoh: hanya user dengan email tertentu
             return in_array($user->email, [
-                'admin@whusnet.com',
+                'superadmin@whusnet.com',
             ]);
         });
     }
