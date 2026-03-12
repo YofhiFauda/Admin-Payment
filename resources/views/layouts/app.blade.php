@@ -516,6 +516,8 @@
 @endif
 
 <script>
+
+    
     // ─────────────────────────────────────────────────────────
     // NOTIFICATION BADGE COUNTER
     // ─────────────────────────────────────────────────────────
@@ -699,12 +701,14 @@
                     }
                 });
                 
-            window.Echo.private(`activities`)
-                .listen('.activity.logged', (e) => {
-                    if (typeof window.handleRealtimeActivityLog === 'function') {
-                        window.handleRealtimeActivityLog(e.activityLog);
-                    }
-                });
+            if (['admin', 'atasan', 'owner'].includes(userRole)) {
+                window.Echo.private(`activities`)
+                    .listen('.activity.logged', (e) => {
+                        if (typeof window.handleRealtimeActivityLog === 'function') {
+                            window.handleRealtimeActivityLog(e.activityLog);
+                        }
+                    });
+            }
 
             // ── Listener untuk update badge notifikasi secara real-time ──
             window.Echo.private(`notifications.${userId}`)

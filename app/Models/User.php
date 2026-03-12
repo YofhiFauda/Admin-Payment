@@ -15,6 +15,10 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'rekening_bank',
+        'rekening_nama',
+        'rekening_nomor',
+        'telegram_chat_id',
     ];
 
     protected $hidden = [

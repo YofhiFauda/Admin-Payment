@@ -136,6 +136,21 @@ class Transaction extends Model
         'purchase_reason',
         'upload_id',
         'trace_id',
+        // Payment & OCR fields
+        'expected_total',
+        'actual_total',
+        'selisih',
+        'ocr_result',
+        'flag_reason',
+        'ocr_confidence',
+        'konfirmasi_by',
+        'konfirmasi_at',
+        'pembayaran_id',
+        'foto_penyerahan',
+        'bukti_transfer',
+        'overall_confidence',
+        'confidence_label',
+        'field_confidence',
     ];
 
     protected function casts(): array
@@ -148,6 +163,9 @@ class Transaction extends Model
             'reviewed_at' => 'datetime',
             'items' => 'array',
             'specs' => 'array',
+            'confidence' => 'integer',
+            'overall_confidence' => 'integer',
+            'field_confidence' => 'array',
         ];
     }
 

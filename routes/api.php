@@ -1,30 +1,83 @@
 <?php
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  api.php — FULL FIX
+ *
+ *  ✅ Bug #6: Override & Force Approve endpoints use auth:web
+ *     (frontend sends X-CSRF-TOKEN via session, not Sanctum bearer token)
+ *  ✅ Cash/Transfer payment endpoints juga perlu auth:web
+ *     karena dipanggil dari frontend modal via AJAX
+ * ═══════════════════════════════════════════════════════════════
+ */
+
 use App\Http\Controllers\Api\AiAutoFillController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Cache;
+use App\Http\Controllers\Api\V1\OcrNotaController;
+
+
+// ─── Telegram Bot Webhook (harus PUBLIC, tidak perlu auth) ──────
+// Telegram server mengirim POST ke URL ini setiap ada pesan baru masuk ke bot.
+// Verifikasi menggunakan secret_token header (opsional, untuk keamanan).
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
+    ->name('telegram.webhook');
+
+
+// ─── PUBLIC ENDPOINTS (v1) ───────────────────────────────────────
+Route::prefix('v1')->group(function () {
+
+    // Flow 1 - Upload Nota
+    Route::post('/nota/upload', [OcrNotaController::class, 'uploadNota']);
+    Route::get('/transaksi', [OcrNotaController::class, 'index']);
+    Route::get('/transaksi/{id}', [OcrNotaController::class, 'show']);
+
+    // Flow 2 (Cash)
+    Route::post('/payment/cash/upload', [OcrNotaController::class, 'uploadCash']);
+    Route::post('/payment/cash/konfirmasi', [OcrNotaController::class, 'konfirmasiCash']);
+
+    // Flow 3 (Transfer)
+    Route::post('/payment/transfer/upload', [OcrNotaController::class, 'uploadTransfer']);
+
+    // Banks dictionary
+    Route::post('/banks', function (Illuminate\Http\Request $request) {
+        $request->validate(['name' => 'required|string|unique:banks,name']);
+        return App\Models\Bank::create($request->only('name'));
+    });
+});
+
 
 // ─── N8N Callback (dari n8n Cloud) ──────────────────────────────
-// Menerima hasil OCR dan simpan ke Redis Cache
-Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store'])
-    ->middleware('throttle:ai-auto-fill');
+Route::middleware('n8n.secret')->group(function () {
+    // Menerima hasil OCR dan simpan ke Redis Cache
+    Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store'])
+        ->middleware('throttle:ai-auto-fill');
+
+    // Menerima update status pembayaran (dari AI Transfer atau Telegram Cash)
+    Route::post('/pembayaran/update-status', [AiAutoFillController::class, 'updateStatus'])
+        ->middleware('throttle:ai-auto-fill');
+});
+
 
 // ─── Polling Endpoint (dari loading.blade.php) ───────────────────
-// Frontend polling tiap 2 detik untuk cek status OCR
 Route::get('/ai/auto-fill/status/{uploadId}', [AiAutoFillController::class, 'status'])
-    ->middleware('throttle:60,1');  // Max 60 poll per menit
+    ->middleware('throttle:60,1');
 
 // Legacy route (backward compatibility)
 Route::get('/ai/ai-status/{uploadId}', [AiAutoFillController::class, 'status']);
 
-// ─── ✅ BARU: Admin Monitoring ───────────────────────────────────
-Route::get('/admin/ocr-status', [AiAutoFillController::class, 'ocrStatus'])
-    ->middleware(['auth:sanctum', 'throttle:30,1']);
 
-// ✅ BENAR: Sesuaikan dengan middleware yang dipakai app
+// ─── Admin Monitoring ───────────────────────────────────
+// ✅ FIX Bug #6: Juga ganti ke auth:web jika diakses dari dashboard admin
+Route::get('/admin/ocr-status', [AiAutoFillController::class, 'ocrStatus'])
+    ->middleware(['auth:web', 'throttle:30,1']);
+
+
+// ─── Notifications ──────────────────────────────────────
 Route::middleware('auth')->get('/notifications/unread-count', function () {
     return response()->json([
         'count' => auth()->user()->unreadNotifications()
-                    ->where('data->type', 'ocr_status')
-                    ->count()
+            ->where('data->type', 'ocr_status')
+            ->count(),
     ]);
 });

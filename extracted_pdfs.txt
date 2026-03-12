@@ -1,0 +1,458 @@
+
+--- Flow_Rembuse_WhusCore_AI_Final.pdf ---
+MASTER BLUEPRINT: FLOW REMBUSE WHUSCORE AI
+PT CONNEXA (Whusnet) - Confidential Technical Document
+1. TAHAP SUBMISSION (TEKNISI)
+- Teknisi upload foto nota via WebApp.
+- Input awal: Pilih Cabang & Metode Pembayaran (Cash, Transfer Teknisi, atau Transfer Vendor).
+- Layer 1 (Security): Sistem melakukan "Image Hashing" untuk deteksi duplikat instan (<0.1 detik).
+- Layer 2 (Logic): AI mengekstrak tanggal nota. Jika selisih > 2 hari dari hari ini, status otomatis
+"AUTO-REJECT".
+- Layer 3 (AI Extraction): AI mengisi otomatis field: Material, Jumlah, Satuan, Nominal, dan Nama Vendor.
+- Status Akhir: "Pending - Menunggu Approval Admin".
+2. TAHAP VERIFIKASI & APPROVAL (ADMIN/OWNER)
+- Dashboard menampilkan isian AI dengan tanda khusus (High Confidence/Low Confidence).
+- Logic Override: Jika nota berstatus "Auto-Reject" (telat > 2 hari), tombol "Request Override" hanya muncul
+di level Admin/Owner.
+- Requirement: Wajib mengisi kolom "Alasan Pengecualian" untuk setiap aksi Override.
+- Keputusan: Jika disetujui, status berubah menjadi "Menunggu Pembayaran".
+3. TAHAP PEMBAYARAN (3 METODE)
+A. CASH (BAYAR LANGSUNG):
+   - Admin upload foto penyerahan (Wajah Teknisi + Uang/Voucher).
+   - Status: "Menunggu Konfirmasi Teknisi".
+   - Closing: Teknisi klik "Terima" di Web atau via Telegram Bot untuk status "Selesai".
+B. TRANSFER (TEKNISI / VENDOR):
+   - Admin pilih rekening (Profil Tech / Input Manual Vendor).
+   - Admin upload Bukti Transfer (Screenshot M-Banking).
+   - AI OCR Verification: AI membaca nominal pada struk + Biaya Admin + Kode Unik.
+   - Jika MATCH: Status otomatis "Selesai".
+   - Jika MISMATCH: Status "Flagged - Selisih Nominal".
+4. HANDLING SELISIH & FORCE APPROVEMASTER BLUEPRINT: FLOW REMBUSE WHUSCORE AI
+PT CONNEXA (Whusnet) - Confidential Technical Document
+- Status "Flagged" mengunci transaksi (tombol selesai mati).
+- Notifikasi "Real-time" dikirim ke Telegram Owner jika ada selisih.
+- Hanya Owner/Admin yang bisa melakukan "Force Approve" dengan alasan tertulis.
+- Setiap selisih dicatat dalam database audit untuk laporan kebocoran bulanan.
+5. TECH STACK RECOMMENDATION
+- Backend: Laravel 11 + Redis (Queue Processing).
+- AI Engine: RTX 3090 (Self-Hosted Ollama).
+- Models: Llama-3.2-Vision (OCR) & DeepSeek-R1 (Reasoning/Audit).
+- Automation: n8n (Telegram Bot Integration & Mutation Check).
+- Database: PostgreSQL / MySQL with Audit Logging.
+--- API_Documentation_OCR_Nota_Kontan.pdf ---
+OCR Nota Kontan  |  API Documentation  v4.1 1 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+ 
+OCR NOTA KONTAN 
+API Documentation 
+───────────────────────────────── 
+Version 4.1  |  Laravel + n8n 
+Sistem OCR Nota Material Bangunan dengan 3-Layer Security 
+Base URL http://localhost:8000/api 
+Auth Type X-SECRET Header (n8n 
+Callback) 
+Format multipart/form-data, JSON 
+Version v4.1 
+Updated Maret 2026 
+ 
+  OCR Nota Kontan  |  API Documentation  v4.1 2 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+1. Overview & Arsitektur 
+Sistem OCR Nota Kontan adalah platform verifikasi nota material bangunan yang menggabungkan Laravel 
+sebagai backend API dan n8n sebagai automation engine. Setiap nota yang diupload akan melewati 3 layer 
+verifikasi sebelum data di-auto-fill. 
+ 
+1.1 Alur Sistem 
+# Flow Trigger Proses di n8n Hasil 
+1 Upload Nota POST 
+/nota/upload 
+L1 Hash → L2 Date → 
+L3 AI OCR 
+Auto-fill + Confidence 
+Badge 
+2a CASH Upload POST 
+/cash/upload 
+Update status + 
+Telegram notif 
+Menunggu Konfirmasi 
+Teknisi 
+2b CASH Konfirmasi POST 
+/cash/konfirmasi 
+Update status + 
+Telegram admin 
+Selesai / Ditolak 
+3 Transfer Upload POST 
+/transfer/upload 
+Gemini OCR baca struk MATCH (Selesai) / 
+MISMATCH (Flagged) 
+ 
+1.2 Status Transaksi 
+Status Kode Warna Keterangan 
+Diproses #2563EB Nota baru diupload, sedang melewati 3 layer verifikasi 
+Menunggu Pembayaran #0D9488 OCR selesai, menunggu admin proses pembayaran 
+Menunggu Konfirmasi 
+Teknisi 
+#D97706 CASH: foto penyerahan sudah diupload 
+Sedang Diverifikasi AI #7C3AED Transfer: AI OCR membaca bukti transfer 
+Selesai #059669 Pembayaran terkonfirmasi (CASH/Transfer MATCH) 
+AUTO-REJECT #DC2626 Layer 1 duplikat atau Layer 2 tanggal > 2 hari 
+Flagged - Selisih Nominal #DC2626 AI Transfer: nominal tidak sesuai (MISMATCH) 
+Perlu Review Manual #D97706 Confidence OCR < 70%, perlu cek manual admin 
+ 
+1.3 Confidence Badge Logic 
+Setelah AI Layer 3 selesai, setiap field mendapat confidence score individual (0 -100). Logika penentuan badge: 
+ 
+confidence > 70  →  HIGH CONFIDENCE  (border & background hijau) 
+confidence <= 70 →  LOW CONFIDENCE  (border & background kuning) 
+  OCR Nota Kontan  |  API Documentation  v4.1 3 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+2. Authentication 
+Endpoint publik (frontend → Laravel) tidak memerlukan autentikasi khusus. Endpoint callback (n8n → Laravel) 
+dilindungi dengan header X-SECRET. 
+ 
+2.1 Endpoint Publik 
+Semua endpoint di /api/v1/ bersifat publik dan tidak memerlukan token. Diakses langsung oleh frontend aplikasi.  
+ 
+POST /api/v1/nota/upload 
+POST /api/v1/payment/cash/upload 
+POST /api/v1/payment/cash/konfirmasi 
+POST /api/v1/payment/transfer/upload 
+GET  /api/v1/transaksi 
+GET  /api/v1/transaksi/{id} 
+ 
+2.2 Endpoint n8n Callback (X-SECRET Required) 
+Endpoint callback hanya boleh dipanggil oleh n8n. Dilindungi middleware N8nSecretMiddleware yang memeriksa 
+header X-SECRET. 
+ 
+Header Value Keterangan 
+X-SECRET mySuperSecretKey123 Nilai harus sama dengan config n8n dan 
+.env Laravel 
+Content-Type application/json Wajib untuk semua request callback 
+ 
+Contoh Header Callback: 
+POST /api/ai/auto-fill HTTP/1.1 
+Host: localhost:8000 
+Content-Type: application/json 
+X-SECRET: mySuperSecretKey123 
+ 
+PERHATIAN: Jika X-SECRET tidak ada atau salah, server akan mengembalikan 401 Unauthorized dan 
+request ditolak. 
+  OCR Nota Kontan  |  API Documentation  v4.1 4 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+3. Flow 1 — Upload Nota (3 Layer OCR) 
+Flow utama sistem. Admin upload foto nota → Laravel forward ke n8n → 3 layer verifikasi berjalan di background 
+→ callback hasil ke Laravel. 
+ 
+ POST   /api/v1/nota/upload   Upload Foto Nota 
+Menerima foto nota, membuat record transaksi, dan meneruskan ke n8n untuk diproses 3 layer verifikasi. 
+Response langsung dikembalikan 202 Accepted tanpa menunggu proses n8n selesai (async).  
+ 
+Request — multipart/form-data 
+Parameter Tipe Wajib Keterangan 
+foto_nota file (image) Ya Foto nota JPG/PNG/HEIC/WEBP. Maks 10MB. 
+transaksi_id string Tidak ID transaksi custom. Jika kosong, sistem auto-generate 
+UUID. 
+expected_nominal numeric Tidak Nominal yang diharapkan. Digunakan untuk validasi 
+transfer nanti. 
+ 
+Response — 202 Accepted (Berhasil) 
+{ 
+  "success": true, 
+  "message": "Nota sedang diproses (3 Layer Verification)", 
+  "upload_id": "UPL-ABCD1234-1711234567", 
+  "transaksi_id": "550e8400-e29b-41d4-a716-446655440000", 
+  "status": "Diproses", 
+  "layers": { 
+    "layer1": "Security - Image Hashing", 
+    "layer2": "Logic - Validasi Tanggal", 
+    "layer3": "AI Extraction - Auto Fill" 
+  }, 
+  "polling_url": "http://localhost:8000/api/v1/transaksi/1" 
+} 
+ 
+Response — 422 Validation Error 
+{ 
+  "message": "The foto nota field is required.", 
+  "errors": { 
+    "foto_nota": ["The foto nota field is required."] 
+  } 
+} 
+ 
+ 
+ GET   /api/v1/transaksi   Daftar Semua Transaksi 
+Mengambil daftar transaksi dengan pagination. Mendukung filter by status dan vendor.  
+ 
+Query Parameters (Opsional) OCR Nota Kontan  |  API Documentation  v4.1 5 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+Parameter Tipe Wajib Keterangan 
+status string Tidak Filter berdasarkan status. Contoh: Selesai, AUTO-
+REJECT, Menunggu Pembayaran 
+vendor string Tidak Filter berdasarkan nama vendor (LIKE search) 
+ 
+Response — 200 OK 
+{ 
+  "success": true, 
+  "data": { 
+    "current_page": 1, 
+    "data": [ { "id": 1, "upload_id": "UPL-ABCD1234-...", ... } ], 
+    "per_page": 15, 
+    "total": 42 
+  } 
+} 
+ 
+ 
+ GET   /api/v1/transaksi/{id}   Detail Transaksi 
+Mengambil detail satu transaksi berdasarkan ID database. Gunakan untuk polling status setelah upload.  
+ 
+Response — 200 OK (Setelah OCR Selesai) 
+{ 
+  "success": true, 
+  "data": { 
+    "id": 1, 
+    "upload_id": "UPL-ABCD1234-1711234567", 
+    "status": "Menunggu Pembayaran", 
+    "confidence_label": "HIGH", 
+    "overall_confidence": 88.5, 
+    "field_confidence": { 
+      "vendor": 87, "material": 92, "jumlah": 88, 
+      "satuan": 95, "nominal": 91 
+    }, 
+    "nama_vendor": "CV Maju Jaya", 
+    "tanggal_nota": "06/03/2026", 
+    "total_belanja": 1320000, 
+    "nama_barang": "Pipa PVC 4 inch", 
+    "qty": 12, 
+    "satuan": "Batang", 
+    "harga_satuan": 110000, 
+    "items_json": [...] 
+  } 
+} 
+ 
+  OCR Nota Kontan  |  API Documentation  v4.1 6 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+4. Flow 2 — CASH Payment 
+Admin upload foto penyerahan (wajah teknisi + uang/voucher). n8n mengirim notifikasi Telegram ke teknisi. 
+Teknisi mengkonfirmasi terima/tolak via Web atau Telegram Bot. 
+ 
+ POST   /api/v1/payment/cash/upload   Upload Foto Penyerahan 
+Admin mengupload bukti penyerahan fisik (cash/voucher). Foto wajib memperlihatkan wajah teknisi dan 
+uang/voucher secara bersamaan. Sistem akan mengubah status menjadi "Menunggu Konfirmasi Teknisi" dan 
+mengirimkan notifikasi Telegram ke teknisi terkait. 
+ 
+Request — multipart/form-data 
+Parameter Tipe Wajib Keterangan 
+foto_penyerahan file (image) Ya Foto wajah teknisi + uang/voucher. JPG/PNG/HEIC. Maks 
+10MB. 
+upload_id string Ya upload_id yang didapat dari response Upload Nota. 
+transaksi_id string Ya transaksi_id dari response Upload Nota. 
+teknisi_id string Tidak ID teknisi penerima (untuk tracking & Telegram). 
+catatan string Tidak Catatan penyerahan. Maks 500 karakter. 
+ 
+Response — 202 Accepted 
+{ 
+  "success": true, 
+  "message": "Foto penyerahan diterima. Menunggu konfirmasi teknisi.", 
+  "upload_id": "UPL-ABCD1234-1711234567", 
+  "transaksi_id": "TRX-TEST-001", 
+  "pembayaran_id": 5, 
+  "status": "Menunggu Konfirmasi Teknisi" 
+} 
+ 
+ 
+ POST   /api/v1/payment/cash/konfirmasi   Teknisi Konfirmasi Terima/Tolak 
+Dipanggil saat teknisi mengklik tombol "Terima" atau "Tolak" di Web maupun dari Telegram Bot inline button. Jika 
+action = terima, status otomatis menjadi Selesai. 
+ 
+Request — application/json 
+Parameter Tipe Wajib Keterangan 
+upload_id string Ya upload_id dari transaksi yang dikonfirmasi. 
+transaksi_id string Ya transaksi_id dari transaksi yang dikonfirmasi. 
+teknisi_id string Ya ID teknisi yang melakukan konfirmasi. 
+action string (enum) Ya Nilai: "terima" atau "tolak". Terima = Selesai, Tolak = 
+Ditolak Teknisi. 
+catatan string Tidak Alasan penolakan atau keterangan tambahan. 
+ OCR Nota Kontan  |  API Documentation  v4.1 7 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+Response — 200 OK (Terima) 
+{ 
+  "success": true, 
+  "message": "Pembayaran dikonfirmasi. Status: Selesai.", 
+  "transaksi_id": "TRX-TEST-001", 
+  "status": "Selesai", 
+  "konfirmasi_at": "2026-03-06T10:30:00.000000Z" 
+} 
+ 
+Response — 200 OK (Tolak) 
+{ 
+  "success": true, 
+  "message": "Pembayaran ditolak oleh teknisi.", 
+  "transaksi_id": "TRX-TEST-001", 
+  "status": "Ditolak Teknisi", 
+  "konfirmasi_at": "2026-03-06T10:30:00.000000Z" 
+} 
+ 
+  OCR Nota Kontan  |  API Documentation  v4.1 8 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+5. Flow 3 — TRANSFER Payment (AI OCR Verify) 
+Admin upload screenshot M-Banking. n8n menggunakan Gemini AI untuk membaca nominal + biaya admin + 
+kode unik dari struk. Hasilnya dibandingkan dengan expected_total. Toleransi selisih: Rp 500.  
+ 
+Formula: expected_total = expected_nominal + biaya_admin + kode_unik 
+ 
+ POST   /api/v1/payment/transfer/upload   Upload Bukti Transfer 
+Admin mengupload screenshot M-Banking. AI OCR Gemini akan membaca nominal transfer, biaya admin, dan 
+kode unik dari gambar lalu membandingkan dengan nilai yang diharapkan. Jika selisih <= Rp 500 maka MATCH 
+dan status otomatis Selesai. 
+ 
+Request — multipart/form-data 
+Parameter Tipe Wajib Keterangan 
+bukti_transfer file (image) Ya Screenshot M-Banking. JPG/PNG/HEIC. Maks 10MB. 
+upload_id string Ya upload_id dari transaksi yang akan dibayar. 
+transaksi_id string Ya transaksi_id dari transaksi. 
+expected_nominal numeric Ya Nominal nota dalam rupiah. Contoh: 1320000 
+kode_unik numeric Tidak Kode unik transfer (3 digit). Default: 0 
+biaya_admin numeric Tidak Biaya admin bank. Contoh: 6500. Default: 0 
+rekening_tujuan string Tidak Nomor rekening tujuan transfer. 
+nama_bank_tujuan string Tidak Nama bank tujuan. Contoh: BCA, Mandiri. 
+ 
+Response — 202 Accepted 
+{ 
+  "success": true, 
+  "message": "Bukti transfer diterima. AI sedang memverifikasi nominal.", 
+  "upload_id": "UPL-ABCD1234-1711234567", 
+  "transaksi_id": "TRX-TEST-001", 
+  "pembayaran_id": 8, 
+  "expected_total": 1326623, 
+  "status": "Sedang Diverifikasi AI", 
+  "detail": { 
+    "nominal": 1320000, 
+    "kode_unik": 123, 
+    "biaya_admin": 6500, 
+    "total": 1326623 
+  } 
+} 
+ 
+ 
+5.1 Hasil Verifikasi AI OCR Transfer 
+Setelah n8n selesai memproses, callback dikirim ke endpoint /api/pembayaran/update -status dengan dua 
+kemungkinan hasil: 
+ OCR Nota Kontan  |  API Documentation  v4.1 9 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+Hasil Status Kondisi 
+MATCH ✓ Selesai |actual_total - expected_total| <= 500 (toleransi Rp 500) 
+MISMATCH ✗ Flagged - Selisih 
+Nominal 
+Selisih > Rp 500. Admin perlu review manual. 
+  OCR Nota Kontan  |  API Documentation  v4.1 10 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+6. n8n Callback Endpoints 
+Endpoint berikut dipanggil oleh n8n, bukan oleh frontend. Selalu sertakan header X-SECRET. 
+ POST   /api/ai/auto-fill   Callback Hasil OCR Layer 3 
+Dikirim oleh n8n setelah Layer 3 (Gemini OCR) selesai atau jika terjadi reject di layer 1/2. Berisi status, 
+confidence score per field, dan data hasil ekstraksi. 
+ 
+Request Body — application/json 
+Parameter Tipe Wajib Keterangan 
+upload_id string Ya Identifier upload yang sedang diproses. 
+status string Ya Nilai: success / auto_reject / low_confidence / failed 
+confidence_label string Tidak HIGH (>70) atau LOW (<=70). Ada jika status = success. 
+overall_confidence numeric Tidak Score confidence keseluruhan 0-100. 
+field_confidence object Tidak Object berisi confidence per field: vendor, material, 
+jumlah, satuan, nominal. 
+vendor string Tidak Nama vendor hasil OCR. 
+tanggal string Tidak Tanggal nota format DD/MM/YYYY. 
+total_belanja numeric Tidak Total nominal nota. 
+items array Tidak Array item barang dengan confidence per field. 
+reason string Tidak Alasan reject/error. Ada jika status = auto_reject / failed. 
+stage string Tidak Stage saat reject: layer1_security / layer2_logic / 
+layer3_parse. 
+ 
+ 
+Contoh Payload — Status: success (HIGH Confidence) 
+  { 
+  "upload_id": "UPL-ABCD1234-1711234567", 
+  "status": "success", 
+  "confidence_label": "HIGH", 
+  "overall_confidence": 88, 
+  "field_confidence": { "vendor": 87, "material": 92, "jumlah": 88, "satuan": 95, 
+"nominal": 91 }, 
+  "vendor": "CV Maju Jaya", 
+  "tanggal": "06/03/2026", 
+  "total_belanja": 1320000, 
+  "items": [{ "nama_barang": "Pipa PVC 4 inch", "qty": 12, "satuan": "Batang", ... }] 
+} 
+ 
+Contoh Payload — Status: auto_reject (Layer 1 Duplikat) 
+  { 
+  "upload_id": "UPL-ABCD1234-1711234567", 
+  "status": "auto_reject", 
+  "reason": "DUPLIKAT - File identik 100% (MD5 Full Match)", 
+  "dup_original_upload_id": "UPL-ORIGINAL-1000000000", 
+  "hash_results": { "exactHit": true, "boundaryHit": true, "visualHit": true }, 
+  "stage": "layer1_security", 
+  "confidence": 0 
+} OCR Nota Kontan  |  API Documentation  v4.1 11 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+ 
+ POST   /api/pembayaran/update-status   Callback Status Pembayaran 
+Dikirim oleh n8n setelah verifikasi transfer selesai (MATCH/MISMATCH) atau setelah konfirmasi CASH dari 
+Telegram Bot. 
+ 
+Request Body — application/json 
+Parameter Tipe Wajib Keterangan 
+upload_id string Ya Identifier upload pembayaran. 
+transaksi_id string Tidak ID transaksi (opsional, untuk lookup alternatif). 
+payment_method string Ya Nilai: CASH atau TRANSFER. 
+status string Ya Status baru transaksi. Contoh: Selesai, Flagged - Selisih 
+Nominal. 
+ocr_result string Tidak Transfer only: MATCH atau MISMATCH. 
+actual_total numeric Tidak Transfer only: nominal aktual yang terbaca AI. 
+expected_total numeric Tidak Transfer only: nominal yang diharapkan. 
+selisih numeric Tidak Transfer only: selisih antara actual dan expected. 
+flag_reason string Tidak Transfer MISMATCH: keterangan selisih detail. 
+ocr_confidence numeric Tidak Confidence score AI saat membaca struk. 
+konfirmasi_by string Tidak CASH only: ID teknisi yang mengkonfirmasi. 
+konfirmasi_at string Tidak CASH only: Waktu konfirmasi ISO 8601. 
+ 
+  OCR Nota Kontan  |  API Documentation  v4.1 12 
+Confidential  —  Internal Use Only © 2026 OCR Nota Kontan System 
+7. HTTP Status Codes & Error Handling 
+Berikut adalah daftar lengkap HTTP status code yang digunakan oleh API ini beserta artinya.  
+ 
+Kode Status Keterangan 
+202 Accepted Request diterima, proses berjalan di background (async). Ada 
+polling_url untuk cek status. 
+200 OK Request berhasil diproses sepenuhnya. 
+401 Unauthorized Header X-SECRET tidak ada atau salah. Hanya untuk endpoint 
+callback n8n. 
+404 Not Found Transaksi atau resource dengan ID yang diberikan tidak 
+ditemukan. 
+422 Unprocessable Entity Validasi input gagal. Lihat field "errors" dalam response untuk 
+detail. 
+500 Internal Server Error Error tidak terduga di server Laravel. 
+502 Bad Gateway Laravel tidak bisa menghubungi n8n. Cek apakah n8n berjalan 
+dan URL benar. 
+ 
+7.1 Struktur Error Response 
+  { 
+  "success": false, 
+  "message": "The foto nota field is required.", 
+  "errors": { 
+    "foto_nota": ["The foto nota field is required."], 
+    "transaksi_id": ["The transaksi id field must be a string."] 
+  } 
+} 
+ 
+7.2 Konfigurasi .env Laravel 
+ 
+Key Contoh Value Keterangan 
+N8N_URL https://n8n.domain.com Base URL n8n server (tanpa trailing 
+slash) 
+N8N_SECRET mySuperSecretKey123 Secret key untuk validasi X-SECRET 
+header 
+TELEGRAM_ADMIN_CHAT_ID -1001234567890 Chat ID grup admin untuk notifikasi 
+ 
+  # .env 
+  N8N_URL=https://n8n.domain.com 
+  N8N_SECRET=mySuperSecretKey123 
+  TELEGRAM_ADMIN_CHAT_ID=-1001234567890 

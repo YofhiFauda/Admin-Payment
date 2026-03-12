@@ -1,9 +1,19 @@
+{{-- /**
+ * ═══════════════════════════════════════════════════════════════
+ *  PATCH untuk index.blade.php @push('scripts')
+ *  
+ *  ✅ Bug #4: allTransactions tidak accessible dari outer scope
+ *
+ *  INSTRUKSI:
+ *  Cari dan ganti bagian-bagian berikut di file index.blade.php
+ * ═══════════════════════════════════════════════════════════════
+ */ --}}
+
 @extends('layouts.app')
 
 @section('page-title', 'Data Riwayat Transaksi')
 
 @section('content')
-
     {{-- Main Content Card --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         {{-- Header Toolbar --}}
@@ -51,6 +61,9 @@
                     $tabs = [
                         'all'       => ['label' => 'All',      'count' => $stats['count']],
                         'pending'   => ['label' => 'Pending',  'count' => $stats['pending']],
+                        'auto-reject'     => ['label' => 'Auto Reject', 'count' => $stats['auto_reject'] ?? 0],
+                        'flagged'         => ['label' => 'Flagged',     'count' => $stats['flagged'] ?? 0],
+                        'waiting_payment' => ['label' => 'Waiting Payment', 'count' => $stats['waiting_payment'] ?? 0],
                         'approved'  => ['label' => 'Approved', 'count' => $stats['approved'] ?? 0],
                         'completed' => ['label' => 'Paid',     'count' => $stats['completed']],
                         'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected']],
@@ -305,6 +318,178 @@
         </div>
     </div>
 
+    {{-- OVERRIDE MODAL --}}
+    <div id="override-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-orange-100 rounded-xl">
+                        <i data-lucide="alert-circle" class="w-5 h-5 text-orange-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Request Override</h3>
+                        <p class="text-xs text-slate-500">Nota: <strong id="override-modal-invoice"></strong></p>
+                    </div>
+                </div>
+                <form id="override-form" method="POST" action="">
+                    @csrf
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-2">
+                            Alasan Override <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="override_reason" rows="3" required placeholder="Jelaskan mengapa AI salah..."
+                            class="w-full border border-orange-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 resize-none"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeOverrideModal()"
+                            class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all border border-slate-200">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitOverride"
+                            class="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20">
+                            Kirim Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- FORCE APPROVE MODAL --}}
+    <div id="force-approve-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-rose-100 rounded-xl">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-rose-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Force Approve</h3>
+                        <p class="text-xs text-slate-500">Nota: <strong id="force-approve-modal-invoice"></strong></p>
+                    </div>
+                </div>
+                <form id="force-approve-form" method="POST" action="">
+                    @csrf
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-2">
+                            Alasan Rekonsiliasi <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="force_approve_reason" rows="3" required placeholder="Alasan mengapa disetujui meski nilai beda..."
+                            class="w-full border border-rose-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-rose-100 focus:border-rose-300 resize-none"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeForceApproveModal()"
+                            class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all border border-slate-200">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitForce"
+                            class="flex-1 py-3 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20">
+                            Force Approve
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- PAYMENT UPLOAD MODAL --}}
+    <div id="payment-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300 overflow-y-auto pt-10 pb-10">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300 mt-10 mb-auto">
+            <div class="p-6">
+                <div class="flex flex-col gap-1 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-cyan-100 rounded-xl">
+                            <i data-lucide="image" class="w-5 h-5 text-cyan-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900" id="payment-modal-title">Upload Bukti Transfer/Cash</h3>
+                            <p class="text-xs text-slate-500">Nota: <strong id="payment-modal-invoice"></strong></p>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
+                        <span>Tagihan:</span>
+                        <span id="payment-modal-amount" class="text-emerald-600 font-bold text-sm">Rp 0</span>
+                    </div>
+                </div>
+
+                <form id="payment-form" method="POST" action="" enctype="multipart/form-data">
+                    @csrf
+                    
+                    {{-- DYNAMIC FILE INPUT --}}
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-2" id="payment-modal-label">
+                            Unggah Foto / Screenshot <span class="text-red-500">*</span>
+                        </label>
+                        <input type="file" name="file" id="payment_file_input" required accept=".jpg,.jpeg,.png,.pdf"
+                            class="w-full border border-cyan-200 rounded-xl p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 transition-all cursor-pointer bg-white">
+                        <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG, PDF. Max 5MB.</p>
+                    </div>
+
+                    {{-- TRANSFER FIELDS (Hidden by default) --}}
+                    <div id="transfer-fields" class="hidden space-y-4 mb-5 border-t border-slate-100 pt-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Metode Transfer</label>
+                            <div id="transfer-method-badge" class="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">TRANSFER</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Bank Tujuan <span class="text-red-500">*</span></label>
+                            <input type="text" name="rekening_bank" id="transfer_bank" placeholder="BCA / Mandiri / GoPay"
+                                class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Nomor Rekening <span class="text-red-500">*</span></label>
+                                <input type="text" name="rekening_nomor" id="transfer_nomor" placeholder="0987654321"
+                                    class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Atas Nama <span class="text-red-500">*</span></label>
+                                <input type="text" name="rekening_nama" id="transfer_nama" placeholder="Nama Pemilik"
+                                    class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
+                            </div>
+                        </div>
+                        <div id="transfer-profile-alert" class="hidden text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 p-2 rounded-lg flex items-start gap-1.5 mt-2">
+                            <i data-lucide="info" class="w-3.5 h-3.5 flex-shrink-0 mt-0.5"></i>
+                            <span>Rekening ini akan disimpan ke dalam Profil Teknisi untuk transaksi berikutnya.</span>
+                        </div>
+                    </div>
+
+                    {{-- CASH FIELDS (Hidden by default) --}}
+                    <div id="cash-fields" class="hidden space-y-4 mb-5 border-t border-slate-100 pt-4">
+                        <div class="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 mt-0.5"></i>
+                            <div class="text-[11px] text-amber-800 font-medium">
+                                Pastikan foto yang diunggah menampilkan wajah <strong>Teknisi</strong> dan <strong>Uang Tunai</strong> secara jelas sebagai bukti penyerahan.
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan Tambahan (Opsional)</label>
+                            <textarea name="catatan" id="cash_catatan" rows="2" placeholder="Cth: Uang diserahkan ke teknisi A..."
+                                class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closePaymentModal()"
+                            class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all border border-slate-200">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitPayment"
+                            class="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-cyan-700 transition-all shadow-lg shadow-cyan-600/20 relative">
+                            <span id="btnSubmitPaymentText">Upload & Simpan</span>
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden" id="btnSubmitPaymentLoader"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Toast Container --}}
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -440,37 +625,55 @@
         let isLoading = false;
         let isFirstLoad = true; // Track first load for skeleton
 
-        // Load all data from server
-        async function loadData() {
-            if (isLoading) return;
-            isLoading = true;
-            if(typeof NProgress !== 'undefined') NProgress.start();
-            
-            // Only show skeletons on first load, not on real-time re-fetches
-            if (isFirstLoad) {
-                renderSkeletons();
-            }
-            
-            try {
-                const url = new URL(window.location.href);
-                const params = new URLSearchParams(url.search);
-                
-                const response = await fetch('/transactions/search-data?' + params.toString());
-                allTransactions = await response.json();
-                filteredTransactions = [...allTransactions];
-                
-                renderPage();
-                updateStats();
-            } catch (error) {
-                console.error('Failed to load transactions:', error);
-                showToast('Gagal memuat data', 'error');
-                renderPage(); // Clear skeletons if failed
-            } finally {
-                isLoading = false;
-                isFirstLoad = false;
-                if(typeof NProgress !== 'undefined') NProgress.done();
-            }
+        // ✅ CHANGE: Make loadData return Promise
+    async function loadData() {
+        if (isLoading) {
+            console.warn('[SearchEngine] Already loading, skipping...');
+            return Promise.resolve();
         }
+        
+        isLoading = true;
+        if(typeof NProgress !== 'undefined') NProgress.start();
+        
+        if (isFirstLoad) {
+            renderSkeletons();
+        }
+        
+        try {
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            
+            console.log('[SearchEngine] Fetching data from:', '/transactions/search-data?' + params.toString());
+            
+            const response = await fetch('/transactions/search-data?' + params.toString());
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            allTransactions = await response.json();
+            filteredTransactions = [...allTransactions];
+            
+            console.log('[SearchEngine] Data loaded:', {
+                total: allTransactions.length,
+                filtered: filteredTransactions.length
+            });
+            
+            renderPage();
+            updateStats();
+            
+            return Promise.resolve();
+        } catch (error) {
+            console.error('[SearchEngine] Failed to load:', error);
+            showToast('Gagal memuat data', 'error');
+            renderPage(); // Clear skeletons
+            return Promise.reject(error);
+        } finally {
+            isLoading = false;
+            isFirstLoad = false;
+            if(typeof NProgress !== 'undefined') NProgress.done();
+        }
+    }
 
         function renderSkeletons() {
             const tbody = document.getElementById('desktop-tbody');
@@ -642,12 +845,24 @@
                 approved:  'bg-blue-50 text-blue-600 border-blue-200',
                 completed: 'bg-green-50 text-green-600 border-green-200',
                 rejected:  'bg-red-50 text-red-600 border-red-200',
+                waiting_payment: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                flagged:   'bg-rose-50 text-rose-700 border-rose-200',
+                'auto-reject': 'bg-pink-50 text-pink-700 border-pink-200',
+                'Menunggu Konfirmasi Teknisi': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+                'Sedang Diverifikasi AI': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
             };
             const statusLabel = {
                 pending:   'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
+                waiting_payment: 'Menunggu Pembayaran',
+                flagged:   'Flagged (Selisih)',
+                'auto-reject': 'Auto Reject (AI)',
+                'Menunggu Konfirmasi Teknisi': 'Menunggu Konfirmasi',
+                'Sedang Diverifikasi AI': 'Proses AI',
+                'Ditolak Teknisi': 'Ditolak Teknisi',
             };
 
             const aiBadgeHtml = generateAIBadge(t);
@@ -679,8 +894,8 @@
                     </td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadge[t.status]}">
-                                ${statusLabel[t.status]}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                                ${statusLabel[t.status] || t.status}
                             </span>
                             ${aiBadgeHtml}
                             ${inlineActionsHtml}
@@ -727,12 +942,24 @@
                 approved:  'bg-blue-50 text-blue-700 border-blue-200',
                 completed: 'bg-green-50 text-green-700 border-green-200',
                 rejected:  'bg-red-50 text-red-700 border-red-200',
+                waiting_payment: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                flagged:   'bg-rose-50 text-rose-700 border-rose-200',
+                'auto-reject': 'bg-pink-50 text-pink-700 border-pink-200',
+                'Menunggu Konfirmasi Teknisi': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+                'Sedang Diverifikasi AI': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
             };
             const mStatusLabel = {
                 pending:   'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
+                waiting_payment: 'Menunggu Pembayaran',
+                flagged:   'Flagged (Selisih)',
+                'auto-reject': 'Auto Reject (AI)',
+                'Menunggu Konfirmasi Teknisi': 'Konfirmasi Teknisi',
+                'Sedang Diverifikasi AI': 'Verifikasi AI',
+                'Ditolak Teknisi': 'Ditolak Teknisi',
             };
 
             const aiBadgeHtml = generateAIBadge(t);
@@ -753,8 +980,8 @@
                                 <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">${t.invoice_number}</p>
                             </div>
                         </div>
-                        <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${mStatusBadge[t.status]}">
-                            ${mStatusLabel[t.status]}
+                        <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${mStatusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                            ${mStatusLabel[t.status] || t.status}
                         </span>
                         ${aiBadgeHtml}
                     </div>
@@ -812,11 +1039,17 @@
                 return '';
             }
 
+            const isHighConfidence = t.confidence && t.confidence > 70;
+            const completedColor = isHighConfidence 
+                ? 'bg-green-50 text-green-600 border-green-200' 
+                : 'bg-orange-50 text-orange-600 border-orange-200';
+            const completedLabel = isHighConfidence ? 'AI ✓ High' : (t.confidence ? 'AI ✓ Low' : 'AI ✓');
+
             const aiBadge = {
                 queued:     { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Antrian', pulse: false, title: 'Menunggu diproses' },
                 pending:    { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Pending', pulse: false, title: 'Menunggu upload selesai' },
                 processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR...', pulse: true, title: 'Sedang memproses...' },
-                completed:  { color: 'bg-green-50 text-green-600 border-green-200', icon: 'check-circle', label: 'AI ✓', pulse: false, title: `Selesai • Confidence: ${t.confidence ?? 0}%` },
+                completed:  { color: completedColor, icon: 'check-circle', label: completedLabel, pulse: false, title: `Selesai • Confidence: ${t.confidence ?? 0}%` },
                 error:      { color: 'bg-red-50 text-red-600 border-red-200', icon: 'alert-circle', label: 'AI ✗', pulse: false, title: 'Gagal • Silakan isi manual' },
             }[t.ai_status];
 
@@ -866,6 +1099,50 @@
                     </div>
                 `;
             }
+
+            // New Action Buttons
+            if (t.status === 'auto-reject' && (canManage || isOwner)) {
+                html += `
+                    <div class="flex items-center gap-1 ml-1">
+                        <button type="button" onclick="openOverrideModal(${t.id}, '${t.invoice_number}')" title="Request Override"
+                            class="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-200 hover:border-orange-600 active:scale-90 transition-all outline-none">
+                            <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+            } else if (t.status === 'waiting_payment' && canManage) {
+                html += `
+                    <div class="flex items-center gap-1 ml-1">
+                        <button type="button" onclick="openPaymentModal(${t.id})" title="Proses Pembayaran"
+                            class="p-1.5 rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white border border-cyan-200 hover:border-cyan-600 active:scale-90 transition-all outline-none">
+                            <i data-lucide="upload-cloud" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+            } else if (t.status === 'flagged' && (canManage || isOwner)) {
+                html += `
+                    <div class="flex items-center gap-1 ml-1">
+                        <button type="button" onclick="openForceApproveModal(${t.id}, '${t.invoice_number}')" title="Force Approve"
+                            class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 active:scale-90 transition-all outline-none">
+                            <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+            } else if (t.status === 'Menunggu Konfirmasi Teknisi' && userRole === 'teknisi') {
+                html += `
+                    <div class="flex items-center gap-1 ml-1">
+                        <button type="button" onclick="confirmCashPayment(${t.id}, 'terima')" title="Terima Uang"
+                            class="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 active:scale-90 transition-all outline-none">
+                            <i data-lucide="check-circle" class="w-3 h-3"></i>
+                        </button>
+                        <button type="button" onclick="confirmCashPayment(${t.id}, 'tolak')" title="Tolak / Terdapat Kendala"
+                            class="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 active:scale-90 transition-all outline-none">
+                            <i data-lucide="x-circle" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+            }
+
             return html;
         }
 
@@ -883,7 +1160,50 @@
                 approveTitle = t.status === 'approved' ? 'Approve Final' : 'Setujui';
             }
 
-            if (!showActions) return '';
+            let extraActionHtml = '';
+            if (t.status === 'auto-reject' && (canManage || isOwner)) {
+                extraActionHtml = `
+                    <button type="button" onclick="openOverrideModal(${t.id}, '${t.invoice_number}')"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 hover:bg-orange-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-orange-200 hover:border-orange-600 outline-none">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Request Override
+                    </button>
+                `;
+            } else if (t.status === 'waiting_payment' && canManage) {
+                extraActionHtml = `
+                    <button type="button" onclick="openPaymentModal(${t.id})"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
+                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Upload Bukti
+                    </button>
+                `;
+            } else if (t.status === 'flagged' && (canManage || isOwner)) {
+                extraActionHtml = `
+                    <button type="button" onclick="openForceApproveModal(${t.id}, '${t.invoice_number}')"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Force Approve
+                    </button>
+                `;
+            } else if (t.status === 'Menunggu Konfirmasi Teknisi' && userRole === 'teknisi') {
+                extraActionHtml = `
+                    <button type="button" onclick="confirmCashPayment(${t.id}, 'terima')"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Terima Uang
+                    </button>
+                    <button type="button" onclick="confirmCashPayment(${t.id}, 'tolak')"
+                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Tolak
+                    </button>
+                `;
+            }
+
+            if (!showActions && !extraActionHtml) return '';
+
+            if (extraActionHtml) {
+                return `
+                    <div class="flex items-center gap-2 mt-2">
+                        ${extraActionHtml}
+                    </div>
+                `;
+            }
 
             return `
                 <div class="flex items-center gap-2 mt-2">
@@ -901,10 +1221,12 @@
 
         // Public API
         return {
-            init: loadData,
-            search: search,
-            goToPage: goToPage,
-        };
+                    init: loadData,
+                    search: search,
+                    goToPage: goToPage,
+                    getAll: () => allTransactions,           // ✅ FIX Bug #4
+                    getFiltered: () => filteredTransactions,  // ✅ FIX Bug #4
+                };
     })();
 
     // ═══════════════════════════════════════════════════════════════
@@ -912,6 +1234,9 @@
     // ═══════════════════════════════════════════════════════════════
     
     document.addEventListener('DOMContentLoaded', function() {
+        // Start watchdog
+        startAIWatchdog();
+        console.log('✅ [WATCHDOG] AI Badge Watchdog started');
         // Initialize Lucide icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -1339,6 +1664,295 @@
         if (e.target.id === 'reject-modal') closeRejectModal();
     });
 
+    // ─── OVERRIDE MODAL ─────────────────────────
+    function openOverrideModal(transactionId, invoiceNumber) {
+        const modal = document.getElementById('override-modal');
+        const inner = modal.querySelector('div');
+
+        document.getElementById('override-form').action = '/transactions/' + transactionId + '/override';
+        document.getElementById('override-modal-invoice').textContent = invoiceNumber;
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.remove('opacity-0');
+            inner.classList.remove('scale-95');
+            inner.classList.add('scale-100');
+        });
+        setTimeout(() => {
+            const textarea = modal.querySelector('textarea[name="override_reason"]');
+            if (textarea) textarea.focus();
+        }, 350);
+    }
+    function closeOverrideModal() {
+        const modal = document.getElementById('override-modal');
+        const inner = modal.querySelector('div');
+        if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+        modal.classList.add('opacity-0');
+        inner.classList.remove('scale-100');
+        inner.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('override-form').reset();
+        }, 300);
+    }
+    document.getElementById('override-modal').addEventListener('click', e => {
+        if (e.target.id === 'override-modal') closeOverrideModal();
+    });
+
+    // ─── FORCE APPROVE MODAL ────────────────────
+    function openForceApproveModal(transactionId, invoiceNumber) {
+        const modal = document.getElementById('force-approve-modal');
+        const inner = modal.querySelector('div');
+
+        document.getElementById('force-approve-form').action = '/transactions/' + transactionId + '/force-approve';
+        document.getElementById('force-approve-modal-invoice').textContent = invoiceNumber;
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.remove('opacity-0');
+            inner.classList.remove('scale-95');
+            inner.classList.add('scale-100');
+        });
+        setTimeout(() => {
+            const textarea = modal.querySelector('textarea[name="force_approve_reason"]');
+            if (textarea) textarea.focus();
+        }, 350);
+    }
+    function closeForceApproveModal() {
+        const modal = document.getElementById('force-approve-modal');
+        const inner = modal.querySelector('div');
+        if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+        modal.classList.add('opacity-0');
+        inner.classList.remove('scale-100');
+        inner.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('force-approve-form').reset();
+        }, 300);
+    }
+    document.getElementById('force-approve-modal').addEventListener('click', e => {
+        if (e.target.id === 'force-approve-modal') closeForceApproveModal();
+    });
+
+    // ─── PAYMENT MODAL ──────────────────────────
+    function openPaymentModal(id) {
+        // Find transaction from the existing memory array
+        const transaction = SearchEngine.getAll().find(x => x.id === id);
+        if (!transaction) return;
+        const transactionId = transaction.id;
+        const invoiceNumber = transaction.invoice_number;
+        const paymentMethod = transaction.payment_method;
+        const amount = transaction.amount;
+        const submitter = transaction.submitter || {};
+        const specs = transaction.specs || {};
+
+        const modal = document.getElementById('payment-modal');
+        const inner = modal.querySelector('div');
+
+        // Form reset & display cleanups
+        document.getElementById('payment-form').reset();
+        document.getElementById('transfer-profile-alert').classList.add('hidden');
+        document.getElementById('cash-fields').classList.add('hidden');
+        document.getElementById('transfer-fields').classList.add('hidden');
+
+        let endpoint = '/api/v1/payment/cash/upload';
+        
+        // Populate display data
+        document.getElementById('payment-modal-invoice').textContent = invoiceNumber;
+        document.getElementById('payment-modal-amount').textContent = 'Rp ' + Number(amount).toLocaleString('id-ID');
+
+        let form = document.getElementById('payment-form');
+        form.querySelectorAll('.dyn-hidden').forEach(el => el.remove());
+        
+        // Add required hidden inputs
+        const addHidden = (name, value) => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = name; inp.value = value; inp.className = 'dyn-hidden';
+            form.appendChild(inp);
+        };
+
+        addHidden('transaksi_id', transactionId);
+        addHidden('upload_id', transaction.upload_id || ('txn_' + transactionId));
+        addHidden('expected_nominal', amount); // used by transfer
+        addHidden('teknisi_id', submitter.id || ''); // used by cash
+
+        if (paymentMethod && paymentMethod.includes('transfer')) {
+            endpoint = '/api/v1/payment/transfer/upload';
+            document.getElementById('transfer-fields').classList.remove('hidden');
+
+            const bankInput = document.getElementById('transfer_bank');
+            const nomorInput = document.getElementById('transfer_nomor');
+            const namaInput = document.getElementById('transfer_nama');
+
+            if (paymentMethod === 'transfer_teknisi') {
+                document.getElementById('transfer-method-badge').textContent = 'TRANSFER TEKNISI';
+                bankInput.value = submitter.rekening_bank || '';
+                nomorInput.value = submitter.rekening_nomor || '';
+                namaInput.value = submitter.rekening_nama || '';
+
+                if (!submitter.rekening_bank || !submitter.rekening_nomor) {
+                    document.getElementById('transfer-profile-alert').classList.remove('hidden');
+                }
+            } else if (paymentMethod === 'transfer_penjual') {
+                document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
+                bankInput.value = specs.bank_name || '';
+                nomorInput.value = specs.account_number || '';
+                namaInput.value = specs.account_name || '';
+            }
+        } else {
+            document.getElementById('cash-fields').classList.remove('hidden');
+        }
+
+        form.action = endpoint;
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.remove('opacity-0');
+            inner.classList.remove('scale-95');
+            inner.classList.add('scale-100');
+        });
+    }
+
+    function closePaymentModal() {
+        const modal = document.getElementById('payment-modal');
+        const inner = modal.querySelector('div');
+        if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+        modal.classList.add('opacity-0');
+        inner.classList.remove('scale-100');
+        inner.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('payment-form').reset();
+            document.querySelectorAll('.dyn-hidden').forEach(e => e.remove());
+        }, 300);
+    }
+    document.getElementById('payment-modal').addEventListener('click', e => {
+        if (e.target.id === 'payment-modal') closePaymentModal();
+    });
+
+    // ─── INIT AJAX FORMS ────────────────────────────
+    function bindAjaxForm(formId, closeModalFunc, successMsg) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const submitText = submitBtn.querySelector('span') || submitBtn;
+            const loader = submitBtn.querySelector('.animate-spin');
+            
+            const originalText = submitText.textContent;
+            submitBtn.disabled = true;
+            if (loader) {
+                submitText.classList.add('opacity-0');
+                loader.classList.remove('hidden');
+            } else {
+                submitText.textContent = 'Memproses...';
+            }
+            if (typeof NProgress !== 'undefined') NProgress.start();
+
+            // Prepare Data
+            const formData = new FormData(this);
+            // Append _method=PATCH if it's override/force-approve targeting standard updates? No, the PDF API might be POST. 
+            // We'll let the HTML form method rule.
+
+            fetch(this.action, {
+                method: this.method || 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: formData // auto handles multipart if file exists
+            })
+            .then(async r => {
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data.message || 'Gagal memproses form');
+                return data;
+            })
+            .then(data => {
+                closeModalFunc();
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">${successMsg || data.message || 'Aksi berhasil'}</span></div></div>`, 'success');
+                SearchEngine.init(); // Refresh Grid
+            })
+            .catch(err => {
+                console.error(err);
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">${err.message || 'Terjadi kesalahan sistem.'}</span></div></div>`, 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                if (loader) {
+                    submitText.classList.remove('opacity-0');
+                    loader.classList.add('hidden');
+                } else {
+                    submitText.textContent = originalText;
+                }
+                if(typeof NProgress !== 'undefined') NProgress.done();
+            });
+        });
+    }
+
+    bindAjaxForm('override-form', closeOverrideModal, 'Override berhasil diajukan.');
+    bindAjaxForm('force-approve-form', closeForceApproveModal, 'Transaksi berhasil di Force Approve.');
+    bindAjaxForm('payment-form', closePaymentModal, 'Bukti Pembayaran berhasil diunggah.');
+
+    // ─── TECHNICIAN CASH CONFIRMATION ───────────────
+    window.confirmCashPayment = function(id, action) {
+        const allTx = SearchEngine.getAll();
+        if (!allTx || allTx.length === 0) return;
+        const t = allTx.find(x => x.id === id);
+        if (!t) return;
+        
+        let msg = action === 'terima' ? `Konfirmasi terima uang CASH untuk invoice ${t.invoice_number}?` : `Tolak penerimaan CASH untuk invoice ${t.invoice_number} karena tidak sesuai?`;
+        if (!confirm(msg)) return;
+
+        let catatan = '';
+        if (action === 'tolak') {
+            catatan = prompt("Harap masukkan alasan penolakan:") || '';
+        } else {
+            catatan = prompt("Catatan (Opsional):") || '';
+        }
+
+        if(typeof NProgress !== 'undefined') NProgress.start();
+
+        const formData = new FormData();
+        formData.append('transaksi_id', t.id);
+        formData.append('upload_id', t.upload_id || `txn_${t.id}`);
+        formData.append('teknisi_id', t.submitter?.id || '');
+        formData.append('action', action);
+        formData.append('catatan', catatan);
+
+        fetch('/api/v1/payment/cash/konfirmasi', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: formData
+        })
+        .then(async r => {
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(data.message || 'Gagal mengirim konfirmasi.');
+            return data;
+        })
+        .then(data => {
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">${data.message || 'Konfirmasi berhasil dikirim.'}</span></div></div>`, 'success');
+            SearchEngine.init(); // Refresh grid
+        })
+        .catch(err => {
+            console.error(err);
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">${err.message || 'Terjadi kesalahan sistem.'}</span></div></div>`, 'error');
+        })
+        .finally(() => {
+            if(typeof NProgress !== 'undefined') NProgress.done();
+        });
+    }
+
+
     // Convert reject form to AJAX (no page reload)
     const rejectForm = document.getElementById('reject-form');
     if (rejectForm) {
@@ -1385,5 +1999,127 @@
         SearchEngine.init();
     };
 
+    // ═══════════════════════════════════════════════════════════════
+    // REALTIME EVENT HANDLERS - IMPROVED
+    // ═══════════════════════════════════════════════════════════════
+
+    let refreshTimer = null;
+    const REFRESH_DEBOUNCE_MS = 500;
+
+    function debouncedRefresh(eventName, data) {
+        console.log(`🔔 [REVERB] Event received: ${eventName}`, data);
+        
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+            console.log(`🔄 [REVERB] Refreshing grid after ${eventName}...`);
+            SearchEngine.init().then(() => {
+                console.log(`✅ [REVERB] Grid refreshed successfully`);
+                
+                // Re-init Lucide icons after DOM update
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }).catch(err => {
+                console.error(`❌ [REVERB] Grid refresh failed:`, err);
+            });
+        }, REFRESH_DEBOUNCE_MS);
+    }
+
+    // ✅ Handler untuk TransactionUpdated event
+    window.handleRealtimeTransactionUpdate = function(transaction) {
+        console.log('📝 [REVERB] Transaction Updated:', {
+            id: transaction?.id,
+            upload_id: transaction?.upload_id,
+            status: transaction?.status,
+            ai_status: transaction?.ai_status
+        });
+        
+        debouncedRefresh('TransactionUpdated', transaction);
+    };
+
+    // ✅ Handler untuk TransactionCreated event
+    window.handleRealtimeTransactionCreation = function(transaction) {
+        console.log('🆕 [REVERB] Transaction Created:', {
+            id: transaction?.id,
+            upload_id: transaction?.upload_id
+        });
+        
+        debouncedRefresh('TransactionCreated', transaction);
+    };
+
+    // ✅ Handler khusus untuk OCR status updates
+    window.handleRealtimeOcrStatusUpdate = function(data) {
+        console.log('🤖 [REVERB] OCR Status Updated:', {
+            upload_id: data?.upload_id,
+            transaction_id: data?.transaction_id,
+            ai_status: data?.ai_status,
+            status: data?.status,
+            confidence: data?.confidence
+        });
+        
+        // Immediate visual feedback
+        const badge = document.querySelector(`.ai-status-badge[data-upload-id="${data.upload_id}"]`);
+        if (badge) {
+            badge.classList.add('opacity-50', 'animate-pulse');
+            console.log('👁️ [REVERB] Found badge for', data.upload_id, '- adding feedback...');
+        } else {
+            console.warn('⚠️ [REVERB] Badge not found for upload_id:', data.upload_id);
+        }
+        
+        // Then refresh grid
+        debouncedRefresh('OcrStatusUpdated', data);
+    };
+    const AI_WATCHDOG_INTERVAL = 10000;  // Check every 10 seconds
+    const AI_MAX_PROCESSING_TIME = 120000; // Max 2 minutes in processing
+
+    let watchdogTimer = null;
+
+    function startAIWatchdog() {
+        if (watchdogTimer) {
+            clearInterval(watchdogTimer);
+        }
+        
+        watchdogTimer = setInterval(() => {
+            const stuckBadges = document.querySelectorAll('.ai-status-badge[data-status="processing"]');
+            
+            if (stuckBadges.length === 0) {
+                return; // No stuck badges, skip check
+            }
+            
+            console.log(`🔍 [WATCHDOG] Checking ${stuckBadges.length} processing badges...`);
+            
+            stuckBadges.forEach(badge => {
+                const uploadId = badge.dataset.uploadId;
+                if (!uploadId) return;
+                
+                // Check actual status from server
+                fetch(`/api/ai/auto-fill/status/${uploadId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const serverStatus = data.status || 'unknown';
+                        const badgeStatus = badge.dataset.status;
+                        
+                        if (serverStatus !== 'processing' && serverStatus !== badgeStatus) {
+                            console.warn(`⚠️ [WATCHDOG] Status mismatch detected!`, {
+                                uploadId,
+                                badgeStatus,
+                                serverStatus,
+                                action: 'forcing grid refresh'
+                            });
+                            
+                            // Force immediate refresh
+                            SearchEngine.init().then(() => {
+                                showToast('Status AI berhasil diperbarui', 'success');
+                            });
+                        } else if (serverStatus === 'processing') {
+                            console.log(`⏳ [WATCHDOG] ${uploadId} still processing (server-side)`);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(`[WATCHDOG] Status check failed for ${uploadId}:`, err);
+                    });
+            });
+        }, AI_WATCHDOG_INTERVAL);
+    }
 </script>
 @endpush

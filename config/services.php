@@ -40,4 +40,8 @@ return [
         'secret'      => env('N8N_SECRET'),
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+    ],
+
 ];

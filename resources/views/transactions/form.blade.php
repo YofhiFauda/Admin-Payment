@@ -179,6 +179,31 @@
                         </div>
                     </div>
 
+                    {{-- Form Rekening/E-Wallet khusus Transfer Penjual --}}
+                    <div id="bank_details_section" class="md:col-span-2 hidden bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 md:p-5 mt-2">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i data-lucide="landmark" class="w-4 h-4 text-blue-500"></i>
+                            <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider">Informasi Rekening / E-Wallet Penjual</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nama Bank / E-Wallet <span class="text-red-500">*</span></label>
+                                <input type="text" name="bank_name" id="bank_name" placeholder="Misal: BCA, OVO" value="{{ old('bank_name') }}"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nama Rekening <span class="text-red-500">*</span></label>
+                                <input type="text" name="account_name" id="account_name" placeholder="Atas nama" value="{{ old('account_name') }}"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span class="text-red-500">*</span></label>
+                                <input type="text" name="account_number" id="account_number" placeholder="Nomor rekening / No HP" value="{{ old('account_number') }}"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="md:col-span-2">
                         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Keterangan</label>
                         <textarea name="description" id="description" rows="2" placeholder="Nota pembelian dari..."
@@ -509,6 +534,44 @@
         if (items.length === 0) {
             items = [{ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' }];
         }
+
+        // Setup initial default branch pills based on AI.
+        setTimeout(() => {
+            let defaultBranchesToClick = [];
+
+            if (aiData && aiData.branches && aiData.branches.length > 0) {
+                // Collect branch ids from AI response
+                defaultBranchesToClick = aiData.branches.map(b => b.branch_id);
+            }
+
+            // Click the branch pills
+            defaultBranchesToClick.forEach(branchId => {
+                const btn = document.querySelector(`.branch-pill[data-branch-id="${branchId}"]`);
+                if (btn) btn.click();
+            });
+
+        }, 300);
+
+        // ─────────────────────────────────────────────
+        // TOGGLE BANK DETAILS
+        // ─────────────────────────────────────────────
+        const paymentMethodSelect = document.getElementById('payment_method');
+        const bankDetailsSection = document.getElementById('bank_details_section');
+        const bankInputs = bankDetailsSection.querySelectorAll('input');
+
+        function toggleBankDetails() {
+            if (paymentMethodSelect.value === 'transfer_penjual') {
+                bankDetailsSection.classList.remove('hidden');
+                bankInputs.forEach(input => input.setAttribute('required', 'required'));
+            } else {
+                bankDetailsSection.classList.add('hidden');
+                bankInputs.forEach(input => input.removeAttribute('required'));
+            }
+        }
+
+        paymentMethodSelect.addEventListener('change', toggleBankDetails);
+        // On init
+        toggleBankDetails();
 
         // ─────────────────────────────────────────────
         // ITEMS — render

@@ -29,7 +29,7 @@
 | **Rembush (Reimbursement)** | Upload nota → OCR otomatis via AI → review & approval |
 | **Pengajuan Pembelian** | Form pengajuan barang/jasa tanpa OCR, langsung submit |
 | **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API |
-| **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete, ≥ Rp 1.000.000 perlu approval Owner |
+| **Multi-Tier Approval** | Persetujuan bertingkat khusus transaksi ≥ Rp 1.000.000 (Admin → Atasan Spesifik → Owner). Transaksi < Rp 1.000.000 langsung auto-complete setelah disetujui Admin/Atasan. |
 | **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang, dan daftar transaksi pending |
 | **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi |
 | **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR |
@@ -297,16 +297,16 @@ Terdapat 4 peran pengguna dengan hak akses hierarkis:
 | Role | Dashboard | Input Transaksi | Approve / Reject | Kelola User | Kelola Cabang |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Teknisi** | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Atasan** | ✅ | ❌ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Owner** | ✅ | ✅ | ✅ (Semua nominal) | ✅ (Semua role) | ✅ |
+| **Admin** | ✅ | ✅ | ✅ (< 1 Jt auto atau assign ke Atasan jika ≥ 1 Jt) | ✅ (Teknisi saja) | ✅ |
+| **Atasan** | ✅ | ❌ | ✅ (< 1 Jt auto & transaksi yang di-assign padanya) | ✅ (Teknisi saja) | ✅ |
+| **Owner** | ✅ | ✅ | ✅ (Semua nominal, tahap final) | ✅ (Semua role) | ✅ |
 
 ### Detail Akses
 
 - **Teknisi**: Hanya bisa membuat transaksi (Rembush/Pengajuan) dan melihat riwayat transaksinya sendiri. Diarahkan langsung ke halaman input setelah login.
-- **Admin**: Akses penuh ke dashboard, approve/reject transaksi, mengelola user (hanya Teknisi), dan mengelola cabang.
-- **Atasan**: Sama seperti Admin, tetapi tidak bisa input transaksi.
-- **Owner**: Akses penuh ke semua fitur. Satu-satunya role yang bisa approve transaksi ≥ Rp 1.000.000 dan mengelola semua role.
+- **Admin**: Akses penuh ke dashboard, mengelola user (hanya Teknisi), dan mengelola cabang. Bisa menyetujui transaksi secara langsung jika < Rp 1.000.000, namun **wajib menugaskan transaksi** ke Atasan (Assign) jika ≥ Rp 1.000.000.
+- **Atasan**: Sama seperti Admin, tidak bisa input transaksi. Bisa menyetujui transaksi yang secara spesifik **ditugaskan (assigned)** kepadanya.
+- **Owner**: Akses penuh ke semua fitur. Verifikator tahap akhir untuk transaksi ≥ Rp 1.000.000.
 
 ---
 
@@ -344,9 +344,11 @@ Alur pengajuan tanpa OCR:
 
 ### 5. ✅ Approval Transaksi (`TransactionController`)
 
-- **Approve**: Mengubah status menjadi `approved` atau `completed`
-  - Jika nominal < Rp 1.000.000 → langsung `completed`
-  - Jika nominal ≥ Rp 1.000.000 → status `approved`, menunggu Owner approval
+- **Approve**: Mengubah status menjadi `completed`, `waiting_atasan`, atau `approved` (menunggu Owner)
+  - Jika nominal < Rp 1.000.000 → Admin/Atasan approve → langsung `completed`
+  - Jika nominal ≥ Rp 1.000.000 → Admin wajib menyerahkan (assign) ke Atasan (`waiting_atasan`)
+  - Kemudian, Atasan menyetujui → status menjadi `approved` (menunggu konfirmasi Owner)
+  - Terakhir, Owner menyetujui → langsung `completed`
 - **Reject**: Mengubah status menjadi `rejected` dengan alasan penolakan
 - **Edit**: Mengubah detail transaksi (hanya Admin, Atasan, Owner)
 - **Delete**: Menghapus transaksi beserta file attachment
@@ -388,23 +390,28 @@ Alur pengajuan tanpa OCR:
                     │   PENDING   │ ← Status awal saat submit
                     └──────┬──────┘
                            │
-              ┌────────────┼────────────┐
-              ▼                         ▼
-     ┌────────────────┐        ┌──────────────┐
-     │   APPROVED     │        │   REJECTED   │
-     │ (≥ Rp 1 Jt)   │        │              │
-     └───────┬────────┘        └──────────────┘
-             │
-             ▼ (Owner final approve)
-     ┌────────────────┐
-     │   COMPLETED    │ ← juga langsung dari pending jika < Rp 1 Jt
-     └────────────────┘
+             ┌─────────────┼──────────────┐
+             ▼                            ▼
+  ┌──────────────────┐             ┌──────────────┐
+  │ WAITING_ATASAN   │             │   REJECTED   │
+  │  (≥ Rp 1 Jt)     │             │              │
+  └────────┬─────────┘             └──────────────┘
+           │
+           ▼ (Atasan mendiskusikan / me-review)
+   ┌───────────────┐
+   │   APPROVED    │ ← (Menunggu konfirmasi final Owner)
+   └───────┬───────┘
+           │
+           ▼ (Owner final approve)
+   ┌───────────────┐
+   │   COMPLETED   │ ← (juga tercapai langsung dari pending jika < Rp 1 Jt pada tahap Admin/Atasan)
+   └───────────────┘
 ```
 
 ### Alur Approval
 
-1. **Transaksi < Rp 1.000.000**: Admin/Atasan approve → langsung `completed` ✅
-2. **Transaksi ≥ Rp 1.000.000**: Admin/Atasan approve → `approved` (menunggu Owner) → Owner approve → `completed` ✅
+1. **Transaksi < Rp 1.000.000**: Admin / Atasan Setuju → langsung `completed` ✅
+2. **Transaksi ≥ Rp 1.000.000**: Admin Setuju & **Tugaskan ke Atasan** → `waiting_atasan` → Atasan Setuju → `approved` (menunggu Owner) → Owner Setuju final → `completed` ✅
 
 ---
 
@@ -445,7 +452,14 @@ Alur pengajuan tanpa OCR:
 
 | Method | URI | Fungsi |
 |---|---|---|
-| `POST` | `/api/ai/auto-fill` | Callback dari n8n setelah OCR selesai |
+| `POST` | `/api/v1/nota/upload` | Upload nota awal ke sistem & trigger OCR |
+| `GET` | `/api/v1/transaksi` | List transaksi dengan pagination & filter |
+| `GET` | `/api/v1/transaksi/{id}` | Ambil detail satu transaksi & status OCR |
+| `POST` | `/api/v1/payment/cash/upload` | Upload bukti penyerahan uang cash |
+| `POST` | `/api/v1/payment/cash/konfirmasi` | Teknisi konfirmasi terima/tolak cash |
+| `POST` | `/api/v1/payment/transfer/upload` | Upload resi m-banking & trigger verifikasi AI |
+| `POST` | `/api/ai/auto-fill` | Callback dari n8n setelah OCR Layer 3 selesai *(Requires `X-SECRET`)* |
+| `POST` | `/api/pembayaran/update-status` | Callback hasil verifikasi Transfer AI atau konfirmasi Cash N8N *(Requires `X-SECRET`)* |
 | `GET` | `/api/ai/auto-fill/status/{uploadId}` | Polling status OCR dari frontend |
 | `GET` | `/api/admin/ocr-status` | Admin monitoring OCR (auth:sanctum) |
 | `GET` | `/api/notifications/unread-count` | Count notifikasi unread (auth) |
@@ -518,6 +532,7 @@ transactions
 ├── date, file_path, status
 ├── submitted_by → users.id
 ├── reviewed_by → users.id, reviewed_at, rejection_reason
+├── assigned_to → users.id (Atasan yang ditugaskan jika nominal ≥ 1.000.000)
 ├── ai_status, confidence
 ├── vendor, specs (JSON), quantity, estimated_price, purchase_reason
 └── created_at, updated_at

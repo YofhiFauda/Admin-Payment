@@ -34,8 +34,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -47,7 +45,9 @@ COPY composer.json composer.lock ./
 
 
 # Copy application
-COPY . .
+# COPY . .
+COPY . /var/www
+
 
 # Fix permissions (CONSISTENT PATH)
 RUN chown -R www-data:www-data storage bootstrap/cache \

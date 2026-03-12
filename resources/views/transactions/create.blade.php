@@ -31,6 +31,8 @@
                 enctype="multipart/form-data">
                 @csrf
 
+                <input type="hidden" name="jenis" value="rembush">
+
                 <div id="uploadArea"
                     class="relative w-full border-2 border-dashed border-indigo-300 rounded-3xl p-8 sm:p-12 lg:p-16 cursor-pointer transition hover:border-indigo-500 hover:bg-indigo-50/30 flex flex-col items-center justify-center gap-4 sm:gap-6">
 
@@ -109,6 +111,7 @@
                     </div>
                 </button>
                 
+
 
                 <button id="btnCancel"
                     class="mt-6 w-full py-4 text-sm font-bold text-slate-500 hover:text-slate-800 bg-slate-100/50 hover:bg-rose-500 rounded-2xl transition-colors">
@@ -361,18 +364,13 @@ document.addEventListener('DOMContentLoaded', function () {
         closeModal();
 
         setTimeout(() => {
-
-            // show loading overlay smooth
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.classList.add('flex');
+            showLoading(
+                "Menyiapkan Form Rembush...",
+                "Mohon tunggu sebentar"
+            );
 
             setTimeout(() => {
-                loadingOverlay.classList.remove('opacity-0');
-                loadingOverlay.classList.add('opacity-100');
-            }, 10);
-
-            // delay sedikit biar smooth
-            setTimeout(() => {
+                form.action = "{{ route('rembush.upload') }}";
                 form.submit();
             }, 400);
 
@@ -425,6 +423,12 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.value = '';
         uploadPreview.classList.add('hidden');
         uploadDefault.classList.remove('hidden');
+
+        // Reset form state
+        setTimeout(() => {
+            btnRembush.classList.remove('hidden');
+            btnPengajuan.classList.remove('hidden');
+        }, 300);
     });
 
 });

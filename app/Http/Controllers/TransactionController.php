@@ -97,6 +97,9 @@ class TransactionController extends Controller
                 'approved'  => (clone $statsQuery)->where('status', 'approved')->count(),
                 'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
                 'rejected'  => (clone $statsQuery)->where('status', 'rejected')->count(),
+                'auto_reject' => (clone $statsQuery)->where('status', 'auto-reject')->count(),
+                'waiting_payment' => (clone $statsQuery)->where('status', 'waiting_payment')->count(),
+                'flagged'   => (clone $statsQuery)->where('status', 'flagged')->count(),
             ];
         });
 
@@ -339,6 +342,8 @@ class TransactionController extends Controller
     {
         $user = Auth::user();
         $newStatus = $request->status;
+        $transaction = Transaction::findOrFail($id);
+        $oldStatus = $transaction->status;
 
         $allowedStatuses = $user->isOwner()
             ? ['pending', 'approved', 'completed', 'rejected']
@@ -355,22 +360,18 @@ class TransactionController extends Controller
 
             // ─── Approval Logic ───────────────────────────
             // Admin/Atasan approving a pending transaction:
-            //   - Amount < 1jt  → langsung 'completed'
-            //   - Amount >= 1jt → stays 'approved' (menunggu Owner)
+            //   - Amount < 1jt  → 'waiting_payment' (bayar) → lalu 'completed'
+            //   - Amount >= 1jt → 'waiting_payment' (bayar) → lalu 'approved' (menunggu Owner)
             if ($newStatus === 'approved' && !$user->isOwner() && $oldStatus === 'pending') {
-                $amount = $transaction->effective_amount;
-                if ($amount < 1000000) {
-                    $newStatus = 'completed';
-                }
-                // >= 1jt: stays 'approved', waiting for Owner
+                $newStatus = 'waiting_payment';
             }
 
-            // Owner approving a pending transaction → langsung completed
+            // Owner approving a pending transaction → 'waiting_payment'
             if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'pending') {
-                $newStatus = 'completed';
+                $newStatus = 'waiting_payment';
             }
 
-            // Owner approving an already-approved (waiting owner) → completed
+            // Owner approving an already-approved (waiting owner / setelah TF >= 1jt) → completed
             if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
                 $newStatus = 'completed';
             }
@@ -422,8 +423,9 @@ class TransactionController extends Controller
                 }
             }
 
-            // Notify all owners when Admin/Atasan approves >= 1jt (stays 'approved', waiting owner)
-            if ($newStatus === 'approved' && $oldStatus === 'pending' && !$user->isOwner()) {
+            // Notify all owners when admin approves >= 1jt and it goes to 'approved' status (waiting owner).
+            if ($newStatus === 'approved' && $oldStatus !== 'approved' && !$user->isOwner()) {
+                /** @var \Illuminate\Database\Eloquent\Collection<\App\Models\User> $owners */
                 $owners = User::where('role', 'owner')->get();
                 foreach ($owners as $owner) {
                     $owner->notify(new OwnerApprovalNotification($transaction, $user->name));
@@ -442,6 +444,7 @@ class TransactionController extends Controller
                 'completed' => "Transaksi {$transaction->invoice_number} selesai!",
                 'approved'  => "Transaksi {$transaction->invoice_number} disetujui. Menunggu persetujuan Owner.",
                 'rejected'  => "Transaksi {$transaction->invoice_number} ditolak.",
+                'waiting_payment' => "Transaksi {$transaction->invoice_number} berlanjut ke pembayaran.",
                 default     => "Status transaksi diubah.",
             };
 
@@ -450,6 +453,7 @@ class TransactionController extends Controller
                 'rejected'  => 'DITOLAK',
                 'completed' => 'SELESAI',
                 'pending'   => 'PENDING',
+                'waiting_payment' => 'MENUNGGU PEMBAYARAN',
                 default     => strtoupper($newStatus),
             };
 
@@ -594,7 +598,16 @@ class TransactionController extends Controller
                 'created_at' => $t->created_at->format('d M Y'),
                 'created_at_search' => $t->created_at->format('d-m-Y Y-m-d'),
                 'ai_status' => $t->ai_status,
-                'upload_id' => $t->upload_id,
+                'payment_method' => $t->payment_method,
+            'specs' => $t->specs,
+            'submitter' => $t->submitter ? [
+                'id' => $t->submitter->id,
+                'name' => $t->submitter->name,
+                'rekening_bank' => $t->submitter->rekening_bank,
+                'rekening_nomor' => $t->submitter->rekening_nomor,
+                'rekening_nama' => $t->submitter->rekening_nama,
+            ] : null,
+            'upload_id' => $t->upload_id,
                 'confidence' => $t->confidence,
                 'rejection_reason' => $t->rejection_reason,
                 'effective_amount' => $t->effective_amount,

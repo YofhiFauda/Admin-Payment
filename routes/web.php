@@ -9,6 +9,7 @@ use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Api\V1\OcrNotaController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -75,10 +76,21 @@ Route::middleware('auth')->group(function () {
     });
 
     // ── Status Management, Edit & Delete (admin, atasan, owner) ──
-    Route::middleware('role:admin,atasan,owner')->group(function () {
+    // ── Status Management, Edit & Delete (admin, atasan, owner) ──
+    Route::middleware(['auth', 'role:admin,atasan,owner'])->group(function () {
         Route::get('/transactions/{id}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
         Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::patch('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
+        
+        // ✅ FIXED: Explicit auth middleware
+        Route::post('/transactions/{id}/override', [OcrNotaController::class, 'requestOverride'])
+            ->middleware('auth:web')
+            ->name('transactions.override');
+        
+        Route::post('/transactions/{id}/force-approve', [OcrNotaController::class, 'forceApprove'])
+            ->middleware('auth:web')
+            ->name('transactions.forceApprove');
+        
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     });
 

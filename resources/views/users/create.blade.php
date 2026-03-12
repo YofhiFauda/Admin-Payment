@@ -87,7 +87,43 @@
                     </p>
                 @endif
             </div>
+            {{-- Rekening Info (Optional) --}}
+            <div id="bankInfoSection" class="space-y-4 pt-4 border-t border-slate-100 hidden">
+                <h4 class="text-sm font-bold text-slate-800">Informasi Rekening (Opsional)</h4>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label for="rekening_bank" class="block text-sm font-bold text-slate-700">Nama Bank / E-Wallet</label>
+                        <div class="flex gap-2">
+                            <select id="rekening_bank" name="rekening_bank"
+                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium outline-none transition-all">
+                                <option value="">-- Pilih Bank / E-Wallet --</option>
+                                @foreach($banks as $bank)
+                                    <option value="{{ $bank->name }}" {{ old('rekening_bank') == $bank->name ? 'selected' : '' }}>{{ $bank->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" onclick="addNewBank()" title="Tambah Bank Baru"
+                                    class="px-4 py-3 rounded-xl border border-slate-200 bg-white text-indigo-600 hover:bg-indigo-50 font-bold transition-all flex-shrink-0">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-1.5">
+                        <label for="rekening_nomor" class="block text-sm font-bold text-slate-700">Nomor Rekening</label>
+                        <input type="text" id="rekening_nomor" name="rekening_nomor" value="{{ old('rekening_nomor') }}"
+                               placeholder="Contoh: 1234567890"
+                               class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium outline-none transition-all">
+                    </div>
 
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label for="rekening_nama" class="block text-sm font-bold text-slate-700">Atas Nama</label>
+                        <input type="text" id="rekening_nama" name="rekening_nama" value="{{ old('rekening_nama') }}"
+                               placeholder="Contoh: Budi Santoso"
+                               class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium outline-none transition-all">
+                    </div>
+                </div>
+            </div>
 
             {{-- Buttons --}}
             <div class="flex items-center justify-end gap-3 pt-2">
@@ -104,3 +140,64 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role');
+        const bankSection = document.getElementById('bankInfoSection');
+
+        function toggleBankSection() {
+            if (roleSelect.value === 'teknisi') {
+                bankSection.classList.remove('hidden');
+            } else {
+                bankSection.classList.add('hidden');
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleBankSection);
+        toggleBankSection(); // Initialize on load
+    });
+
+    async function addNewBank() {
+        const bankName = prompt("Masukkan nama Bank / E-Wallet baru:");
+        if (!bankName || bankName.trim() === '') return;
+
+        try {
+            const formData = new FormData();
+            formData.append('name', bankName.trim());
+
+            const response = await fetch('/api/v1/banks', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Gagal menambahkan bank');
+            }
+
+            // Append to select
+            const select = document.getElementById('rekening_bank');
+            const option = document.createElement('option');
+            option.value = data.name;
+            option.text = data.name;
+            option.selected = true;
+            select.add(option);
+
+            if(typeof showToast !== 'undefined') {
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">Bank berhasil ditambahkan</span></div></div>`, 'success');
+            } else {
+                alert("Bank berhasil ditambahkan!");
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+</script>
+@endpush

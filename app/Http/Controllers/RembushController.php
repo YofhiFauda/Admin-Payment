@@ -61,7 +61,7 @@ class RembushController extends Controller
 
         // ② Validasi file
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024'
         ]);
 
         $file     = $request->file('file');
@@ -107,7 +107,7 @@ class RembushController extends Controller
             return back()->withErrors(['error' => 'Gagal menyimpan file']);
         }
 
-        // ④ Simpan base64 & mime di session (untuk preview form)
+        // ④ Simpan base64 & mime di session
         $base64 = base64_encode(file_get_contents($file));
         $mime   = $file->getMimeType();
 
@@ -128,10 +128,13 @@ class RembushController extends Controller
 
         // 📝 LOG: Upload Complete - Redirect to Form
         Log::channel('ocr')->info('✅ [OCR FLOW] UPLOAD COMPLETE - REDIRECT TO FORM', [
-            'step' => '1_complete',
-            'upload_id' => $uploadId,
+            'step'       => '1_complete',
+            'upload_id'  => $uploadId,
             'next_route' => 'rembush.form',
         ]);
+
+        // ✅ NOTE: OCR Job di-dispatch di store() setelah transaksi dibuat dan file dipindah ke permanent.
+        // Dispatch di sini (saat upload) menyebabkan race condition: transaction_id=null & file masih di temp.
 
         return redirect()->route('rembush.form');
     }
@@ -208,13 +211,19 @@ class RembushController extends Controller
  
         $branches = Branch::all();
 
-        return view('transactions.form', compact('branches', 'base64', 'mime', 'uploadId', 'aiData'));
+        return view('transactions.form', compact(
+            'branches', 'base64', 'mime', 'uploadId', 'aiData'
+        ));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  STORE — Save Rembush Transaction (tidak berubah)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+    /**
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -229,6 +238,10 @@ class RembushController extends Controller
             'branches.*.branch_id'           => 'required_with:branches|exists:branches,id',
             'branches.*.allocation_percent'  => 'required_with:branches|numeric|min:0|max:100',
             'branches.*.allocation_amount'   => 'nullable|numeric|min:0',
+            // Bank details for transfer_penjual
+            'bank_name'      => 'nullable|string|max:255',
+            'account_name'   => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
         ]);
 
         // Validasi branch allocation
@@ -241,6 +254,22 @@ class RembushController extends Controller
             if (abs($totalPercent - 100) > 1) {
                 return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
             }
+        }
+
+        // Validate transfer_penjual fields
+        if ($request->payment_method === 'transfer_penjual') {
+            if (!$request->bank_name || !$request->account_name || !$request->account_number) {
+                 return back()->withErrors(['bank_details' => 'Nama Bank, Nama Rekening, dan Nomor Rekening wajib diisi untuk Transfer ke Penjual.'])->withInput();
+            }
+        }
+
+        $specs = [];
+        if ($request->payment_method === 'transfer_penjual') {
+            $specs = [
+                'bank_name' => $request->bank_name,
+                'account_name' => $request->account_name,
+                'account_number' => $request->account_number,
+            ];
         }
 
         $uploadId       = session('upload_id') ?? IdGeneratorService::buildUploadId(IdGeneratorService::nextSequence());
@@ -289,6 +318,7 @@ class RembushController extends Controller
                 'category'       => $request->category,
                 'description'    => $request->description,
                 'payment_method' => $request->payment_method,
+                'specs'          => empty($specs) ? null : $specs,
                 'amount'         => $request->amount,
                 'items'          => $request->items,
                 'date'           => $request->date ?? now()->format('Y-m-d'),
@@ -309,15 +339,21 @@ class RembushController extends Controller
                 'amount'         => $transaction->amount,
             ]);
 
-            // ✅ FIX: Kirim RELATIVE path ke job, bukan absolute path
-            // Job akan convert ke absolute path sendiri dengan storage_path()
-            OcrProcessingJob::dispatch($uploadId, $permanentPath, 'normal');
+            // ✅ FIX: Dispatch OCR Job DI SINI setelah transaksi ada dan file di permanent path.
+            // Job sebelumnya di-dispatch saat upload (race condition: transaction_id=null, file di temp).
+            // ✅ CRITICAL: Specify queue explicitly
+            OcrProcessingJob::dispatch(
+                $uploadId,
+                $permanentPath,
+                'normal',
+                $transaction->id
+            )->onQueue('ocr_normal'); // ← WAJIB tambahkan ini
 
             Log::channel('ocr')->info('🔄 [OCR FLOW] OCR JOB DISPATCHED', [
                 'step'           => '4_job_dispatched',
                 'upload_id'      => $uploadId,
                 'transaction_id' => $transaction->id,
-                'relative_path'  => $permanentPath,  // ← relative path di log
+                'relative_path'  => $permanentPath,
                 'priority'       => 'normal',
                 'queue'          => 'ocr_normal',
             ]);

@@ -11,6 +11,16 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  OcrProcessingJob — FULL FIX
+ *
+ *  ✅ FIX: Update ai_status di DB (bukan hanya cache)
+ *          Frontend baca ai_status dari search-data (DB), bukan cache.
+ *  ✅ FIX: Broadcast saat status berubah queued → processing
+ *  ✅ FIX: Revert ai_status ke 'queued' saat kena 429 (re-queue)
+ * ═══════════════════════════════════════════════════════════════
+ */
 class OcrProcessingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -18,13 +28,17 @@ class OcrProcessingJob implements ShouldQueue
     public $uploadId;
     public $filePath;
     public $priority;
+    public $transaksiId;
 
-    public function __construct($uploadId, $filePath, $priority = 'normal')
+    public function __construct($uploadId, $filePath, $priority = 'normal', $transaksiId = null)
     {
-        $this->uploadId = $uploadId;
-        $this->filePath = $filePath;
-        $this->priority = $priority;
-        $this->onQueue('ocr_' . $priority);
+        $this->uploadId    = $uploadId;
+        $this->filePath    = $filePath;
+        $this->priority    = $priority;
+        // Resolve transaksi_id dari DB jika tidak diberikan
+        $this->transaksiId = $transaksiId ?? optional(
+            \App\Models\Transaction::where('upload_id', $uploadId)->first()
+        )->id;
     }
 
     public function handle()
@@ -40,33 +54,43 @@ class OcrProcessingJob implements ShouldQueue
         $rateLimiter = app(\App\Services\OCR\GeminiRateLimiter::class);
 
         try {
-            // Tunggu dapat slot (bisa blocking sleep dlm fungsi ini sampai 5 menit)
             $rateLimiter->acquireSlot($this->uploadId);
         } catch (\RuntimeException $e) {
             Log::channel('ocr')->warning('⏳ [OCR JOB] RATE LIMITER TIMEOUT / QUEUE FULL, RELEASING JOB', [
                 'upload_id' => $this->uploadId,
-                'error'     => $e->getMessage()
+                'error'     => $e->getMessage(),
             ]);
-            // Re-queue ulang 30 detik kemudian secara halus, bukan mark failed
             $this->release(30);
             return;
         }
 
         try {
-            // Set cache ke "processing" agar UI tidak stuck di "queued"
+            // ── ✅ FIX: Update BOTH cache AND DB ai_status to 'processing' ──
+            // Frontend reads ai_status from the DB (via /transactions/search-data), not cache.
+            // Without this, the AI badge stays stuck on 'queued'.
             Cache::put("ai_autofill:{$this->uploadId}", [
                 'status' => 'processing',
                 'phase'  => 'processing',
             ], now()->addMinutes(30));
 
-            // =========================================================
-            // ✅ FIX FINAL - Handle BOTH absolute dan relative path
-            // =========================================================
+            \App\Models\Transaction::where('upload_id', $this->uploadId)
+                ->update(['ai_status' => 'processing']);
+
+            // ── ✅ FIX: Broadcast so frontend auto-refreshes badge queued → processing ──
+            $transaction = \App\Models\Transaction::where('upload_id', $this->uploadId)->first();
+            if ($transaction) {
+                broadcast(new \App\Events\TransactionUpdated($transaction));
+            }
+
+            Log::channel('ocr')->info('🔄 [OCR JOB] STATUS UPDATED TO PROCESSING', [
+                'upload_id'      => $this->uploadId,
+                'transaction_id' => $transaction->id ?? null,
+            ]);
+
+            // ── Resolve file path (absolute or relative) ──
             if (str_starts_with($this->filePath, '/')) {
-                // Absolute path — langsung pakai
                 $fullPath = $this->filePath;
             } else {
-                // Relative path — tambahkan storage prefix
                 $fullPath = storage_path('app/public/' . $this->filePath);
             }
 
@@ -101,36 +125,55 @@ class OcrProcessingJob implements ShouldQueue
                 'n8n_webhook'  => config('services.n8n.webhook_url'),
             ]);
 
-            // ✅ field name 'data' agar cocok dengan n8n binaryPropertyName: "data"
+            // field name 'data' matches n8n binaryPropertyName: "data"
+            // ✅ FIX: Sertakan transaksi_id agar N8N bisa kirim kembali ke callback
             $response = Http::timeout(120)
                 ->attach(
                     'data',
                     file_get_contents($fullPath),
                     basename($fullPath)
                 )
-                ->post(config('services.n8n.webhook_url'), [
-                    'upload_id' => $this->uploadId,
-                    'priority'  => $this->priority,
-                    'secret'    => config('services.n8n.secret'),
+                ->post(config('services.n8n.webhook_url') . '/webhook/upload-nota', [
+                    'upload_id'    => $this->uploadId,
+                    'transaksi_id' => (string) $this->transaksiId,
+                    'priority'     => $this->priority,
+                    'secret'       => config('services.n8n.secret'),
                 ]);
 
             Log::channel('ocr')->info('📥 [OCR JOB] N8N RESPONSE', [
                 'upload_id'    => $this->uploadId,
                 'status_code'  => $response->status(),
-                'body_preview' => substr($response->body(), 0, 500),
+                'headers'      => $response->headers(),
+                'body_preview' => substr($response->body(), 0, 1000),
+                'success'      => $response->successful(),
             ]);
 
-            // ✨ TANGANI RATE LIMIT (429) ✨
-            if ($response->status() === 429) {
-                $retryAfter = (int) $response->header('Retry-After', 60);
-                $rateLimiter->register429($retryAfter);
+            // ✅ ADD: Log kalau response sukses tapi bukan expected format
+            if ($response->successful()) {
+                $body = $response->json() ?? [];
                 
+                Log::channel('ocr')->info('✅ [OCR JOB] N8N ACCEPTED REQUEST', [
+                    'upload_id' => $this->uploadId,
+                    'response_data' => $body,
+                    'next_step' => 'Waiting for n8n callback to /api/ai/auto-fill',
+                ]);
+            }
+
+            // ── Handle 429 (Too Many Requests) ──
+            if ($response->status() === 429) {
+                $retryAfterHeader = $response->header('Retry-After');
+                $retryAfter = $retryAfterHeader ? (int) $retryAfterHeader : 60;
+                $rateLimiter->register429($retryAfter);
+
                 Log::channel('ocr')->warning('⚠️ [OCR JOB] 429 TOO MANY REQUESTS, RELEASING JOB', [
                     'upload_id'   => $this->uploadId,
                     'retry_after' => $retryAfter,
-                ]);
+                ]); 
 
-                // Re-queue job supaya worker mencoba lagi nanti tanpa gagal di DB
+                // ── ✅ FIX: Revert ai_status back to 'queued' when re-queuing ──
+                \App\Models\Transaction::where('upload_id', $this->uploadId)
+                    ->update(['ai_status' => 'queued']);
+
                 $this->release($retryAfter);
                 return;
             }
@@ -143,10 +186,10 @@ class OcrProcessingJob implements ShouldQueue
                 ]);
 
                 $body = $response->json() ?? [];
-                if (isset($body['valid']) && $body['valid'] === false) {
+                if (empty($body) || (isset($body['valid']) && $body['valid'] === false)) {
                     Cache::put("ai_autofill:{$this->uploadId}", [
                         'status'  => 'error',
-                        'message' => 'Gagal memproses nota: ' . ($body['error'] ?? 'Unknown error'),
+                        'message' => 'Gagal memproses nota: ' . ($body['error'] ?? 'Unknown or connection error (' . $response->status() . ')'),
                     ], now()->addMinutes(30));
 
                     \App\Models\Transaction::where('upload_id', $this->uploadId)
@@ -170,8 +213,6 @@ class OcrProcessingJob implements ShouldQueue
 
             throw $e;
         } finally {
-            // Pastikan slot Redis dibebaskan bila job selesai, gagal (kecuali di-release sebelum blok try ini), 
-            // agar request dari worker/job lain dapat masuk.
             $rateLimiter->releaseSlot($this->uploadId);
         }
     }

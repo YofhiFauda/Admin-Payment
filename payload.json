@@ -1,0 +1,46 @@
+{
+  "upload_id": "UP-20260312-00015",
+  "transaksi_id": "INV-20260312-00015",
+  "status": "success",
+  "confidence": 96,
+  "confidence_label": "HIGH",
+  "overall_confidence": 96,
+  "field_confidence": {
+    "vendor": 100,
+    "tanggal": 100,
+    "total_belanja": 100,
+    "material": 95,
+    "jumlah": 100,
+    "satuan": 80,
+    "nominal": 100
+  },
+  "vendor": "JPN PONOROGO",
+  "tanggal": "04/03/2026",
+  "total_belanja": 105000,
+  "items": [
+    {
+      "nama_barang": "Y BANNER ALBATROS UV (60 X 160 CM)",
+      "qty": 1,
+      "satuan": "PCS",
+      "harga_satuan": 105000,
+      "total_harga": 105000,
+      "nama_barang_confidence": 95,
+      "qty_confidence": 100,
+      "satuan_confidence": 80,
+      "harga_satuan_confidence": 100,
+      "total_harga_confidence": 100
+    },
+    {
+      "nama_barang": "JASA LAINNYA - SIAP PRINT",
+      "qty": 1,
+      "satuan": "PCS",
+      "harga_satuan": 0,
+      "total_harga": 0,
+      "nama_barang_confidence": 90,
+      "qty_confidence": 100,
+      "satuan_confidence": 80,
+      "harga_satuan_confidence": 100,
+      "total_harga_confidence": 100
+    }
+  ]
+}
