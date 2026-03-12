@@ -16,7 +16,9 @@
 - [Peran Pengguna (Roles)](#-peran-pengguna-roles)
 - [Modul Aplikasi](#-modul-aplikasi)
 - [Alur Transaksi](#-alur-transaksi)
-- [API Endpoints](#-api-endpoints)
+- [API Endpoints](#-api-endpoints) — **v4.5 Update**
+- [Front-End Documentation](#-front-end-documentation) — **NEW**
+- [Back-End Documentation](#-back-end-documentation) — **NEW**
 - [Event & Notifikasi](#-event--notifikasi)
 - [Perintah Berguna](#-perintah-berguna)
 
@@ -442,6 +444,8 @@ Alur pengajuan tanpa OCR:
 | `GET` | `/transactions/{id}/edit` | `TransactionController@edit` | Admin, Atasan, Owner |
 | `PUT` | `/transactions/{id}` | `TransactionController@update` | Admin, Atasan, Owner |
 | `PATCH` | `/transactions/{id}/status` | `TransactionController@updateStatus` | Admin, Atasan, Owner |
+| `POST` | `/transactions/{id}/override` | Bypass AI Auto-Reject | Admin, Atasan, Owner |
+| `POST` | `/transactions/{id}/force-approve` | Bypass AI Flagged (Mismatch) | Admin, Atasan, Owner |
 | `DELETE` | `/transactions/{id}` | `TransactionController@destroy` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/users/*` | `UserController` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/branches/*` | `BranchController` | Admin, Atasan, Owner |
@@ -460,9 +464,23 @@ Alur pengajuan tanpa OCR:
 | `POST` | `/api/v1/payment/transfer/upload` | Upload resi m-banking & trigger verifikasi AI |
 | `POST` | `/api/ai/auto-fill` | Callback dari n8n setelah OCR Layer 3 selesai *(Requires `X-SECRET`)* |
 | `POST` | `/api/pembayaran/update-status` | Callback hasil verifikasi Transfer AI atau konfirmasi Cash N8N *(Requires `X-SECRET`)* |
-| `GET` | `/api/ai/auto-fill/status/{uploadId}` | Polling status OCR dari frontend |
+| `GET` | `/api/ai/auto-fill/status/{uploadId}` | Polling status OCR dari frontend (v4.5) |
 | `GET` | `/api/admin/ocr-status` | Admin monitoring OCR (auth:sanctum) |
 | `GET` | `/api/notifications/unread-count` | Count notifikasi unread (auth) |
+
+---
+
+---
+
+## 🎨 Front-End Documentation
+Detail mengenai komponen UI, Design System, dan integrasi client-side dapat ditemukan di:
+👉 **[frontend_documentation_v1.0.md](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/frontend_documentation_v1.0.md)**
+
+---
+
+## ⚙️ Back-End Documentation
+Detail mengenai arsitektur sistem, skema database, keamanan, dan konfigurasi server dapat ditemukan di:
+👉 **[backend_documentation_v1.0.md](file:///d:/Whusnet/Testing%20Runnig%20Background/Admin-Payment/backend_documentation_v1.0.md)**
 
 ---
 

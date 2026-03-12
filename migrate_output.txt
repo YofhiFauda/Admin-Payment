@@ -1,5 +1,0 @@
-
-   INFO  Running migrations.  
-
-  2026_03_12_070001_add_missing_confidence_fields_to_transactions_table  954.62ms DONE
-
