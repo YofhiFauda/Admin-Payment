@@ -269,9 +269,18 @@
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.Echo !== 'undefined') {
             const userId = {{ Auth::id() }};
+            
+            // Standard Laravel Notifications
             window.Echo.private(`App.Models.User.${userId}`)
                 .notification((notification) => {
                     window.handleRealtimeNotification(notification);
+                });
+
+            // Custom Real-time Event (NotificationReceived)
+            window.Echo.private(`notifications.${userId}`)
+                .listen('.notification.received', (e) => {
+                    console.log('🔔 [REVERB] Notification Received:', e);
+                    window.handleRealtimeNotification(e);
                 });
         }
     });

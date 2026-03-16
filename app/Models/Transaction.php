@@ -285,4 +285,57 @@ class Transaction extends Model
 
         return 'Rp ' . number_format($value, 0, ',', '.');
     }
+
+    /**
+     * Standardize response data shape for frontend search and real-time broadcasting.
+     */
+    public function toSearchArray(): array
+    {
+        $this->loadMissing(['submitter', 'reviewer', 'branches']);
+
+        return [
+            'id' => $this->id,
+            'invoice_number' => $this->invoice_number,
+            'submitter_name' => $this->submitter->name ?? '-',
+            'customer' => $this->customer ?? '',
+            'vendor' => $this->vendor ?? '',
+            'type' => $this->type,
+            'type_label' => $this->type_label,
+            'category' => $this->category,
+            'category_label' => $this->type === 'pengajuan' 
+                ? (self::PURCHASE_REASONS[$this->purchase_reason] ?? '-')
+                : (self::CATEGORIES[$this->category] ?? '-'),
+            'status' => $this->status,
+            'status_label' => $this->status_label,
+            'amount' => $this->amount,
+            'formatted_amount' => number_format($this->amount ?? 0, 0, ',', '.'),
+            'date' => $this->date ? \Carbon\Carbon::parse($this->date)->format('d M Y') : null,
+            'created_at' => $this->created_at->format('d M Y'),
+            'created_at_search' => $this->created_at->format('d-m-Y Y-m-d'),
+            'ai_status' => $this->ai_status,
+            'payment_method' => $this->payment_method,
+            'specs' => $this->specs,
+            'submitter' => $this->submitter ? [
+                'id' => $this->submitter->id,
+                'name' => $this->submitter->name,
+                'rekening_bank' => $this->submitter->rekening_bank,
+                'rekening_nomor' => $this->submitter->rekening_nomor,
+                'rekening_nama' => $this->submitter->rekening_nama,
+            ] : null,
+            'upload_id' => $this->upload_id,
+            'confidence' => $this->confidence,
+            'rejection_reason' => $this->rejection_reason,
+            'effective_amount' => $this->effective_amount,
+            'purchase_reason' => $this->purchase_reason,
+            'purchase_reason_label' => $this->purchase_reason ? (self::PURCHASE_REASONS[$this->purchase_reason] ?? '') : '',
+            // Search string untuk matching
+            'search_text' => strtolower(
+                ($this->submitter->name ?? '') . ' ' .
+                $this->invoice_number . ' ' .
+                ($this->customer ?? '') . ' ' .
+                ($this->vendor ?? '') . ' ' .
+                $this->created_at->format('d M Y d-m-Y Y-m-d')
+            ),
+        ];
+    }
 }

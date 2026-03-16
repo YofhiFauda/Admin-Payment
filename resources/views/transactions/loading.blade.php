@@ -127,57 +127,49 @@
 @push('scripts')
 <script>
     const uploadId = '{{ $uploadId ?? "" }}';
-    let pollCount = 0;
-    const maxPolls = 30; // 30 polls × 2 seconds = 60 seconds timeout
+    const userId = {{ Auth::id() }};
     const redirectUrl = '{{ route("rembush.form") }}';
+    let safetyTimeout = null;
 
-    async function pollStatus() {
-        try {
-            const res = await fetch(`/api/ai/auto-fill/status/${uploadId}`);
-            const data = await res.json();
-            
-            pollCount++;
-            
-            if (data.status === 'completed') {
-                // AI selesai, redirect ke form
-                window.location.href = redirectUrl;
-            } else if (data.status === 'error') {
-                // Error, tampilkan fallback
-                showFallback(data.message);
-            } else if (pollCount >= maxPolls) {
-                // Timeout, tampilkan fallback
-                showFallback('Proses terlalu lama, silakan isi manual');
-            } else {
-                // Update UI berdasarkan phase
-                updateProgress(data.phase);
-                // Poll lagi dalam 2 detik
-                setTimeout(pollStatus, 2000);
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-            pollCount++;
-            if (pollCount >= maxPolls) {
-                showFallback('Koneksi terputus, silakan coba lagi');
-            } else {
-                setTimeout(pollStatus, 2000);
-            }
+    function initEcho() {
+        if (typeof window.Echo === 'undefined') {
+            console.warn('⚠️ [OCR] Echo not found, falling back to basic timeout');
+            startSafetyTimeout(10000); // Short fallback if Echo fails to load
+            return;
         }
+
+        console.log('📡 [OCR] Listening for updates on channel:', `ocr.${userId}`);
+
+        window.Echo.private(`ocr.${userId}`)
+            .listen('.ocr.updated', (e) => {
+                console.log('📥 [OCR] Received broadcast:', e);
+                
+                // Ensure this event is for the current upload
+                if (e.payload.upload_id !== uploadId) return;
+
+                if (e.payload.ai_status === 'completed') {
+                    console.log('✅ [OCR] Completed! Redirecting...');
+                    window.location.href = redirectUrl;
+                } else if (e.payload.ai_status === 'error' || e.payload.ai_status === 'auto-reject') {
+                    console.warn('❌ [OCR] Failed or Auto-rejected:', e.payload.message);
+                    showFallback(e.payload.message);
+                }
+            });
+
+        // Set a safety timeout (90 seconds) in case broadcast is missed or n8n fails
+        startSafetyTimeout(90000);
     }
 
-    function updateProgress(phase) {
-        // Update progress UI berdasarkan phase
-        const phaseMap = {
-            'scanning': 3,
-            'parsing': 4,
-            'validating': 5,
-            'completed': 7
-        };
-        const currentStep = phaseMap[phase] || 3;
-        // Bisa tambahkan logic untuk update progress bar
-        console.log('Current phase:', phase, 'Step:', currentStep);
+    function startSafetyTimeout(ms) {
+        if (safetyTimeout) clearTimeout(safetyTimeout);
+        safetyTimeout = setTimeout(() => {
+            console.warn('⏳ [OCR] Safety timeout reached');
+            showFallback('Proses terlalu lama, silakan isi manual atau coba refresh halaman.');
+        }, ms);
     }
 
     function showFallback(message) {
+        if (safetyTimeout) clearTimeout(safetyTimeout);
         document.getElementById('loading-spinner').classList.add('hidden');
         document.getElementById('fallback-container').classList.remove('hidden');
         if (message) {
@@ -188,11 +180,11 @@
         }
     }
 
-    // Start polling when page loads
+    // Start when page loads
     document.addEventListener('DOMContentLoaded', function() {
         if (uploadId) {
             lucide.createIcons();
-            pollStatus();
+            initEcho();
         } else {
             showFallback('Upload ID tidak ditemukan');
         }

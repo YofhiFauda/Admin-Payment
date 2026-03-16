@@ -42,6 +42,7 @@ return [
 
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'group_monitoring_id' => env('TELEGRAM_GROUP_MONITORING_ID', null),
     ],
 
 ];

@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\AiAutoFillController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Cache;
 use App\Http\Controllers\Api\V1\OcrNotaController;
+use App\Http\Controllers\Api\PaymentVerificationController;
+use App\Http\Middleware\N8nSecretMiddleware;
+use App\Http\Middleware\CheckRole;
+
 
 
 // ─── Telegram Bot Webhook (harus PUBLIC, tidak perlu auth) ──────
@@ -48,14 +52,30 @@ Route::prefix('v1')->group(function () {
 
 
 // ─── N8N Callback (dari n8n Cloud) ──────────────────────────────
-Route::middleware('n8n.secret')->group(function () {
+Route::middleware(N8nSecretMiddleware::class)->group(function () {
     // Menerima hasil OCR dan simpan ke Redis Cache
-    Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store'])
+    Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store']);
+    // ✅ FIX Bug: Typo dari n8n callback url (kurang huruf 'l' di belakang)
+    // Menangkap POST /api/ai/auto-fil dan meroutekannya ke endpoint yang benar
+    Route::post('/ai/auto-fil', [AiAutoFillController::class, 'store'])
         ->middleware('throttle:ai-auto-fill');
 
+
+    // ─── Callback dari n8n: OCR Bukti Transfer/Cash ──────────
+    // ✅ FIXED: Route baru untuk payment verification
+    // n8n workflow akan callback ke endpoint ini setelah OCR bukti transfer
+    Route::post('/payment/verify', [PaymentVerificationController::class, 'handle'])
+        ->middleware('throttle:ai-auto-fill')
+        ->name('api.payment.verify');
+
     // Menerima update status pembayaran (dari AI Transfer atau Telegram Cash)
-    Route::post('/pembayaran/update-status', [AiAutoFillController::class, 'updateStatus'])
-        ->middleware('throttle:ai-auto-fill');
+    // ─── Legacy: Update Status Pembayaran ────────────────────
+    // DEPRECATED: Untuk backward compatibility, akan dihapus nanti
+    // Redirect ke endpoint baru /payment/verify
+    Route::post('/pembayaran/update-status', function (Illuminate\Http\Request $request) {
+        // Forward request ke PaymentVerificationController
+        return app(PaymentVerificationController::class)->handle($request);
+    })->middleware('throttle:ai-auto-fill');
 });
 
 

@@ -25,6 +25,19 @@ class OcrStatusNotification extends Notification implements ShouldQueue
     public function toDatabase(object $notifiable): array
     {
         $isSuccess = $this->aiStatus === 'completed';
+        
+        $title = $isSuccess
+            ? 'Nota berhasil diproses oleh AI!'
+            : 'AI gagal memproses nota';
+
+        $message = $isSuccess
+            ? "Invoice #{$this->transaction->invoice_number} telah diisi otomatis"
+              . ($this->confidence ? " (akurasi {$this->confidence}%)" : '') . '.'
+            : "Invoice #{$this->transaction->invoice_number} gagal diproses. Silakan isi form secara manual.";
+
+        // Dispatch real-time toast event
+        $unreadCount = $notifiable->unreadNotifications()->count() + 1;
+        broadcast(new \App\Events\NotificationReceived($notifiable->id, $unreadCount, $title, $message, 'ocr_status'));
 
         return [
             'type'           => 'ocr_status',
@@ -35,14 +48,8 @@ class OcrStatusNotification extends Notification implements ShouldQueue
             'confidence'     => $this->confidence,
 
             // Pesan untuk ditampilkan di UI
-            'title'   => $isSuccess
-                ? 'Nota berhasil diproses oleh AI!'
-                : 'AI gagal memproses nota',
-
-            'message' => $isSuccess
-                ? "Invoice #{$this->transaction->invoice_number} telah diisi otomatis"
-                  . ($this->confidence ? " (akurasi {$this->confidence}%)" : '') . '.'
-                : "Invoice #{$this->transaction->invoice_number} gagal diproses. Silakan isi form secara manual.",
+            'title'   => $title,
+            'message' => $message,
 
             'url'     => route('transactions.show', $this->transaction->id),
             'icon'    => $isSuccess ? 'check-circle' : 'x-circle',

@@ -3,25 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Telegram\TelegramBotService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * ═══════════════════════════════════════════════════════════════
  *  TelegramWebhookController
  *
- *  Menerima callback dari Telegram Bot saat user mengirim pesan.
- *  Digunakan untuk otomatis menyimpan telegram_chat_id ke profil
- *  user berdasarkan email atau token pendaftaran.
+ *  Menerima callback dari Telegram Bot saat user mengirim pesan
+ *  atau menekan tombol inline.
  *
- *  Alur registrasi:
- *  1. Admin/Owner buka bot di Telegram
- *  2. Kirim /start → Bot balas dengan panduan
- *  3. Kirim /daftar <email> → Bot cocokkan email, simpan chat_id
- *  4. Setelah terdaftar, notifikasi Flagged/Force Approve otomatis masuk
+ *  Fitur:
+ *  1. Auto-registrasi chat_id via /daftar <email>
+ *  2. Handle callback button (Terima pembayaran cash)
  * ═══════════════════════════════════════════════════════════════
  */
 class TelegramWebhookController extends Controller
@@ -45,8 +43,18 @@ class TelegramWebhookController extends Controller
             'update_id' => $update['update_id'] ?? null,
         ]);
 
-        // Ambil data pesan
-        $message = $update['message'] ?? $update['callback_query']['message'] ?? null;
+        // ═══════════════════════════════════════════════════
+        //  HANDLE CALLBACK QUERY (Tombol Inline)
+        // ═══════════════════════════════════════════════════
+        if (isset($update['callback_query'])) {
+            $this->handleCallbackQuery($update['callback_query']);
+            return response()->json(['ok' => true]);
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  HANDLE PESAN TEXT (/start, /daftar, dll)
+        // ═══════════════════════════════════════════════════
+        $message = $update['message'] ?? null;
         if (!$message) {
             return response()->json(['ok' => true]);
         }
@@ -96,6 +104,137 @@ class TelegramWebhookController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    // ═══════════════════════════════════════════════════
+    //  HANDLE CALLBACK QUERY (Tombol "Terima" dll)
+    // ═══════════════════════════════════════════════════
+    
+    private function handleCallbackQuery(array $callbackQuery): void
+    {
+        $chatId       = $callbackQuery['message']['chat']['id'] ?? null;
+        $callbackData = $callbackQuery['data'] ?? '';
+        $callbackId   = $callbackQuery['id'] ?? null;
+
+        if (!$chatId || !$callbackData) {
+            return;
+        }
+
+        // Parse callback_data format: "confirm_cash:123"
+        $parts = explode(':', $callbackData, 2);
+        $action        = $parts[0] ?? '';
+        $transactionId = (int) ($parts[1] ?? 0);
+
+        Log::info('📱 [TELEGRAM CALLBACK] Button clicked', [
+            'action'         => $action,
+            'transaction_id' => $transactionId,
+            'chat_id'        => $chatId,
+        ]);
+
+        // ─────────────────────────────────────────────────
+        //  TOMBOL: "✅ Terima" (Konfirmasi Cash)
+        // ─────────────────────────────────────────────────
+        if ($action === 'confirm_cash') {
+            $transaction = Transaction::find($transactionId);
+            
+            if (!$transaction) {
+                $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan');
+                return;
+            }
+
+            // Validasi user adalah teknisi yang bersangkutan
+            $user = User::where('telegram_chat_id', (string)$chatId)->first();
+            if (!$user || $user->id !== $transaction->submitted_by) {
+                $this->answerCallbackQuery($callbackId, '❌ Anda tidak berhak konfirmasi transaksi ini');
+                return;
+            }
+
+            // Update status transaksi
+            $transaction->update([
+                'status'         => 'completed',
+                'konfirmasi_at'  => now(),
+                'konfirmasi_by'  => $user->id,
+            ]);
+
+            // 🔔 Broadcast update untuk UI
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+            // 🔔 Notifikasi Sistem (Tercatat di halaman Notifikasi)
+            if ($user) {
+                $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'completed'));
+            }
+
+            // Answer callback (popup notification)
+            $this->answerCallbackQuery($callbackId, '✅ Terima kasih! Transaksi selesai.');
+
+            // Kirim pesan konfirmasi
+            $this->telegram->sendMessage($chatId,
+                "✅ <b>Konfirmasi Berhasil</b>\n\n" .
+                "Transaksi <code>{$transaction->invoice_number}</code> telah diselesaikan.\n\n" .
+                "Status: <b>SELESAI</b> ✅"
+            );
+
+            Log::channel('ai_autofill')->info('✅ [TELEGRAM] Cash payment confirmed', [
+                'transaction_id' => $transaction->id,
+                'teknisi_id'     => $user->id,
+            ]);
+
+            return;
+        }
+
+        // ─────────────────────────────────────────────────
+        //  TOMBOL: "❌ Tolak" (Laporkan Masalah)
+        // ─────────────────────────────────────────────────
+        if ($action === 'report_issue') {
+            $transaction = Transaction::find($transactionId);
+            
+            if (!$transaction) {
+                $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan');
+                return;
+            }
+
+            // Validasi user adalah teknisi yang bersangkutan
+            $user = User::where('telegram_chat_id', (string)$chatId)->first();
+            if (!$user || $user->id !== $transaction->submitted_by) {
+                $this->answerCallbackQuery($callbackId, '❌ Anda tidak berhak konfirmasi transaksi ini');
+                return;
+            }
+
+            // Update status transaksi ke Rejected
+            $transaction->update([
+                'status'           => 'rejected',
+                'rejection_reason' => 'Ditolak oleh Teknisi via Telegram',
+                'konfirmasi_at'    => now(),
+                'konfirmasi_by'    => $user->id,
+            ]);
+
+            // 🔔 Broadcast update untuk UI
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+            $this->answerCallbackQuery($callbackId, '❌ Pembayaran ditolak. Silakan hubungi Admin.');
+
+            $this->telegram->sendMessage($chatId,
+                "❌ <b>Pembayaran Ditolak</b>\n\n" .
+                "Status transaksi <code>{$transaction->invoice_number}</code> telah diubah menjadi <b>DITOLAK</b>.\n\n" .
+                "Silakan hubungi Admin via WhatsApp atau telepon untuk penyelesaian:\n" .
+                "• WhatsApp: 0812-3456-7890\n" .
+                "• Telepon: (0352) 123-456"
+            );
+
+            return;
+        }
+
+        // Unknown action
+        $this->answerCallbackQuery($callbackId, '❓ Aksi tidak dikenali');
+    }
+
+    /**
+     * Kirim answer callback query (popup notification di Telegram)
+     * Menggunakan TelegramBotService method
+     */
+    private function answerCallbackQuery(string $callbackId, string $text, bool $showAlert = false): void
+    {
+        $this->telegram->answerCallbackQuery($callbackId, $text, $showAlert);
+    }
+
     // ─── Handlers ─────────────────────────────────────────────────
 
     private function handleStart(string $chatId, array $from): void
@@ -119,7 +258,9 @@ class TelegramWebhookController extends Controller
             "Bot ini akan mengirimkan notifikasi real-time ketika:\n" .
             "• 🚨 Transfer berselisih (Flagged)\n" .
             "• ✅ Force Approve dilakukan\n" .
-            "• ⛔ Nota di-Auto Reject (Admin)\n\n" .
+            "• ⛔ Nota di-Auto Reject (Admin)\n" .
+            "• 💰 Pembayaran cash siap diambil (Teknisi)\n" .
+            "• 💸 Transfer berhasil masuk (Teknisi)\n\n" .
             "─────────────────────\n" .
             "📲 <b>Cara Mendaftar:</b>\n" .
             "Kirim perintah:\n\n" .

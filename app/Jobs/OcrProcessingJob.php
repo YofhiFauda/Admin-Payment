@@ -13,12 +13,17 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  OcrProcessingJob — FULL FIX
+ *  OcrProcessingJob — FINAL FIX v2
  *
+ *  ✅ FIX: upload_id dikirim di 4 tempat:
+ *     1. URL query params
+ *     2. HTTP Headers (X-Upload-ID)
+ *     3. Filename (upload_id.jpg)
+ *     4. Multipart form fields
+ *
+ *  ✅ FIX: Gunakan ->asMultipart() untuk memastikan form fields terkirim
  *  ✅ FIX: Update ai_status di DB (bukan hanya cache)
- *          Frontend baca ai_status dari search-data (DB), bukan cache.
  *  ✅ FIX: Broadcast saat status berubah queued → processing
- *  ✅ FIX: Revert ai_status ke 'queued' saat kena 429 (re-queue)
  * ═══════════════════════════════════════════════════════════════
  */
 class OcrProcessingJob implements ShouldQueue
@@ -47,6 +52,7 @@ class OcrProcessingJob implements ShouldQueue
             'upload_id' => $this->uploadId,
             'file_path' => $this->filePath,
             'priority'  => $this->priority,
+            'transaksi_id' => $this->transaksiId,
             'job_id'    => $this->job?->getJobId(),
             'queue'     => $this->job?->getQueue(),
         ]);
@@ -66,8 +72,6 @@ class OcrProcessingJob implements ShouldQueue
 
         try {
             // ── ✅ FIX: Update BOTH cache AND DB ai_status to 'processing' ──
-            // Frontend reads ai_status from the DB (via /transactions/search-data), not cache.
-            // Without this, the AI badge stays stuck on 'queued'.
             Cache::put("ai_autofill:{$this->uploadId}", [
                 'status' => 'processing',
                 'phase'  => 'processing',
@@ -120,64 +124,64 @@ class OcrProcessingJob implements ShouldQueue
 
             Log::channel('ocr')->info('📤 [OCR JOB] SENDING TO N8N', [
                 'upload_id'    => $this->uploadId,
+                'transaksi_id' => $this->transaksiId,
                 'full_path'    => $fullPath,
                 'file_size_kb' => round(filesize($fullPath) / 1024, 2),
                 'n8n_webhook'  => config('services.n8n.webhook_url'),
             ]);
 
-            // field name 'data' matches n8n binaryPropertyName: "data"
-            // ✅ FIX: Sertakan transaksi_id agar N8N bisa kirim kembali ke callback
+            $secret = config('services.n8n.secret');
+
+            // ✅ FIX: Send upload_id in FOUR places for maximum reliability:
+            // 1. URL query params (most reliable for n8n webhook node)
+            // 2. HTTP Headers (fallback #1)
+            // 3. Filename (fallback #2)
+            // 4. Multipart form fields (fallback #3)
+            
+            $callbackUrl = url('/api/ai/auto-fill')
+                . '?upload_id=' . urlencode($this->uploadId)
+                . '&transaksi_id=' . urlencode((string) $this->transaksiId);
+
+            $n8nUrl = config('services.n8n.webhook_url') . '/webhook/upload-nota'
+                . '?upload_id=' . urlencode($this->uploadId)
+                . '&transaksi_id=' . urlencode((string) $this->transaksiId);
+
+            // ✅ NEW: Embed upload_id in filename as additional fallback
+            $originalName = basename($fullPath);
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $filenameWithId = "{$this->uploadId}.{$extension}";
+
             $response = Http::timeout(120)
+                ->withHeaders([
+                    'X-SECRET'       => $secret,
+                    'X-Upload-ID'    => $this->uploadId,      // ✅ Header 1
+                    'X-Transaksi-ID' => (string) $this->transaksiId, // ✅ Header 2
+                ])
                 ->attach(
                     'data',
                     file_get_contents($fullPath),
-                    basename($fullPath)
+                    $filenameWithId  // ✅ NEW: filename contains upload_id
                 )
-                ->post(config('services.n8n.webhook_url') . '/webhook/upload-nota', [
+                ->asMultipart()  // ✅ NEW: Explicitly set multipart mode
+                ->post($n8nUrl, [
+                    // ✅ These will be sent as multipart form fields
                     'upload_id'    => $this->uploadId,
                     'transaksi_id' => (string) $this->transaksiId,
                     'priority'     => $this->priority,
-                    'secret'       => config('services.n8n.secret'),
+                    'secret'       => $secret,
+                    'callback_url' => $callbackUrl,
                 ]);
 
             Log::channel('ocr')->info('📥 [OCR JOB] N8N RESPONSE', [
                 'upload_id'    => $this->uploadId,
+                'transaksi_id' => $this->transaksiId,
                 'status_code'  => $response->status(),
                 'headers'      => $response->headers(),
                 'body_preview' => substr($response->body(), 0, 1000),
                 'success'      => $response->successful(),
             ]);
 
-            // ✅ ADD: Log kalau response sukses tapi bukan expected format
-            if ($response->successful()) {
-                $body = $response->json() ?? [];
-                
-                Log::channel('ocr')->info('✅ [OCR JOB] N8N ACCEPTED REQUEST', [
-                    'upload_id' => $this->uploadId,
-                    'response_data' => $body,
-                    'next_step' => 'Waiting for n8n callback to /api/ai/auto-fill',
-                ]);
-            }
-
-            // ── Handle 429 (Too Many Requests) ──
-            if ($response->status() === 429) {
-                $retryAfterHeader = $response->header('Retry-After');
-                $retryAfter = $retryAfterHeader ? (int) $retryAfterHeader : 60;
-                $rateLimiter->register429($retryAfter);
-
-                Log::channel('ocr')->warning('⚠️ [OCR JOB] 429 TOO MANY REQUESTS, RELEASING JOB', [
-                    'upload_id'   => $this->uploadId,
-                    'retry_after' => $retryAfter,
-                ]); 
-
-                // ── ✅ FIX: Revert ai_status back to 'queued' when re-queuing ──
-                \App\Models\Transaction::where('upload_id', $this->uploadId)
-                    ->update(['ai_status' => 'queued']);
-
-                $this->release($retryAfter);
-                return;
-            }
-
+            // ✅ IMPROVED ERROR HANDLING: If n8n returns an error, update status and broadcast immediately
             if (!$response->successful()) {
                 Log::channel('ocr')->error('❌ [OCR JOB] N8N RETURNED ERROR', [
                     'upload_id'   => $this->uploadId,
@@ -186,21 +190,55 @@ class OcrProcessingJob implements ShouldQueue
                 ]);
 
                 $body = $response->json() ?? [];
-                if (empty($body) || (isset($body['valid']) && $body['valid'] === false)) {
-                    Cache::put("ai_autofill:{$this->uploadId}", [
-                        'status'  => 'error',
-                        'message' => 'Gagal memproses nota: ' . ($body['error'] ?? 'Unknown or connection error (' . $response->status() . ')'),
-                    ], now()->addMinutes(30));
+                
+                // Decide on error message
+                $errorMessage = 'Gagal memproses nota (HTTP ' . $response->status() . ')';
+                if ($response->status() === 404) $errorMessage = 'Layanan OCR n8n tidak ditemukan (404).';
+                if ($response->status() === 500) $errorMessage = 'Layanan OCR n8n sedang bermasalah (500).';
+                if (isset($body['error'])) $errorMessage = $body['error'];
 
-                    \App\Models\Transaction::where('upload_id', $this->uploadId)
-                        ->update(['ai_status' => 'error']);
+                Cache::put("ai_autofill:{$this->uploadId}", [
+                    'status'  => 'error',
+                    'message' => $errorMessage,
+                ], now()->addMinutes(30));
+
+                $transaction = \App\Models\Transaction::where('upload_id', $this->uploadId)->first();
+                if ($transaction) {
+                    $transaction->update(['ai_status' => 'error']);
+                    
+                    // Broadcast the error so the loading screen can show the fallback
+                    broadcast(new \App\Events\OcrStatusUpdated($transaction->submitted_by, [
+                        'upload_id' => $this->uploadId,
+                        'transaction_id' => $transaction->id,
+                        'ai_status' => 'error',
+                        'message' => $errorMessage,
+                    ]));
+                    
+                    broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
                 }
+                return;
             }
+
+            // ✅ LOG SUCCESSFUL ACCEPTANCE
+            $body = $response->json() ?? [];
+            Log::channel('ocr')->info('✅ [OCR JOB] N8N ACCEPTED REQUEST', [
+                'upload_id' => $this->uploadId,
+                'transaksi_id' => $this->transaksiId,
+                'response_data' => $body,
+                'next_step' => 'Waiting for n8n callback to /api/ai/auto-fill',
+                'sent_via' => [
+                    'query_params' => true,
+                    'headers' => true,
+                    'filename' => $filenameWithId,
+                    'form_fields' => true,
+                ],
+            ]);
 
         } catch (\Throwable $e) {
             Log::channel('ocr')->error('❌ [OCR JOB] EXCEPTION', [
                 'upload_id' => $this->uploadId,
                 'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
             ]);
 
             Cache::put("ai_autofill:{$this->uploadId}", [

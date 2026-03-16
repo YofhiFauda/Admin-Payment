@@ -605,10 +605,40 @@
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.Echo !== 'undefined') {
             const userId = {{ Auth::id() }};
+            const userRole = "{{ Auth::user()->role }}";
             
+            // ── Toast Queue System ──
+            const toastQueue = [];
+            let isProcessingQueue = false;
+            const MAX_TOASTS = 3;
+
+            const processToastQueue = () => {
+                if (isProcessingQueue || toastQueue.length === 0) return;
+
+                const currentToasts = document.querySelectorAll('.realtime-toast-item').length;
+                if (currentToasts >= MAX_TOASTS) {
+                    setTimeout(processToastQueue, 1000);
+                    return;
+                }
+
+                isProcessingQueue = true;
+                const { title, message, colorClasses, iconName } = toastQueue.shift();
+                renderToast(title, message, colorClasses, iconName);
+
+                setTimeout(() => {
+                    isProcessingQueue = false;
+                    processToastQueue();
+                }, 3000); // 3 second interval
+            };
+
             const showRealtimeToast = (title, message, colorClasses, iconName) => {
+                toastQueue.push({ title, message, colorClasses, iconName });
+                processToastQueue();
+            };
+
+            const renderToast = (title, message, colorClasses, iconName) => {
                 const toastId = 'toast-' + Date.now();
-                
+
                 let container = document.getElementById('toast-container-stack');
                 if (!container) {
                     container = document.createElement('div');
@@ -616,11 +646,11 @@
                     container.className = 'fixed top-24 right-4 md:right-8 z-[60] flex flex-col gap-3 pointer-events-none items-end w-full max-w-sm';
                     document.body.appendChild(container);
                 }
-                
+
                 const html = `
-                    <div id="${toastId}" class="pointer-events-auto flex items-start w-full p-4 space-x-4 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                    <div id="${toastId}" class="realtime-toast-item pointer-events-auto flex items-start w-full p-4 space-x-4 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
                         <div class="inline-flex items-center justify-center flex-shrink-0 w-12 h-12 rounded-xl ${colorClasses}">
-                            <i data-lucide="${iconName}" class="w-6 h-6"></i>
+                            <i data-lucide="${iconName || 'bell'}" class="w-6 h-6"></i>
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">
                             <h3 class="text-sm font-extrabold text-slate-800 mb-1 leading-tight">${title}</h3>
@@ -631,96 +661,94 @@
                         </button>
                     </div>
                 `;
-                
+
                 container.insertAdjacentHTML('beforeend', html);
                 const el = document.getElementById(toastId);
-                
+
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
-                
+
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         el.classList.remove('opacity-0', 'translate-x-full');
                         el.classList.add('opacity-100', 'translate-x-0');
                     });
                 });
-                
+
                 setTimeout(() => {
                     if(document.getElementById(toastId)) {
                         el.classList.remove('opacity-100', 'translate-x-0');
                         el.classList.add('opacity-0', 'translate-x-full');
                         setTimeout(() => { if(document.getElementById(toastId)) el.remove() }, 500);
                     }
-                }, 5000);
+                }, 6000);
             };
 
-            window.Echo.private(`ocr.${userId}`)
-                .listen('.ocr.updated', (e) => {
-                    console.log('Real-time OCR Update:', e);
-                    
-                    const isCompleted = e.payload.ai_status === 'completed';
-                    const colorClasses = isCompleted 
-                        ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30' 
-                        : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-500/30';
-                    const iconName = isCompleted ? 'sparkles' : 'alert-triangle';
-                    const titleStr = isCompleted ? 'Pemrosesan OCR Selesai' : 'Pemrosesan OCR Gagal';
-                        
-                    showRealtimeToast(titleStr, e.payload.message || `Sistem AI telah selesai memindai nota Anda.`, colorClasses, iconName);
+            // ── Listener untuk NOTIFIKASI SYSTEM (Real-time Toasts & Database Sync) ──
+            window.Echo.private(`notifications.${userId}`)
+                .listen('.notification.received', (e) => {
+                    console.log('🔔 Notification Received:', e);
+
+                    // Update badge counter
                     updateNotificationBadge();
 
-                    // Refresh transaction grid so AI badge updates in real-time
-                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
-                        window.handleRealtimeTransactionUpdate(e.payload);
+                    // Determine colors based on type
+                    let colorClasses = 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30';
+                    let iconName = 'bell';
+
+                    if (e.type === 'ocr_status') {
+                        // Check title for 'berhasil' or check status
+                        const isSuccess = e.title.toLowerCase().includes('berhasil');
+                        colorClasses = isSuccess 
+                            ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30' 
+                            : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-500/30';
+                        iconName = isSuccess ? 'sparkles' : 'alert-triangle';
+                    } else if (e.type === 'transaction_status') {
+                        if (e.title.includes('CASH SIAP')) {
+                            colorClasses = 'bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-orange-500/30';
+                            iconName = 'banknote';
+                        } else if (e.title.toLowerCase().includes('disetujui')) {
+                            colorClasses = 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-blue-500/30';
+                            iconName = 'clipboard-check';
+                        } else if (e.title.toLowerCase().includes('selesai')) {
+                            colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-indigo-500/30';
+                            iconName = 'check-circle';
+                        } else if (e.title.toLowerCase().includes('ditolak')) {
+                            colorClasses = 'bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-red-500/30';
+                            iconName = 'x-circle';
+                        }
                     }
-                    
-                    if (window.location.href.includes(`/loading/${e.payload.upload_id}`)) {
-                        setTimeout(() => window.location.reload(), 1500);
+
+                    showRealtimeToast(e.title, e.message, colorClasses, iconName);
+                });
+
+            // ── Listeners untuk GRID UPDATES (Tanpa Toasts - Toasts handled above) ──
+            window.Echo.private(`ocr.${userId}`)
+                .listen('.ocr.updated', (e) => {
+                    if (typeof window.handleRealtimeTransactionUpdate === 'function' && e.payload.transaction) {
+                        window.handleRealtimeTransactionUpdate(e.payload.transaction);
                     }
                 });
 
             window.Echo.private(`transactions.${userId}`)
                 .listen('.transaction.updated', (e) => {
-                    console.log('Personal Real-time Transaction Update (Toast):', e);
-                    
-                    // The custom toast here was removed in favor of the notification.received toast below
-                    updateNotificationBadge();
+                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
+                        window.handleRealtimeTransactionUpdate(e.transaction);
+                    }
                 });
 
             window.Echo.private(`transactions`)
                 .listen('.transaction.created', (e) => {
-                    console.log('Global Real-time Transaction Created (Grid):', e);
                     if (typeof window.handleRealtimeTransactionCreation === 'function') {
                         window.handleRealtimeTransactionCreation(e.transaction);
                     }
                 })
                 .listen('.transaction.updated', (e) => {
-                    console.log('Global Real-time Transaction Update (Grid):', e);
                     if (typeof window.handleRealtimeTransactionUpdate === 'function') {
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
-                });
-                
-            if (['admin', 'atasan', 'owner'].includes(userRole)) {
-                window.Echo.private(`activities`)
-                    .listen('.activity.logged', (e) => {
-                        if (typeof window.handleRealtimeActivityLog === 'function') {
-                            window.handleRealtimeActivityLog(e.activityLog);
-                        }
-                    });
-            }
-
-            // ── Listener untuk update badge notifikasi secara real-time ──
-            window.Echo.private(`notifications.${userId}`)
-                .listen('.notification.received', (e) => {
-                    // Update badge counter immediately
-                    updateNotificationBadge();
-
-                    // Show toast to the recipient
-                    const colorClasses = 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30';
-                    showRealtimeToast(e.title, e.message, colorClasses, 'bell');
-                });
-        }
+                });        }
     });
 </script>
 @stack('scripts')

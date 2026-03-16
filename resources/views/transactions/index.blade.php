@@ -876,10 +876,10 @@
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
-                                ${t.submitter_name.charAt(0).toUpperCase()}
+                                ${(t.submitter_name ? t.submitter_name.charAt(0) : '?').toUpperCase()}
                             </div>
                             <div>
-                                <div class="font-bold text-gray-900">${t.submitter_name}</div>
+                                <div class="font-bold text-gray-900">${t.submitter_name || '-'}</div>
                                 <div class="text-[11px] text-gray-400 font-medium">${t.invoice_number}</div>
                             </div>
                         </div>
@@ -971,12 +971,12 @@
                         <div class="flex items-center gap-3">
                             <div class="relative">
                                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
-                                    ${t.submitter_name.charAt(0).toUpperCase()}
+                                     ${(t.submitter_name ? t.submitter_name.charAt(0) : '?').toUpperCase()}
                                 </div>
                                 ${rowNum ? `<span class="absolute -top-1.5 -left-1.5 w-4 h-4 flex items-center justify-center text-[9px] font-bold bg-slate-200 text-slate-500 rounded-full">${rowNum}</span>` : ''}
                             </div>
                             <div>
-                                <h5 class="font-bold text-slate-900 text-sm">${t.submitter_name}</h5>
+                                <h5 class="font-bold text-slate-900 text-sm">${t.submitter_name || '-'}</h5>
                                 <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">${t.invoice_number}</p>
                             </div>
                         </div>
@@ -1219,13 +1219,34 @@
             `;
         }
 
+        function addTransaction(transaction) {
+            if (!allTransactions.some(t => t.id === transaction.id)) {
+                allTransactions.unshift(transaction);
+                const query = document.getElementById('instant-search').value.trim();
+                search(query);
+            }
+        }
+
+        function updateTransaction(transaction) {
+            const index = allTransactions.findIndex(t => t.id === transaction.id);
+            if (index !== -1) {
+                allTransactions[index] = transaction;
+                const query = document.getElementById('instant-search').value.trim();
+                search(query);
+            } else {
+                addTransaction(transaction);
+            }
+        }
+
         // Public API
         return {
                     init: loadData,
                     search: search,
                     goToPage: goToPage,
-                    getAll: () => allTransactions,           // ✅ FIX Bug #4
-                    getFiltered: () => filteredTransactions,  // ✅ FIX Bug #4
+                    getAll: () => allTransactions,
+                    getFiltered: () => filteredTransactions,
+                    addTransaction: addTransaction,
+                    updateTransaction: updateTransaction,
                 };
     })();
 
@@ -1234,9 +1255,6 @@
     // ═══════════════════════════════════════════════════════════════
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Start watchdog
-        startAIWatchdog();
-        console.log('✅ [WATCHDOG] AI Badge Watchdog started');
         // Initialize Lucide icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -2027,99 +2045,42 @@
 
     // ✅ Handler untuk TransactionUpdated event
     window.handleRealtimeTransactionUpdate = function(transaction) {
-        console.log('📝 [REVERB] Transaction Updated:', {
-            id: transaction?.id,
-            upload_id: transaction?.upload_id,
-            status: transaction?.status,
-            ai_status: transaction?.ai_status
-        });
-        
-        debouncedRefresh('TransactionUpdated', transaction);
+        console.log('📝 [REVERB] Transaction Updated:', transaction);
+        if (transaction && transaction.id) {
+            SearchEngine.updateTransaction(transaction);
+        } else {
+            debouncedRefresh('TransactionUpdated', transaction);
+        }
     };
 
     // ✅ Handler untuk TransactionCreated event
     window.handleRealtimeTransactionCreation = function(transaction) {
-        console.log('🆕 [REVERB] Transaction Created:', {
-            id: transaction?.id,
-            upload_id: transaction?.upload_id
-        });
-        
-        debouncedRefresh('TransactionCreated', transaction);
+        console.log('🆕 [REVERB] Transaction Created:', transaction);
+        if (transaction && transaction.id) {
+            SearchEngine.addTransaction(transaction);
+        } else {
+            debouncedRefresh('TransactionCreated', transaction);
+        }
     };
 
     // ✅ Handler khusus untuk OCR status updates
     window.handleRealtimeOcrStatusUpdate = function(data) {
-        console.log('🤖 [REVERB] OCR Status Updated:', {
-            upload_id: data?.upload_id,
-            transaction_id: data?.transaction_id,
-            ai_status: data?.ai_status,
-            status: data?.status,
-            confidence: data?.confidence
-        });
+        console.log('🤖 [REVERB] OCR Status Updated:', data);
         
         // Immediate visual feedback
         const badge = document.querySelector(`.ai-status-badge[data-upload-id="${data.upload_id}"]`);
         if (badge) {
             badge.classList.add('opacity-50', 'animate-pulse');
-            console.log('👁️ [REVERB] Found badge for', data.upload_id, '- adding feedback...');
-        } else {
-            console.warn('⚠️ [REVERB] Badge not found for upload_id:', data.upload_id);
         }
         
         // Then refresh grid
-        debouncedRefresh('OcrStatusUpdated', data);
-    };
-    const AI_WATCHDOG_INTERVAL = 10000;  // Check every 10 seconds
-    const AI_MAX_PROCESSING_TIME = 120000; // Max 2 minutes in processing
-
-    let watchdogTimer = null;
-
-    function startAIWatchdog() {
-        if (watchdogTimer) {
-            clearInterval(watchdogTimer);
+        if (data.transaction && data.transaction.id) {
+            SearchEngine.updateTransaction(data.transaction);
+        } else {
+            debouncedRefresh('OcrStatusUpdated', data);
         }
-        
-        watchdogTimer = setInterval(() => {
-            const stuckBadges = document.querySelectorAll('.ai-status-badge[data-status="processing"]');
-            
-            if (stuckBadges.length === 0) {
-                return; // No stuck badges, skip check
-            }
-            
-            console.log(`🔍 [WATCHDOG] Checking ${stuckBadges.length} processing badges...`);
-            
-            stuckBadges.forEach(badge => {
-                const uploadId = badge.dataset.uploadId;
-                if (!uploadId) return;
-                
-                // Check actual status from server
-                fetch(`/api/ai/auto-fill/status/${uploadId}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        const serverStatus = data.status || 'unknown';
-                        const badgeStatus = badge.dataset.status;
-                        
-                        if (serverStatus !== 'processing' && serverStatus !== badgeStatus) {
-                            console.warn(`⚠️ [WATCHDOG] Status mismatch detected!`, {
-                                uploadId,
-                                badgeStatus,
-                                serverStatus,
-                                action: 'forcing grid refresh'
-                            });
-                            
-                            // Force immediate refresh
-                            SearchEngine.init().then(() => {
-                                showToast('Status AI berhasil diperbarui', 'success');
-                            });
-                        } else if (serverStatus === 'processing') {
-                            console.log(`⏳ [WATCHDOG] ${uploadId} still processing (server-side)`);
-                        }
-                    })
-                    .catch(err => {
-                        console.error(`[WATCHDOG] Status check failed for ${uploadId}:`, err);
-                    });
-            });
-        }, AI_WATCHDOG_INTERVAL);
-    }
+    };
+
+
 </script>
 @endpush

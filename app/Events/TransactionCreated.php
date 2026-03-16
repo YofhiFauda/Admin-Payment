@@ -44,4 +44,16 @@ class TransactionCreated implements ShouldBroadcastNow
     {
         return 'transaction.created';
     }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'transaction' => $this->transaction->toSearchArray()
+        ];
+    }
 }

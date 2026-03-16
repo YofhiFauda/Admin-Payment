@@ -2,77 +2,181 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Telegram\TelegramBotService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 
-/**
- * Artisan Command: telegram:setup-webhook
- *
- * Mendaftarkan URL webhook ke Telegram Server secara otomatis.
- * Jalankan SEKALI setelah deploy atau setelah mengubah APP_URL.
- *
- * Usage:
- *   php artisan telegram:setup-webhook
- *   php artisan telegram:setup-webhook --info
- *   php artisan telegram:setup-webhook --delete
- */
 class TelegramSetupWebhookCommand extends Command
 {
-    protected $signature   = 'telegram:setup-webhook
-                                {--info   : Tampilkan info webhook saat ini}
-                                {--delete : Hapus webhook yang sudah terdaftar}';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'telegram:setup-webhook {--info : Show current webhook info}';
 
-    protected $description = 'Setup / manage Telegram Bot webhook URL';
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Setup Telegram bot webhook';
 
-    public function handle(TelegramBotService $telegram): int
+    /**
+     * Execute the console command.
+     */
+    public function handle()
     {
+        $botToken = config('services.telegram.bot_token');
+
+        if (!$botToken) {
+            $this->error('❌ TELEGRAM_BOT_TOKEN tidak ditemukan di .env');
+            $this->info('   Tambahkan: TELEGRAM_BOT_TOKEN=your_token_here');
+            return 1;
+        }
+
+        // ─── Show webhook info only ─────────────────────────────
         if ($this->option('info')) {
-            $info = $telegram->getWebhookInfo();
-            $this->info('📡 Telegram Webhook Info:');
-            $this->line(json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            return self::SUCCESS;
+            return $this->showWebhookInfo($botToken);
         }
 
-        if ($this->option('delete')) {
-            $result = $telegram->deleteWebhook();
+        // ─── Setup webhook ──────────────────────────────────────
+        $appUrl = config('app.url');
+
+        if (!$appUrl || $appUrl === 'http://localhost') {
+            $this->error('❌ APP_URL tidak valid atau masih localhost');
+            $this->info('   Update APP_URL di .env dengan HTTPS URL (dari Cloudflare Tunnel atau ngrok)');
+            return 1;
+        }
+
+        if (!str_starts_with($appUrl, 'https://')) {
+            $this->error('❌ APP_URL harus menggunakan HTTPS');
+            $this->info('   Current: ' . $appUrl);
+            $this->info('   Telegram webhook wajib HTTPS!');
+            return 1;
+        }
+
+        $webhookUrl = rtrim($appUrl, '/') . '/api/telegram/webhook';
+
+        $this->info('🔄 Mendaftarkan webhook ke Telegram...');
+        $this->info('   URL: ' . $webhookUrl);
+
+        try {
+            $response = Http::post("https://api.telegram.org/bot{$botToken}/setWebhook", [
+                'url' => $webhookUrl,
+                'allowed_updates' => ['message', 'callback_query'],
+                'drop_pending_updates' => true, // Clear pending updates
+            ]);
+
+            $result = $response->json();
+
             if ($result['ok'] ?? false) {
-                $this->info('✅ Webhook berhasil dihapus.');
+                $this->info('');
+                $this->info('✅ Webhook berhasil didaftarkan!');
+                $this->info('   URL: ' . $webhookUrl);
+                $this->info('   Allowed updates: message, callback_query');
+                $this->info('');
+                $this->info('📌 NEXT STEPS:');
+                $this->info('   1. Test bot dengan mengetik /start di Telegram');
+                $this->info('   2. Monitor log: tail -f storage/logs/laravel.log');
+                $this->info('');
+                
+                // Show bot info
+                $this->showBotInfo($botToken);
+                
+                return 0;
             } else {
-                $this->error('❌ Gagal menghapus webhook: ' . ($result['description'] ?? 'Unknown error'));
+                $this->error('❌ Gagal mendaftarkan webhook');
+                $this->error('   Error: ' . ($result['description'] ?? 'Unknown error'));
+                
+                if (isset($result['description']) && str_contains($result['description'], 'HTTPS')) {
+                    $this->info('');
+                    $this->info('💡 TIP: Pastikan APP_URL menggunakan HTTPS');
+                    $this->info('   Gunakan Cloudflare Tunnel: cloudflared tunnel --url http://localhost:8000');
+                }
+                
+                return 1;
             }
-            return self::SUCCESS;
+        } catch (\Exception $e) {
+            $this->error('❌ Error: ' . $e->getMessage());
+            return 1;
         }
+    }
 
-        // ── Default: Set webhook ──
-        $appUrl     = rtrim(config('app.url'), '/');
-        $webhookUrl = $appUrl . '/api/telegram/webhook';
+    /**
+     * Show current webhook info
+     */
+    protected function showWebhookInfo(string $botToken): int
+    {
+        $this->info('🔍 Mengecek webhook info...');
+        $this->info('');
 
-        $this->info("📡 Mendaftarkan webhook ke Telegram...");
-        $this->line("   URL: <comment>{$webhookUrl}</comment>");
+        try {
+            $response = Http::get("https://api.telegram.org/bot{$botToken}/getWebhookInfo");
+            $result = $response->json();
 
-        $result = $telegram->setWebhook($webhookUrl);
+            if ($result['ok'] ?? false) {
+                $info = $result['result'];
 
-        if ($result['ok'] ?? false) {
-            $this->info('');
-            $this->info('✅ Webhook berhasil didaftarkan!');
-            $this->info("   URL: {$webhookUrl}");
-            $this->info('');
-            $this->info('📌 Langkah berikutnya:');
-            $this->line('   1. Bagikan link bot ke Owner / Admin Anda');
-            $this->line('   2. Mereka cukup buka bot dan ketik /daftar <email>');
-            $this->line('   3. chat_id akan tersimpan otomatis ke database');
-        } else {
-            $this->error('');
-            $this->error('❌ Gagal mendaftarkan webhook!');
-            $this->error('   ' . ($result['description'] ?? 'Unknown error'));
-            $this->info('');
-            $this->warn('💡 Pastikan:');
-            $this->line('   1. TELEGRAM_BOT_TOKEN sudah diisi di .env');
-            $this->line('   2. APP_URL menggunakan HTTPS (Telegram wajib HTTPS)');
-            $this->line('   3. URL publik bisa diakses dari internet');
-            return self::FAILURE;
+                $this->table(
+                    ['Property', 'Value'],
+                    [
+                        ['URL', $info['url'] ?: '(not set)'],
+                        ['Has Custom Certificate', $info['has_custom_certificate'] ? 'Yes' : 'No'],
+                        ['Pending Update Count', $info['pending_update_count'] ?? 0],
+                        ['Last Error Date', $info['last_error_date'] ?? 'None'],
+                        ['Last Error Message', $info['last_error_message'] ?? 'None'],
+                        ['Max Connections', $info['max_connections'] ?? 'Default'],
+                        ['Allowed Updates', implode(', ', $info['allowed_updates'] ?? [])],
+                    ]
+                );
+
+                if (empty($info['url'])) {
+                    $this->warn('');
+                    $this->warn('⚠️  Webhook belum didaftarkan!');
+                    $this->info('   Jalankan: php artisan telegram:setup-webhook');
+                }
+
+                if (!empty($info['last_error_message'])) {
+                    $this->warn('');
+                    $this->warn('⚠️  Ada error terakhir:');
+                    $this->error('   ' . $info['last_error_message']);
+                }
+
+                return 0;
+            } else {
+                $this->error('❌ Gagal mendapatkan webhook info');
+                $this->error('   Error: ' . ($result['description'] ?? 'Unknown error'));
+                return 1;
+            }
+        } catch (\Exception $e) {
+            $this->error('❌ Error: ' . $e->getMessage());
+            return 1;
         }
+    }
 
-        return self::SUCCESS;
+    /**
+     * Show bot info
+     */
+    protected function showBotInfo(string $botToken): void
+    {
+        try {
+            $response = Http::get("https://api.telegram.org/bot{$botToken}/getMe");
+            $result = $response->json();
+
+            if ($result['ok'] ?? false) {
+                $bot = $result['result'];
+                
+                $this->info('🤖 BOT INFO:');
+                $this->info('   Name: ' . $bot['first_name']);
+                $this->info('   Username: @' . $bot['username']);
+                $this->info('   ID: ' . $bot['id']);
+                $this->info('');
+                $this->info('💬 Test bot Anda:');
+                $this->info('   https://t.me/' . $bot['username']);
+                $this->info('');
+            }
+        } catch (\Exception $e) {
+            // Silently fail, this is just extra info
+        }
     }
 }

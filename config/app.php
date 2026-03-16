@@ -123,4 +123,19 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Class Aliases
+    |--------------------------------------------------------------------------
+    |
+    | This array of class aliases will be registered when this application
+    | is started. However, the Redis alias is omitted to avoid collision
+    | with the native PHP Redis extension.
+    |
+    */
+
+    'aliases' => Illuminate\Support\Facades\Facade::defaultAliases()->merge([
+        // Potensi konflik dengan ekstensi phpredis, maka kita hapus alias 'Redis'
+    ])->forget('Redis')->toArray(),
+
 ];

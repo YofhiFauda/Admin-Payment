@@ -8,7 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-class TransactionStatusNotification extends Notification implements ShouldQueue
+class TransactionStatusNotification extends Notification implements ShouldQueue 
 {
     use Queueable;
 
@@ -25,26 +25,32 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
     public function toDatabase(object $notifiable): array
     {
         $statusLabel = match($this->status) {
-            'approved'  => 'Disetujui',
-            'rejected'  => 'Ditolak',
-            'completed' => 'Selesai',
-            default     => ucfirst($this->status),
+            'approved'           => 'Disetujui',
+            'rejected'           => 'Ditolak',
+            'completed'          => 'Selesai',
+            'pending_technician' => 'Pembayaran Siap',
+            default              => ucfirst($this->status),
         };
 
-        $isSuccess = in_array($this->status, ['approved', 'completed']);
+        $isSuccess = in_array($this->status, ['approved', 'completed', 'pending_technician']);
         
-        $title = $this->status === 'rejected' 
-            ? "Transaksi {$this->transaction->invoice_number} ditolak" 
-            : "Transaksi {$this->transaction->invoice_number} {$statusLabel}";
+        $title = match($this->status) {
+            'rejected'           => "Transaksi {$this->transaction->invoice_number} ditolak",
+            'pending_technician' => "💰 PEMBAYARAN CASH SIAP DIAMBIL",
+            default              => "Transaksi {$this->transaction->invoice_number} {$statusLabel}",
+        };
 
-        $message = "Status transaksi untuk {$this->transaction->customer} telah diubah menjadi {$statusLabel}.";
+        $message = match($this->status) {
+            'pending_technician' => "Admin telah mengunggah bukti pembayaran untuk invoice #{$this->transaction->invoice_number}. Silakan ambil uang Anda.",
+            default              => "Status transaksi untuk {$this->transaction->customer} telah diubah menjadi {$statusLabel}.",
+        };
         
         if ($this->status === 'rejected' && $this->transaction->rejection_reason) {
             $message .= " Alasan penolakan: {$this->transaction->rejection_reason}";
         }
 
-        // Dispatch real-time badge update event
-        $unreadCount = $notifiable->unreadNotifications()->count() + 1; // +1 karena notifikasi ini belum tersimpan saat broadcast
+        // Dispatch real-time toast event
+        $unreadCount = $notifiable->unreadNotifications()->count() + 1;
         broadcast(new NotificationReceived($notifiable->id, $unreadCount, $title, $message, 'transaction_status'));
 
         return [
@@ -57,8 +63,18 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
             'message' => $message,
 
             'url'     => route('transactions.show', $this->transaction->id),
-            'icon'    => $isSuccess ? 'check-circle' : 'x-circle',
-            'color'   => $isSuccess ? 'green' : 'red',
+            'icon'    => match($this->status) {
+                'pending_technician' => 'banknote',
+                'completed'          => 'check-circle',
+                'rejected'           => 'x-circle',
+                default              => 'info'
+            },
+            'color'   => match($this->status) {
+                'pending_technician' => 'amber',
+                'completed'          => 'green',
+                'rejected'           => 'red',
+                default              => 'blue'
+            },
         ];
     }
 }

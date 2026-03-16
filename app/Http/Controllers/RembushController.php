@@ -341,13 +341,14 @@ class RembushController extends Controller
 
             // ✅ FIX: Dispatch OCR Job DI SINI setelah transaksi ada dan file di permanent path.
             // Job sebelumnya di-dispatch saat upload (race condition: transaction_id=null, file di temp).
-            // ✅ CRITICAL: Specify queue explicitly
+            // ✅ FIX Race Condition: ->afterCommit() memastikan job hanya dieksekusi SETELAH DB::commit()
+            // Jika commit gagal (rollback), job TIDAK akan diproses oleh worker.
             OcrProcessingJob::dispatch(
                 $uploadId,
                 $permanentPath,
                 'normal',
                 $transaction->id
-            )->onQueue('ocr_normal'); // ← WAJIB tambahkan ini
+            )->onQueue('ocr_normal')->afterCommit(); // ← afterCommit() = anti race condition
 
             Log::channel('ocr')->info('🔄 [OCR FLOW] OCR JOB DISPATCHED', [
                 'step'           => '4_job_dispatched',

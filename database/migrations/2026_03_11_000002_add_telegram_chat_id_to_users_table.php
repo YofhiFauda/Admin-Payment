@@ -11,14 +11,15 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
-    public function up(): void
+ public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('telegram_chat_id')->nullable()->after('remember_token')
+                ->unique()
                 ->comment('Chat ID Telegram untuk menerima notifikasi real-time');
         });
     }
-
+ 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {

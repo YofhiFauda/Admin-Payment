@@ -21,7 +21,7 @@ class RouteServiceProvider extends ServiceProvider
 
         // ─── Rate Limit: Upload Foto ────────────────────────────────
         // Max 5 upload per menit per user (tambahan dari throttle di controller)
-        RateLimiter::for('upload-nota', function (Request $request) {
+        RateLimiter::for('upload-foto', function (Request $request) {
             return $request->user()
                 ? Limit::perMinute(5)->by('user:' . $request->user()->id)
                 : Limit::perMinute(3)->by($request->ip());

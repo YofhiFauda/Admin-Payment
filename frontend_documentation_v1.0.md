@@ -1,5 +1,5 @@
 # Front-End (FE) Documentation
-**Version 1.0 | Laravel Blade + Tailwind CSS + Vite**
+**Version 4.5 | Laravel Blade + Tailwind CSS v4 + Vite**
 *Dokumentasi Antarmuka Pengguna, Komponen, dan Integrasi Client-Side*
 
 ---
@@ -8,9 +8,9 @@
 
 Proyek ini menggunakan model **Monolith with Modern Tooling**:
 - **Templating**: Laravel Blade.
-- **Styling**: Tailwind CSS (v4).
-- **Asset Bundler**: Vite.
-- **Interactivity**: Vanilla JavaScript (AJAX/Fetch) & Laravel Echo (WebSocket).
+- **Styling**: Tailwind CSS (v4) — Menggunakan modern CSS engine.
+- **Asset Bundler**: Vite 6.x.
+- **Interactivity**: Vanilla JavaScript (AJAX/Fetch) & Laravel Echo (WebSocket via Reverb).
 - **Icons**: Lucide Icons.
 
 ### 1.1 Struktur Folder Utama
@@ -21,86 +21,75 @@ resources/
 ├── js/
 │   ├── app.js           # Entry point JS
 │   ├── bootstrap.js     # Axios & Echo configuration
-│   └── echo.js          # Laravel Echo initialization
+│   └── echo.js          # Laravel Echo initialization (Reverb)
 └── views/
     ├── layouts/
-    │   └── app.blade.php # Layout utama (Navbar/Sidebar)
-    ├── transactions/    # Modul Transaksi & OCR
-    └── dashboard/       # Dashboard & Analytics
+    │   └── app.blade.php # Layout utama (Sidebar/Navbar)
+    ├── transactions/    # Modul Transaksi (Rembush, Pengajuan)
+    ├── dashboard/       # Dashboard & Analytics Charts
+    └── components/      # Reusable Blade Components (Modal, Badge, Button)
 ```
 
 ---
 
 ## 2. Design System & Style Guide
 
-### 2.1 Palet Warna & Tema
+### 2.1 Palet Warna & Tema (Tailwind v4)
 Sistem menggunakan gradien modern untuk elemen premium:
-- **Primary**: Indigo (`via-indigo-600`) & Purple (`to-purple-600`).
-- **Success/Accent**: Teal (`to-teal-500`) & Emerald.
-- **Background**: Slate-50 ke Slate-100 (Gradient).
-- **Gradients**: Sering digunakan pada button, badge, dan logo container.
+- **Gradients**: `bg-linear-to-r from-indigo-600 to-purple-600` untuk header dan tombol utama.
+- **Cards**: Background `bg-white/80` dengan backdrop-blur untuk efek Glassmorphism.
+- **Badges**: 
+  - `completed`: Green/Emerald.
+  - `flagged/rejected`: Red/Rose.
+  - `pending/waiting`: Amber/Orange.
 
-### 2.2 Tipografi
-- **Font Face**: Inter (Google Fonts).
-- **Scale**: Menggunakan standard Tailwind text scaling (`text-sm`, `text-xl`, `text-6xl`).
-- **Styles**: Font-weight `black` (900) untuk title dan `extrabold` (800) untuk penekanan.
+### 2.2 Tipografi & Ikon
+- **Font**: Inter (Google Fonts).
+- **Icons**: Lucide Icons (Ringan, konsisten, dan mudah diintegrasikan).
 
-### 2.3 Animasi
-Didefinisikan di `app.css`:
-- `animate-fade-in-up`: Transisi masuk dari bawah.
-- `animate-slide-in`: Transisi masuk dari kanan (untuk toast).
-- `badgePulse`: Animasi berdenyut untuk notifikasi badge.
-
----
-
-## 3. Komponen UI Reusable
-
-### 3.1 Layout Navigation
-Layout bersifat responsif dan berubah berdasarkan Role:
-- **Teknisi**: Top Navbar (untuk fokus input cepat).
-- **Admin/Atasan/Owner**: Sidebar (untuk pengelolaan data intensif).
-
-### 3.2 Modal System
-Implementasi modal menggunakan transition CSS untuk efek smooth:
-- **ID**: `choiceModal`, `loadingOverlay`, `globalDragOverlay`.
-- **Logic**: Menggunakan `hidden` class toggle dan opacity transition (10ms delay untuk trigger).
-
-### 3.3 Notification Badge
-Komponen badge yang sinkron di desktop, mobile, dan sidebar:
-- **Selector**: `#notif-count-desktop`, `#notif-count-mobile`.
-- **Behavior**: Otomatis tersembunyi jika count = 0.
+### 2.3 Animasi CSS
+- `animate-fade-in-up`: Digunakan pada saat data transaksi muncul.
+- `animate-slide-in`: Digunakan untuk toast notifikasi real-time.
+- `badgePulse`: Animasi heartbeat pada badge notifikasi.
 
 ---
 
-## 4. Integrasi API & Alur Data
+## 3. Komponen UI & Logic
 
-### 4.1 Client-Side Request
-- **AXIOS**: Digunakan untuk request AJAX standar. Header `X-Requested-With` disetel ke `XMLHttpRequest`.
-- **CSRF**: Token diambil dari `<meta name="csrf-token">`.
+### 3.1 Layout Responsif
+- **Role Teknisi**: Sidebar minimalis atau top-nav untuk kemudahan upload di mobile.
+- **Role Admin/Owner**: Sidebar lengkap dengan navigasi master data dan monitoring.
 
-### 4.2 Real-time Updates (Pusher/Echo)
-Client mendengarkan event di private channel:
-1. `ocr.{userId}`: Menampilkan toast otomatis saat proses OCR Gemini selesai.
-2. `notifications.{userId}`: Mengupdate badge counter secara real-time.
-3. `transactions`: Update grid transaksi tanpa refresh (untuk Admin/Owner).
-
-### 4.3 Polling (Fallback/Status)
-- **OCR Status**: Halaman loading melakukan polling ke `/api/ai/auto-fill/status/{uploadId}`.
-- **Notif Count**: `updateNotificationBadge()` melakukan fetch unread count saat load halaman pertama kali.
+### 3.2 Modal & Overlay
+- **Loading Overlay**: Muncul saat user upload nota dan menunggu polling OCR selesai.
+- **Choice Modal**: Modal awal saat memilih antara "Rembush (OCR)" atau "Pengajuan (Manual)".
 
 ---
 
-## 5. Panduan Pengembangan
+## 4. Integrasi Real-time (Laravel Echo)
 
-### 5.1 Menjalankan Local Dev
-1. Install dependencies: `npm install`.
-2. Jalankan Vite: `npm run dev`.
-3. Link storage: `php artisan storage:link` (Penting agar file upload/preview muncul).
-
-### 5.2 Menambahkan Komponen Baru
-1. Gunakan Tailwind classes (hindari inline style berlebihan).
-2. Daftarkan event listener di `DOMContentLoaded` di dalam `@push('scripts')`.
-3. Gunakan `lucide.createIcons()` jika menambahkan icon baru secara dinamis.
+Sistem menggunakan **Laravel Reverb** sebagai WebSocket server:
+1. **OCR Processing**: User tidak perlu refresh. Toast akan muncul saat status OCR berubah dari `processing` ke `completed`.
+2. **Notification Counter**: Badge notifikasi di sidebar/navbar update secara instan.
+3. **Transaction Feed**: Daftar transaksi di dashboard Admin terupdate otomatis jika ada upload baru.
+4. **Queue Monitoring**: Grafik antrian di dashboard Admin bersifat live (streaming data).
 
 ---
-*Dokumentasi FE v1.0*
+
+## 5. Alur Client-Side (Nota Upload)
+
+1. **Upload**: User memilih file -> Submit AJAX via Axios.
+2. **Loading Page**: User diarahkan ke `/rembush/loading` yang melakukan polling asinkron.
+3. **Polling**: `setInterval` memanggil `/api/ai/auto-fill/status/{uploadId}` setiap 2 detik.
+4. **Completion**: Jika status `completed`, user otomatis redirect ke `/rembush/form` dengan data yang sudah terisi (auto-filled).
+
+---
+
+## 6. Panduan Pengembangan
+
+1. **Style Guide**: Gunakan Tailwind utility classes. Hindari custom CSS kecuali untuk animasi kompleks di `app.css`.
+2. **Assets**: Jalankan `npm run dev` untuk development atau `npm run build` untuk produksi.
+3. **Icons**: Panggil icon baru menggunakan atribut `data-lucide="name"` dan jalankan `lucide.createIcons()` jika render dinamis.
+
+---
+*Dokumentasi FE v4.5 | WHUSNET Frontend*

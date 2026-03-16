@@ -8,7 +8,10 @@ use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\PaymentDiscrepancyAudit;
 use App\Services\IdGeneratorService;
+
+// 🔔 TELEGRAM: Import TelegramBotService
 use App\Services\Telegram\TelegramBotService;
+
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -18,15 +21,25 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  OcrNotaController — FULL FIX
+ *  OcrNotaController — DENGAN INTEGRASI TELEGRAM
  *
- *  ✅ Bug #2: Status strings normalized to frontend keys
- *  ✅ Bug #3: Webhook URLs fixed with /webhook/ prefix
- *  ✅ Bug #6: Accept field names from both frontend & API
+ *  🔔 TELEGRAM INTEGRATION POINTS:
+ *  1. uploadCash()      → notifyPaymentCash() (dengan tombol)
+ *  2. konfirmasiCash()  → (teknisi klik tombol di Telegram)
+ *  3. uploadTransfer()  → (n8n callback akan trigger notifikasi)
+ *  4. forceApprove()    → notifyForceApproved() + notifyForceApprovedToTechnician()
  * ═══════════════════════════════════════════════════════════════
  */
 class OcrNotaController extends Controller
 {
+    // 🔔 TELEGRAM: Inject service via constructor
+    private TelegramBotService $telegram;
+
+    public function __construct(TelegramBotService $telegram)
+    {
+        $this->telegram = $telegram;
+    }
+
     /**
      * POST /api/v1/nota/upload
      */
@@ -52,7 +65,6 @@ class OcrNotaController extends Controller
         $transaksiId = $request->transaksi_id ?? Str::uuid()->toString();
         $path        = $request->file('foto_nota')->store('notas', 'public');
 
-        // ── ✅ FIX Bug #2: Use 'pending' (frontend key) instead of 'Diproses' ──
         $transaction = Transaction::create([
             'upload_id'      => $uploadId,
             'trace_id'       => $transaksiId,
@@ -79,14 +91,12 @@ class OcrNotaController extends Controller
             'format'         => 'IdGeneratorService',
         ]);
 
-        // ── ✅ FIX: Respect Gemini Rate Limit before sending to N8N ──
         $rateLimiter = app(\App\Services\OCR\GeminiRateLimiter::class);
         try {
             $rateLimiter->acquireSlot($uploadId);
             
             $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
             if ($n8nUrl) {
-                // n8n workflow path: "upload-nota" → full: {n8nUrl}/webhook/upload-nota
                 $response = Http::timeout(30)->post("{$n8nUrl}/webhook/upload-nota", [
                     'upload_id'        => $uploadId,
                     'transaksi_id'     => $transaction->id,
@@ -95,6 +105,7 @@ class OcrNotaController extends Controller
                     'payment_method'   => $request->payment_method,
                     'branch_id'        => $request->branch_id,
                     'secret'           => config('services.n8n.secret'),
+                    'callback_url'     => url('/api/ai/auto-fill'),
                 ]);
 
                 Log::channel('ocr')->info('📤 [N8N WEBHOOK] Upload Nota Triggered', [
@@ -103,7 +114,6 @@ class OcrNotaController extends Controller
                     'response_status' => $response->status(),
                 ]);
 
-                // Handle 429 directly if N8N propagates it
                 if ($response->status() === 429) {
                     $rateLimiter->register429(60);
                 }
@@ -113,10 +123,6 @@ class OcrNotaController extends Controller
                 'upload_id' => $uploadId,
                 'error'     => $e->getMessage(),
             ]);
-            // Still return success 202 because the transaction is saved and 
-            // the user should wait for polling/broadcasting anyway? 
-            // Or return error? The job isn't queued here, it's direct.
-            // Let's at least mark it as error in ai_status if we can't send it.
             $transaction->update(['ai_status' => 'error']);
         } catch (\Exception $e) {
             Log::channel('ocr')->error('❌ [N8N WEBHOOK] Upload Nota Failed', [
@@ -144,7 +150,6 @@ class OcrNotaController extends Controller
         ], 202);
     }
 
-
     /**
      * GET /api/v1/transaksi
      */
@@ -167,7 +172,6 @@ class OcrNotaController extends Controller
             'data'    => $transaksi,
         ]);
     }
-
 
     /**
      * GET /api/v1/transaksi/{id}
@@ -199,11 +203,10 @@ class OcrNotaController extends Controller
         ]);
     }
 
-
     /**
      * POST /api/v1/payment/cash/upload
-     *
-     * ✅ FIX Bug #3: Webhook URL corrected
+     * 
+     * 🔔 TELEGRAM POINT #1: Kirim notifikasi CASH dengan tombol ke teknisi
      */
     public function uploadCash(Request $request)
     {
@@ -225,6 +228,7 @@ class OcrNotaController extends Controller
 
         $transaction = Transaction::where('upload_id', $request->upload_id)
             ->orWhere('id', $request->transaksi_id)
+            ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
             ->firstOrFail();
 
         if ($transaction->status !== 'waiting_payment') {
@@ -243,9 +247,17 @@ class OcrNotaController extends Controller
 
         $transaction->update([
             'foto_penyerahan' => $path,
-            'status'          => 'pending_technician',  // 18 chars - FITS!
+            'status'          => 'pending_technician',
             'description'     => $request->catatan,
         ]);
+
+        // 🔔 Broadcast update untuk UI teknisi
+        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+        // 🔔 Kirim notifikasi sistem ke Teknisi
+        if ($transaction->submitter) {
+            $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'pending_technician'));
+        }
 
         Log::channel('ai_autofill')->info('📤 [UPLOAD CASH] PAYMENT PROOF UPLOADED', [
             'step'           => 'cash_upload',
@@ -254,9 +266,26 @@ class OcrNotaController extends Controller
             'file_path'      => $path,
         ]);
 
-        // ── ✅ FIX Bug #3: Correct n8n webhook path ──
-        // SEBELUM: "{$n8nUrl}/payments/cash/upload"          ← SALAH (404)
-        // SESUDAH: "{$n8nUrl}/webhook/payment/cash/upload"   ← BENAR (sesuai n8n node path)
+        // ═══════════════════════════════════════════════════════════
+        //  🔔 TELEGRAM #1: KIRIM NOTIFIKASI CASH KE TEKNISI
+        //  Teknisi akan dapat pesan di Telegram dengan tombol:
+        //  [✅ Terima] [❌ Laporkan Masalah]
+        // ═══════════════════════════════════════════════════════════
+        try {
+            $this->telegram->notifyPaymentCash($transaction);
+            
+            Log::channel('ai_autofill')->info('✅ [TELEGRAM] Cash notification sent', [
+                'transaction_id' => $transaction->id,
+                'teknisi_id'     => $transaction->submitter?->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('ai_autofill')->error('❌ [TELEGRAM] Failed to send cash notification', [
+                'transaction_id' => $transaction->id,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+
+        // n8n webhook (optional - jika masih ada workflow lama)
         $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
         if ($n8nUrl) {
             try {
@@ -269,6 +298,8 @@ class OcrNotaController extends Controller
                     'teknisi_id'   => $request->teknisi_id,
                     'foto_url'     => $storage->url($path),
                     'catatan'      => $request->catatan,
+                    'secret'       => config('services.n8n.secret'),
+                    'callback_url' => url('/api/payment/verify'),
                 ]);
 
                 if ($response->successful()) {
@@ -305,11 +336,11 @@ class OcrNotaController extends Controller
         ], 202);
     }
 
-
     /**
      * POST /api/v1/payment/cash/konfirmasi
-     *
-     * ✅ FIX Bug #2: 'completed' instead of 'Selesai'
+     * 
+     * 🔔 TELEGRAM POINT #2: Endpoint ini di-trigger dari TelegramWebhookController
+     *                       saat teknisi klik tombol "✅ Terima" di Telegram
      */
     public function konfirmasiCash(Request $request)
     {
@@ -332,15 +363,14 @@ class OcrNotaController extends Controller
             ->orWhere('id', $request->transaksi_id)
             ->firstOrFail();
 
-        // ── ✅ FIX Bug #2: 'completed' matches frontend key ──
-        // ── ✅ FIX: Sesuaikan rule 1 Juta (Completed jika < 1jt, Approved tunggu Owner jika >= 1jt) ──
+        // Determine final status based on amount and action
         if ($request->action === 'terima') {
             $isRequiresOwner = $transaction->effective_amount >= 1000000;
             $status = $isRequiresOwner ? 'approved' : 'completed';
         } else {
             $status = 'Ditolak Teknisi';
         }
-        $now    = now();
+        $now = now();
 
         $transaction->update([
             'status'         => $status,
@@ -350,6 +380,9 @@ class OcrNotaController extends Controller
                 ? $transaction->description . ' | Catatan Teknisi: ' . $request->catatan
                 : $transaction->description,
         ]);
+
+        // 🔔 Broadcast update untuk UI
+        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
         Log::channel('ai_autofill')->info('✅ [KONFIRMASI CASH] TECHNICIAN CONFIRMED', [
             'step'           => 'cash_confirmation',
@@ -370,12 +403,11 @@ class OcrNotaController extends Controller
         ], 200);
     }
 
-
     /**
      * POST /api/v1/payment/transfer/upload
-     *
-     * ✅ FIX Bug #3: Webhook URL corrected
-     * ✅ FIX Bug #2: Fallback status uses 'flagged'
+     * 
+     * 🔔 TELEGRAM POINT #3: n8n akan callback ke PaymentVerificationController
+     *                       yang akan trigger notifikasi transfer
      */
     public function uploadTransfer(Request $request)
     {
@@ -459,9 +491,13 @@ class OcrNotaController extends Controller
             'expected_total' => $expectedTotal,
         ]);
 
-        // ── ✅ FIX Bug #3: Correct n8n webhook path ──
-        // SEBELUM: "{$n8nUrl}/payments/transfer/upload"          ← SALAH (404)
-        // SESUDAH: "{$n8nUrl}/webhook/payment/transfer/upload"   ← BENAR (sesuai n8n node path)
+        // ═══════════════════════════════════════════════════════════
+        //  🔔 TELEGRAM #3: n8n OCR bukti transfer → callback Laravel
+        //  PaymentVerificationController akan handle:
+        //  - IF MATCH → notifyPaymentComplete() ke teknisi
+        //  - IF FLAGGED → notifyFlaggedTransaction() ke SEMUA owner
+        // ═══════════════════════════════════════════════════════════
+
         $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
         if ($n8nUrl) {
             try {
@@ -477,6 +513,8 @@ class OcrNotaController extends Controller
                     'rekening_tujuan'  => $request->rekening_tujuan,
                     'nama_bank_tujuan' => $request->nama_bank_tujuan,
                     'foto_url'         => $storage->url($path),
+                    'secret'           => config('services.n8n.secret'),
+                    'callback_url'     => url('/api/payment/verify'),
                 ]);
 
                 if ($response->successful()) {
@@ -500,7 +538,6 @@ class OcrNotaController extends Controller
                     'error'     => $e->getMessage(),
                 ]);
 
-                // ── ✅ FIX Bug #2: 'flagged' instead of 'Flagged - Manual Verification Required' ──
                 $transaction->update([
                     'status' => 'flagged',
                 ]);
@@ -524,18 +561,11 @@ class OcrNotaController extends Controller
         ], 202);
     }
 
-
     /**
      * POST /api/v1/transaksi/{id}/override
-     *
-     * ✅ FIX Bug #2: Status check includes both formats
-     * ✅ FIX Bug #6: Accept field names from frontend & API
      */
     public function requestOverride(Request $request, $id)
     {
-        // ── ✅ FIX Bug #6: Accept both field name variants ──
-        // Frontend sends: override_reason (from form textarea name)
-        // API docs say:   alasan_pengecualian
         $reason = $request->override_reason ?? $request->alasan_pengecualian;
 
         if (!$reason || strlen(trim($reason)) < 5) {
@@ -548,7 +578,6 @@ class OcrNotaController extends Controller
 
         $transaction = Transaction::findOrFail($id);
 
-        // ── ✅ FIX Bug #2: Accept both 'auto-reject' (new) and 'Auto-Reject' (legacy) ──
         if (!in_array(strtolower($transaction->status), ['auto-reject', 'auto_reject'])) {
             return response()->json([
                 'success' => false,
@@ -556,7 +585,6 @@ class OcrNotaController extends Controller
             ], 400);
         }
 
-        // ── ✅ FIX Bug #2: 'waiting_payment' (frontend key) instead of 'Menunggu Pembayaran' ──
         $transaction->update([
             'status'      => 'waiting_payment',
             'description' => ($transaction->description ? $transaction->description . ' | ' : '')
@@ -580,18 +608,14 @@ class OcrNotaController extends Controller
         ]);
     }
 
-
     /**
      * POST /api/v1/transaksi/{id}/force-approve
-     *
-     * ✅ FIX Bug #2: Status check & assignment use frontend keys
-     * ✅ FIX Bug #6: Accept field names from frontend & API
+     * 
+     * 🔔 TELEGRAM POINT #4: Kirim notifikasi force approve ke owner + teknisi
      */
     public function forceApprove(Request $request, $id)
     {
         try {
-
-            // ✅ Ambil reason dari JSON body
             $reason = $request->input('force_approve_reason');
 
             if (!$reason || strlen(trim($reason)) < 5) {
@@ -601,7 +625,7 @@ class OcrNotaController extends Controller
                 ], 422);
             }
 
-            $transaction = Transaction::find($id);
+            $transaction = Transaction::with('submitter')->find($id);
 
             if (!$transaction) {
                 return response()->json([
@@ -610,7 +634,6 @@ class OcrNotaController extends Controller
                 ], 404);
             }
 
-            // ✅ Case-insensitive check
             if (!Str::contains(strtolower($transaction->status), 'flagged')) {
                 return response()->json([
                     'success' => false,
@@ -618,7 +641,6 @@ class OcrNotaController extends Controller
                 ], 400);
             }
 
-            // ✅ Update status
             $transaction->update([
                 'status'      => 'completed',
                 'description' => ($transaction->description ? $transaction->description . ' | ' : '')
@@ -627,6 +649,9 @@ class OcrNotaController extends Controller
                 'reviewed_at' => now(),
             ]);
 
+            // 🔔 Broadcast update untuk UI
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
             Log::channel('ai_autofill')->info('✅ [FORCE APPROVE] FLAGGED TRANSACTION APPROVED', [
                 'transaction_id' => $id,
                 'reviewed_by'    => auth()->id(),
@@ -634,8 +659,14 @@ class OcrNotaController extends Controller
                 'new_status'     => 'completed',
             ]);
 
-            // Update audit + Telegram
+            // Update audit
             $this->resolveDiscrepancyAudit($transaction, 'force_approved', $reason);
+            
+            // ═══════════════════════════════════════════════════════════
+            //  🔔 TELEGRAM #4: KIRIM NOTIFIKASI FORCE APPROVE
+            //  1. Ke SEMUA OWNER → konfirmasi force approve dilakukan
+            //  2. Ke TEKNISI terkait → transaksi disetujui owner
+            // ═══════════════════════════════════════════════════════════
             $this->notifyForceApprovedTelegram($transaction, $reason);
 
             return response()->json([
@@ -645,7 +676,6 @@ class OcrNotaController extends Controller
             ]);
 
         } catch (\Exception $e) {
-
             Log::error('❌ [FORCE APPROVE ERROR]', [
                 'transaction_id' => $id,
                 'error' => $e->getMessage(),
@@ -685,7 +715,6 @@ class OcrNotaController extends Controller
                     'resolution'     => $resolution,
                 ]);
             } else {
-                // Jika tidak ada audit sebelumnya (misal: dibuat langsung tanpa N8N), buat baru
                 PaymentDiscrepancyAudit::create([
                     'transaction_id'    => $transaction->id,
                     'invoice_number'    => $transaction->invoice_number,
@@ -711,14 +740,23 @@ class OcrNotaController extends Controller
     }
 
     /**
-     * Kirim notifikasi Telegram ke Owner saat Force Approve dilakukan
+     * 🔔 TELEGRAM: Kirim notifikasi Force Approve ke Owner + Teknisi
      */
     private function notifyForceApprovedTelegram(Transaction $transaction, string $reason): void
     {
         try {
             $approver = auth()->user();
-            $telegram = new TelegramBotService();
-            $telegram->notifyForceApproved($transaction->load('submitter'), $approver, $reason);
+            
+            // 1. Notifikasi ke SEMUA OWNER (konfirmasi)
+            $this->telegram->notifyForceApproved($transaction, $approver, $reason);
+            
+            // 2. Notifikasi ke TEKNISI terkait (transaksi selesai)
+            $this->telegram->notifyForceApprovedToTechnician($transaction);
+            
+            Log::channel('ai_autofill')->info('✅ [TELEGRAM] Force approve notifications sent', [
+                'transaction_id' => $transaction->id,
+                'approver_id'    => $approver->id,
+            ]);
         } catch (\Exception $e) {
             Log::channel('ai_autofill')->error('❌ [TELEGRAM] Failed to send force-approve notification', [
                 'transaction_id' => $transaction->id,

@@ -13,12 +13,21 @@ use Illuminate\Support\Facades\Log;
 use App\Models\ActivityLog;
 use App\Notifications\TransactionStatusNotification;
 use App\Notifications\OwnerApprovalNotification;
-
-
 use Illuminate\Support\Facades\Cache;
+
+// 🔔 TELEGRAM: Import TelegramBotService
+use App\Services\Telegram\TelegramBotService;
 
 class TransactionController extends Controller
 {
+    // 🔔 TELEGRAM: Inject service via constructor
+    private TelegramBotService $telegram;
+
+    public function __construct(TelegramBotService $telegram)
+    {
+        $this->telegram = $telegram;
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  INDEX — Riwayat Transaksi (Rembush + Pengajuan)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -342,9 +351,7 @@ class TransactionController extends Controller
     {
         $user = Auth::user();
         $newStatus = $request->status;
-        $transaction = Transaction::findOrFail($id);
-        $oldStatus = $transaction->status;
-
+        
         $allowedStatuses = $user->isOwner()
             ? ['pending', 'approved', 'completed', 'rejected']
             : ['approved', 'rejected'];
@@ -355,7 +362,7 @@ class TransactionController extends Controller
         ]);
 
         try {
-            $transaction = Transaction::findOrFail($id);
+            $transaction = Transaction::with('submitter')->findOrFail($id);
             $oldStatus = $transaction->status;
 
             // ─── Approval Logic ───────────────────────────
@@ -364,16 +371,46 @@ class TransactionController extends Controller
             //   - Amount >= 1jt → 'waiting_payment' (bayar) → lalu 'approved' (menunggu Owner)
             if ($newStatus === 'approved' && !$user->isOwner() && $oldStatus === 'pending') {
                 $newStatus = 'waiting_payment';
+                
+                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui, sedang diproses pembayaran
+                try {
+                    $this->telegram->notifyPaymentProcessing($transaction);
+                } catch (\Exception $e) {
+                    Log::error('[TELEGRAM] Failed to send payment processing notification', [
+                        'transaction_id' => $transaction->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             // Owner approving a pending transaction → 'waiting_payment'
             if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'pending') {
                 $newStatus = 'waiting_payment';
+                
+                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui owner, sedang diproses pembayaran
+                try {
+                    $this->telegram->notifyPaymentProcessing($transaction);
+                } catch (\Exception $e) {
+                    Log::error('[TELEGRAM] Failed to send payment processing notification', [
+                        'transaction_id' => $transaction->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             // Owner approving an already-approved (waiting owner / setelah TF >= 1jt) → completed
             if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
                 $newStatus = 'completed';
+                
+                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi selesai (disetujui owner final)
+                try {
+                    $this->telegram->notifyForceApprovedToTechnician($transaction);
+                } catch (\Exception $e) {
+                    Log::error('[TELEGRAM] Failed to send completion notification', [
+                        'transaction_id' => $transaction->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             $updateData = [
@@ -573,55 +610,20 @@ class TransactionController extends Controller
             }
         }
 
+        // Auto-cleanup stuck processing (timeout > 5 minutes)
+        Transaction::where('ai_status', 'processing')
+            ->where('updated_at', '<', now()->subMinutes(5))
+            ->update([
+                'ai_status' => 'error',
+                'description' => DB::raw('CONCAT(COALESCE(description, ""), " | AI Timeout: N8N Callback tidak diterima")')
+            ]);
+
         // Get all transactions (limited to reasonable amount for performance)
         $transactions = $query->limit(5000)->get();
 
-        // Format data for client-side search
-        $data = $transactions->map(function ($t) {
-            return [
-                'id' => $t->id,
-                'invoice_number' => $t->invoice_number,
-                'submitter_name' => $t->submitter->name ?? '-',
-                'customer' => $t->customer ?? '',
-                'vendor' => $t->vendor ?? '',
-                'type' => $t->type,
-                'type_label' => $t->type_label,
-                'category' => $t->category,
-                'category_label' => $t->type === 'pengajuan' 
-                    ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '-')
-                    : (Transaction::CATEGORIES[$t->category] ?? '-'),
-                'status' => $t->status,
-                'status_label' => $t->status_label,
-                'amount' => $t->amount,
-                'formatted_amount' => number_format($t->amount ?? 0, 0, ',', '.'),
-                'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
-                'created_at' => $t->created_at->format('d M Y'),
-                'created_at_search' => $t->created_at->format('d-m-Y Y-m-d'),
-                'ai_status' => $t->ai_status,
-                'payment_method' => $t->payment_method,
-            'specs' => $t->specs,
-            'submitter' => $t->submitter ? [
-                'id' => $t->submitter->id,
-                'name' => $t->submitter->name,
-                'rekening_bank' => $t->submitter->rekening_bank,
-                'rekening_nomor' => $t->submitter->rekening_nomor,
-                'rekening_nama' => $t->submitter->rekening_nama,
-            ] : null,
-            'upload_id' => $t->upload_id,
-                'confidence' => $t->confidence,
-                'rejection_reason' => $t->rejection_reason,
-                'effective_amount' => $t->effective_amount,
-                'purchase_reason' => $t->purchase_reason,
-                'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? '') : '',
-                // Search string untuk matching
-                'search_text' => strtolower(
-                    ($t->submitter->name ?? '') . ' ' .
-                    $t->invoice_number . ' ' .
-                    ($t->customer ?? '') . ' ' .
-                    ($t->vendor ?? '') . ' ' .
-                    $t->created_at->format('d M Y d-m-Y Y-m-d')
-                ),
-            ];
+        // Format data for client-side search menggunakan helper model (DRY)
+        $data = $transactions->map(function (Transaction $t) {
+            return $t->toSearchArray();
         });
 
         return response()->json($data);
