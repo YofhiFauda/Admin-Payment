@@ -889,6 +889,13 @@
                             </div>
                             <div>
                                 <div class="font-bold text-gray-900">${t.submitter_name || '-'}</div>
+                                ${!t.submitter_has_telegram ? `
+                                    <div class="flex items-center gap-1 mt-0.5">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
+                                            <i data-lucide="bell-off" class="w-2.5 h-2.5 mr-0.5"></i> Telegram Belum Terdaftar
+                                        </span>
+                                    </div>
+                                ` : ''}
                                 <div class="text-[11px] text-gray-400 font-medium">${t.invoice_number}</div>
                             </div>
                         </div>
@@ -986,6 +993,13 @@
                             </div>
                             <div>
                                 <h5 class="font-bold text-slate-900 text-sm">${t.submitter_name || '-'}</h5>
+                                ${!t.submitter_has_telegram ? `
+                                    <div class="flex items-center gap-1">
+                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
+                                            <i data-lucide="bell-off" class="w-2 h-2 mr-0.5"></i> Telegram Belum Terdaftar
+                                        </span>
+                                    </div>
+                                ` : ''}
                                 <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">${t.invoice_number}</p>
                             </div>
                         </div>
@@ -1776,15 +1790,34 @@
         const amount = transaction.amount;
         const submitter = transaction.submitter || {};
         const specs = transaction.specs || {};
+        const hasTelegram = transaction.submitter_has_telegram;
 
         const modal = document.getElementById('payment-modal');
         const inner = modal.querySelector('div');
+        const submitBtn = document.getElementById('btnSubmitPayment');
+        const submitBtnText = document.getElementById('btnSubmitPaymentText');
 
         // Form reset & display cleanups
         document.getElementById('payment-form').reset();
         document.getElementById('transfer-profile-alert').classList.add('hidden');
         document.getElementById('cash-fields').classList.add('hidden');
         document.getElementById('transfer-fields').classList.add('hidden');
+
+        // Reset Submit Button
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
+        submitBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
+        submitBtnText.textContent = 'Upload & Simpan';
+
+        // Check Telegram Registration
+        if (!hasTelegram) {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
+            submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
+            submitBtnText.textContent = 'Teknisi Belum Daftar Telegram';
+            
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="bell-off" class="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600"></i><div><strong class="text-rose-800">Peringatan!</strong><br><span class="text-[11px] opacity-90 text-rose-700">Teknisi belum mendaftarkan Telegram. Pembayaran tidak dapat diproses hingga teknisi mendaftar via bot.</span></div></div>`, 'error');
+        }
 
         let endpoint = '/api/v1/payment/cash/upload';
         

@@ -189,12 +189,12 @@
                             <div>
                                 <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nama Bank / E-Wallet <span class="text-red-500">*</span></label>
                                 <input type="text" name="bank_name" id="bank_name" placeholder="Misal: BCA, OVO" value="{{ old('bank_name') }}"
-                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
                             </div>
                             <div>
                                 <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Atas Nama Rekening <span class="text-red-500">*</span></label>
                                 <input type="text" name="account_name" id="account_name" placeholder="Atas nama" value="{{ old('account_name') }}"
-                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
                             </div>
                             <div>
                                 <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span class="text-red-500">*</span></label>
@@ -572,6 +572,24 @@
         paymentMethodSelect.addEventListener('change', toggleBankDetails);
         // On init
         toggleBankDetails();
+
+        // ─────────────────────────────────────────────
+        // ENFORCE UPPERCASE FOR BANK DETAILS
+        // ─────────────────────────────────────────────
+        const bankNameInput = document.getElementById('bank_name');
+        const accountNameInput = document.getElementById('account_name');
+
+        if (bankNameInput) {
+            bankNameInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        }
+
+        if (accountNameInput) {
+            accountNameInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        }
 
         // ─────────────────────────────────────────────
         // ITEMS — render

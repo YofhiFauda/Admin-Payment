@@ -266,8 +266,8 @@ class RembushController extends Controller
         $specs = [];
         if ($request->payment_method === 'transfer_penjual') {
             $specs = [
-                'bank_name' => $request->bank_name,
-                'account_name' => $request->account_name,
+                'bank_name' => strtoupper($request->bank_name),
+                'account_name' => strtoupper($request->account_name),
                 'account_number' => $request->account_number,
             ];
         }

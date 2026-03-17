@@ -333,6 +333,7 @@ class Transaction extends Model
             ] : null,
             'upload_id' => $this->upload_id,
             'confidence' => $this->confidence,
+            'submitter_has_telegram' => (bool) ($this->submitter->telegram_chat_id ?? false),
             'rejection_reason' => $this->rejection_reason,
             'effective_amount' => $this->effective_amount,
             'purchase_reason' => $this->purchase_reason,

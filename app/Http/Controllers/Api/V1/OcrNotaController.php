@@ -232,6 +232,14 @@ class OcrNotaController extends Controller
             ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
             ->firstOrFail();
 
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi
+        if (!$transaction->submitter || !$transaction->submitter->telegram_chat_id) {
+            return response()->json([
+                'success' => false,
+                'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan akun Telegram. Pembayaran CASH tidak dapat diproses sampai teknisi mendaftar via bot.',
+            ], 422);
+        }
+
         if ($transaction->status !== 'waiting_payment') {
             return response()->json([
                 'success' => false,
@@ -438,6 +446,14 @@ class OcrNotaController extends Controller
             ->orWhere('id', $request->transaksi_id)
             ->with('submitter')
             ->firstOrFail();
+
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Wajib untuk notifikasi pembayaran lunas)
+        if (!$transaction->submitter || !$transaction->submitter->telegram_chat_id) {
+            return response()->json([
+                'success' => false,
+                'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan Telegram. Bukti transfer tidak dapat diproses sampai teknisi mendaftar via bot.',
+            ], 422);
+        }
 
         if ($transaction->status !== 'waiting_payment') {
             return response()->json([
