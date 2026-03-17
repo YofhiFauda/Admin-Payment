@@ -77,13 +77,29 @@ class PaymentVerificationController extends Controller
             ], 404);
         }
 
-        Log::channel('ai_autofill')->info('📥 [PAYMENT VERIFY] Callback received from n8n', [
+        $expectedTotal = $transaction->effective_amount;
+        $actualTotal   = (float) $request->actual_total;
+        $calculatedSelisih = abs($expectedTotal - $actualTotal);
+        $tolerance     = 1000; // Standard system tolerance
+
+        // 🛡️ ZERO TRUST: Even if n8n says 'match', we override if backend finds a discrepancy
+        if ($status === 'match' && $calculatedSelisih > $tolerance) {
+            Log::channel('ai_autofill')->warning('🚨 [PAYMENT VERIFY] n8n reported MATCH but backend found DISCREPANCY', [
+                'upload_id' => $uploadId,
+                'expected'  => $expectedTotal,
+                'actual'    => $actualTotal,
+                'selisih'   => $calculatedSelisih
+            ]);
+            $status = 'flagged';
+        }
+        
+        Log::channel('ai_autofill')->info('📥 [PAYMENT VERIFY] Processing callback', [
             'upload_id'      => $uploadId,
             'transaction_id' => $transaction->id,
             'status'         => $status,
-            'actual_total'   => $request->actual_total,
-            'expected_total' => $request->expected_total,
-            'selisih'        => $request->selisih,
+            'actual_total'   => $actualTotal,
+            'expected_total' => $expectedTotal,
+            'selisih'        => $calculatedSelisih
         ]);
 
         if ($status === 'match') {
@@ -96,16 +112,18 @@ class PaymentVerificationController extends Controller
             $finalStatus = $isRequiresOwner ? 'approved' : 'completed';
 
             $transaction->update([
-                'status'       => $finalStatus,
-                'actual_total' => $request->actual_total,
-                'selisih'      => 0,
-                'confidence'   => $request->confidence ?? 100,
+                'status'         => $finalStatus,
+                'actual_total'   => $actualTotal,
+                'expected_total' => $expectedTotal,
+                'confidence'     => $request->confidence ?? 100,
+                // 'selisih' will be auto-calculated by Model Saving event
             ]);
 
             Log::channel('ai_autofill')->info('✅ [PAYMENT VERIFY] Transfer MATCH', [
                 'transaction_id' => $transaction->id,
                 'final_status'   => $finalStatus,
                 'requires_owner' => $isRequiresOwner,
+                'selisih'        => $transaction->selisih,
             ]);
 
             // ═══════════════════════════════════════════════════════════
@@ -131,7 +149,8 @@ class PaymentVerificationController extends Controller
                 'data'    => [
                     'transaction_id' => $transaction->id,
                     'status'         => $finalStatus,
-                    'actual_total'   => $request->actual_total,
+                    'actual_total'   => $actualTotal,
+                    'selisih'        => $transaction->selisih,
                 ],
             ]);
 
@@ -141,23 +160,24 @@ class PaymentVerificationController extends Controller
             // ═══════════════════════════════════════════════════════════
             
             $transaction->update([
-                'status'       => 'flagged',
-                'actual_total' => $request->actual_total,
-                'selisih'      => $request->selisih ?? 0,
-                'flag_reason'  => $request->flag_reason ?? 'Selisih nominal transfer',
-                'confidence'   => $request->confidence ?? 0,
-                'is_locked'    => true,  // Lock transaction, perlu force approve
+                'status'         => 'flagged',
+                'actual_total'   => $actualTotal,
+                'expected_total' => $expectedTotal,
+                'flag_reason'    => $request->flag_reason ?? 'Selisih nominal transfer',
+                'confidence'     => $request->confidence ?? 0,
+                'is_locked'      => true,
+                // 'selisih' will be auto-calculated by Model Saving event
             ]);
 
             // Create audit record
             PaymentDiscrepancyAudit::create([
                 'transaction_id' => $transaction->id,
                 'invoice_number' => $transaction->invoice_number,
-                'expected_total' => $request->expected_total ?? $transaction->expected_total ?? 0,
-                'actual_total'   => $request->actual_total   ?? 0,
-                'selisih'        => $request->selisih        ?? 0,
+                'expected_total' => $transaction->expected_total,
+                'actual_total'   => $transaction->actual_total,
+                'selisih'        => $transaction->selisih,
                 'ocr_result'     => 'MISMATCH',
-                'flag_reason'    => $request->flag_reason    ?? 'Selisih nominal transfer',
+                'flag_reason'    => $transaction->flag_reason,
                 'resolution'     => 'pending',
                 'submitted_by'   => $transaction->submitted_by,
                 'payment_method' => $transaction->payment_method,
@@ -165,9 +185,9 @@ class PaymentVerificationController extends Controller
 
             Log::channel('ai_autofill')->warning('⚠️ [PAYMENT VERIFY] Transfer FLAGGED', [
                 'transaction_id' => $transaction->id,
-                'expected'       => $request->expected_total,
-                'actual'         => $request->actual_total,
-                'selisih'        => $request->selisih,
+                'expected'       => $transaction->expected_total,
+                'actual'         => $transaction->actual_total,
+                'selisih'        => $transaction->selisih,
             ]);
 
             // ═══════════════════════════════════════════════════════════

@@ -39,8 +39,7 @@ class TransactionTest extends TestCase
         // Rembush uses the 'amount' field
         $transaction = new Transaction([
             'type' => 'rembush',
-            'amount' => 500000,
-            'estimated_price' => 1000000 // should be ignored
+            'amount' => 500000
         ]);
 
         $this->assertEquals(500000, $transaction->effective_amount);
@@ -49,11 +48,12 @@ class TransactionTest extends TestCase
 
     public function test_effective_amount_is_correct_for_pengajuan(): void
     {
-        // Pengajuan uses the 'estimated_price' field
+        // Pengajuan also uses the 'amount' field (which represents total estimation: price * qty)
         $transaction = new Transaction([
             'type' => 'pengajuan',
-            'amount' => 50000, // should be ignored
-            'estimated_price' => 750000
+            'amount' => 750000,
+            'estimated_price' => 75000,
+            'quantity' => 10
         ]);
 
         $this->assertEquals(750000, $transaction->effective_amount);

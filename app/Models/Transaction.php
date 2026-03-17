@@ -187,6 +187,19 @@ class Transaction extends Model
         static::created($clearCache);
         static::updated($clearCache);
         static::deleted($clearCache);
+
+        // Auto-calculate discrepancy (selisih) and ensure expected_total is set
+        static::saving(function ($transaction) {
+            // Ensure expected_total has a fallback to the approved amount
+            if (is_null($transaction->expected_total)) {
+                $transaction->expected_total = $transaction->effective_amount;
+            }
+
+            // Always recalculate selisih if actual_total is present
+            if (!is_null($transaction->actual_total)) {
+                $transaction->selisih = $transaction->expected_total - $transaction->actual_total;
+            }
+        });
     }
 
     // ─── ID Generators (delegates to IdGeneratorService) ────────────
@@ -253,14 +266,10 @@ class Transaction extends Model
 
     /**
      * Get the effective amount for display and approval logic.
-     * Rembush: uses `amount` field
-     * Pengajuan: uses `estimated_price` field
+     * Both Rembush and Pengajuan now use the `amount` field for the total value.
      */
     public function getEffectiveAmountAttribute(): int
     {
-        if ($this->isPengajuan()) {
-            return $this->estimated_price ?? 0;
-        }
         return $this->amount ?? 0;
     }
 
