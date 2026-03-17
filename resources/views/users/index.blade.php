@@ -82,6 +82,12 @@
                             $canManage = Auth::user()->isOwner() || $user->role === 'teknisi';
                         @endphp
                         <div class="flex items-center justify-end gap-1">
+                            @if($user->role === 'teknisi')
+                            <button type="button" onclick="openBankAccountsModal({{ $user->id }})" title="Kelola Rekening"
+                                class="p-2 rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                            </button>
+                            @endif
                             @if($canManage)
                             <a href="{{ route('users.edit', $user->id) }}" title="Edit"
                                class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-colors">
@@ -147,9 +153,12 @@
                     <span class="text-[10px] text-slate-400 font-medium">{{ $user->created_at->format('d M Y') }}</span>
                 </div>
                 <div class="flex items-center gap-1">
-                    @php
-                        $canManage = Auth::user()->isOwner() || $user->role === 'teknisi';
-                    @endphp
+                    @if($user->role === 'teknisi')
+                    <button type="button" onclick="openBankAccountsModal({{ $user->id }})"
+                            class="p-1.5 rounded-lg text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                        <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
+                    </button>
+                    @endif
                     @if($canManage)
                     <a href="{{ route('users.edit', $user->id) }}"
                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">

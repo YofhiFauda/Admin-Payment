@@ -209,6 +209,11 @@ class TelegramWebhookController extends Controller
             // 🔔 Broadcast update untuk UI
             broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
+            // 🔔 Notifikasi Sistem (Tercatat di halaman Notifikasi)
+            if ($user) {
+                $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'rejected'));
+            }
+
             $this->answerCallbackQuery($callbackId, '❌ Pembayaran ditolak. Silakan hubungi Admin.');
 
             $this->telegram->sendMessage($chatId,

@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use App\Models\Bank;
 
 class UserController extends Controller
 {
@@ -41,8 +40,7 @@ class UserController extends Controller
     public function create()
     {
         $availableRoles = $this->getAvailableRoles();
-        $banks = Bank::orderBy('name')->get();
-        return view('users.create', compact('availableRoles', 'banks'));
+        return view('users.create', compact('availableRoles'));
     }
 
     /**
@@ -57,9 +55,6 @@ class UserController extends Controller
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
             'role'     => ['required', Rule::in(array_keys($availableRoles))],
-            'rekening_bank'  => 'nullable|string|max:50',
-            'rekening_nama'  => 'nullable|string|max:255',
-            'rekening_nomor' => 'nullable|string|max:100',
         ], [
             'name.required'      => 'Nama wajib diisi.',
             'email.required'     => 'Email wajib diisi.',
@@ -77,9 +72,6 @@ class UserController extends Controller
             'email'    => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role'     => $validated['role'],
-            'rekening_bank'  => $validated['rekening_bank'] ?? null,
-            'rekening_nama'  => $validated['rekening_nama'] ?? null,
-            'rekening_nomor' => $validated['rekening_nomor'] ?? null,
         ]);
 
         return redirect()->route('users.index')
@@ -98,9 +90,7 @@ class UserController extends Controller
         }
 
         $availableRoles = $this->getAvailableRoles();
-        $banks = Bank::orderBy('name')->get();
-
-        return view('users.edit', compact('user', 'availableRoles', 'banks'));
+        return view('users.edit', compact('user', 'availableRoles'));
     }
 
     /**
@@ -121,9 +111,6 @@ class UserController extends Controller
             'email'    => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:6|confirmed',
             'role'     => ['required', Rule::in(array_keys($availableRoles))],
-            'rekening_bank'  => 'nullable|string|max:50',
-            'rekening_nama'  => 'nullable|string|max:255',
-            'rekening_nomor' => 'nullable|string|max:100',
         ], [
             'name.required'      => 'Nama wajib diisi.',
             'email.required'     => 'Email wajib diisi.',
@@ -138,9 +125,6 @@ class UserController extends Controller
         $user->name  = $validated['name'];
         $user->email = $validated['email'];
         $user->role  = $validated['role'];
-        $user->rekening_bank  = $validated['rekening_bank'] ?? null;
-        $user->rekening_nama  = $validated['rekening_nama'] ?? null;
-        $user->rekening_nomor = $validated['rekening_nomor'] ?? null;
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);

@@ -453,8 +453,8 @@ class TransactionController extends Controller
                 'rejection_reason' => $request->rejection_reason,
             ]);
 
-            // Notify submitter if status changed to approved, rejected, or completed
-            if (in_array($newStatus, ['approved', 'rejected', 'completed']) && $oldStatus !== $newStatus) {
+            // Notify submitter if status changed to approved, rejected, completed, or waiting_payment
+            if (in_array($newStatus, ['approved', 'rejected', 'completed', 'waiting_payment']) && $oldStatus !== $newStatus) {
                 if ($transaction->submitter) {
                     $transaction->submitter->notify(new TransactionStatusNotification($transaction, $newStatus));
                 }

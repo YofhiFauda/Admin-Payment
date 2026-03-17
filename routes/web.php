@@ -9,6 +9,7 @@ use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\Api\V1\OcrNotaController;
 
 use Illuminate\Support\Facades\Route;
@@ -120,4 +121,10 @@ Route::middleware('auth')->group(function () {
 
     // ── Search ──
     Route::get('/transactions/search-data', [TransactionController::class, 'getAllForSearch'])->name('transactions.searchData');
+
+    // ── User Bank Accounts ──
+    Route::get('/user-bank-accounts/{user_id}', [UserBankAccountController::class, 'index'])->name('user-bank-accounts.index');
+    Route::post('/user-bank-accounts', [UserBankAccountController::class, 'store'])->name('user-bank-accounts.store');
+    Route::put('/user-bank-accounts/{id}', [UserBankAccountController::class, 'update'])->name('user-bank-accounts.update');
+    Route::delete('/user-bank-accounts/{id}', [UserBankAccountController::class, 'destroy'])->name('user-bank-accounts.destroy');
 });

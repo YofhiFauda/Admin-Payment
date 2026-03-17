@@ -241,17 +241,24 @@ HTML;
      */
     public function notifyForceApproved(Transaction $transaction, User $approver, string $reason): void
     {
-        $invoiceNumber = $transaction->invoice_number;
-        $selisih       = 'Rp ' . number_format(abs($transaction->selisih ?? 0), 0, ',', '.');
-        $approverName  = $approver->name;
-        $approverRole  = ucfirst($approver->role);
-        $timestamp     = now()->format('d/m/Y H:i');
+        $invoiceNumber  = $transaction->invoice_number;
+        
+        // Format nominals
+        $totalTransaksi = 'Rp ' . number_format($transaction->effective_amount ?? 0, 0, ',', '.');
+        $jumlahTransfer = 'Rp ' . number_format($transaction->actual_total    ?? 0, 0, ',', '.');
+        $selisih        = 'Rp ' . number_format(abs($transaction->selisih   ?? 0), 0, ',', '.');
+        
+        $approverName   = $approver->name;
+        $approverRole   = ucfirst($approver->role);
+        $timestamp      = now()->format('d/m/Y H:i');
 
         $message = <<<HTML
 ✅ <b>FORCE APPROVE DILAKUKAN</b>
 
 📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-💰 <b>Selisih:</b> {$selisih}
+💵 <b>Total Transaksi:</b> {$totalTransaksi}
+💵 <b>Jumlah Transfer:</b> {$jumlahTransfer}
+💰 <b>Selisih:</b> <b>{$selisih}</b>
 ⏰ <b>Waktu:</b> {$timestamp}
 
 👤 <b>Disetujui oleh:</b> {$approverName} ({$approverRole})
@@ -305,20 +312,20 @@ HTML;
         $timestamp     = now()->format('d/m/Y H:i');
 
         $message = <<<HTML
-💰 <b>PEMBAYARAN CASH SIAP DIAMBIL</b>
+            💰 <b>PEMBAYARAN CASH SIAP DIAMBIL</b>
 
-📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-🏷️ <b>Kategori:</b> {$kategori}
-💵 <b>Nominal:</b> {$nominal}
-🏢 <b>Lokasi:</b> {$cabang}
-⏰ <b>Waktu:</b> {$timestamp}
+            📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
+            🏷️ <b>Kategori:</b> {$kategori}
+            💵 <b>Nominal:</b> {$nominal}
+            🏢 <b>Lokasi:</b> {$cabang}
+            ⏰ <b>Waktu:</b> {$timestamp}
 
-📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin
+            📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin
 
-─────────────────────────────────
-Apakah Anda sudah menerima uang ini?
-Klik tombol di bawah untuk konfirmasi.
-HTML;
+            ─────────────────────────────────
+            Apakah Anda sudah menerima uang ini?
+            Klik tombol di bawah untuk konfirmasi.
+        HTML;
 
         // Inline Keyboard dengan tombol "Terima"
         $replyMarkup = [

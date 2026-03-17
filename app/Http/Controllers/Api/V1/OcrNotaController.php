@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Str;
 use Illuminate\Support\Facades\Auth;
+use App\Models\UserBankAccount;
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -452,26 +453,33 @@ class OcrNotaController extends Controller
 
         $path = $request->file($fileInput)->store('payments/transfer', 'public');
 
-        // Auto-update Technician Profile
+        // Auto-update Technician Profile (New Implementation)
         if ($transaction->payment_method === 'transfer_teknisi' && $transaction->submitter) {
-            $user        = $transaction->submitter;
-            $needsUpdate = false;
+            $user = $transaction->submitter;
+            
+            if ($request->filled('rekening_bank') && $request->filled('rekening_nomor')) {
+                $bankName      = strtoupper($request->rekening_bank);
+                $accountNumber = $request->rekening_nomor;
+                $accountName   = strtoupper($request->rekening_nama ?? $user->name);
 
-            if ($request->filled('rekening_bank') && !$user->rekening_bank) {
-                $user->rekening_bank = $request->rekening_bank;
-                $needsUpdate = true;
-            }
-            if ($request->filled('rekening_nomor') && !$user->rekening_nomor) {
-                $user->rekening_nomor = $request->rekening_nomor;
-                $needsUpdate = true;
-            }
-            if ($request->filled('rekening_nama') && !$user->rekening_nama) {
-                $user->rekening_nama = $request->rekening_nama;
-                $needsUpdate = true;
-            }
+                // Check if this account already exists for the user
+                $exists = UserBankAccount::where('user_id', $user->id)
+                    ->where('account_number', $accountNumber)
+                    ->exists();
 
-            if ($needsUpdate) {
-                $user->save();
+                if (!$exists) {
+                    UserBankAccount::create([
+                        'user_id'        => $user->id,
+                        'bank_name'      => $bankName,
+                        'account_number' => $accountNumber,
+                        'account_name'   => $accountName,
+                    ]);
+
+                    Log::channel('ai_autofill')->info('🏦 [USER BANK] New account saved from upload', [
+                        'user_id' => $user->id,
+                        'bank'    => $bankName,
+                    ]);
+                }
             }
         }
 
@@ -651,6 +659,11 @@ class OcrNotaController extends Controller
 
             // 🔔 Broadcast update untuk UI
             broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+            // 🔔 Notifikasi Sistem untuk Teknisi
+            if ($transaction->submitter) {
+                $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'force_approved'));
+            }
 
             Log::channel('ai_autofill')->info('✅ [FORCE APPROVE] FLAGGED TRANSACTION APPROVED', [
                 'transaction_id' => $id,

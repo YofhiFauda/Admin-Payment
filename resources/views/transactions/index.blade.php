@@ -435,6 +435,15 @@
                             <div id="transfer-method-badge" class="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">TRANSFER</div>
                         </div>
 
+                        {{-- Bank Account Selection --}}
+                        <div id="saved-accounts-container" class="hidden">
+                            <label class="block text-xs font-bold text-indigo-600 mb-1.5">Pilih Rekening Tersimpan</label>
+                            <select id="saved_bank_account" onchange="autoFillBankAccount(this)" 
+                                class="w-full border-2 border-indigo-100 rounded-xl p-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all bg-indigo-50/30">
+                                <option value="">-- Pilih Rekening --</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1.5">Bank Tujuan <span class="text-red-500">*</span></label>
                             <input type="text" name="rekening_bank" id="transfer_bank" placeholder="BCA / Mandiri / GoPay"
@@ -1802,12 +1811,49 @@
             endpoint = '/api/v1/payment/transfer/upload';
             document.getElementById('transfer-fields').classList.remove('hidden');
 
+            // Fetch Saved Accounts for Technician
+            if (paymentMethod === 'transfer_teknisi') {
+                const select = document.getElementById('saved_bank_account');
+                const container = document.getElementById('saved-accounts-container');
+                select.innerHTML = '<option value="">-- Pilih Rekening --</option>';
+                container.classList.add('hidden');
+
+                fetch(`/user-bank-accounts/${submitter.id}`)
+                    .then(r => r.json())
+                    .then(accounts => {
+                        if (accounts.length > 0) {
+                            container.classList.remove('hidden');
+                            accounts.forEach(acc => {
+                                const opt = document.createElement('option');
+                                opt.value = JSON.stringify(acc);
+                                opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
+                                select.appendChild(opt);
+                            });
+                        }
+                    });
+            } else {
+                document.getElementById('saved-accounts-container').classList.add('hidden');
+            }
+
             const bankInput = document.getElementById('transfer_bank');
             const nomorInput = document.getElementById('transfer_nomor');
             const namaInput = document.getElementById('transfer_nama');
 
+            // Reset readonly state and styles first
+            [bankInput, nomorInput, namaInput].forEach(el => {
+                el.readOnly = false;
+                el.classList.remove('bg-slate-100', 'cursor-not-allowed');
+            });
+
             if (paymentMethod === 'transfer_teknisi') {
                 document.getElementById('transfer-method-badge').textContent = 'TRANSFER TEKNISI';
+
+                // Set to Read-Only as per requirement
+                [bankInput, nomorInput, namaInput].forEach(el => {
+                    el.readOnly = true;
+                    el.classList.add('bg-slate-100', 'cursor-not-allowed');
+                });
+
                 bankInput.value = submitter.rekening_bank || '';
                 nomorInput.value = submitter.rekening_nomor || '';
                 namaInput.value = submitter.rekening_nama || '';
@@ -1817,6 +1863,13 @@
                 }
             } else if (paymentMethod === 'transfer_penjual') {
                 document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
+                
+                // Set to Read-Only as per requirement
+                [bankInput, nomorInput, namaInput].forEach(el => {
+                    el.readOnly = true;
+                    el.classList.add('bg-slate-100', 'cursor-not-allowed');
+                });
+
                 bankInput.value = specs.bank_name || '';
                 nomorInput.value = specs.account_number || '';
                 namaInput.value = specs.account_name || '';
@@ -1834,6 +1887,14 @@
             inner.classList.remove('scale-95');
             inner.classList.add('scale-100');
         });
+    }
+
+    function autoFillBankAccount(select) {
+        if (!select.value) return;
+        const acc = JSON.parse(select.value);
+        document.getElementById('transfer_bank').value = acc.bank_name;
+        document.getElementById('transfer_nomor').value = acc.account_number;
+        document.getElementById('transfer_nama').value = acc.account_name;
     }
 
     function closePaymentModal() {

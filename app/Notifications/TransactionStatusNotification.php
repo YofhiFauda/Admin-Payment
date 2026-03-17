@@ -29,19 +29,25 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
             'rejected'           => 'Ditolak',
             'completed'          => 'Selesai',
             'pending_technician' => 'Pembayaran Siap',
+            'waiting_payment'    => 'Sedang Diproses',
+            'force_approved'     => 'Disetujui Owner',
             default              => ucfirst($this->status),
         };
 
-        $isSuccess = in_array($this->status, ['approved', 'completed', 'pending_technician']);
+        $isSuccess = in_array($this->status, ['approved', 'completed', 'pending_technician', 'waiting_payment', 'force_approved']);
         
         $title = match($this->status) {
             'rejected'           => "Transaksi {$this->transaction->invoice_number} ditolak",
             'pending_technician' => "💰 PEMBAYARAN CASH SIAP DIAMBIL",
+            'waiting_payment'    => "⏳ PEMBAYARAN SEDANG DIPROSES",
+            'force_approved'     => "✅ PEMBAYARAN DISETUJUI OWNER",
             default              => "Transaksi {$this->transaction->invoice_number} {$statusLabel}",
         };
 
         $message = match($this->status) {
             'pending_technician' => "Admin telah mengunggah bukti pembayaran untuk invoice #{$this->transaction->invoice_number}. Silakan ambil uang Anda.",
+            'waiting_payment'    => "Transaksi #{$this->transaction->invoice_number} sedang diproses untuk pembayaran.",
+            'force_approved'     => "Transaksi #{$this->transaction->invoice_number} telah disetujui secara manual oleh Owner.",
             default              => "Status transaksi untuk {$this->transaction->customer} telah diubah menjadi {$statusLabel}.",
         };
         
@@ -65,13 +71,15 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
             'url'     => route('transactions.show', $this->transaction->id),
             'icon'    => match($this->status) {
                 'pending_technician' => 'banknote',
-                'completed'          => 'check-circle',
+                'completed', 'force_approved' => 'check-circle',
+                'waiting_payment'    => 'clock',
                 'rejected'           => 'x-circle',
                 default              => 'info'
             },
             'color'   => match($this->status) {
                 'pending_technician' => 'amber',
-                'completed'          => 'green',
+                'completed', 'force_approved' => 'green',
+                'waiting_payment'    => 'blue',
                 'rejected'           => 'red',
                 default              => 'blue'
             },

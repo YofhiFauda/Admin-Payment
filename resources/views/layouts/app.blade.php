@@ -333,7 +333,8 @@
                         <div id="profileDropdown" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 py-4 px-4 origin-top-right z-50">
                             
                             {{-- Profile Card Component --}}
-                            <div class="profile-card">
+                            <div class="profile-card cursor-pointer hover:bg-slate-50 transition-colors rounded-xl p-2 -mx-2" 
+                                 onclick="openBankAccountsModal({{ Auth::id() }})">
                                 {{-- Avatar --}}
                                 @if(Auth::user()->avatar)
                                     <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
@@ -347,9 +348,23 @@
                                 
                                 {{-- Info --}}
                                 <div class="profile-info">
-                                    <h4 class="profile-name">{{ Auth::user()->name }}</h4>
+                                    <h4 class="profile-name group-hover:text-indigo-600 transition-colors">{{ Auth::user()->name }}</h4>
                                     <p class="profile-email">{{ Auth::user()->email }}</p>
                                 </div>
+                            </div>
+                            
+                            {{-- Manage Bank Accounts Button (Modern Style) --}}
+                            <div class="mt-3 pt-3 border-t border-slate-100">
+                                <button type="button" onclick="openBankAccountsModal({{ Auth::id() }})" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                                        <i data-lucide="credit-card" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="flex-1 text-left">
+                                        <p class="leading-none mb-1">Rekening Saya</p>
+                                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Kelola Bank & E-Wallet</p>
+                                    </div>
+                                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover:text-indigo-400 transition-colors"></i>
+                                </button>
                             </div>
                             
                             {{-- Logout Button dengan Gradient Outline --}}
@@ -504,7 +519,127 @@
             </div>
         </main>
     </div>
+    </div>
 @endif
+
+{{-- ===================== BANK ACCOUNTS MODAL (Shared for Technicians) ===================== --}}
+<div id="bankAccountsModal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeBankAccountsModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl pointer-events-auto transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90vh]" id="bankAccountsModalContent">
+            {{-- Header --}}
+            <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                        <i data-lucide="credit-card" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800 leading-tight">Daftar Rekening</h3>
+                        <p class="text-sm font-medium text-slate-500">Kelola rekening bank atau e-wallet Anda</p>
+                    </div>
+                </div>
+                <button onclick="closeBankAccountsModal()" class="w-10 h-10 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            {{-- List Section --}}
+            <div class="flex-1 overflow-y-auto px-8 py-6" id="bankAccountsListContainer">
+                <div id="bankAccountsLoading" class="flex flex-col items-center justify-center py-12">
+                    <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 text-sm font-bold text-slate-400">Memuat data...</p>
+                </div>
+                <div id="bankAccountsList" class="space-y-4 hidden">
+                    {{-- Dynamically populated --}}
+                </div>
+                <div id="bankAccountsEmpty" class="hidden flex flex-col items-center justify-center py-12 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
+                        <i data-lucide="wallet" class="w-8 h-8"></i>
+                    </div>
+                    <p class="text-slate-500 font-bold">Belum ada rekening</p>
+                    <p class="text-slate-400 text-xs mt-1">Tambahkan rekening untuk mempermudah transaksi</p>
+                </div>
+            </div>
+
+            {{-- Form Section (Hidden by default) --}}
+            <div id="bankAccountFormContainer" class="hidden px-8 py-6 border-t border-slate-100 bg-slate-50/50">
+                <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4" id="formTitle">Tambah Rekening Baru</h4>
+                <form id="bankAccountForm" onsubmit="saveBankAccount(event)" class="space-y-4">
+                    <input type="hidden" id="bank_account_id">
+                    <input type="hidden" id="target_user_id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
+                            <input type="text" id="bank_name" required placeholder="Contoh: BCA, MANDIRI, DANA" 
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
+                            <input type="text" id="account_number" required placeholder="Nomor rekening/HP"
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
+                        <input type="text" id="account_name" required placeholder="Nama pemilik rekening"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" onclick="hideBankAccountForm()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-white transition-all">
+                            Batal
+                        </button>
+                        <button type="submit" id="saveAccountBtn" class="flex-[2] px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Simpan Rekening</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Footer (Action Buttons) --}}
+            <div class="px-8 py-6 border-t border-slate-100 flex items-center justify-between shrink-0" id="modalFooter">
+                <button type="button" onclick="showBankAccountForm()" class="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl transition-all flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Tambah Rekening</span>
+                </button>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">FinanceOps Secure Storage</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Delete Reason Modal (Admin only) --}}
+<div id="deleteAccountReasonModal" class="fixed inset-0 z-[70] hidden">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeDeleteReasonModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl pointer-events-auto p-8 text-center sm:text-left">
+            <div class="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 mx-auto sm:mx-0 mb-6">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 mb-2">Konfirmasi Hapus</h3>
+            <p class="text-slate-500 font-medium mb-6">Penghapusan rekening oleh Admin/Owner memerlukan alasan penyingkatan.</p>
+            
+            <form onsubmit="confirmDeleteAccount(event)">
+                <input type="hidden" id="delete_target_id">
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 text-left">Alasan Penghapusan</label>
+                    <textarea id="delete_reason" required placeholder="Contoh: Rekening sudah tidak aktif / Salah input"
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 min-h-[100px]"></textarea>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="closeDeleteReasonModal()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 px-6 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-all">
+                        Hapus Permanen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {{-- Flash Notification (shared) --}}
 @if(session('notification'))
@@ -598,6 +733,202 @@
     window.addEventListener('beforeunload', () => {
         if(typeof NProgress !== 'undefined') NProgress.start();
     });
+
+    // ─────────────────────────────────────────────────────────
+    // BANK ACCOUNTS MANAGEMENT LOGIC
+    // ─────────────────────────────────────────────────────────
+    const bankAccountsModal = document.getElementById('bankAccountsModal');
+    const bankAccountsContent = document.getElementById('bankAccountsModalContent');
+
+    function openBankAccountsModal(userId) {
+        document.getElementById('target_user_id').value = userId;
+        bankAccountsModal.classList.remove('hidden');
+        setTimeout(() => {
+            bankAccountsContent.classList.remove('scale-95', 'opacity-0');
+            bankAccountsContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+        fetchBankAccounts(userId);
+    }
+
+    function closeBankAccountsModal() {
+        bankAccountsContent.classList.add('scale-95', 'opacity-0');
+        bankAccountsContent.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            bankAccountsModal.classList.add('hidden');
+            hideBankAccountForm();
+        }, 300);
+    }
+
+    function fetchBankAccounts(userId) {
+        const list = document.getElementById('bankAccountsList');
+        const loading = document.getElementById('bankAccountsLoading');
+        const empty = document.getElementById('bankAccountsEmpty');
+
+        list.classList.add('hidden');
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        fetch(`/user-bank-accounts/${userId}`)
+            .then(r => r.json())
+            .then(accounts => {
+                loading.classList.add('hidden');
+                list.innerHTML = '';
+
+                if (accounts.length === 0) {
+                    empty.classList.remove('hidden');
+                    return;
+                }
+
+                list.classList.remove('hidden');
+                accounts.forEach(acc => {
+                    const card = `
+                        <div class="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center transition-colors">
+                                    <i data-lucide="landmark" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-black bg-slate-800 text-white px-1.5 py-0.5 rounded uppercase tracking-widest">${acc.bank_name}</span>
+                                        <h4 class="text-sm font-black text-slate-800 tracking-tight">${acc.account_number}</h4>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-400 mt-1 uppercase">${acc.account_name}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 scale-90 sm:scale-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick='showBankAccountForm(${JSON.stringify(acc)})' class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteBankAccount(${acc.id})" class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    list.insertAdjacentHTML('beforeend', card);
+                });
+                lucide.createIcons();
+            });
+    }
+
+    function showBankAccountForm(data = null) {
+        const container = document.getElementById('bankAccountFormContainer');
+        const footer = document.getElementById('modalFooter');
+        const list = document.getElementById('bankAccountsListContainer');
+        const title = document.getElementById('formTitle');
+        const submitBtnText = document.querySelector('#saveAccountBtn span');
+
+        document.getElementById('bank_account_id').value = data ? data.id : '';
+        document.getElementById('bank_name').value = data ? data.bank_name : '';
+        document.getElementById('account_number').value = data ? data.account_number : '';
+        document.getElementById('account_name').value = data ? data.account_name : '';
+
+        title.textContent = data ? 'Edit Rekening' : 'Tambah Rekening Baru';
+        submitBtnText.textContent = data ? 'Update Rekening' : 'Simpan Rekening';
+
+        list.classList.add('hidden');
+        footer.classList.add('hidden');
+        container.classList.remove('hidden');
+    }
+
+    function hideBankAccountForm() {
+        document.getElementById('bankAccountFormContainer').classList.add('hidden');
+        document.getElementById('modalFooter').classList.remove('hidden');
+        document.getElementById('bankAccountsListContainer').classList.remove('hidden');
+        document.getElementById('bankAccountForm').reset();
+    }
+
+    function saveBankAccount(e) {
+        e.preventDefault();
+        const id = document.getElementById('bank_account_id').value;
+        const userId = document.getElementById('target_user_id').value;
+        const url = id ? `/user-bank-accounts/${id}` : '/user-bank-accounts';
+        const method = id ? 'PUT' : 'POST';
+
+        const btn = document.getElementById('saveAccountBtn');
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                bank_name: document.getElementById('bank_name').value,
+                account_number: document.getElementById('account_number').value,
+                account_name: document.getElementById('account_name').value
+            })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                hideBankAccountForm();
+                fetchBankAccounts(userId);
+            } else {
+                alert('Gagal menyimpan rekening: ' + (res.message || 'Error tidak diketahui'));
+            }
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+            lucide.createIcons();
+        });
+    }
+
+    function deleteBankAccount(id) {
+        const isAdmin = {{ Auth::user()->canManageUsers() ? 'true' : 'false' }};
+        const currentUserId = {{ Auth::id() }};
+        const targetUserId = document.getElementById('target_user_id').value;
+
+        // If admin and deleting someone else's account, ask for reason
+        if (isAdmin && currentUserId != targetUserId) {
+            document.getElementById('delete_target_id').value = id;
+            document.getElementById('deleteAccountReasonModal').classList.remove('hidden');
+        } else {
+            if (confirm('Apakah Anda yakin ingin menghapus rekening ini?')) {
+                executeDelete(id);
+            }
+        }
+    }
+
+    function closeDeleteReasonModal() {
+        document.getElementById('deleteAccountReasonModal').classList.add('hidden');
+        document.getElementById('delete_reason').value = '';
+    }
+
+    function confirmDeleteAccount(e) {
+        e.preventDefault();
+        const id = document.getElementById('delete_target_id').value;
+        const reason = document.getElementById('delete_reason').value;
+        executeDelete(id, reason);
+    }
+
+    function executeDelete(id, reason = null) {
+        const userId = document.getElementById('target_user_id').value;
+        const body = reason ? JSON.stringify({ reason }) : null;
+
+        fetch(`/user-bank-accounts/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: body
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                closeDeleteReasonModal();
+                fetchBankAccounts(userId);
+            } else {
+                alert('Gagal menghapus rekening');
+            }
+        });
+    }
 
     // ─────────────────────────────────────────────────────────
     // REAL-TIME BROADCASTING LISTENERS (LARAVEL ECHO)
@@ -708,9 +1039,15 @@
                         if (e.title.includes('CASH SIAP')) {
                             colorClasses = 'bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-orange-500/30';
                             iconName = 'banknote';
+                        } else if (e.title.toLowerCase().includes('disetujui owner') || e.title.includes('DISETUJUI OWNER')) {
+                            colorClasses = 'bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-500/30';
+                            iconName = 'check-circle';
                         } else if (e.title.toLowerCase().includes('disetujui')) {
                             colorClasses = 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-blue-500/30';
                             iconName = 'clipboard-check';
+                        } else if (e.title.toLowerCase().includes('diproses') || e.title.includes('SEDANG DIPROSES')) {
+                            colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30';
+                            iconName = 'clock';
                         } else if (e.title.toLowerCase().includes('selesai')) {
                             colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-indigo-500/30';
                             iconName = 'check-circle';
@@ -718,6 +1055,9 @@
                             colorClasses = 'bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-red-500/30';
                             iconName = 'x-circle';
                         }
+                    } else if (e.type === 'owner_approval') {
+                        colorClasses = 'bg-gradient-to-br from-purple-500 to-indigo-700 text-white shadow-lg shadow-purple-500/30';
+                        iconName = 'shield-check';
                     }
 
                     showRealtimeToast(e.title, e.message, colorClasses, iconName);

@@ -43,11 +43,7 @@ Route::prefix('v1')->group(function () {
     // Flow 3 (Transfer)
     Route::post('/payment/transfer/upload', [OcrNotaController::class, 'uploadTransfer']);
 
-    // Banks dictionary
-    Route::post('/banks', function (Illuminate\Http\Request $request) {
-        $request->validate(['name' => 'required|string|unique:banks,name']);
-        return App\Models\Bank::create($request->only('name'));
-    });
+    // Banks dictionary removed (Moved to UserBankAccount system)
 });
 
 
