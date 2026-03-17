@@ -654,19 +654,42 @@
             
             console.log('[SearchEngine] Fetching data from:', '/transactions/search-data?' + params.toString());
             
-            const response = await fetch('/transactions/search-data?' + params.toString());
+            const response = await fetch('/transactions/search-data?' + params.toString(), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             allTransactions = await response.json();
-            filteredTransactions = [...allTransactions];
+            
+            // Re-apply search filter if there is active query
+            const currentQuery = document.getElementById('instant-search').value.trim();
+            if (currentQuery) {
+                const searchTerm = currentQuery.toLowerCase();
+                const terms = searchTerm.split(/\s+/);
+                filteredTransactions = allTransactions.filter(t => 
+                    terms.every(term => t.search_text.includes(term))
+                );
+            } else {
+                filteredTransactions = [...allTransactions];
+            }
             
             console.log('[SearchEngine] Data loaded:', {
                 total: allTransactions.length,
-                filtered: filteredTransactions.length
+                filtered: filteredTransactions.length,
+                stayingOnPage: currentPage
             });
+            
+            // Adjust currentPage if out of bounds after refresh
+            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
             
             renderPage();
             updateStats();
@@ -714,7 +737,7 @@
         }
 
         // Instant search algorithm (multi-field matching)
-        function search(query) {
+        function search(query, resetPage = true) {
             if (!query || query.trim() === '') {
                 filteredTransactions = [...allTransactions];
             } else {
@@ -727,7 +750,9 @@
                 });
             }
             
-            currentPage = 1; // Reset to first page
+            if (resetPage) {
+                currentPage = 1; // Reset to first page
+            }
             renderPage();
             updateStats();
         }
@@ -1255,7 +1280,7 @@
             if (index !== -1) {
                 allTransactions[index] = transaction;
                 const query = document.getElementById('instant-search').value.trim();
-                search(query);
+                search(query, false); // Don't reset page
             } else {
                 addTransaction(transaction);
             }
@@ -1632,13 +1657,22 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({ status, _method: 'PATCH' }),
         })
         .then(r => r.json().catch(() => ({})))
         .then(data => {
-            showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0"></i><div><strong>Berhasil!</strong><br><span class="text-[11px] opacity-90">Status transaksi berhasil diperbarui.</span></div></div>`, 'success');
-            SearchEngine.init(); // Refresh grid tanpa full reload
+            if (data.success) {
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">${data.message || 'Status berhasil diperbarui.'}</span></div></div>`, 'success');
+                if (data.transaction) {
+                    SearchEngine.updateTransaction(data.transaction);
+                } else {
+                    SearchEngine.init();
+                }
+            } else {
+                throw new Error(data.message || 'Gagal memperbarui status');
+            }
         })
         .catch(err => {
             console.error(err);
@@ -1978,6 +2012,7 @@
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData // auto handles multipart if file exists
             })
@@ -1989,7 +2024,11 @@
             .then(data => {
                 closeModalFunc();
                 showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">${successMsg || data.message || 'Aksi berhasil'}</span></div></div>`, 'success');
-                SearchEngine.init(); // Refresh Grid
+                if (data.transaction) {
+                    SearchEngine.updateTransaction(data.transaction);
+                } else {
+                    SearchEngine.init();
+                }
             })
             .catch(err => {
                 console.error(err);
@@ -2043,6 +2082,7 @@
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
         })
@@ -2082,14 +2122,19 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({ status: 'rejected', rejection_reason: reason, _method: 'PATCH' }),
             })
             .then(r => r.json().catch(() => ({})))
-            .then(() => {
+            .then(data => {
                 closeRejectModal();
                 showToast(`<div class="flex items-start gap-2"><i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-600"></i><div><strong class="text-emerald-800">Berhasil!</strong><br><span class="text-[11px] opacity-90 text-emerald-700">Transaksi berhasil ditolak.</span></div></div>`, 'success');
-                SearchEngine.init();
+                if (data.transaction) {
+                    SearchEngine.updateTransaction(data.transaction);
+                } else {
+                    SearchEngine.init();
+                }
             })
             .catch(err => {
                 console.error(err);
@@ -2101,15 +2146,6 @@
             });
         });
     }
-
-    // Realtime updates (refresh grid, not full reload)
-    window.handleRealtimeTransactionUpdate = function(transaction) {
-        SearchEngine.init();
-    };
-    
-    window.handleRealtimeTransactionCreation = function(transaction) {
-        SearchEngine.init();
-    };
 
     // ═══════════════════════════════════════════════════════════════
     // REALTIME EVENT HANDLERS - IMPROVED

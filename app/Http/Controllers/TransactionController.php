@@ -501,6 +501,7 @@ class TransactionController extends Controller
                     'status'        => $newStatus,
                     'toast_type'    => $toastType,
                     'toast_message' => $toastMessage,
+                    'transaction'   => $transaction->fresh()->toSearchArray(),
                 ]);
             }
 
