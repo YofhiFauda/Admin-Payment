@@ -419,6 +419,46 @@
                     <i data-lucide="file-up" class="w-4 h-4"></i> Input Pengeluaran
                 </a>
 
+                {{-- ▼ Input Pengeluaran Lain (dropdown) - admin, atasan, owner --}}
+                @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
+                @php
+                    $isPengeluaranLain = request()->is('pengeluaran-lain/*');
+                @endphp
+                <div>
+                    <button id="pengeluaran-lain-toggle" onclick="togglePengeluaranLain()"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                        {{ $isPengeluaranLain ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-600' }}">
+                        <i data-lucide="wallet" class="w-4 h-4 flex-shrink-0"></i>
+                        <span class="flex-1 text-left">Input Pengeluaran Lain</span>
+                        <i data-lucide="chevron-down" id="pengeluaran-lain-chevron" class="w-4 h-4 transition-transform duration-200 {{ $isPengeluaranLain ? 'rotate-180' : '' }}"></i>
+                    </button>
+                    <div id="pengeluaran-lain-menu" class="mt-1 ml-4 pl-4 border-l-2 border-slate-200 space-y-1 {{ $isPengeluaranLain ? '' : 'hidden' }}">
+                        <a href="{{ route('pengeluaran-lain.bayar-hutang.index') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            {{ request()->is('pengeluaran-lain/bayar-hutang*') ? 'bg-red-50 text-red-600' : 'hover:bg-slate-100 text-slate-600' }}">
+                            <i data-lucide="credit-card" class="w-4 h-4 flex-shrink-0"></i> Bayar Hutang
+                        </a>
+                        <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            {{ request()->is('pengeluaran-lain/piutang-usaha*') ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 text-slate-600' }}">
+                            <i data-lucide="trending-up" class="w-4 h-4 flex-shrink-0"></i> Piutang Usaha
+                        </a>
+                        @if(in_array(Auth::user()->role, ['atasan', 'owner']))
+                        <a href="{{ route('pengeluaran-lain.prive.index') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            {{ request()->is('pengeluaran-lain/prive*') ? 'bg-purple-50 text-purple-600' : 'hover:bg-slate-100 text-slate-600' }}">
+                            <i data-lucide="user-check" class="w-4 h-4 flex-shrink-0"></i> Prive
+                        </a>
+                        @endif
+                        <a href="{{ route('pengeluaran-lain.gaji.index') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            {{ request()->is('pengeluaran-lain/gaji*') ? 'bg-green-50 text-green-600' : 'hover:bg-slate-100 text-slate-600' }}">
+                            <i data-lucide="banknote" class="w-4 h-4 flex-shrink-0"></i> Gaji
+                        </a>
+                    </div>
+                </div>
+                @endif
+
                 <a href="{{ route('transactions.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transactions.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
@@ -699,6 +739,14 @@
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
         document.body.style.overflow = sidebar.classList.contains('-translate-x-full') ? '' : 'hidden';
+    }
+
+    function togglePengeluaranLain() {
+        const menu    = document.getElementById('pengeluaran-lain-menu');
+        const chevron = document.getElementById('pengeluaran-lain-chevron');
+        if (!menu) return;
+        menu.classList.toggle('hidden');
+        chevron && chevron.classList.toggle('rotate-180');
     }
 
     document.addEventListener('DOMContentLoaded', () => {

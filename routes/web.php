@@ -11,6 +11,8 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\Api\V1\OcrNotaController;
+use App\Http\Controllers\OtherExpenditureController;
+use App\Http\Controllers\SalaryController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -127,4 +129,38 @@ Route::middleware('auth')->group(function () {
     Route::post('/user-bank-accounts', [UserBankAccountController::class, 'store'])->name('user-bank-accounts.store');
     Route::put('/user-bank-accounts/{id}', [UserBankAccountController::class, 'update'])->name('user-bank-accounts.update');
     Route::delete('/user-bank-accounts/{id}', [UserBankAccountController::class, 'destroy'])->name('user-bank-accounts.destroy');
+
+    // ── Input Pengeluaran Lain (admin, atasan, owner) ──
+    Route::middleware('role:admin,atasan,owner')->prefix('pengeluaran-lain')->name('pengeluaran-lain.')->group(function () {
+
+        // Bayar Hutang
+        Route::get('/bayar-hutang',        [OtherExpenditureController::class, 'index'])->name('bayar-hutang.index')->defaults('jenis', 'bayar_hutang');
+        Route::get('/bayar-hutang/create',  [OtherExpenditureController::class, 'create'])->name('bayar-hutang.create')->defaults('jenis', 'bayar_hutang');
+        Route::post('/bayar-hutang',        [OtherExpenditureController::class, 'store'])->name('bayar-hutang.store')->defaults('jenis', 'bayar_hutang');
+
+        // Piutang Usaha
+        Route::get('/piutang-usaha',        [OtherExpenditureController::class, 'index'])->name('piutang-usaha.index')->defaults('jenis', 'piutang_usaha');
+        Route::get('/piutang-usaha/create', [OtherExpenditureController::class, 'create'])->name('piutang-usaha.create')->defaults('jenis', 'piutang_usaha');
+        Route::post('/piutang-usaha',       [OtherExpenditureController::class, 'store'])->name('piutang-usaha.store')->defaults('jenis', 'piutang_usaha');
+
+        // Prive (atasan, owner ONLY — controller juga guard)
+        Route::get('/prive',        [OtherExpenditureController::class, 'index'])->name('prive.index')->defaults('jenis', 'prive');
+        Route::get('/prive/create', [OtherExpenditureController::class, 'create'])->name('prive.create')->defaults('jenis', 'prive');
+        Route::post('/prive',       [OtherExpenditureController::class, 'store'])->name('prive.store')->defaults('jenis', 'prive');
+
+        // Shared DELETE & IMAGE for Bayar Hutang / Piutang / Prive
+        Route::delete('/record/{id}',       [OtherExpenditureController::class, 'destroy'])->name('record.destroy');
+        Route::get('/record/{id}/image',    [OtherExpenditureController::class, 'image'])->name('record.image');
+
+        // Gaji
+        Route::get('/gaji',                 [SalaryController::class, 'index'])->name('gaji.index');
+        Route::get('/gaji/create',          [SalaryController::class, 'create'])->name('gaji.create');
+        Route::post('/gaji',                [SalaryController::class, 'store'])->name('gaji.store');
+        Route::get('/gaji/{id}',            [SalaryController::class, 'show'])->name('gaji.show');
+        Route::get('/gaji/{id}/edit',       [SalaryController::class, 'edit'])->name('gaji.edit');
+        Route::put('/gaji/{id}',            [SalaryController::class, 'update'])->name('gaji.update');
+        Route::post('/gaji/{id}/approve',   [SalaryController::class, 'approve'])->name('gaji.approve');
+        Route::post('/gaji/{id}/pay',       [SalaryController::class, 'pay'])->name('gaji.pay');
+        Route::delete('/gaji/{id}',         [SalaryController::class, 'destroy'])->name('gaji.destroy');
+    });
 });

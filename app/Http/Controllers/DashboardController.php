@@ -75,20 +75,45 @@ class DashboardController extends Controller
             ->sortByDesc(fn($v) => $v)
             ->take(8);
 
-        // 2b. Tren 6 bulan terakhir
-        $trendMonths = collect(range(5, 0))->map(function ($offset) use ($base) {
-            $month = now()->subMonths($offset);
-            $total = (clone $base())
-                ->whereIn('status', ['approved', 'completed'])
-                ->whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
-                ->get()
-                ->sum(fn($t) => $t->effective_amount);
-            return [
-                'label' => $month->format('M Y'),
-                'value' => $total,
+        // 2b. Tren 6 bulan terakhir per Cabang (Multi-line)
+        $trendMonthsLabels = collect(range(5, 0))->map(fn($offset) => now()->subMonths($offset)->format('Y-m'));
+        $trendLabels = $trendMonthsLabels->map(fn($m) => Carbon::createFromFormat('Y-m', $m)->format('M Y'))->values()->toArray();
+        $startDate = now()->subMonths(5)->startOfMonth();
+
+        $trendQuery = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->whereIn('transactions.status', ['approved', 'completed'])
+            ->where('transactions.created_at', '>=', $startDate);
+
+        if (!$isAdmin) {
+            $trendQuery->where('transactions.submitted_by', $userId);
+        }
+
+        $trendDataRaw = $trendQuery->select(
+                'branches.name as branch_name',
+                DB::raw('DATE_FORMAT(transactions.created_at, "%Y-%m") as month_key'),
+                DB::raw('SUM(tb.allocation_amount) as total')
+            )
+            ->groupBy('branches.name', 'month_key')
+            ->get();
+
+        $branchTrends = [];
+        foreach ($trendDataRaw as $row) {
+            $branchTrends[$row->branch_name][$row->month_key] = (float) $row->total;
+        }
+
+        $trendDatasets = [];
+        foreach ($branchTrends as $branchName => $monthlyData) {
+            $data = [];
+            foreach ($trendMonthsLabels as $monthKey) {
+                $data[] = $monthlyData[$monthKey] ?? 0;
+            }
+            $trendDatasets[] = [
+                'label' => $branchName,
+                'data' => $data,
             ];
-        });
+        }
 
         // 2c. Rembush vs Pengajuan (bulan ini, all statuses)
         $rembushTotal = (clone $thisMonth())->where('type', 'rembush')
@@ -216,7 +241,8 @@ class DashboardController extends Controller
             'rejectedCount',
             // Charts
             'byCategory',
-            'trendMonths',
+            'trendLabels',
+            'trendDatasets',
             'rembushTotal',
             'pengajuanTotal',
             'byBranch',

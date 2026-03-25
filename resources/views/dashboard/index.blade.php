@@ -52,8 +52,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ─── 2. Line Chart: Tren Bulanan ─────────────────────────────────
-    const trendLabels = @json($trendMonths->pluck('label'));
-    const trendValues = @json($trendMonths->pluck('value'));
+    const trendLabels = @json($trendLabels);
+    const trendDatasetsRaw = @json($trendDatasets);
+    
+    const chartTrendDatasets = trendDatasetsRaw.map((ds, idx) => {
+        const color = PALETTE[idx % PALETTE.length];
+        return {
+            label: ds.label,
+            data: ds.data,
+            borderColor: color,
+            backgroundColor: color + '1a',
+            borderWidth: 2,
+            pointBackgroundColor: color,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+            tension: 0.4
+        };
+    });
 
     const ctxTrend = document.getElementById('chartTrend');
     if (ctxTrend) {
@@ -61,27 +77,31 @@ document.addEventListener('DOMContentLoaded', function () {
             type: 'line',
             data: {
                 labels: trendLabels,
-                datasets: [{
-                    label: 'Total Pengeluaran',
-                    data: trendValues,
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99,102,241,0.1)',
-                    borderWidth: 2.5,
-                    pointBackgroundColor: '#6366f1',
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    fill: true,
-                    tension: 0.4
-                }]
+                datasets: chartTrendDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { size: 11 }, padding: 15 }
+                    },
                     tooltip: {
                         callbacks: {
-                            label: ctx => ' Rp ' + ctx.parsed.y.toLocaleString('id-ID')
+                            label: function(ctx) {
+                                let lbl = ctx.dataset.label || '';
+                                if (lbl) lbl += ': ';
+                                if (ctx.parsed.y !== null) {
+                                    lbl += 'Rp ' + ctx.parsed.y.toLocaleString('id-ID');
+                                }
+                                return lbl;
+                            }
                         }
                     }
                 },
