@@ -19,9 +19,14 @@ class ActivityLogController extends Controller
 
         $query = ActivityLog::with(['user', 'transaction'])->latest();
 
-        // If Admin or Atasan, only see their own logs
+        // If Admin or Atasan, only see their own logs OR logs from teknisi (e.g. Reject Payment)
         if ($user->isAdmin() || $user->isAtasan()) {
-            $query->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('user', function ($u) {
+                      $u->where('role', 'teknisi');
+                  });
+            });
         }
         // If Owner, sees everything (Admin, Atasan, Owner)
         // No extra filter needed if they see everything as requested.

@@ -540,6 +540,13 @@ class TransactionController extends Controller
 
             $transaction->delete();
 
+            \App\Models\ActivityLog::create([
+                'user_id'     => Auth::id(),
+                'action'      => 'delete',
+                'target_id'   => $invoiceNumber,
+                'description' => "Menghapus secara permanen transaksi " . $invoiceNumber,
+            ]);
+
             Log::info('Transaction deleted', [
                 'transaction_id' => $id,
                 'invoice_number' => $invoiceNumber,

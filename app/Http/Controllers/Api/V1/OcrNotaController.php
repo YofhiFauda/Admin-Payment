@@ -263,6 +263,14 @@ class OcrNotaController extends Controller
         // 🔔 Broadcast update untuk UI teknisi
         broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
+        \App\Models\ActivityLog::create([
+            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
+            'action'         => 'upload_payment',
+            'transaction_id' => $transaction->id,
+            'target_id'      => $transaction->invoice_number,
+            'description'    => "Mengunggah bukti penyerahan Cash" . ($request->catatan ? ". Catatan: " . $request->catatan : ""),
+        ]);
+
         // 🔔 Kirim notifikasi sistem ke Teknisi
         if ($transaction->submitter) {
             $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'pending_technician'));
@@ -393,6 +401,16 @@ class OcrNotaController extends Controller
         // 🔔 Broadcast update untuk UI
         broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
+        if ($request->action === 'tolak') {
+            \App\Models\ActivityLog::create([
+                'user_id'        => $request->teknisi_id,
+                'action'         => 'reject_payment',
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => "Teknisi menolak penerimaan uang Cash" . ($request->catatan ? " dengan alasan: " . $request->catatan : ""),
+            ]);
+        }
+
         Log::channel('ai_autofill')->info('✅ [KONFIRMASI CASH] TECHNICIAN CONFIRMED', [
             'step'           => 'cash_confirmation',
             'upload_id'      => $request->upload_id,
@@ -505,6 +523,14 @@ class OcrNotaController extends Controller
             'bukti_transfer' => $path,
             'status'         => 'Sedang Diverifikasi AI',
             'expected_total' => $expectedTotal,
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
+            'action'         => 'upload_payment',
+            'transaction_id' => $transaction->id,
+            'target_id'      => $transaction->invoice_number,
+            'description'    => "Mengunggah bukti Transfer. Total Transfer: Rp " . number_format($expectedTotal, 0, ',', '.'),
         ]);
 
         Log::channel('ai_autofill')->info('📤 [UPLOAD TRANSFER] PAYMENT PROOF UPLOADED', [
@@ -675,6 +701,14 @@ class OcrNotaController extends Controller
 
             // 🔔 Broadcast update untuk UI
             broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+            \App\Models\ActivityLog::create([
+                'user_id'        => auth()->id(),
+                'action'         => 'force_approve',
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => "Force Approve dari Flagged (Selisih) menjadi Selesai. Alasan: " . $reason,
+            ]);
 
             // 🔔 Notifikasi Sistem untuk Teknisi
             if ($transaction->submitter) {
