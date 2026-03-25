@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\URL::forceScheme('https');
+        // \Illuminate\Support\Facades\URL::forceScheme('https');
 
         // ─── Rate Limit: AI Autofill ────────────────────────────────
         \Illuminate\Support\Facades\RateLimiter::for('ai-auto-fill', function (\Illuminate\Http\Request $request) {

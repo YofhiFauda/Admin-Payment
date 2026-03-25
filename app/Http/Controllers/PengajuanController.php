@@ -30,7 +30,7 @@ class PengajuanController extends Controller
         }
         
         $branches = Branch::all();
-        return view('transactions.form-pengajuan', compact('filePath', 'branches'));
+        return view('transactions.form-pengajuan', compact('filePath', 'branches', 'base64', 'mime'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
