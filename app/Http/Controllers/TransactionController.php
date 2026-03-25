@@ -626,8 +626,8 @@ class TransactionController extends Controller
                 'description' => DB::raw('CONCAT(COALESCE(description, ""), " | AI Timeout: N8N Callback tidak diterima")')
             ]);
 
-        // Get all transactions (limited to reasonable amount for performance)
-        $transactions = $query->limit(5000)->get();
+        // Get all transactions (limited to a safer amount for performance)
+        $transactions = $query->limit(1500)->get();
 
         // Format data for client-side search menggunakan helper model (DRY)
         $data = $transactions->map(function (Transaction $t) {

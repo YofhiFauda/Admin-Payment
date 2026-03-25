@@ -2052,7 +2052,10 @@
     bindAjaxForm('payment-form', closePaymentModal, 'Bukti Pembayaran berhasil diunggah.');
 
     // ─── TECHNICIAN CASH CONFIRMATION ───────────────
+    let isConfirmingCash = false;
     window.confirmCashPayment = function(id, action) {
+        if (isConfirmingCash) return;
+        
         const allTx = SearchEngine.getAll();
         if (!allTx || allTx.length === 0) return;
         const t = allTx.find(x => x.id === id);
@@ -2068,6 +2071,7 @@
             catatan = prompt("Catatan (Opsional):") || '';
         }
 
+        isConfirmingCash = true;
         if(typeof NProgress !== 'undefined') NProgress.start();
 
         const formData = new FormData();
@@ -2100,6 +2104,7 @@
             showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">${err.message || 'Terjadi kesalahan sistem.'}</span></div></div>`, 'error');
         })
         .finally(() => {
+            isConfirmingCash = false;
             if(typeof NProgress !== 'undefined') NProgress.done();
         });
     }

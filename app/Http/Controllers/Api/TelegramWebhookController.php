@@ -140,6 +140,12 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
+            // 🛡️ Prevent double confirmation
+            if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
+                $this->answerCallbackQuery($callbackId, 'ℹ️ Anda sudah memberikan konfirmasi untuk transaksi ini.', false);
+                return;
+            }
+
             // Validasi user adalah teknisi yang bersangkutan
             $user = User::where('telegram_chat_id', (string)$chatId)->first();
             if (!$user || $user->id !== $transaction->submitted_by) {
@@ -188,6 +194,12 @@ class TelegramWebhookController extends Controller
             
             if (!$transaction) {
                 $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan');
+                return;
+            }
+
+            // 🛡️ Prevent double confirmation
+            if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
+                $this->answerCallbackQuery($callbackId, 'ℹ️ Anda sudah memberikan konfirmasi untuk transaksi ini.', false);
                 return;
             }
 

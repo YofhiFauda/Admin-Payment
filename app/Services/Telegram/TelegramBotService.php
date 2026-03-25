@@ -310,6 +310,11 @@ HTML;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
         $timestamp     = now()->format('d/m/Y H:i');
+        
+        $catatanText   = "";
+        if (!empty($transaction->description)) {
+            $catatanText = "\n📝 <b>Catatan:</b> {$transaction->description}\n";
+        }
 
         $message = <<<HTML
             💰 <b>PEMBAYARAN CASH SIAP DIAMBIL</b>
@@ -319,9 +324,7 @@ HTML;
             💵 <b>Nominal:</b> {$nominal}
             🏢 <b>Lokasi:</b> {$cabang}
             ⏰ <b>Waktu:</b> {$timestamp}
-
-            📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin
-
+            📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin{$catatanText}
             ─────────────────────────────────
             Apakah Anda sudah menerima uang ini?
             Klik tombol di bawah untuk konfirmasi.

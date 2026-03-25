@@ -44,8 +44,9 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
             default              => "Transaksi {$this->transaction->invoice_number} {$statusLabel}",
         };
 
+        $catatanText = $this->transaction->description ? " Catatan: {$this->transaction->description}" : "";
         $message = match($this->status) {
-            'pending_technician' => "Admin telah mengunggah bukti pembayaran untuk invoice #{$this->transaction->invoice_number}. Silakan ambil uang Anda.",
+            'pending_technician' => "Admin telah mengunggah bukti pembayaran untuk invoice #{$this->transaction->invoice_number}. Silakan ambil uang Anda.{$catatanText}",
             'waiting_payment'    => "Transaksi #{$this->transaction->invoice_number} sedang diproses untuk pembayaran.",
             'force_approved'     => "Transaksi #{$this->transaction->invoice_number} telah disetujui secara manual oleh Owner.",
             default              => "Status transaksi untuk {$this->transaction->customer} telah diubah menjadi {$statusLabel}.",

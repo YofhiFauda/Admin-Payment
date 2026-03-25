@@ -300,7 +300,9 @@ class Transaction extends Model
      */
     public function toSearchArray(): array
     {
-        $this->loadMissing(['submitter', 'reviewer', 'branches']);
+        // Hubungan (submitter, reviewer, branches) HARUS dipastikan diload sebelumnya via `with()` 
+        // untuk menghindari N+1 query yang masif. 
+        // Jangan panggil $this->loadMissing() di sini bila sedang memproses banyak data (seperti di getAllForSearch).
 
         return [
             'id' => $this->id,

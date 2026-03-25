@@ -380,6 +380,14 @@ class OcrNotaController extends Controller
             ->orWhere('id', $request->transaksi_id)
             ->firstOrFail();
 
+        // 🛡️ Prevent double-clicking / multiple confirmations
+        if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi ini sudah dikonfirmasi sebelumnya.'
+            ], 400);
+        }
+
         // Determine final status based on amount and action
         if ($request->action === 'terima') {
             $isRequiresOwner = $transaction->effective_amount >= 1000000;
