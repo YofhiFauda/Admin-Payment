@@ -366,50 +366,84 @@ class TransactionController extends Controller
             $oldStatus = $transaction->status;
 
             // ─── Approval Logic ───────────────────────────
-            // Admin/Atasan approving a pending transaction:
-            //   - Amount < 1jt  → 'waiting_payment' (bayar) → lalu 'completed'
-            //   - Amount >= 1jt → 'waiting_payment' (bayar) → lalu 'approved' (menunggu Owner)
-            if ($newStatus === 'approved' && !$user->isOwner() && $oldStatus === 'pending') {
-                $newStatus = 'waiting_payment';
-                
-                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui, sedang diproses pembayaran
-                try {
-                    $this->telegram->notifyPaymentProcessing($transaction);
-                } catch (\Exception $e) {
-                    Log::error('[TELEGRAM] Failed to send payment processing notification', [
-                        'transaction_id' => $transaction->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            if ($transaction->isPengajuan()) {
+                // PENGAJUAN LOGIC
+                // - < 1jt  → Admin/Owner approve → completed
+                // - >= 1jt → Admin approve → approved (menunggu Owner) → Owner approve → completed
+                if ($newStatus === 'approved') {
+                    if ($oldStatus === 'pending') {
+                        if ($transaction->amount < 1000000) {
+                            $newStatus = 'completed';
+                        } else {
+                            if ($user->isOwner()) {
+                                $newStatus = 'completed';
+                            } else {
+                                $newStatus = 'approved';
+                            }
+                        }
+                    } elseif ($oldStatus === 'approved') {
+                        if ($user->isOwner()) {
+                            $newStatus = 'completed';
+                        }
+                    }
 
-            // Owner approving a pending transaction → 'waiting_payment'
-            if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'pending') {
-                $newStatus = 'waiting_payment';
-                
-                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui owner, sedang diproses pembayaran
-                try {
-                    $this->telegram->notifyPaymentProcessing($transaction);
-                } catch (\Exception $e) {
-                    Log::error('[TELEGRAM] Failed to send payment processing notification', [
-                        'transaction_id' => $transaction->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                    // Send Telegram notification when completed
+                    if ($newStatus === 'completed') {
+                        try {
+                            $this->telegram->notifyForceApprovedToTechnician($transaction);
+                        } catch (\Exception $e) {
+                            Log::error('[TELEGRAM] Failed to send completion notification', [
+                                'transaction_id' => $transaction->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
                 }
-            }
+            } else {
+                // REMBUSH LOGIC
+                // Admin/Atasan approving a pending transaction → 'waiting_payment'
+                if ($newStatus === 'approved' && !$user->isOwner() && $oldStatus === 'pending') {
+                    $newStatus = 'waiting_payment';
+                    
+                    // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui, sedang diproses pembayaran
+                    try {
+                        $this->telegram->notifyPaymentProcessing($transaction);
+                    } catch (\Exception $e) {
+                        Log::error('[TELEGRAM] Failed to send payment processing notification', [
+                            'transaction_id' => $transaction->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
 
-            // Owner approving an already-approved (waiting owner / setelah TF >= 1jt) → completed
-            if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
-                $newStatus = 'completed';
-                
-                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi selesai (disetujui owner final)
-                try {
-                    $this->telegram->notifyForceApprovedToTechnician($transaction);
-                } catch (\Exception $e) {
-                    Log::error('[TELEGRAM] Failed to send completion notification', [
-                        'transaction_id' => $transaction->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                // Owner approving a pending transaction → 'waiting_payment'
+                if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'pending') {
+                    $newStatus = 'waiting_payment';
+                    
+                    // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi disetujui owner, sedang diproses pembayaran
+                    try {
+                        $this->telegram->notifyPaymentProcessing($transaction);
+                    } catch (\Exception $e) {
+                        Log::error('[TELEGRAM] Failed to send payment processing notification', [
+                            'transaction_id' => $transaction->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                // Owner approving an already-approved (waiting owner / setelah TF >= 1jt) → completed
+                if ($newStatus === 'approved' && $user->isOwner() && $oldStatus === 'approved') {
+                    $newStatus = 'completed';
+                    
+                    // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi selesai (disetujui owner final)
+                    try {
+                        $this->telegram->notifyForceApprovedToTechnician($transaction);
+                    } catch (\Exception $e) {
+                        Log::error('[TELEGRAM] Failed to send completion notification', [
+                            'transaction_id' => $transaction->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
 
@@ -636,4 +670,6 @@ class TransactionController extends Controller
 
         return response()->json($data);
     }
+
+
 }

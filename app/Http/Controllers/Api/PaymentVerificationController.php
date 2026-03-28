@@ -50,13 +50,29 @@ class PaymentVerificationController extends Controller
     {
         $request->validate([
             'upload_id'      => 'required|string',
-            'status'         => 'required|in:match,flagged',
+            'status'         => 'required|in:match,flagged,completed,mismatch,failed',
             'actual_total'   => 'nullable|numeric',
             'expected_total' => 'nullable|numeric',
             'selisih'        => 'nullable|numeric',
             'confidence'     => 'nullable|numeric',
+            'ocr_confidence' => 'nullable|numeric',  // N8N mengirim field ini
             'flag_reason'    => 'nullable|string',
         ]);
+
+        // 🔍 DEBUG: Log payload asli dari N8N untuk analisa Match/Mismatch
+        Log::channel('ai_autofill')->info('🔍 [PAYMENT VERIFY] Raw N8N Payload Received', $request->all());
+
+        // Normalisasi status: N8N kadang kirim "completed" atau "mismatch"
+        // Laravel hanya pakai "match" atau "flagged" secara internal
+        $rawStatus = $request->status;
+        if ($rawStatus === 'completed') {
+            $request->merge(['status' => 'match']);
+        } elseif ($rawStatus === 'mismatch') {
+            $request->merge(['status' => 'flagged']);
+        }
+
+        // Normalisasi confidence: N8N bisa kirim 'ocr_confidence' atau 'confidence'
+        $confidence = $request->confidence ?? $request->ocr_confidence ?? null;
 
         $uploadId = $request->upload_id;
         $status   = $request->status;
@@ -77,7 +93,7 @@ class PaymentVerificationController extends Controller
             ], 404);
         }
 
-        $expectedTotal = $transaction->effective_amount;
+        $expectedTotal = (float) $transaction->effective_amount;
         $actualTotal   = (float) $request->actual_total;
         $calculatedSelisih = abs($expectedTotal - $actualTotal);
         $tolerance     = 1000; // Standard system tolerance
@@ -115,7 +131,7 @@ class PaymentVerificationController extends Controller
                 'status'         => $finalStatus,
                 'actual_total'   => $actualTotal,
                 'expected_total' => $expectedTotal,
-                'confidence'     => $request->confidence ?? 100,
+                'confidence'     => $confidence ?? 100,
                 // 'selisih' will be auto-calculated by Model Saving event
             ]);
 
@@ -143,6 +159,9 @@ class PaymentVerificationController extends Controller
                 ]);
             }
 
+            // 🔔 Broadcast Realtime Update (Agar UI langsung terganti tanpa Refresh F5)
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment verified successfully',
@@ -164,7 +183,7 @@ class PaymentVerificationController extends Controller
                 'actual_total'   => $actualTotal,
                 'expected_total' => $expectedTotal,
                 'flag_reason'    => $request->flag_reason ?? 'Selisih nominal transfer',
-                'confidence'     => $request->confidence ?? 0,
+                'confidence'     => $confidence ?? 0,
                 'is_locked'      => true,
                 // 'selisih' will be auto-calculated by Model Saving event
             ]);
@@ -206,6 +225,9 @@ class PaymentVerificationController extends Controller
                     'error'          => $e->getMessage(),
                 ]);
             }
+
+            // 🔔 Broadcast Realtime Update (Agar UI Terminal/Status Flagged langsung muncul tanpa Refresh F5)
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             return response()->json([
                 'success' => true,

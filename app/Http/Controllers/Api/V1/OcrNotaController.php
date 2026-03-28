@@ -302,45 +302,45 @@ class OcrNotaController extends Controller
             ]);
         }
 
-        // n8n webhook (optional - jika masih ada workflow lama)
-        $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
-        if ($n8nUrl) {
-            try {
-                /** @var \Illuminate\Filesystem\FilesystemAdapter $storage */
-                $storage = Storage::disk('public');
+        // // n8n webhook (optional - jika masih ada workflow lama)
+        // $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
+        // if ($n8nUrl) {
+        //     try {
+        //         /** @var \Illuminate\Filesystem\FilesystemAdapter $storage */
+        //         $storage = Storage::disk('public');
 
-                $response = Http::timeout(30)->post("{$n8nUrl}/webhook/payment/cash/upload", [
-                    'upload_id'    => $request->upload_id,
-                    'transaksi_id' => $transaction->id,
-                    'teknisi_id'   => $request->teknisi_id,
-                    'foto_url'     => $storage->url($path),
-                    'catatan'      => $request->catatan,
-                    'secret'       => config('services.n8n.secret'),
-                    'callback_url' => url('/api/payment/verify'),
-                ]);
+        //         $response = Http::timeout(30)->post("{$n8nUrl}/webhook/payment/cash/upload", [
+        //             'upload_id'    => $request->upload_id,
+        //             'transaksi_id' => $transaction->id,
+        //             'teknisi_id'   => $request->teknisi_id,
+        //             'foto_url'     => $storage->url($path),
+        //             'catatan'      => $request->catatan,
+        //             'secret'       => config('services.n8n.secret'),
+        //             'callback_url' => url('/api/payment/verify'),
+        //         ]);
 
-                if ($response->successful()) {
-                    Log::channel('ai_autofill')->info('✅ [UPLOAD CASH] N8N WEBHOOK SUCCESS', [
-                        'step'            => 'cash_n8n_trigger',
-                        'upload_id'       => $request->upload_id,
-                        'webhook_url'     => "{$n8nUrl}/webhook/payment/cash/upload",
-                        'response_status' => $response->status(),
-                    ]);
-                } else {
-                    Log::channel('ai_autofill')->warning('⚠️ [UPLOAD CASH] N8N WEBHOOK FAILED', [
-                        'step'            => 'cash_n8n_error',
-                        'upload_id'       => $request->upload_id,
-                        'response_status' => $response->status(),
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::channel('ai_autofill')->error('❌ [UPLOAD CASH] N8N WEBHOOK EXCEPTION', [
-                    'step'      => 'cash_n8n_exception',
-                    'upload_id' => $request->upload_id,
-                    'error'     => $e->getMessage(),
-                ]);
-            }
-        }
+        //         if ($response->successful()) {
+        //             Log::channel('ai_autofill')->info('✅ [UPLOAD CASH] N8N WEBHOOK SUCCESS', [
+        //                 'step'            => 'cash_n8n_trigger',
+        //                 'upload_id'       => $request->upload_id,
+        //                 'webhook_url'     => "{$n8nUrl}/webhook/payment/cash/upload",
+        //                 'response_status' => $response->status(),
+        //             ]);
+        //         } else {
+        //             Log::channel('ai_autofill')->warning('⚠️ [UPLOAD CASH] N8N WEBHOOK FAILED', [
+        //                 'step'            => 'cash_n8n_error',
+        //                 'upload_id'       => $request->upload_id,
+        //                 'response_status' => $response->status(),
+        //             ]);
+        //         }
+        //     } catch (\Exception $e) {
+        //         Log::channel('ai_autofill')->error('❌ [UPLOAD CASH] N8N WEBHOOK EXCEPTION', [
+        //             'step'      => 'cash_n8n_exception',
+        //             'upload_id' => $request->upload_id,
+        //             'error'     => $e->getMessage(),
+        //         ]);
+        //     }
+        // }
 
         return response()->json([
             'success'       => true,
@@ -560,20 +560,27 @@ class OcrNotaController extends Controller
         if ($n8nUrl) {
             try {
                 /** @var \Illuminate\Filesystem\FilesystemAdapter $storage */
-                $storage = Storage::disk('public');
+                $storage  = Storage::disk('public');
+                $fileContents = $storage->get($path);
+                $fileName     = basename($path);
+                $mimeType     = $storage->mimeType($path) ?: 'image/jpeg';
 
-                $response = Http::timeout(30)->post("{$n8nUrl}/webhook/payment/transfer/upload", [
-                    'upload_id'        => $request->upload_id,
-                    'transaksi_id'     => $transaction->id,
-                    'expected_nominal' => $request->expected_nominal,
-                    'kode_unik'        => $request->kode_unik ?? 0,
-                    'biaya_admin'      => $request->biaya_admin ?? 0,
-                    'rekening_tujuan'  => $request->rekening_tujuan,
-                    'nama_bank_tujuan' => $request->nama_bank_tujuan,
-                    'foto_url'         => $storage->url($path),
-                    'secret'           => config('services.n8n.secret'),
-                    'callback_url'     => url('/api/payment/verify'),
-                ]);
+                // ⚠️ PENTING: N8N webhook mengharapkan binary file (multipart/form-data),
+                // bukan JSON body. Gunakan Http::attach() agar gambar terkirim sebagai binary
+                // sehingga N8N bisa membacanya via $input.first().binary.
+                $response = Http::timeout(60)
+                    ->attach('data', $fileContents, $fileName, ['Content-Type' => $mimeType])
+                    ->post("{$n8nUrl}/webhook/payment/transfer/upload", [
+                        'upload_id'        => $request->upload_id,
+                        'transaksi_id'     => $transaction->id,
+                        'expected_nominal' => $request->expected_nominal,
+                        'kode_unik'        => $request->kode_unik ?? 0,
+                        'biaya_admin'      => $request->biaya_admin ?? 0,
+                        'rekening_tujuan'  => $request->rekening_tujuan,
+                        'nama_bank_tujuan' => $request->nama_bank_tujuan,
+                        'secret'           => config('services.n8n.secret'),
+                        'callback_url'     => url('/api/payment/verify'),
+                    ]);
 
                 if ($response->successful()) {
                     Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [
@@ -581,12 +588,14 @@ class OcrNotaController extends Controller
                         'upload_id'       => $request->upload_id,
                         'webhook_url'     => "{$n8nUrl}/webhook/payment/transfer/upload",
                         'response_status' => $response->status(),
+                        'file_sent'       => $fileName,
                     ]);
                 } else {
                     Log::channel('ai_autofill')->warning('⚠️ [UPLOAD TRANSFER] N8N WEBHOOK FAILED', [
                         'step'            => 'transfer_n8n_error',
                         'upload_id'       => $request->upload_id,
                         'response_status' => $response->status(),
+                        'response_body'   => $response->body(),
                     ]);
                 }
             } catch (\Exception $e) {

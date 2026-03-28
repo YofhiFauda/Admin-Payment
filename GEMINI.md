@@ -59,6 +59,21 @@ Requires a `.env` file based on `.env.example`. Key variables include Redis conf
 3. **Layer 3:** AI Extraction (Gemini via n8n).
 4. **Layer 4:** Payment verification (Nominal comparison for transfers).
 
+## 🤖 Model Context Protocol (MCP)
+This project is configured with GitHub MCP integration for automated code reviews, issue management, and PR triage.
+
+### Local Configuration
+1. **GitHub PAT:** Generate a Personal Access Token with `read` (Metadata, Contents) and `read/write` (Issues, Pull Requests) permissions.
+2. **Environment:** Add `GITHUB_PERSONAL_ACCESS_TOKEN` to your local `.env`.
+3. **CLI Setup:** Run `/mcp list` in the Gemini CLI to verify the connection.
+
+### GitHub Actions Integration
+Workflows in `.github/workflows/` are pre-configured to use MCP. Ensure your repository has the following secrets:
+- `GEMINI_API_KEY`: Your Google AI Studio API key.
+- `GITHUB_TOKEN`: Automatically provided by Actions, or a custom PAT for higher limits.
+
+---
+
 ## 🧪 Testing Strategy
 - **Feature Tests:** Located in `tests/Feature/`. Covers authentication, transaction flows, and OCR simulation (`OcrNotaFlowTest`).
 - **Unit Tests:** Located in `tests/Unit/`. Covers standalone services like `IdGeneratorService`.

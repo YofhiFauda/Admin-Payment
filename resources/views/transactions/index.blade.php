@@ -15,48 +15,48 @@
 
 @section('content')
     {{-- Main Content Card --}}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+    <div class="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100">
         {{-- Header Toolbar --}}
-        <div class="p-5 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div class="p-3 sm:p-4 md:p-5 border-b border-gray-100 flex flex-col gap-3 md:flex-row md:gap-4 md:justify-between md:items-center">
             {{-- Search --}}
             <div class="relative w-full md:w-64 lg:w-96">
-                <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                <i data-lucide="search" class="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
                 <input type="text"
                     id="instant-search"
                     value="{{ request('search') }}"
-                    placeholder="Cari invoice, nama, vendor, tanggal..."
+                    placeholder="Cari invoice, nama, vendor..."
                     autocomplete="off"
-                    class="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-gray-400">
+                    class="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-gray-400">
                 <button type="button" id="search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 hidden p-0.5 rounded-md hover:bg-gray-200 transition-colors" title="Hapus pencarian">
                     <i data-lucide="x" class="w-3.5 h-3.5 text-gray-400"></i>
                 </button>
             </div>
 
-            {{-- Type Filter + Actions --}}
-            <div class="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+            {{-- Type Filter --}}
+            <div class="flex items-center gap-2 sm:gap-3 w-full md:w-auto overflow-x-auto scrollbar-hide">
                 @php $currentType = request('type', 'all'); @endphp
                 <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
-                    class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border
+                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
                     {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
                     Semua
                 </a>
                 <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
-                    class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border
+                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
                     {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
-                    <i data-lucide="receipt" class="w-3 h-3 inline mr-1"></i>Rembush
+                    <i data-lucide="receipt" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Rembush
                 </a>
                 <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
-                    class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border
+                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
                     {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
-                    <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-1"></i>Pengajuan
+                    <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Pengajuan
                 </a>
             </div>
         </div>
 
         {{-- Status Tabs --}}
         <div id="search-results-container">
-        <div class="px-5 pt-2 overflow-x-auto">
-            <div class="flex items-center gap-2 min-w-max border-b border-gray-100">
+        <div class="tabs-scroll-container px-3 sm:px-5 pt-1 sm:pt-2 overflow-x-auto scrollbar-hide">
+            <div class="flex items-center gap-0.5 sm:gap-1 md:gap-2 min-w-max border-b border-gray-100">
                 @php
                     $tabs = [
                         'all'       => ['label' => 'All',      'count' => $stats['count']],
@@ -73,9 +73,9 @@
 
                 @foreach($tabs as $key => $tab)
                     <a href="{{ route('transactions.index', ['status' => $key === 'all' ? null : $key, 'search' => request('search')]) }}"
-                       class="relative px-4 py-3 text-sm font-medium transition-all {{ $currentStatus === $key ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700' }}">
+                       class="relative px-2.5 sm:px-3 md:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs md:text-sm font-medium transition-all whitespace-nowrap {{ $currentStatus === $key ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700' }}">
                         {{ $tab['label'] }}
-                        <span class="ml-1 text-xs opacity-70 status-count" data-status="{{ $key }}">({{ $tab['count'] }})</span>
+                        <span class="ml-0.5 sm:ml-1 text-[10px] sm:text-xs opacity-70 status-count" data-status="{{ $key }}">({{ $tab['count'] }})</span>
                         @if($currentStatus === $key)
                             <div class="absolute bottom-0 left-0 w-full h-[2px] bg-blue-600 rounded-t-full"></div>
                         @endif
@@ -130,11 +130,11 @@
         </div>
 
         {{-- Footer / Pagination --}}
-        <div class="p-5 border-t border-gray-100 flex items-center justify-between">
-            <p class="text-xs text-gray-500 font-medium">
+        <div class="p-3 sm:p-4 md:p-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
+            <p class="text-[11px] sm:text-xs text-gray-500 font-medium order-2 sm:order-1">
                 Showing <span id="showing-from">0</span> - <span id="showing-to">0</span> of <span id="total-records">0</span> transactions
             </p>
-            <div id="pagination-container" class="flex items-center gap-2">
+            <div id="pagination-container" class="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
                 {{-- Will be populated by JavaScript --}}
             </div>
         </div>
@@ -397,9 +397,15 @@
     {{-- PAYMENT UPLOAD MODAL --}}
     <div id="payment-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300 overflow-y-auto pt-10 pb-10">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300 mt-10 mb-auto">
-            <div class="p-6">
-                <div class="flex flex-col gap-1 mb-6">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 transform scale-95 transition-all duration-300 mt-10 mb-auto">
+            
+            <div id="payment-loading" class="p-12 text-center w-full flex flex-col items-center justify-center min-h-[50vh]">
+                <div class="w-10 h-10 border-4 border-slate-200 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>
+            </div>
+
+            <div id="payment-body" class="p-6 hidden">
+                <div class="flex flex-col gap-1 mb-6 border-b border-slate-100 pb-4">
                     <div class="flex items-center gap-3">
                         <div class="p-2 bg-cyan-100 rounded-xl">
                             <i data-lucide="image" class="w-5 h-5 text-cyan-600"></i>
@@ -409,10 +415,45 @@
                             <p class="text-xs text-slate-500">Nota: <strong id="payment-modal-invoice"></strong></p>
                         </div>
                     </div>
-                    <div class="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between">
-                        <span>Tagihan:</span>
-                        <span id="payment-modal-amount" class="text-emerald-600 font-bold text-sm">Rp 0</span>
+                </div>
+
+                {{-- INSERT DETAILS HERE --}}
+                <div id="p-detail-container" class="mb-6 space-y-4 border-b border-slate-100 pb-6 hidden">
+                    <div class="flex items-center gap-2 flex-wrap" id="p-badges"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="p-fields"></div>
+                    
+                    <div id="p-items-wrap" class="hidden">
+                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Daftar Barang</label>
+                         <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                             <table class="w-full text-xs text-left">
+                                 <thead class="bg-slate-100/50 text-slate-500 font-bold uppercase tracking-wider">
+                                     <tr>
+                                         <th class="px-3 py-2">Nama Barang</th>
+                                         <th class="px-3 py-2 text-center">Qty</th>
+                                         <th class="px-3 py-2">Satuan</th>
+                                         <th class="px-3 py-2 text-right">Harga Sat.</th>
+                                         <th class="px-3 py-2 text-right">Total</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody id="p-items-tbody" class="divide-y divide-slate-100"></tbody>
+                             </table>
+                         </div>
                     </div>
+
+                    <div id="p-specs-wrap" class="hidden">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Spesifikasi Tambahan</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="p-specs"></div>
+                    </div>
+
+                    <div id="p-branches-wrap" class="hidden">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider mt-4">Pembagian Cabang</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="p-branches"></div>
+                    </div>
+                </div>
+
+                <div class="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between mb-4">
+                    <span>Tagihan Pembayaran:</span>
+                    <span id="payment-modal-amount" class="text-emerald-600 font-bold text-sm">Rp 0</span>
                 </div>
 
                 <form id="payment-form" method="POST" action="" enctype="multipart/form-data">
@@ -526,6 +567,45 @@
         #toast-container .bg-emerald-600 { border-left-color: #34d399; }
         #toast-container .bg-red-600 { border-left-color: #f87171; }
         #toast-container .bg-blue-600 { border-left-color: #60a5fa; }
+
+        /* ── Branch Tag Truncation Tooltip ── */
+        .branch-more-wrap {
+            position: relative;
+            display: inline-flex;
+        }
+        .branch-more-wrap .branch-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f8fafc;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.4;
+            padding: 8px 12px;
+            border-radius: 10px;
+            white-space: nowrap;
+            z-index: 50;
+            pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .branch-more-wrap .branch-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+        }
+        .branch-more-wrap:hover .branch-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 @endsection
 
@@ -727,11 +807,11 @@
             `).join('');
 
             container.innerHTML = Array(4).fill(`
-                <div class="p-4 md:p-5 animate-pulse bg-white border-b border-gray-50">
-                    <div class="flex justify-between items-start mb-3"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-slate-200 shrink-0"></div><div><div class="h-4 bg-slate-200 rounded w-24 mb-1.5"></div><div class="h-3 bg-slate-100 rounded w-16"></div></div></div><div class="h-5 bg-slate-100 rounded-lg w-16 border border-slate-200"></div></div>
-                    <div class="h-3 bg-slate-100 rounded w-48 mb-3"></div>
-                    <div class="h-6 bg-slate-200 rounded w-32 mb-3"></div>
-                    <div class="flex gap-2"><div class="h-8 bg-slate-100 rounded-xl w-20 border border-slate-200"></div></div>
+                <div class="p-3 sm:p-4 animate-pulse bg-white border-b border-gray-100">
+                    <div class="flex justify-between items-start gap-2 mb-2"><div class="flex items-center gap-2.5"><div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-200 shrink-0"></div><div><div class="h-3.5 bg-slate-200 rounded w-20 sm:w-24 mb-1.5"></div><div class="h-2.5 bg-slate-100 rounded w-14 sm:w-16"></div></div></div><div class="h-5 bg-slate-100 rounded-md w-14 sm:w-16 border border-slate-200"></div></div>
+                    <div class="ml-[42px] sm:ml-[48px]"><div class="h-2.5 bg-slate-100 rounded w-40 sm:w-48 mb-2"></div>
+                    <div class="h-5 bg-slate-200 rounded w-28 sm:w-32 mb-2"></div>
+                    <div class="flex gap-1.5"><div class="h-7 sm:h-8 bg-slate-100 rounded-lg w-16 sm:w-20 border border-slate-200"></div><div class="h-7 sm:h-8 bg-slate-100 rounded-lg w-14 sm:w-16 border border-slate-200"></div></div></div>
                 </div>
             `).join('');
         }
@@ -811,17 +891,20 @@
                 return;
             }
             
+            // Detect mobile viewport
+            const isMobile = window.innerWidth < 640;
             let html = '';
             
             // Previous button
             html += `<button onclick="SearchEngine.goToPage(${currentPage - 1})" 
                         ${currentPage === 1 ? 'disabled' : ''} 
-                        class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        Prev
+                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
+                        <span class="hidden sm:inline">Prev</span>
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 sm:hidden"></i>
                      </button>`;
             
-            // Page numbers (show max 5 pages)
-            const maxVisible = 5;
+            // Page numbers — fewer visible on mobile
+            const maxVisible = isMobile ? 3 : 5;
             let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
             let endPage = Math.min(totalPages, startPage + maxVisible - 1);
             
@@ -829,21 +912,46 @@
                 startPage = Math.max(1, endPage - maxVisible + 1);
             }
             
+            // Show first page + ellipsis if needed
+            if (startPage > 1) {
+                html += `<button onclick="SearchEngine.goToPage(1)" 
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">
+                            1
+                         </button>`;
+                if (startPage > 2) {
+                    html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+                }
+            }
+            
             for (let i = startPage; i <= endPage; i++) {
                 html += `<button onclick="SearchEngine.goToPage(${i})" 
-                            class="px-3 py-1.5 rounded-lg border text-sm font-medium ${i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'}">
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs sm:text-sm font-medium ${i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'}">
                             ${i}
+                         </button>`;
+            }
+            
+            // Show last page + ellipsis if needed
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+                }
+                html += `<button onclick="SearchEngine.goToPage(${totalPages})" 
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">
+                            ${totalPages}
                          </button>`;
             }
             
             // Next button
             html += `<button onclick="SearchEngine.goToPage(${currentPage + 1})" 
                         ${currentPage === totalPages ? 'disabled' : ''} 
-                        class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        Next
+                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
+                        <span class="hidden sm:inline">Next</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 sm:hidden"></i>
                      </button>`;
             
             container.innerHTML = html;
+            // Re-init icons for mobile arrow buttons
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
         }
 
         function goToPage(page) {
@@ -870,6 +978,38 @@
                 const el = document.querySelector(`.status-count[data-status="${status}"]`);
                 if (el) el.textContent = `(${count})`;
             });
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // Branch Tags Truncation — max 2 visible, rest in tooltip
+        // ═══════════════════════════════════════════════════════════════
+        function renderBranchTags(branches, maxVisible = 2) {
+            if (!branches || branches.length === 0) return '';
+
+            const icon = '<i data-lucide="git-branch" class="w-2.5 h-2.5 mr-0.5"></i>';
+
+            const visibleTags = branches.slice(0, maxVisible).map(b =>
+                `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${icon} ${b}</span>`
+            ).join('');
+
+            if (branches.length <= maxVisible) return visibleTags;
+
+            const remaining = branches.length - maxVisible;
+            const hiddenNames = branches.slice(maxVisible).join(', ');
+
+            const tooltipStyle = 'visibility:hidden;opacity:0;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;font-size:10px;font-weight:600;line-height:1.4;padding:8px 12px;border-radius:10px;white-space:nowrap;z-index:50;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+
+            const moreBadge = `
+                <span style="position:relative;display:inline-flex;"
+                      onmouseenter="this.querySelector('.branch-tip').style.visibility='visible';this.querySelector('.branch-tip').style.opacity='1';"
+                      onmouseleave="this.querySelector('.branch-tip').style.visibility='hidden';this.querySelector('.branch-tip').style.opacity='0';">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 cursor-default">
+                        +${remaining} lainnya
+                    </span>
+                    <span class="branch-tip" style="${tooltipStyle}">${hiddenNames}</span>
+                </span>`;
+
+            return visibleTags + moreBadge;
         }
 
         // Generate HTML for desktop row
@@ -922,6 +1062,11 @@
                                     </div>
                                 ` : ''}
                                 <div class="text-[11px] text-gray-400 font-medium">${t.invoice_number}</div>
+                                ${t.branches && t.branches.length > 0 ? `
+                                    <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                        ${renderBranchTags(t.branches, 2)}
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </td>
@@ -960,7 +1105,7 @@
                                     <i data-lucide="pencil" class="w-4 h-4"></i>
                                 </a>
                                 ${!isAdmin ? `
-                                    <form action="/transactions/${t.id}" method="POST" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
+                                    <form action="/transactions/${t.id}" method="POST" onsubmit="return confirm('Apakah anda yakin ingin menghapus transaksi ${t.invoice_number}?')">
                                         <input type="hidden" name="_token" value="${csrfToken}">
                                         <input type="hidden" name="_method" value="DELETE">
                                         <button type="submit" title="Hapus"
@@ -995,92 +1140,115 @@
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
-                waiting_payment: 'Menunggu Pembayaran',
-                flagged:   'Flagged (Selisih)',
-                'auto-reject': 'Auto Reject (AI)',
-                'Menunggu Konfirmasi Teknisi': 'Konfirmasi Teknisi',
+                waiting_payment: 'Menunggu Bayar',
+                flagged:   'Flagged',
+                'auto-reject': 'Auto Reject',
+                'Menunggu Konfirmasi Teknisi': 'Konfirmasi',
                 'Sedang Diverifikasi AI': 'Verifikasi AI',
-                'Ditolak Teknisi': 'Ditolak Teknisi',
+                'Ditolak Teknisi': 'Ditolak',
             };
 
             const aiBadgeHtml = generateAIBadge(t);
             const mobileActionsHtml = generateMobileActions(t);
 
+            // CRUD buttons — compact, same height as contextual actions
+            const crudButtons = `
+                <button type="button" onclick="openViewModal(${t.id})"
+                    class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                    <i data-lucide="eye" class="w-3 h-3"></i> Lihat
+                </button>
+                ${canManage ? `
+                    <a href="/transactions/${t.id}/edit"
+                        class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-amber-600 hover:border-amber-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                        <i data-lucide="pencil" class="w-3 h-3"></i> Edit
+                    </a>
+                    ${!isAdmin ? `
+                        <form action="/transactions/${t.id}" method="POST" class="inline" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
+                            <input type="hidden" name="_token" value="${csrfToken}">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <button type="submit"
+                                class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            </button>
+                        </form>
+                    ` : ''}
+                ` : ''}
+            `;
+
             return `
-                <div class="p-4 md:p-5 hover:bg-blue-50/30 transition-all duration-200 border-b border-transparent hover:border-blue-100">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="relative">
-                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 shrink-0">
-                                     ${(t.submitter_name ? t.submitter_name.charAt(0) : '?').toUpperCase()}
-                                </div>
-                                ${rowNum ? `<span class="absolute -top-1.5 -left-1.5 w-4 h-4 flex items-center justify-center text-[9px] font-bold bg-slate-200 text-slate-500 rounded-full">${rowNum}</span>` : ''}
+                <div class="tx-card px-3 sm:px-4 py-3 sm:py-3.5 border-b border-gray-100">
+
+                    {{-- Row 1: Avatar · Name/Invoice · Badges --}}
+                    <div class="flex items-start gap-2.5 mb-2">
+                        <div class="relative shrink-0 mt-0.5">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-xs font-bold text-slate-600">
+                                ${(t.submitter_name ? t.submitter_name.charAt(0) : '?').toUpperCase()}
                             </div>
-                            <div>
-                                <h5 class="font-bold text-slate-900 text-sm">${t.submitter_name || '-'}</h5>
-                                ${!t.submitter_has_telegram ? `
-                                    <div class="flex items-center gap-1">
-                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
-                                            <i data-lucide="bell-off" class="w-2 h-2 mr-0.5"></i> Telegram Belum Terdaftar
-                                        </span>
-                                    </div>
-                                ` : ''}
-                                <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">${t.invoice_number}</p>
+                            ${rowNum ? `<span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 flex items-center justify-center text-[7px] font-bold bg-slate-500 text-white rounded-full">${rowNum}</span>` : ''}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <h5 class="font-bold text-slate-800 text-[13px] leading-snug truncate">${t.submitter_name || '-'}</h5>
+                                    <p class="text-[10px] font-medium text-slate-400 truncate">${t.invoice_number}</p>
+                                </div>
+                                <div class="flex flex-col items-end gap-0.5 shrink-0">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide border ${mStatusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                                        ${mStatusLabel[t.status] || t.status}
+                                    </span>
+                                    ${aiBadgeHtml}
+                                </div>
                             </div>
                         </div>
-                        <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${mStatusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
-                            ${mStatusLabel[t.status] || t.status}
-                        </span>
-                        ${aiBadgeHtml}
                     </div>
 
-                    ${mobileActionsHtml}
+                    {{-- Row 2: Branch & Telegram badges --}}
+                    ${((t.branches && t.branches.length > 0) || !t.submitter_has_telegram) ? `
+                    <div class="flex items-center gap-1 flex-wrap mb-2 pl-10 sm:pl-11">
+                        ${!t.submitter_has_telegram ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100"><i data-lucide="bell-off" class="w-2 h-2"></i> No Telegram</span>` : ''}
+                        ${t.branches && t.branches.length > 0 ? renderBranchTags(t.branches, 2) : ''}
+                    </div>
+                    ` : ''}
 
-                    <div class="flex items-center gap-2 flex-wrap text-xs font-medium text-slate-500 mb-3 mt-2">
-                        ${t.type === 'pengajuan' 
-                            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-600"><i data-lucide="shopping-bag" class="w-2.5 h-2.5"></i> Pengajuan</span>'
-                            : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600"><i data-lucide="receipt" class="w-2.5 h-2.5"></i> Rembush</span>'}
-                        <div class="w-1 h-1 rounded-full bg-slate-300"></div>
-                        <span>${t.category_label}</span>
-                        <div class="w-1 h-1 rounded-full bg-slate-300"></div>
-                        <span>${t.created_at}</span>
+                    {{-- Row 3: Meta info (Type · Category · Date) --}}
+                    <div class="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mb-2 pl-10 sm:pl-11">
+                        ${t.type === 'pengajuan'
+                            ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-teal-600"><i data-lucide="shopping-bag" class="w-2 h-2"></i> Pengajuan</span>'
+                            : '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-600"><i data-lucide="receipt" class="w-2 h-2"></i> Rembush</span>'}
+                        <span class="text-slate-300">/</span>
+                        <span class="font-medium truncate">${t.category_label}</span>
+                        <span class="text-slate-300">/</span>
+                        <span class="font-medium">${t.created_at}</span>
                     </div>
 
-                    <div class="mb-3">
-                        <p class="font-black text-slate-900 text-lg tracking-tight">Rp ${t.formatted_amount}</p>
-                        ${t.status === 'rejected' && t.rejection_reason ? `
-                            <p class="text-xs text-red-500 mt-1.5 flex items-start gap-1.5 bg-red-50 p-2 rounded-lg border border-red-100">
-                                <i data-lucide="alert-circle" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0"></i>
-                                ${t.rejection_reason}
-                            </p>
+                    {{-- Row 4: Nominal & Primary Actions --}}
+                    <div class="flex items-center justify-between gap-2 pl-10 sm:pl-11 mb-2.5">
+                        <p class="font-black text-slate-800 text-[15px] sm:text-base tracking-tight truncate">Rp ${t.formatted_amount}</p>
+                        ${mobileActionsHtml ? `
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${mobileActionsHtml}
+                        </div>
                         ` : ''}
                     </div>
 
-                    <div class="flex items-center gap-2 mt-2">
-                        <button type="button" onclick="openViewModal(${t.id})"
-                            class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
-                            <i data-lucide="eye" class="w-3.5 h-3.5"></i> Lihat
-                        </button>
-                        ${canManage ? `
-                            <a href="/transactions/${t.id}/edit"
-                                class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-amber-600 hover:border-amber-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
-                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Edit
-                            </a>
-                            ${!isAdmin ? `
-                                <form action="/transactions/${t.id}" method="POST" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
-                                    <input type="hidden" name="_token" value="${csrfToken}">
-                                    <input type="hidden" name="_method" value="DELETE">
-                                    <button type="submit"
-                                        class="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 text-slate-600 rounded-xl hover:text-red-600 hover:border-red-300 active:scale-95 transition-all shadow-sm text-xs font-bold outline-none">
-                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus
-                                    </button>
-                                </form>
-                            ` : ''}
-                        ` : ''}
+                    ${t.status === 'rejected' && t.rejection_reason ? `
+                        <div class="mb-2.5 text-[10px] text-red-600 flex items-start gap-1.5 bg-red-50 px-2.5 py-2 rounded-lg border border-red-100 mx-0">
+                            <i data-lucide="alert-circle" class="w-3 h-3 mt-px flex-shrink-0 text-red-400"></i>
+                            <span class="line-clamp-2">${t.rejection_reason}</span>
+                        </div>
+                    ` : ''}
+
+                    {{-- Row 5: Secondary Actions --}}
+                    ${crudButtons.trim() !== '' ? `
+                    <div class="flex items-center gap-1.5 flex-wrap pl-10 sm:pl-11">
+                        ${crudButtons}
                     </div>
+                    ` : ''}
+
                 </div>
             `;
         }
+
 
         function generateAIBadge(t) {
             if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) {
@@ -1211,34 +1379,34 @@
             let extraActionHtml = '';
             if (t.status === 'auto-reject' && (canManage || isOwner)) {
                 extraActionHtml = `
-                    <button type="button" onclick="openOverrideModal(${t.id}, '${t.invoice_number}')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 hover:bg-orange-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-orange-200 hover:border-orange-600 outline-none">
-                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Request Override
+                    <button type="button" onclick="openOverrideModal(${t.id}, '${t.invoice_number}')" title="Override"
+                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-orange-200 hover:border-orange-600 outline-none">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Override</span>
                     </button>
                 `;
             } else if (t.status === 'waiting_payment' && canManage) {
                 extraActionHtml = `
-                    <button type="button" onclick="openPaymentModal(${t.id})"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
-                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Upload Bukti
+                    <button type="button" onclick="openPaymentModal(${t.id})" title="Upload Bukti"
+                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
+                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Upload Bukti</span>
                     </button>
                 `;
             } else if (t.status === 'flagged' && (canManage || isOwner)) {
                 extraActionHtml = `
-                    <button type="button" onclick="openForceApproveModal(${t.id}, '${t.invoice_number}')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
-                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Force Approve
+                    <button type="button" onclick="openForceApproveModal(${t.id}, '${t.invoice_number}')" title="Force Approve"
+                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Force Approve</span>
                     </button>
                 `;
             } else if (t.status === 'Menunggu Konfirmasi Teknisi' && userRole === 'teknisi') {
                 extraActionHtml = `
-                    <button type="button" onclick="confirmCashPayment(${t.id}, 'terima')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
-                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Terima Uang
+                    <button type="button" onclick="confirmCashPayment(${t.id}, 'terima')" title="Terima"
+                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                     </button>
-                    <button type="button" onclick="confirmCashPayment(${t.id}, 'tolak')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
-                        <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Tolak
+                    <button type="button" onclick="confirmCashPayment(${t.id}, 'tolak')" title="Tolak"
+                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
                     </button>
                 `;
             }
@@ -1246,26 +1414,21 @@
             if (!showActions && !extraActionHtml) return '';
 
             if (extraActionHtml) {
-                return `
-                    <div class="flex items-center gap-2 mt-2">
-                        ${extraActionHtml}
-                    </div>
-                `;
+                return extraActionHtml;
             }
 
             return `
-                <div class="flex items-center gap-2 mt-2">
-                    <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i> ${approveTitle}
-                    </button>
-                    <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')"
-                        class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-bold text-xs active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
-                        <i data-lucide="x" class="w-3.5 h-3.5"></i> Tolak
-                    </button>
-                </div>
+                <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
+                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-semibold text-[11px] active:scale-95 transition-all border border-emerald-200 hover:border-emerald-600 outline-none">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">${approveTitle}</span>
+                </button>
+                <button type="button" onclick="openRejectModal(${t.id}, '${t.invoice_number}')" title="Tolak"
+                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white font-semibold text-[11px] active:scale-95 transition-all border border-rose-200 hover:border-rose-600 outline-none">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Tolak</span>
+                </button>
             `;
         }
+
 
         function addTransaction(transaction) {
             if (!allTransactions.some(t => t.id === transaction.id)) {
@@ -1814,6 +1977,106 @@
     });
 
     // ─── PAYMENT MODAL ──────────────────────────
+    function renderPaymentModalDetails(d) {
+        const detailContainer = document.getElementById('p-detail-container');
+        detailContainer.classList.remove('hidden');
+
+        const statusColors = {
+            pending:   'bg-amber-50 text-amber-600 border-amber-200',
+            approved:  'bg-blue-50 text-blue-600 border-blue-200',
+            completed: 'bg-green-50 text-green-600 border-green-200',
+            rejected:  'bg-red-50 text-red-600 border-red-200',
+        };
+        const typeBg      = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100';
+        const typeIcon    = d.type === 'pengajuan' ? 'shopping-bag' : 'receipt';
+
+        document.getElementById('p-badges').innerHTML = `
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${d.status_label}</span>
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
+                <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
+            </span>`;
+
+        const fieldsEl = document.getElementById('p-fields');
+        let fieldsHtml = '';
+
+        const addField = (label, value, span2 = false) => {
+            if (value === null || value === undefined || value === '') return;
+            fieldsHtml += `
+                <div class="${span2 ? 'sm:col-span-2' : ''}">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800">${value}</div>
+                </div>`;
+        };
+
+        addField('Pengaju', d.submitter?.name || '-');
+
+        if (d.type === 'rembush') {
+            addField('Nama Vendor',       d.customer);
+            addField('Tanggal Transaksi', d.date);
+            addField('Kategori',          d.category_label);
+            addField('Metode Pencairan',  d.payment_method_label);
+            addField('Keterangan',        d.description, true);
+        } else {
+            addField('Nama Barang/Jasa',      d.customer, true);
+            addField('Vendor',                d.vendor);
+            addField('Alasan Pembelian',      d.purchase_reason_label);
+            addField('Jumlah',                d.quantity);
+            addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+        }
+
+        fieldsEl.innerHTML = fieldsHtml;
+
+        const itemsWrap  = document.getElementById('p-items-wrap');
+        const itemsTbody = document.getElementById('p-items-tbody');
+        if (d.type === 'rembush' && d.items && d.items.length > 0) {
+            itemsWrap.classList.remove('hidden');
+            itemsTbody.innerHTML = d.items.map(item => `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
+                    <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
+                    <td class="px-3 py-2">${item.unit || '-'}</td>
+                    <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price) || 0) ).toLocaleString('id-ID')}</td>
+                </tr>`).join('');
+        } else {
+            itemsWrap.classList.add('hidden');
+        }
+
+        const specsWrap = document.getElementById('p-specs-wrap');
+        const specsEl   = document.getElementById('p-specs');
+        if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v)) {
+            specsWrap.classList.remove('hidden');
+            const specLabels = { merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna' };
+            specsEl.innerHTML = Object.entries(specLabels).map(([key, label]) => `
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800">${d.specs[key] || '-'}</div>
+                </div>`).join('');
+        } else {
+            specsWrap.classList.add('hidden');
+        }
+
+        const branchesWrap = document.getElementById('p-branches-wrap');
+        const branchesEl   = document.getElementById('p-branches');
+        if (d.branches && d.branches.length > 0) {
+            branchesWrap.classList.remove('hidden');
+            branchesEl.innerHTML = d.branches.map(b => `
+                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                    <span class="text-sm font-bold text-slate-700">${b.name}</span>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-slate-500">${b.percent}%</span>
+                        <span class="text-xs text-slate-400 ml-2">(${b.amount})</span>
+                    </div>
+                </div>`).join('');
+        } else {
+            branchesWrap.classList.add('hidden');
+        }
+        
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
     function openPaymentModal(id) {
         // Find transaction from the existing memory array
         const transaction = SearchEngine.getAll().find(x => x.id === id);
@@ -1828,6 +2091,8 @@
 
         const modal = document.getElementById('payment-modal');
         const inner = modal.querySelector('div');
+        const loading = document.getElementById('payment-loading');
+        const body = document.getElementById('payment-body');
         const submitBtn = document.getElementById('btnSubmitPayment');
         const submitBtnText = document.getElementById('btnSubmitPaymentText');
 
@@ -1836,6 +2101,11 @@
         document.getElementById('transfer-profile-alert').classList.add('hidden');
         document.getElementById('cash-fields').classList.add('hidden');
         document.getElementById('transfer-fields').classList.add('hidden');
+        document.getElementById('p-detail-container').classList.add('hidden');
+
+        // Show loading, hide body
+        loading.classList.remove('hidden');
+        body.classList.add('hidden');
 
         // Reset Submit Button
         submitBtn.disabled = false;
@@ -1947,6 +2217,7 @@
 
         form.action = endpoint;
 
+        // Show modal and start loading animation
         modal.classList.remove('hidden');
         requestAnimationFrame(() => {
             modal.setAttribute('aria-hidden', 'false');
@@ -1954,6 +2225,19 @@
             inner.classList.remove('scale-95');
             inner.classList.add('scale-100');
         });
+
+        // Fetch transaction details and show form
+        fetch(`/transactions/${id}/detail-json`)
+            .then(r => r.json())
+            .then(d => {
+                renderPaymentModalDetails(d);
+                loading.classList.add('hidden');
+                body.classList.remove('hidden');
+            })
+            .catch(err => {
+                console.error(err);
+                loading.innerHTML = '<p class="text-red-500 text-sm font-bold">Gagal memuat data. Coba lagi.</p>';
+            });
     }
 
     function autoFillBankAccount(select) {

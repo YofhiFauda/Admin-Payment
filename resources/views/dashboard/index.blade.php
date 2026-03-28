@@ -374,9 +374,168 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Silent auto-refresh every 15 seconds
         setInterval(silentRefreshBranchCost, 15000);
+
+        // After grid refreshes, reload hutang amounts
+        const origSilentRefresh = silentRefreshBranchCost;
+        function wrappedRefresh() {
+            origSilentRefresh();
+            setTimeout(loadAllHutangAmounts, 800);
+        }
+        if (monthSel) monthSel.addEventListener('change', loadAllHutangAmounts);
+        if (yearSel)  yearSel.addEventListener('change', loadAllHutangAmounts);
     })();
     @endif
+
+    // ─── Hutang Rembush: Load All Amounts On Page Ready ──────────────
+    @if($isAdmin)
+    loadAllHutangAmounts();
+    @endif
 });
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// HUTANG REMBUSH MODAL
+// ═══════════════════════════════════════════════════════
+
+const hutangModal    = document.getElementById('hutang-modal');
+const hutangLoading  = document.getElementById('hutang-loading');
+const hutangBody     = document.getElementById('hutang-body');
+const hutangTbody    = document.getElementById('hutang-tbody');
+const hutangEmpty    = document.getElementById('hutang-empty');
+const hutangTotal    = document.getElementById('hutang-total-label');
+const hutangTitle    = document.getElementById('hutang-modal-title');
+const hutangSubtitle = document.getElementById('hutang-modal-subtitle');
+
+function openHutangModal(branchName) {
+    if (!hutangModal) return;
+    hutangTitle.textContent    = 'Hutang Rembush — ' + branchName;
+    hutangSubtitle.textContent = 'Memuat daftar rembush yang belum selesai...';
+
+    // Reset state
+    hutangLoading.classList.remove('hidden');
+    hutangBody.classList.add('hidden');
+    hutangEmpty.classList.add('hidden');
+
+    // Show modal
+    hutangModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    if (window.lucide) lucide.createIcons({ root: hutangModal });
+
+    fetchHutangData(branchName);
+}
+
+function closeHutangModal() {
+    if (!hutangModal) return;
+    hutangModal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// Close on backdrop click
+if (hutangModal) {
+    hutangModal.addEventListener('click', function(e) {
+        if (e.target === hutangModal) closeHutangModal();
+    });
+}
+
+// ESC to close
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && hutangModal && !hutangModal.classList.contains('hidden')) {
+        closeHutangModal();
+    }
+});
+
+async function fetchHutangData(branchName) {
+    try {
+        const url = '{{ route("dashboard.branchHutangData") }}?branch_name=' + encodeURIComponent(branchName);
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+
+        hutangLoading.classList.add('hidden');
+        hutangBody.classList.remove('hidden');
+
+        if (data.transactions.length === 0) {
+            hutangTbody.innerHTML = '';
+            hutangEmpty.classList.remove('hidden');
+            hutangTotal.textContent = 'Rp 0';
+            hutangSubtitle.textContent = 'Semua rembush sudah terselesaikan ✓';
+        } else {
+            hutangEmpty.classList.add('hidden');
+            hutangTbody.innerHTML = data.transactions.map(renderHutangRow).join('');
+            hutangTotal.textContent = data.formatted_total;
+            hutangSubtitle.textContent = data.transactions.length + ' transaksi belum selesai';
+        }
+
+        if (window.lucide) lucide.createIcons({ root: hutangModal });
+    } catch (err) {
+        hutangLoading.classList.add('hidden');
+        hutangBody.classList.remove('hidden');
+        hutangTbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-400 text-sm font-medium">Gagal memuat data</td></tr>';
+        hutangEmpty.classList.add('hidden');
+    }
+}
+
+function renderHutangRow(t) {
+    const badge = getStatusBadge(t.status);
+    return `<tr class="hover:bg-slate-50 transition-colors">
+        <td class="px-5 py-3">
+            <span class="text-xs font-bold text-slate-800">${t.invoice_number}</span>
+            <span class="block text-[10px] text-slate-400">${t.created_at}</span>
+        </td>
+        <td class="px-3 py-3 hidden sm:table-cell">
+            <span class="text-xs text-slate-600 font-medium">${t.submitter_name}</span>
+        </td>
+        <td class="px-3 py-3 hidden md:table-cell">
+            <span class="text-xs text-slate-500 truncate max-w-[120px] block">${t.category}</span>
+        </td>
+        <td class="px-3 py-3 text-right">
+            <span class="text-xs font-bold text-slate-800">${t.formatted_amount}</span>
+        </td>
+        <td class="px-5 py-3 text-center">
+            <span class="${badge.cls} inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap">
+                <span class="w-1.5 h-1.5 rounded-full ${badge.dot}"></span>
+                ${badge.label}
+            </span>
+        </td>
+    </tr>`;
+}
+
+function getStatusBadge(status) {
+    const map = {
+        'pending':            { cls: 'bg-amber-50 text-amber-700 border border-amber-200',    dot: 'bg-amber-500',    label: 'Pending' },
+        'waiting_payment':    { cls: 'bg-blue-50 text-blue-700 border border-blue-200',       dot: 'bg-blue-500',     label: 'Waiting Payment' },
+        'flagged':            { cls: 'bg-red-50 text-red-700 border border-red-200',           dot: 'bg-red-500',      label: 'Flagged' },
+        'pending_technician': { cls: 'bg-orange-50 text-orange-700 border border-orange-200', dot: 'bg-orange-500',   label: 'Siap Ambil' },
+        'approved':           { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-500', label: 'Menunggu Owner' },
+    };
+    return map[status] || { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: status };
+}
+
+// Load hutang amounts for all visible branch cards (for the badge)
+async function loadAllHutangAmounts() {
+    const buttons = document.querySelectorAll('.hutang-btn[data-branch]');
+    buttons.forEach(async (btn) => {
+        const branchName = btn.dataset.branch;
+        const amountEl = btn.querySelector('.hutang-amount');
+        if (!amountEl) return;
+        try {
+            const url = '{{ route("dashboard.branchHutangData") }}?branch_name=' + encodeURIComponent(branchName);
+            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (data.total_hutang > 0) {
+                amountEl.innerHTML = `<span class="font-black text-orange-600">${data.formatted_total}</span>`;
+                btn.classList.add('border-orange-300');
+            } else {
+                amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Lunas</span>`;
+                btn.classList.remove('border-orange-300');
+                btn.classList.add('border-slate-200', 'opacity-60');
+            }
+        } catch (e) {
+            amountEl.innerHTML = `<span class="text-slate-300 text-[10px]">—</span>`;
+        }
+    });
+}
 </script>
 @endpush
 
@@ -816,5 +975,81 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
     @endif
 
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- HUTANG REMBUSH MODAL                                              --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    <div id="hutang-modal"
+         class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+         role="dialog" aria-modal="true" aria-labelledby="hutang-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+             id="hutang-modal-box">
+
+            {{-- Header --}}
+            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-circle" class="w-4.5 h-4.5 text-orange-500"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-extrabold text-slate-900" id="hutang-modal-title">Hutang Rembush</h3>
+                    <p class="text-xs text-slate-400 font-medium" id="hutang-modal-subtitle">Transaksi rembush belum selesai</p>
+                </div>
+                <button onclick="closeHutangModal()"
+                    class="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            {{-- Loading Skeleton --}}
+            <div id="hutang-loading" class="flex-1 p-6 space-y-3">
+                @for($i = 0; $i < 4; $i++)
+                <div class="animate-pulse flex items-center gap-3">
+                    <div class="h-4 bg-slate-200 rounded w-24"></div>
+                    <div class="h-4 bg-slate-100 rounded flex-1"></div>
+                    <div class="h-4 bg-slate-200 rounded w-20"></div>
+                    <div class="h-5 bg-slate-100 rounded-full w-16"></div>
+                    <div class="h-4 bg-slate-200 rounded w-24"></div>
+                </div>
+                @endfor
+            </div>
+
+            {{-- Content --}}
+            <div id="hutang-body" class="hidden flex flex-col flex-1 min-h-0">
+                {{-- Table --}}
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white z-10">
+                            <tr class="border-b border-slate-100 bg-slate-50/80">
+                                <th class="text-left px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Invoice</th>
+                                <th class="text-left px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Pengaju</th>
+                                <th class="text-left px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">Kategori</th>
+                                <th class="text-right px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nominal</th>
+                                <th class="text-center px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hutang-tbody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                    <div id="hutang-empty" class="hidden py-16 text-center">
+                        <div class="flex flex-col items-center opacity-40">
+                            <i data-lucide="check-circle-2" class="w-12 h-12 text-emerald-400 mb-3"></i>
+                            <p class="font-bold text-slate-700">Tidak ada hutang rembush</p>
+                            <p class="text-xs text-slate-400 mt-1">Semua rembush pada cabang ini sudah terselesaikan</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer: Total + Tutup --}}
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Hutang Rembush</p>
+                        <p class="text-lg font-black text-orange-600" id="hutang-total-label">Rp 0</p>
+                    </div>
+                    <button onclick="closeHutangModal()"
+                        class="px-5 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection

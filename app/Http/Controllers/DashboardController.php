@@ -343,4 +343,50 @@ class DashboardController extends Controller
             'totalPending' => $totalPending,
         ]);
     }
+
+    /**
+     * AJAX endpoint: returns pending/unresolved rembush transactions for a branch
+     */
+    public function branchHutangData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_hutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
+        // Statuses considered as "hutang" (unresolved rembush)
+        $hutangStatuses = ['pending', 'waiting_payment', 'flagged', 'pending_technician', 'approved'];
+
+        $transactions = Transaction::with(['submitter', 'branches'])
+            ->where('type', 'rembush')
+            ->whereIn('status', $hutangStatuses)
+            ->whereHas('branches', function ($q) use ($branchName) {
+                $q->where('branches.name', $branchName);
+            })
+            ->latest()
+            ->get();
+
+        $totalHutang = $transactions->sum(fn ($t) => $t->effective_amount);
+
+        $data = $transactions->map(function ($t) {
+            return [
+                'id'               => $t->id,
+                'invoice_number'   => $t->invoice_number,
+                'submitter_name'   => $t->submitter->name ?? '-',
+                'status'           => $t->status,
+                'amount'           => $t->effective_amount,
+                'formatted_amount' => 'Rp ' . number_format($t->effective_amount, 0, ',', '.'),
+                'created_at'       => $t->created_at->format('d M Y'),
+                'category'         => Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya',
+            ];
+        });
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_hutang'    => $totalHutang,
+            'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
+        ]);
+    }
 }

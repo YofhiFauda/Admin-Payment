@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
     Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
+    Route::get('/dashboard/branch-hutang', [DashboardController::class, 'branchHutangData'])->name('dashboard.branchHutangData');
 
     // ── Shared Transaction Routes (all roles) ──────────────
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
@@ -123,6 +124,9 @@ Route::middleware('auth')->group(function () {
 
     // ── Search ──
     Route::get('/transactions/search-data', [TransactionController::class, 'getAllForSearch'])->name('transactions.searchData');
+
+    // ── Export CSV ──
+    Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
 
     // ── User Bank Accounts ──
     Route::get('/user-bank-accounts/{user_id}', [UserBankAccountController::class, 'index'])->name('user-bank-accounts.index');

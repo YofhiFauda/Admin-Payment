@@ -30,7 +30,7 @@
 | **Pengajuan Pembelian** | Pengajuan barang/jasa tanpa OCR. Mendukung upload foto pendukung dan alokasi cabang manual. |
 | **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API |
 | **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete, ≥ Rp 1.000.000 perlu approval Owner |
-| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang, dan daftar transaksi pending |
+| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending |
 | **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi |
 | **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR |
 | **Activity Log** | Pencatatan semua aktivitas pengguna (create, approve, reject, dll.) |
@@ -41,6 +41,7 @@
 | **Telegram Bot Sync** | Notifikasi real-time, konfirmasi pembayaran cash, dan alert selisih nominal langsung ke Telegram. |
 | **Real-time Monitoring** | Integrasi Laravel Reverb untuk update status OCR dan dashboard tanpa refresh. |
 | **Activity Log & Audit** | Audit trail lengkap untuk setiap aksi dan laporan kebocoran dana bulanan via PaymentDiscrepancyAudit. |
+| **Responsive UI** | Antarmuka *mobile-first* dengan tombol aksi *inline*, *truncation* tag CSS cerdas, dan modal rincian transaksi komprehensif. |
 
 
 ---
@@ -356,7 +357,7 @@ Terdapat 4 peran pengguna dengan hak akses hierarkis:
 ### 2. 📊 Dashboard (`DashboardController`)
 
 - **Statistik Transaksi**: Total transaksi, total pending, total disetujui, total ditolak
-- **Rincian Biaya per Cabang**: Breakdown biaya per cabang dengan filter bulan/tahun (AJAX)
+- **Rincian Biaya per Cabang**: Breakdown biaya per cabang dengan filter bulan/tahun (AJAX) dan fitur interaktif **Hutang Rembush** (menampilkan list transaksi pending/waiting payment per cabang).
 - **Daftar Transaksi Pending**: Tabel transaksi yang menunggu approval (AJAX refresh)
 
 ### 3. 💰 Transaksi Rembush (`RembushController`)
@@ -455,6 +456,7 @@ Alur pengajuan tanpa OCR:
 | `GET` | `/dashboard` | `DashboardController@index` | Auth |
 | `GET` | `/dashboard/branch-cost-data` | `DashboardController@branchCostData` | Auth |
 | `GET` | `/dashboard/pending-list-data` | `DashboardController@pendingListData` | Auth |
+| `GET` | `/dashboard/branch-hutang` | `DashboardController@branchHutangData` | Auth |
 | `GET` | `/transactions` | `TransactionController@index` | Auth |
 | `GET` | `/transactions/{id}/detail` | `TransactionController@show` | Auth |
 | `GET` | `/transactions/{id}/detail-json` | `TransactionController@detailJson` | Auth |

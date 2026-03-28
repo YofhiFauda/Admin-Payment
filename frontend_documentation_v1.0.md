@@ -59,10 +59,13 @@ Sistem menggunakan gradien modern untuk elemen premium:
 ### 3.1 Layout Responsif
 - **Role Teknisi**: Sidebar minimalis atau top-nav untuk kemudahan upload di mobile.
 - **Role Admin/Owner**: Sidebar lengkap dengan navigasi master data dan monitoring.
+- **Daftar Transaksi**: Menggunakan layout *mobile-first* yang efisien. Tombol aksi utama (Approve, Reject, Force Approve) diletakkan sejajar dengan nominal agar mempermudah evaluasi cepat. Aksi sekunder (View, Edit, Delete) diletakkan pada baris terpisah. Selain itu, tag cabang menggunakan sistem *truncation* otomatis (menampilkan maksimal 2 tag, sisanya dikelompokkan dalam indikator "+N lainnya" dengan *pure CSS tooltip*).
 
 ### 3.2 Modal & Overlay
 - **Loading Overlay**: Muncul saat user upload nota dan menunggu polling OCR selesai.
 - **Choice Modal**: Modal awal saat memilih antara "Rembush (OCR)" atau "Pengajuan (Manual)".
+- **Payment Modal**: Modal upload bukti bayar (Transfer/Cash) menampilkan rincian komprehensif transaksi secara *inline* (termasuk item, spesifikasi, dan pembagian cabang), memudahkan admin melakukan *cross-check* sebelum pembayaran.
+- **Hutang Rembush Modal**: Modal interaktif di Dashboard pada bagian Rincian Biaya Cabang. Memungkinkan admin melihat daftar transaksi yang berstatus `pending`, `waiting payment`, atau `flagged` khusus untuk cabang tersebut hanya dengan satu klik.
 
 ---
 

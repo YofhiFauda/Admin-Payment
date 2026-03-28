@@ -221,12 +221,30 @@ class Transaction extends Model
     // ─── Relationships ────────────────────────────────
     public function submitter()
     {
-        return $this->belongsTo(User::class, 'submitted_by');
+        return $this->belongsTo(User::class, 'submitted_by')
+                    ->withDefault([
+                        'id'              => null,
+                        'name'            => '[Akun Dihapus]',
+                        'telegram_chat_id'=> null,
+                        'rekening_bank'   => null,
+                        'rekening_nomor'  => null,
+                        'rekening_nama'   => null,
+                    ]);
     }
 
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function konfirmator()
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_by')
+                    ->withDefault([
+                        'id'   => null,
+                        'name' => null,
+                        'role' => null,
+                    ]);
     }
 
     public function branches()
@@ -326,13 +344,16 @@ class Transaction extends Model
             'ai_status' => $this->ai_status,
             'payment_method' => $this->payment_method,
             'specs' => $this->specs,
-            'submitter' => $this->submitter ? [
+            'submitter' => $this->submitted_by ? [
                 'id' => $this->submitter->id,
                 'name' => $this->submitter->name,
                 'rekening_bank' => $this->submitter->rekening_bank,
                 'rekening_nomor' => $this->submitter->rekening_nomor,
                 'rekening_nama' => $this->submitter->rekening_nama,
             ] : null,
+            'branches' => $this->branches->map(function($b) {
+                return $b->name;
+            })->toArray(),
             'upload_id' => $this->upload_id,
             'confidence' => $this->confidence,
             'submitter_has_telegram' => (bool) ($this->submitter->telegram_chat_id ?? false),

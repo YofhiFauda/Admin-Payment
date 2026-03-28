@@ -1,0 +1,7 @@
+
+   PASS  Tests\Feature\PaymentVerificationTest
+  Γ£ô n8n webhook matches transfer and sends telegram notification        18.68s  
+
+  Tests:    1 passed (4 assertions)
+  Duration: 19.82s
+

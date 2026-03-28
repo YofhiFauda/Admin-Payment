@@ -35,8 +35,29 @@
         </table>
     </div>
 
-    {{-- Card Footer: Grand Total --}}
-    <div class="px-5 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-t border-indigo-100 mt-auto">
+    {{-- Card Footer: Hutang Rembush + Grand Total --}}
+    <div class="px-5 pt-3 pb-1 border-t border-orange-100 bg-orange-50/40 mt-auto">
+        <button
+            onclick="openHutangModal('{{ addslashes($branch->name) }}')"
+            class="hutang-btn w-full flex items-center justify-between rounded-xl px-3 py-2 mb-3 border border-orange-200 bg-white hover:bg-orange-50 transition-all group"
+            data-branch="{{ $branch->name }}"
+            title="Lihat transaksi rembush yang belum selesai"
+        >
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-orange-100 flex items-center justify-center shrink-0 group-hover:bg-orange-200 transition-colors">
+                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-orange-500"></i>
+                </div>
+                <span class="text-[11px] font-bold text-orange-700 uppercase tracking-wide">Hutang Rembush</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="hutang-amount text-xs font-black text-orange-600" data-branch="{{ $branch->name }}">
+                    <span class="inline-block w-3 h-3 rounded-full bg-orange-200 animate-pulse"></span>
+                </span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-orange-400 group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+        </button>
+    </div>
+    <div class="px-5 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-t border-indigo-100">
         <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Transaksi</span>
             <span class="text-base font-black text-indigo-700">

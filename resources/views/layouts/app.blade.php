@@ -273,7 +273,7 @@
                         <a href="{{ route('transactions.create') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.create') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
-                            <i data-lucide="file-up" class="w-4 h-4"></i> Input Pengeluaran
+                            <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
                         </a>
                         <a href="{{ route('transactions.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
@@ -383,7 +383,8 @@
     </nav>
 
     {{-- Konten Halaman --}}
-    <main class="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-1 page-enter">
+    {{-- <main class="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-1 page-enter"> --}}
+    <main class="w-full mx-auto px-1 sm:px-2 py-1 page-enter">
         @yield('content')
     </main>
 
@@ -552,7 +553,8 @@
                 </header>
             @endif
 
-            <div class="flex-1 overflow-y-auto lg:p-6">
+            {{-- <div class="flex-1 overflow-y-auto lg:p-6"> --}}
+            <div class="flex-1 overflow-y-auto">
                 <div class="max-w-8xl mx-auto">
                     @yield('content')
                 </div>

@@ -153,21 +153,32 @@ class TelegramBotService
      */
     public function notifyFlaggedTransaction(Transaction $transaction): void
     {
+        // Load relasi yang dibutuhkan jika belum ter-load
+        $transaction->loadMissing(['submitter', 'konfirmator']);
+
         $invoiceNumber  = $transaction->invoice_number;
-        $expectedTotal  = 'Rp ' . number_format($transaction->estimated_price ?? 0, 0, ',', '.');
-        $actualTotal    = 'Rp ' . number_format($transaction->amount ?? 0, 0, ',', '.');
-        $selisih        = 'Rp ' . number_format(abs($transaction->selisih   ?? 0), 0, ',', '.');
-        $teknisiName    = $transaction->submitter?->name ?? 'Tidak diketahui';
+
+        // Gunakan expected_total (hasil OCR) bukan estimated_price
+        $expectedTotal  = 'Rp ' . number_format($transaction->expected_total ?? $transaction->effective_amount ?? 0, 0, ',', '.');
+        $actualTotal    = 'Rp ' . number_format($transaction->actual_total   ?? 0, 0, ',', '.');
+        $selisih        = 'Rp ' . number_format(abs($transaction->selisih    ?? 0), 0, ',', '.');
+        $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
         $flagReason     = $transaction->flag_reason ?? '-';
         $ocrConfidence  = ($transaction->ocr_confidence ?? 0) . '%';
         $timestamp      = now()->format('d/m/Y H:i');
+
+        // Siapa yang melakukan pembayaran (upload bukti transfer)
+        $konfirmator    = $transaction->konfirmator;
+        $pembayarLine   = $transaction->konfirmasi_by
+            ? "\n💳 <b>Dibayar oleh:</b> {$konfirmator->name} (" . ucfirst($konfirmator->role) . ')'
+            : '';
 
         $message = <<<HTML
             🚨 <b>ALERT: SELISIH NOMINAL TRANSFER</b> 🚨
 
             📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
             👤 <b>Teknisi:</b> {$teknisiName}
-            ⏰ <b>Waktu:</b> {$timestamp}
+            ⏰ <b>Waktu:</b> {$timestamp}{$pembayarLine}
 
             💰 <b>Detail Selisih:</b>
             ┣ Expected : {$expectedTotal}
@@ -241,13 +252,36 @@ HTML;
      */
     public function notifyForceApproved(Transaction $transaction, User $approver, string $reason): void
     {
+        // Refresh dari DB untuk mendapatkan actual_total & selisih yang tersimpan saat flagging
+        $transaction->refresh();
+        $transaction->loadMissing(['submitter', 'konfirmator']);
+
         $invoiceNumber  = $transaction->invoice_number;
-        
+        $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
+
+        // Jika actual_total masih 0/null (kasus OCR gagal baca bukti transfer),
+        // fallback ke PaymentDiscrepancyAudit untuk mendapatkan nilai historis
+        $actualTotal   = $transaction->actual_total;
+        $expectedTotal = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
+        $selisihVal    = $transaction->selisih;
+
+        if (is_null($actualTotal) || $actualTotal == 0) {
+            $audit = \App\Models\PaymentDiscrepancyAudit::where('transaction_id', $transaction->id)
+                ->latest()
+                ->first();
+
+            if ($audit) {
+                $actualTotal   = $audit->actual_total   ?? 0;
+                $expectedTotal = $audit->expected_total ?? $expectedTotal;
+                $selisihVal    = $audit->selisih        ?? abs($expectedTotal - $actualTotal);
+            }
+        }
+
         // Format nominals
-        $totalTransaksi = 'Rp ' . number_format($transaction->effective_amount ?? 0, 0, ',', '.');
-        $jumlahTransfer = 'Rp ' . number_format($transaction->actual_total    ?? 0, 0, ',', '.');
-        $selisih        = 'Rp ' . number_format(abs($transaction->selisih   ?? 0), 0, ',', '.');
-        
+        $totalTransaksiFmt = 'Rp ' . number_format($expectedTotal,        0, ',', '.');
+        $jumlahTransferFmt = 'Rp ' . number_format($actualTotal ?? 0,     0, ',', '.');
+        $selisihFmt        = 'Rp ' . number_format(abs($selisihVal ?? 0), 0, ',', '.');
+
         $approverName   = $approver->name;
         $approverRole   = ucfirst($approver->role);
         $timestamp      = now()->format('d/m/Y H:i');
@@ -256,10 +290,13 @@ HTML;
 ✅ <b>FORCE APPROVE DILAKUKAN</b>
 
 📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-💵 <b>Total Transaksi:</b> {$totalTransaksi}
-💵 <b>Jumlah Transfer:</b> {$jumlahTransfer}
-💰 <b>Selisih:</b> <b>{$selisih}</b>
+👤 <b>Teknisi:</b> {$teknisiName}
 ⏰ <b>Waktu:</b> {$timestamp}
+
+💰 <b>Detail Nominal:</b>
+┣ Total Transaksi : {$totalTransaksiFmt}
+┣ Jumlah Transfer : {$jumlahTransferFmt}
+┗ Selisih         : <b>{$selisihFmt}</b>
 
 👤 <b>Disetujui oleh:</b> {$approverName} ({$approverRole})
 📝 <b>Alasan:</b> <i>{$reason}</i>
@@ -313,7 +350,7 @@ HTML;
         
         $catatanText   = "";
         if (!empty($transaction->description)) {
-            $catatanText = "\n📝 <b>Catatan:</b> {$transaction->description}\n";
+            $catatanText = "\n  📝 <b>Catatan:</b> {$transaction->description}\n";
         }
 
         $message = <<<HTML
