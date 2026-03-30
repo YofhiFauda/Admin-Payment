@@ -164,8 +164,12 @@ class TelegramBotService
         $selisih        = 'Rp ' . number_format(abs($transaction->selisih    ?? 0), 0, ',', '.');
         $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
         $flagReason     = $transaction->flag_reason ?? '-';
-        $ocrConfidence  = ($transaction->ocr_confidence ?? 0) . '%';
-        $timestamp      = now()->format('d/m/Y H:i');
+        if (preg_match('/Selisih\s+(\d+)\s+melebihi\s+tolerance\s+(\d+)/i', $flagReason, $matches)) {
+            $f1 = 'Rp ' . number_format((int)$matches[1], 0, ',', '.');
+            $f2 = 'Rp ' . number_format((int)$matches[2], 0, ',', '.');
+            $flagReason = preg_replace('/(Selisih\s+)(\d+)(\s+melebihi\s+tolerance\s+)(\d+)/i', "$1$f1$3$f2", $flagReason);
+        }
+        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         // Siapa yang melakukan pembayaran (upload bukti transfer)
         $konfirmator    = $transaction->konfirmator;
@@ -174,21 +178,20 @@ class TelegramBotService
             : '';
 
         $message = <<<HTML
-            🚨 <b>ALERT: SELISIH NOMINAL TRANSFER</b> 🚨
+        🚨 <b>ALERT: SELISIH NOMINAL TRANSFER</b> 🚨
 
-            📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-            👤 <b>Teknisi:</b> {$teknisiName}
-            ⏰ <b>Waktu:</b> {$timestamp}{$pembayarLine}
+        📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
+        👤 <b>Teknisi:</b> {$teknisiName}
+        ⏰ <b>Waktu:</b> {$timestamp}{$pembayarLine}
 
-            💰 <b>Detail Selisih:</b>
-            ┣ Expected : {$expectedTotal}
-            ┣ Actual   : {$actualTotal}
-            ┗ Selisih  : <b>{$selisih}</b>
+        💰 <b>Detail Selisih:</b>
+            ┣ Jumlah Transaksi : {$expectedTotal}
+            ┣ Jumlah Transfer   : {$actualTotal}
+            ┗ Selisih           : <b>{$selisih}</b>
 
-            🔍 <b>Alasan Flag:</b> {$flagReason}
-            🤖 <b>OCR Confidence:</b> {$ocrConfidence}
+        🔍 <b>Alasan Flag:</b> {$flagReason}
 
-            ⚠️ <i>Transaksi ini terkunci. Diperlukan Force Approve oleh Owner/Atasan.</i>
+        ⚠️ <i>Transaksi ini terkunci. Diperlukan Force Approve oleh Owner/Atasan.</i>
         HTML;
 
         // Kirim ke SEMUA OWNER
@@ -217,7 +220,7 @@ class TelegramBotService
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
-        $timestamp     = now()->format('d/m/Y H:i');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -284,7 +287,7 @@ HTML;
 
         $approverName   = $approver->name;
         $approverRole   = ucfirst($approver->role);
-        $timestamp      = now()->format('d/m/Y H:i');
+        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
 ✅ <b>FORCE APPROVE DILAKUKAN</b>
@@ -294,9 +297,9 @@ HTML;
 ⏰ <b>Waktu:</b> {$timestamp}
 
 💰 <b>Detail Nominal:</b>
-┣ Total Transaksi : {$totalTransaksiFmt}
-┣ Jumlah Transfer : {$jumlahTransferFmt}
-┗ Selisih         : <b>{$selisihFmt}</b>
+┣ Total Transaksi   : {$totalTransaksiFmt}
+┣ Jumlah Transfer   : {$jumlahTransferFmt}
+┗ Selisih           : <b>{$selisihFmt}</b>
 
 👤 <b>Disetujui oleh:</b> {$approverName} ({$approverRole})
 📝 <b>Alasan:</b> <i>{$reason}</i>
@@ -346,7 +349,7 @@ HTML;
         $kategori      = $transaction->category ?? '-';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
-        $timestamp     = now()->format('d/m/Y H:i');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
         
         $catatanText   = "";
         if (!empty($transaction->description)) {
@@ -360,7 +363,7 @@ HTML;
             🏷️ <b>Kategori:</b> {$kategori}
             💵 <b>Nominal:</b> {$nominal}
             🏢 <b>Lokasi:</b> {$cabang}
-            ⏰ <b>Waktu:</b> {$timestamp}
+            ⏰ <b>Waktu:</b> {$timestamp} WIB
             📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin{$catatanText}
             ─────────────────────────────────
             Apakah Anda sudah menerima uang ini?
@@ -411,8 +414,25 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $rekening      = $transaction->payment_account ?? '-';
-        $timestamp     = now()->format('d/m/Y H:i');
+        
+        // Gunakan tabel UserBankAccount yang terbaru sebagai standar (1 Teknisi bisa punya banyak bank)
+        $latestBank = \App\Models\UserBankAccount::where('user_id', $teknisi->id)->latest()->first();
+        
+        if ($latestBank) {
+            $rekening = trim("{$latestBank->bank_name} {$latestBank->account_number} {$latestBank->account_name}");
+        } else {
+            // Fallback ke kolom legacy pada tabel User jika bank account belum ada (backward compatibility)
+            $rekeningBank  = $teknisi->rekening_bank ?? '';
+            $rekeningNomor = $teknisi->rekening_nomor ?? '';
+            $rekeningNama  = $teknisi->rekening_nama ?? '';
+            $rekening      = trim("{$rekeningBank} {$rekeningNomor} {$rekeningNama}");
+        }
+
+        if (empty(trim($rekening))) {
+            $rekening = '-';
+        }
+        
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
 ✅ <b>PEMBAYARAN TRANSFER BERHASIL</b>
@@ -453,12 +473,14 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
 ✅ <b>PEMBAYARAN DISETUJUI OWNER</b>
 
 📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
 💰 <b>Nominal:</b> {$nominal}
+⏰ <b>Waktu:</b> {$timestamp} WIB
 
 Transaksi Anda telah disetujui oleh Owner.
 Dana akan segera diproses.
@@ -487,12 +509,14 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
 ⏳ <b>PEMBAYARAN SEDANG DIPROSES</b>
 
 📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
 💰 <b>Nominal:</b> {$nominal}
+⏰ <b>Waktu:</b> {$timestamp} WIB
 
 Transaksi Anda sudah disetujui dan sedang diproses pembayaran.
 Mohon tunggu konfirmasi selanjutnya.

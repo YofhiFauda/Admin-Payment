@@ -171,10 +171,13 @@ class TelegramWebhookController extends Controller
             // Answer callback (popup notification)
             $this->answerCallbackQuery($callbackId, '✅ Terima kasih! Transaksi selesai.');
 
+            $timestamp = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
+
             // Kirim pesan konfirmasi
             $this->telegram->sendMessage($chatId,
                 "✅ <b>Konfirmasi Berhasil</b>\n\n" .
-                "Transaksi <code>{$transaction->invoice_number}</code> telah diselesaikan.\n\n" .
+                "Transaksi <code>{$transaction->invoice_number}</code> telah diselesaikan.\n" .
+                "⏰ <b>Waktu:</b> {$timestamp} WIB\n\n" .
                 "Status: <b>SELESAI</b> ✅"
             );
 

@@ -19,6 +19,7 @@ class Transaction extends Model
 
     // ─── Category Constants (Rembush) ─────────────────
     const CATEGORIES = [
+        'biaya_marketing' => 'Biaya Marketing',
         'beban_entertain' => 'Beban Entertain',
         'beban_komisi' => 'Beban Komisi',
         'beban_bensin_parkir_tol_kendaraan' => 'Beban Bensin, Parkir, Tol Kendaraan',
@@ -69,6 +70,7 @@ class Transaction extends Model
 
     // ─── Purchase Reasons (Pengajuan) ─────────────────
     const PURCHASE_REASONS = [
+        'biaya_marketing' => 'Biaya Marketing',
         'beban_entertain' => 'Beban Entertain',
         'beban_komisi' => 'Beban Komisi',
         'beban_bensin_parkir_tol_kendaraan' => 'Beban Bensin, Parkir, Tol Kendaraan',

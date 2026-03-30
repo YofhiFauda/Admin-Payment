@@ -42,7 +42,7 @@ class TransactionController extends Controller
         }
 
         // Search filter
-        if ($search = $request->get('search')) {
+        if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('customer', 'like', "%{$search}%")
                   ->orWhere('invoice_number', 'like', "%{$search}%")
@@ -68,21 +68,21 @@ class TransactionController extends Controller
         }
 
         // Status filter
-        if ($status = $request->get('status')) {
+        if ($status = $request->input('status')) {
             if ($status !== 'all') {
                 $query->where('status', $status);
             }
         }
 
         // Type filter (rembush / pengajuan)
-        if ($type = $request->get('type')) {
+        if ($type = $request->input('type')) {
             if ($type !== 'all') {
                 $query->where('type', $type);
             }
         }
 
         // Category filter
-        if ($category = $request->get('category')) {
+        if ($category = $request->input('category')) {
             if ($category !== 'all') {
                 $query->where('category', $category);
             }
@@ -176,11 +176,17 @@ class TransactionController extends Controller
             'reviewer'        => $t->reviewer ? ['name' => $t->reviewer->name] : null,
             'reviewed_at'     => $t->reviewed_at ? $t->reviewed_at->format('d M Y H:i') : null,
             'rejection_reason'=> $t->rejection_reason,
-            'branches'        => $t->branches->map(fn($b) => [
-                'name'    => $b->name,
-                'percent' => $b->pivot->allocation_percent,
-                'amount'  => 'Rp ' . number_format($b->pivot->allocation_amount, 0, ',', '.'),
-            ]),
+            'branches'        => $t->branches->map(function($b) use ($t) {
+                $allocAmount = $b->pivot->allocation_amount;
+                if (!$allocAmount || $allocAmount <= 0) {
+                    $allocAmount = round(($t->effective_amount * $b->pivot->allocation_percent) / 100);
+                }
+                return [
+                    'name'    => $b->name,
+                    'percent' => $b->pivot->allocation_percent,
+                    'amount'  => 'Rp ' . number_format($allocAmount, 0, ',', '.'),
+                ];
+            }),
             'effective_amount' => $t->effective_amount,
             'created_at'      => $t->created_at->format('d M Y H:i'),
             // Current user context for action buttons
@@ -574,7 +580,7 @@ class TransactionController extends Controller
 
             $transaction->delete();
 
-            \App\Models\ActivityLog::create([
+            ActivityLog::create([
                 'user_id'     => Auth::id(),
                 'action'      => 'delete',
                 'target_id'   => $invoiceNumber,
@@ -632,21 +638,21 @@ class TransactionController extends Controller
         }
 
         // Status filter
-        if ($status = $request->get('status')) {
+        if ($status = $request->input('status')) {
             if ($status !== 'all') {
                 $query->where('status', $status);
             }
         }
 
         // Type filter
-        if ($type = $request->get('type')) {
+        if ($type = $request->input('type')) {
             if ($type !== 'all') {
                 $query->where('type', $type);
             }
         }
 
         // Category filter
-        if ($category = $request->get('category')) {
+        if ($category = $request->input('category')) {
             if ($category !== 'all') {
                 $query->where('category', $category);
             }

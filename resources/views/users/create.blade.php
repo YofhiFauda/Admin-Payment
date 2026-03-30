@@ -32,6 +32,7 @@
                 <label for="name" class="block text-sm font-bold text-slate-700">Nama Lengkap</label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" required
                        placeholder="Masukkan nama lengkap"
+                       oninput="this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1).toLowerCase()"
                        class="w-full px-4 py-3 rounded-xl border {{ $errors->has('name') ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-slate-50' }} focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm font-medium outline-none transition-all">
                 @error('name')
                     <p class="text-xs font-bold text-red-500 mt-1">{{ $message }}</p>

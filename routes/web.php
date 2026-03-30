@@ -13,7 +13,6 @@ use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\Api\V1\OcrNotaController;
 use App\Http\Controllers\OtherExpenditureController;
 use App\Http\Controllers\SalaryController;
-
 use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
@@ -45,6 +44,17 @@ Route::get('/debug-session', function () {
     ];
 });
 
+Route::get('/debug-auth', function () {
+    return [
+        'user' => auth()->user(),
+        'check' => auth()->check(),
+        'guard' => auth()->guard()->getName(),
+        'session_id' => session()->getId(),
+        'cookies' => request()->cookies->all(),
+        'headers' => request()->headers->all(),
+    ];
+})->middleware(['web']);
+
 // Authenticated routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -62,7 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions/{id}/image', [TransactionController::class, 'serveImage'])->name('transactions.image');
 
     // ── Transaction Creation (teknisi, admin, owner) ───────
-    Route::middleware('role:teknisi,admin,owner')->group(function () {
+    Route::middleware('role:teknisi,admin,atasan,owner')->group(function () {
         // Selection page
         Route::get('/transactions/create', [TransactionController::class, 'create'])->name('transactions.create');
         Route::get('/transactions/{id}/confirm', [TransactionController::class, 'confirmation'])->name('transactions.confirm');

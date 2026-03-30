@@ -244,6 +244,21 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+
+        /* Custom Thin Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
     </style>
 </head>
 
@@ -405,8 +420,8 @@
                 <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 p-6 space-y-3">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Menu Utama</p>
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 custom-scrollbar">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
@@ -417,7 +432,7 @@
                 <a href="{{ route('transactions.create') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transactions.create') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="file-up" class="w-4 h-4"></i> Input Pengeluaran
+                    <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
                 </a>
 
                 {{-- ▼ Input Pengeluaran Lain (dropdown) - admin, atasan, owner --}}
@@ -466,7 +481,7 @@
                     <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
                 </a>
 
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrasi</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Administrasi</p>
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
@@ -560,7 +575,6 @@
                 </div>
             </div>
         </main>
-    </div>
     </div>
 @endif
 

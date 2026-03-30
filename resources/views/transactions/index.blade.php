@@ -487,19 +487,19 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1.5">Bank Tujuan <span class="text-red-500">*</span></label>
-                            <input type="text" name="rekening_bank" id="transfer_bank" placeholder="BCA / Mandiri / GoPay"
+                            <input type="text" name="rekening_bank" id="transfer_bank" placeholder="Contoh: BCA / Mandiri / GoPay" required
                                 class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1.5">Nomor Rekening <span class="text-red-500">*</span></label>
-                                <input type="text" name="rekening_nomor" id="transfer_nomor" placeholder="0987654321"
+                                <input type="text" name="rekening_nomor" id="transfer_nomor" placeholder="Contoh: 0987654321" required
                                     class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1.5">Atas Nama <span class="text-red-500">*</span></label>
-                                <input type="text" name="rekening_nama" id="transfer_nama" placeholder="Nama Pemilik"
+                                <input type="text" name="rekening_nama" id="transfer_nama" placeholder="Contoh: Nama Pemilik" required
                                     class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
                             </div>
                         </div>
@@ -1533,6 +1533,45 @@
                 `, 'error');
             @endforeach
         @endif
+
+        // ═══════════════════════════════════════════════════════════════
+        // REAL-TIME UPDATES (Laravel Echo)
+        // ═══════════════════════════════════════════════════════════════
+        if (typeof window.Echo !== 'undefined') {
+            @if(auth()->user()->role === 'teknisi')
+                const echoChannel = window.Echo.private('transactions.{{ auth()->id() }}');
+            @else
+                const echoChannel = window.Echo.private('transactions');
+            @endif
+
+            echoChannel.listen('.transaction.updated', (e) => {
+                console.log('🔔 [REALTIME] Transaction Updated:', e);
+                
+                // Refresh data via AJAX
+                if (typeof SearchEngine !== 'undefined' && typeof SearchEngine.loadData === 'function') {
+                    SearchEngine.loadData();
+                    
+                    // Optional: Show a subtle toast for the update
+                    const tx = e.transaction || e;
+                    const invoice = tx.invoice_number || 'Transaksi';
+                    const status = tx.status_label || tx.status || 'diperbarui';
+                    
+                    showToast(`
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 animate-spin"></i>
+                            <div>
+                                <strong>Pembaruan Otomatis</strong><br>
+                                <span class="text-[11px] opacity-90">${invoice}: ${status}</span>
+                            </div>
+                        </div>
+                    `, 'info');
+                }
+            });
+
+            console.log('📡 [REALTIME] Echo listener initialized on channel: ' + 
+                ( @if(auth()->user()->role === 'teknisi') 'transactions.{{ auth()->id() }}' @else 'transactions' @endif )
+            );
+        }
     });
 
     // Toast function
@@ -2179,25 +2218,25 @@
             // Reset readonly state and styles first
             [bankInput, nomorInput, namaInput].forEach(el => {
                 el.readOnly = false;
+                el.required = true; // Wajib diisi agar btnSubmit memvalidasi form
                 el.classList.remove('bg-slate-100', 'cursor-not-allowed');
             });
 
             if (paymentMethod === 'transfer_teknisi') {
                 document.getElementById('transfer-method-badge').textContent = 'TRANSFER TEKNISI';
 
-                // Set to Read-Only as per requirement
+                // WAJIB menggunakan Dropdown (Input manual dikunci)
                 [bankInput, nomorInput, namaInput].forEach(el => {
                     el.readOnly = true;
                     el.classList.add('bg-slate-100', 'cursor-not-allowed');
                 });
 
-                bankInput.value = submitter.rekening_bank || '';
-                nomorInput.value = submitter.rekening_nomor || '';
-                namaInput.value = submitter.rekening_nama || '';
+                // Kosongkan secara default agar Admin WAJIB memilih rekening dari Dropdown
+                bankInput.value = '';
+                nomorInput.value = '';
+                namaInput.value = '';
 
-                if (!submitter.rekening_bank || !submitter.rekening_nomor) {
-                    document.getElementById('transfer-profile-alert').classList.remove('hidden');
-                }
+                document.getElementById('transfer-profile-alert').classList.remove('hidden');
             } else if (paymentMethod === 'transfer_penjual') {
                 document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
                 
@@ -2241,7 +2280,12 @@
     }
 
     function autoFillBankAccount(select) {
-        if (!select.value) return;
+        if (!select.value) {
+            document.getElementById('transfer_bank').value = '';
+            document.getElementById('transfer_nomor').value = '';
+            document.getElementById('transfer_nama').value = '';
+            return;
+        }
         const acc = JSON.parse(select.value);
         document.getElementById('transfer_bank').value = acc.bank_name;
         document.getElementById('transfer_nomor').value = acc.account_number;
