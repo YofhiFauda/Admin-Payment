@@ -2183,6 +2183,15 @@
         addHidden('expected_nominal', amount); // used by transfer
         addHidden('teknisi_id', submitter.id || ''); // used by cash
 
+        const bankInput = document.getElementById('transfer_bank');
+        const nomorInput = document.getElementById('transfer_nomor');
+        const namaInput = document.getElementById('transfer_nama');
+
+        // Reset validasi required untuk menghindari pemblokiran pada opsi Cash
+        if (bankInput) bankInput.required = false;
+        if (nomorInput) nomorInput.required = false;
+        if (namaInput) namaInput.required = false;
+
         if (paymentMethod && paymentMethod.includes('transfer')) {
             endpoint = '/api/v1/payment/transfer/upload';
             document.getElementById('transfer-fields').classList.remove('hidden');
@@ -2210,10 +2219,6 @@
             } else {
                 document.getElementById('saved-accounts-container').classList.add('hidden');
             }
-
-            const bankInput = document.getElementById('transfer_bank');
-            const nomorInput = document.getElementById('transfer_nomor');
-            const namaInput = document.getElementById('transfer_nama');
 
             // Reset readonly state and styles first
             [bankInput, nomorInput, namaInput].forEach(el => {

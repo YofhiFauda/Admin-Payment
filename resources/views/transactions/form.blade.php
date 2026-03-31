@@ -330,7 +330,7 @@
                             flex items-center justify-center gap-2">
                         <span id="submit-text">Kirim Pengajuan Rembush</span>
                         <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy-12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                         </svg>
                     </button>
@@ -869,7 +869,10 @@
         function validateAndToggleSubmit() {
             let isValid = true;
 
-            if (selectedBranches.length > 0 && currentMethod === 'percent') {
+            if (selectedBranches.length === 0) {
+                isValid = false;
+                if (percentWarning) percentWarning.classList.add('hidden');
+            } else if (currentMethod === 'percent') {
                 const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
                 if (Math.abs(totalPct - 100) > 0.5) {
                     isValid = false;
