@@ -156,43 +156,57 @@ class TelegramBotService
         // Load relasi yang dibutuhkan jika belum ter-load
         $transaction->loadMissing(['submitter', 'konfirmator']);
 
-        $invoiceNumber  = $transaction->invoice_number;
+        $invoiceNumber = $transaction->invoice_number;
+        $teknisiName   = $transaction->submitter->name ?? 'Tidak diketahui';
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
 
-        // Gunakan expected_total (hasil OCR) bukan estimated_price
-        $expectedTotal  = 'Rp ' . number_format($transaction->expected_total ?? $transaction->effective_amount ?? 0, 0, ',', '.');
-        $actualTotal    = 'Rp ' . number_format($transaction->actual_total   ?? 0, 0, ',', '.');
-        $selisih        = 'Rp ' . number_format(abs($transaction->selisih    ?? 0), 0, ',', '.');
-        $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
-        $flagReason     = $transaction->flag_reason ?? '-';
-        if (preg_match('/Selisih\s+(\d+)\s+melebihi\s+tolerance\s+(\d+)/i', $flagReason, $matches)) {
-            $f1 = 'Rp ' . number_format((int)$matches[1], 0, ',', '.');
-            $f2 = 'Rp ' . number_format((int)$matches[2], 0, ',', '.');
-            $flagReason = preg_replace('/(Selisih\s+)(\d+)(\s+melebihi\s+tolerance\s+)(\d+)/i', "$1$f1$3$f2", $flagReason);
+        // Nominal values
+        $expectedAmount  = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
+        $actualAmount    = $transaction->actual_total   ?? 0;
+        $selisihValue    = $transaction->selisih        ?? 0;
+
+        $expectedFmt  = 'Rp ' . number_format($expectedAmount, 0, ',', '.');
+        $actualFmt    = 'Rp ' . number_format($actualAmount,   0, ',', '.');
+        $selisihFmt   = 'Rp ' . number_format(abs($selisihValue), 0, ',', '.');
+
+        // Determine "Lebih" or "Kurang"
+        $selisihSuffix = "";
+        if ($selisihValue > 0) {
+            $selisihSuffix = " (Lebih)";
+        } elseif ($selisihValue < 0) {
+            $selisihSuffix = " (Kurang)";
         }
-        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
-        // Siapa yang melakukan pembayaran (upload bukti transfer)
-        $konfirmator    = $transaction->konfirmator;
-        $pembayarLine   = $transaction->konfirmasi_by
-            ? "\n💳 <b>Dibayar oleh:</b> {$konfirmator->name} (" . ucfirst($konfirmator->role) . ')'
-            : '';
+        // Parse detail validasi from flag_reason
+        $flagReason     = $transaction->flag_reason ?? '-';
+        $validationText = "Selisih saat ini tercatat sebesar {$selisihFmt}.";
+        
+        if (preg_match('/tolerance\s+(\d+)/i', $flagReason, $matches)) {
+            $toleranceFmt = 'Rp ' . number_format((int)$matches[1], 0, ',', '.');
+            $validationText = "Batas toleransi sistem adalah {$toleranceFmt}. Selisih saat ini tercatat sebesar {$selisihFmt}.";
+        }
 
         $message = <<<HTML
-        🚨 <b>ALERT: SELISIH NOMINAL TRANSFER</b> 🚨
+⚠️ <b>[PEMBERITAHUAN SISTEM: SELISIH NOMINAL TRANSFER]</b>
 
-        📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-        👤 <b>Teknisi:</b> {$teknisiName}
-        ⏰ <b>Waktu:</b> {$timestamp}{$pembayarLine}
+Sistem mendeteksi adanya selisih transfer yang melebihi batas toleransi yang diizinkan. Transaksi saat ini dikunci untuk alasan keamanan.
 
-        💰 <b>Detail Selisih:</b>
-            ┣ Jumlah Transaksi : {$expectedTotal}
-            ┣ Jumlah Transfer   : {$actualTotal}
-            ┗ Selisih           : <b>{$selisih}</b>
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Teknisi       : {$teknisiName}
+▪️ Waktu Sistem  : {$timestamp}
 
-        🔍 <b>Alasan Flag:</b> {$flagReason}
+<b>Rincian Nominal:</b>
+▫️ Nilai Tagihan   : {$expectedFmt}
+▫️ Dana Diterima   : {$actualFmt}
+▫️ Selisih Dana    : {$selisihFmt}{$selisihSuffix}
 
-        ⚠️ <i>Transaksi ini terkunci. Diperlukan Force Approve oleh Owner/Atasan.</i>
-        HTML;
+<b>Detail Validasi:</b>
+{$validationText}
+
+📌 <b>Tindakan Diperlukan:</b> 
+Mohon lakukan peninjauan. Transaksi ini memerlukan Persetujuan Khusus (Force Approve) dari Owner/Atasan untuk dapat diproses lebih lanjut.
+HTML;
 
         // Kirim ke SEMUA OWNER
         $stats = $this->sendToMultipleUsers(
@@ -201,7 +215,7 @@ class TelegramBotService
         );
 
         // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup("[FLAGGED] {$invoiceNumber} - Selisih {$selisih}");
+        $this->sendToMonitoringGroup("[FLAGGED] {$invoiceNumber} - Selisih {$selisihFmt}");
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Flagged notification sent', [
             'transaction_id' => $transaction->id,
@@ -261,50 +275,61 @@ HTML;
 
         $invoiceNumber  = $transaction->invoice_number;
         $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
+        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
 
-        // Jika actual_total masih 0/null (kasus OCR gagal baca bukti transfer),
-        // fallback ke PaymentDiscrepancyAudit untuk mendapatkan nilai historis
-        $actualTotal   = $transaction->actual_total;
-        $expectedTotal = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
-        $selisihVal    = $transaction->selisih;
+        // Get nominals
+        $actualAmount   = $transaction->actual_total;
+        $expectedAmount = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
+        $selisihVal     = $transaction->selisih;
 
-        if (is_null($actualTotal) || $actualTotal == 0) {
+        if (is_null($actualAmount) || $actualAmount == 0) {
             $audit = \App\Models\PaymentDiscrepancyAudit::where('transaction_id', $transaction->id)
                 ->latest()
                 ->first();
 
             if ($audit) {
-                $actualTotal   = $audit->actual_total   ?? 0;
-                $expectedTotal = $audit->expected_total ?? $expectedTotal;
-                $selisihVal    = $audit->selisih        ?? abs($expectedTotal - $actualTotal);
+                $actualAmount   = $audit->actual_total   ?? 0;
+                $expectedAmount = $audit->expected_total ?? $expectedAmount;
+                $selisihVal     = $audit->selisih        ?? abs($expectedAmount - $actualAmount);
             }
         }
 
         // Format nominals
-        $totalTransaksiFmt = 'Rp ' . number_format($expectedTotal,        0, ',', '.');
-        $jumlahTransferFmt = 'Rp ' . number_format($actualTotal ?? 0,     0, ',', '.');
-        $selisihFmt        = 'Rp ' . number_format(abs($selisihVal ?? 0), 0, ',', '.');
+        $tagihanFmt   = 'Rp ' . number_format($expectedAmount,        0, ',', '.');
+        $diterimaFmt  = 'Rp ' . number_format($actualAmount ?? 0,     0, ',', '.');
+        $selisihFmt   = 'Rp ' . number_format(abs($selisihVal ?? 0), 0, ',', '.');
+
+        // Determine "Lebih" or "Kurang"
+        $selisihSuffix = "";
+        if (($selisihVal ?? 0) > 0) {
+            $selisihSuffix = " (Lebih)";
+        } elseif (($selisihVal ?? 0) < 0) {
+            $selisihSuffix = " (Kurang)";
+        }
 
         $approverName   = $approver->name;
         $approverRole   = ucfirst($approver->role);
-        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
-✅ <b>FORCE APPROVE DILAKUKAN</b>
+✅ <b>[INFORMASI: PERSETUJUAN KHUSUS BERHASIL]</b>
 
-📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-👤 <b>Teknisi:</b> {$teknisiName}
-⏰ <b>Waktu:</b> {$timestamp}
+Persetujuan Khusus (Force Approve) atas selisih nominal transfer telah berhasil diotorisasi.
 
-💰 <b>Detail Nominal:</b>
-┣ Total Transaksi   : {$totalTransaksiFmt}
-┣ Jumlah Transfer   : {$jumlahTransferFmt}
-┗ Selisih           : <b>{$selisihFmt}</b>
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Teknisi       : {$teknisiName}
+▪️ Waktu Sistem  : {$timestamp}
 
-👤 <b>Disetujui oleh:</b> {$approverName} ({$approverRole})
-📝 <b>Alasan:</b> <i>{$reason}</i>
+<b>Rincian Nominal Akhir:</b>
+▫️ Nilai Tagihan   : {$tagihanFmt}
+▫️ Dana Diterima   : {$diterimaFmt}
+▫️ Selisih Dana    : {$selisihFmt}{$selisihSuffix}
 
-<b>Status:</b> SELESAI ✅
+<b>Otorisasi Oleh:</b>
+👤 Nama/Posisi   : {$approverName} ({$approverRole})
+📝 Catatan       : {$reason}
+
+<b>Status Transaksi : SELESAI & DITERUSKAN</b>
 HTML;
 
         // Kirim ke SEMUA OWNER
@@ -349,28 +374,32 @@ HTML;
         $kategori      = $transaction->category ?? '-';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
-        
-        $catatanText   = "";
-        if (!empty($transaction->description)) {
-            $catatanText = "\n  📝 <b>Catatan:</b> {$transaction->description}\n";
-        }
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
-            💰 <b>PEMBAYARAN CASH SIAP DIAMBIL</b>
+💵 <b>[PEMBERITAHUAN SISTEM: PENGAMBILAN DANA TUNAI]</b>
 
-            📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-            🏷️ <b>Kategori:</b> {$kategori}
-            💵 <b>Nominal:</b> {$nominal}
-            🏢 <b>Lokasi:</b> {$cabang}
-            ⏰ <b>Waktu:</b> {$timestamp} WIB
-            📸 <b>Bukti Penyerahan:</b> Sudah diupload oleh Admin{$catatanText}
-            ─────────────────────────────────
-            Apakah Anda sudah menerima uang ini?
-            Klik tombol di bawah untuk konfirmasi.
-        HTML;
+Dana tunai untuk pengajuan operasional/reimbursement Anda telah disiapkan oleh Admin dan menunggu konfirmasi penerimaan.
 
-        // Inline Keyboard dengan tombol "Terima"
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Kategori      : {$kategori}
+▪️ Waktu Sistem  : {$timestamp}
+▪️ Lokasi        : {$cabang}
+
+<b>Rincian Dana & Status:</b>
+▫️ Nominal       : {$nominal}
+▫️ Status Bukti  : ✅ Telah diunggah oleh Admin
+▫️ Catatan Admin : {$catatanAdmin}
+
+📌 <b>Tindakan Diperlukan:</b>
+Sebagai bukti audit yang sah, mohon konfirmasi apabila Anda telah menerima uang tunai tersebut secara fisik. 
+
+Silakan klik tombol di bawah ini untuk menyelesaikan proses administrasi:
+HTML;
+
+        // Inline Keyboard dengan tombol "Terima" & "Tolak"
         $replyMarkup = [
             'inline_keyboard' => [
                 [
@@ -419,31 +448,37 @@ HTML;
         $latestBank = \App\Models\UserBankAccount::where('user_id', $teknisi->id)->latest()->first();
         
         if ($latestBank) {
-            $rekening = trim("{$latestBank->bank_name} {$latestBank->account_number} {$latestBank->account_name}");
+            $bankName = $latestBank->bank_name;
+            $accountNumber = $latestBank->account_number;
+            $rekening = "{$bankName} - {$accountNumber}";
         } else {
             // Fallback ke kolom legacy pada tabel User jika bank account belum ada (backward compatibility)
             $rekeningBank  = $teknisi->rekening_bank ?? '';
             $rekeningNomor = $teknisi->rekening_nomor ?? '';
-            $rekeningNama  = $teknisi->rekening_nama ?? '';
-            $rekening      = trim("{$rekeningBank} {$rekeningNomor} {$rekeningNama}");
+            $rekening      = "{$rekeningBank} - {$rekeningNomor}";
         }
 
-        if (empty(trim($rekening))) {
+        if (trim($rekening) === "-") {
             $rekening = '-';
         }
         
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
+        $timestamp = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-✅ <b>PEMBAYARAN TRANSFER BERHASIL</b>
+✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
 
-📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-💰 <b>Nominal:</b> {$nominal}
-🏦 <b>Rekening:</b> {$rekening}
-⏰ <b>Waktu Transfer:</b> {$timestamp}
+Proses transfer dana telah berhasil diselesaikan. Dana saat ini seharusnya sudah diteruskan ke rekening tujuan.
 
-Dana sudah masuk ke rekening Anda.
-<b>Status:</b> SELESAI ✅
+<b>Rincian Transfer:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Rek. Tujuan   : {$rekening}
+▪️ Waktu Transfer: {$timestamp}
+
+<b>Rincian Nominal:</b>
+▫️ Total Ditransfer: {$nominal}
+
+Terima kasih atas kerja sama Anda.
+<b>Status Transaksi : SELESAI</b>
 HTML;
 
         // Kirim ke TEKNISI
@@ -473,24 +508,81 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-✅ <b>PEMBAYARAN DISETUJUI OWNER</b>
+✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
 
-📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-💰 <b>Nominal:</b> {$nominal}
-⏰ <b>Waktu:</b> {$timestamp} WIB
+Pengajuan pembayaran Anda telah melalui tahap verifikasi akhir dan disetujui oleh Owner.
 
-Transaksi Anda telah disetujui oleh Owner.
-Dana akan segera diproses.
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Nominal       : {$nominal}
+▪️ Waktu Otorisasi: {$timestamp}
 
-<b>Status:</b> SELESAI ✅
+Sistem akan segera menjadwalkan proses pencairan dana ke rekening Anda.
+
+<b>Status Otorisasi : SELESAI</b>
+<b>Tahap Selanjutnya: PROSES TRANSFER</b>
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Force approve notification sent to technician', [
+            'transaction_id' => $transaction->id,
+            'teknisi_id'     => $teknisi->id,
+        ]);
+    }
+
+    /**
+     * Notifikasi Transaksi Ditolak (Manual Reject oleh Otorisator)
+     */
+    public function notifyTransactionRejected(Transaction $transaction, User $rejector, string $reason): void
+    {
+        $teknisi = $transaction->submitter;
+        
+        if (!$teknisi || !$teknisi->telegram_chat_id) {
+            return;
+        }
+
+        $invoiceNumber = $transaction->invoice_number;
+        $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
+        $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        
+        // Rejector info
+        $rejectorName  = $rejector->name;
+        $rejectorRole  = ucfirst($rejector->role);
+
+        $message = <<<HTML
+❌ <b>[PEMBERITAHUAN SISTEM: TRANSAKSI DITOLAK]</b>
+
+Mohon maaf, pengajuan pembayaran atau transaksi Anda tidak dapat diproses lebih lanjut dan telah dibatalkan oleh otorisator.
+
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Teknisi       : {$teknisiName}
+▪️ Waktu Sistem  : {$timestamp}
+
+<b>Rincian Nominal:</b>
+▫️ Nilai Tagihan   : {$nominal}
+
+<b>Detail Penolakan:</b>
+👤 Ditolak Oleh  : {$rejectorName} ({$rejectorRole})
+📝 Alasan        : {$reason}
+
+📌 <b>Tindakan Diperlukan:</b> 
+Mohon periksa kembali detail transaksi berdasarkan alasan penolakan di atas. Silakan perbaiki data dan buat pengajuan ulang, atau hubungi pihak otorisator untuk klarifikasi lebih lanjut.
+
+<b>Status Transaksi : DIBATALKAN ❌</b>
+HTML;
+
+        $this->sendMessage($teknisi->telegram_chat_id, $message);
+
+        // Kirim ke GROUP monitoring
+        $this->sendToMonitoringGroup("[TRANSAKSI DITOLAK] {$invoiceNumber} rejected by {$rejectorName}");
+
+        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Transaction rejected notification sent to technician', [
             'transaction_id' => $transaction->id,
             'teknisi_id'     => $teknisi->id,
         ]);
@@ -509,19 +601,17 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
 
         $message = <<<HTML
-⏳ <b>PEMBAYARAN SEDANG DIPROSES</b>
+⏳ <b>[STATUS TRANSAKSI: DALAM PROSES PEMBAYARAN]</b>
 
-📋 <b>Invoice:</b> <code>{$invoiceNumber}</code>
-💰 <b>Nominal:</b> {$nominal}
-⏰ <b>Waktu:</b> {$timestamp} WIB
+Pencairan dana untuk tagihan Anda telah disetujui dan saat ini sedang dalam antrean proses transfer oleh sistem.
 
-Transaksi Anda sudah disetujui dan sedang diproses pembayaran.
-Mohon tunggu konfirmasi selanjutnya.
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Nominal       : {$nominal}
 
-<b>Status:</b> DALAM PROSES ⏳
+Mohon kesediaannya menunggu. Sistem akan mengirimkan notifikasi otomatis beserta bukti pemindahan dana setelah transfer berhasil dilakukan.
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
