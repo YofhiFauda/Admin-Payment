@@ -238,18 +238,27 @@ class TransactionController extends Controller
         // Validation depends on type
         if ($transaction->isPengajuan()) {
             $request->validate([
-                'customer'        => 'required|string|max:255',
-                'vendor'          => 'nullable|string|max:255',
-                'link'            => 'nullable|url|max:1000',
-                'description'     => 'required_if:purchase_reason,lainnya|nullable|string|max:2000',
-                'specs'           => 'nullable|array',
-                'quantity'        => 'required|integer|min:1',
-                'estimated_price' => 'required|numeric|min:1',
-                'purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+                'items'           => 'required|array|min:1',
+                'items.*.customer'=> 'required|string|max:255',
+                'items.*.vendor'  => 'nullable|string|max:255',
+                'items.*.link'    => 'nullable|url|max:1000',
+                'items.*.purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+                'items.*.description' => 'nullable|string|max:2000',
+                'items.*.specs'   => 'nullable|array',
+                'items.*.quantity'=> 'required|integer|min:1',
+                'items.*.estimated_price' => 'required|numeric|min:0',
+                'estimated_price' => 'required|numeric|min:1', // Total amount
                 'branches'        => 'nullable|array',
                 'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+            ], [
+                'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
+                'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
+                'items.*.purchase_reason.required' => 'Alasan Pembelian pada salah satu daftar barang wajib dipilih.',
+                'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
+                'items.*.estimated_price.required' => 'Estimasi harga satuan wajib diisi.',
+                'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
             ]);
         } else {
             $request->validate([
@@ -283,16 +292,23 @@ class TransactionController extends Controller
         DB::beginTransaction();
         try {
             if ($transaction->isPengajuan()) {
+                $items = $request->items;
+                $firstItem = $items[0] ?? [];
+                $totalAmount = collect($items)->sum(function($item) {
+                    return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
+                });
+
                 $transaction->update([
-                    'customer'        => $request->customer,
-                    'vendor'          => $request->vendor,
-                    'link'            => $request->link,
-                    'description'     => $request->description,
-                    'specs'           => $request->specs,
-                    'quantity'        => $request->quantity,
-                    'estimated_price' => $request->estimated_price,
-                    'purchase_reason' => $request->purchase_reason,
-                    'amount'          => $request->estimated_price * $request->quantity,
+                    'customer'        => $firstItem['customer'] ?? 'Multiple Items',
+                    'vendor'          => $firstItem['vendor'] ?? null,
+                    'link'            => $firstItem['link'] ?? null,
+                    'description'     => $firstItem['description'] ?? null,
+                    'specs'           => $firstItem['specs'] ?? null,
+                    'quantity'        => $firstItem['quantity'] ?? 1,
+                    'estimated_price' => $firstItem['estimated_price'] ?? 0,
+                    'purchase_reason' => $firstItem['purchase_reason'] ?? array_key_first(Transaction::PURCHASE_REASONS),
+                    'amount'          => $totalAmount,
+                    'items'           => $items,
                 ]);
             } else {
                 $transaction->update([

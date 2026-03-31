@@ -1757,11 +1757,15 @@
             addField('Keterangan',        d.description, true);
             addField('Total Nominal',     d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
         } else {
-            addField('Nama Barang/Jasa',      d.customer, true);
-            addField('Vendor',                d.vendor);
-            addField('Alasan Pembelian',      d.purchase_reason_label);
-            addField('Jumlah',                d.quantity);
-            addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            if (!d.items || d.items.length === 0) {
+                addField('Nama Barang/Jasa',      d.customer, true);
+                addField('Vendor',                d.vendor);
+                addField('Alasan Pembelian',      d.purchase_reason_label);
+                addField('Jumlah',                d.quantity);
+                addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            } else {
+                addField('Keterangan Global', d.description, true);
+            }
             addField('Total Estimasi',        d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
         }
 
@@ -1769,16 +1773,31 @@
 
         const itemsWrap  = document.getElementById('v-items-wrap');
         const itemsTbody = document.getElementById('v-items-tbody');
-        if (d.type === 'rembush' && d.items && d.items.length > 0) {
+        
+        if (d.items && d.items.length > 0) {
             itemsWrap.classList.remove('hidden');
-            itemsTbody.innerHTML = d.items.map(item => `
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
-                    <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
-                    <td class="px-3 py-2">${item.unit || '-'}</td>
-                    <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
-                    <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price) || 0) ).toLocaleString('id-ID')}</td>
-                </tr>`).join('');
+            let itemsHtml = '';
+            
+            if (d.type === 'pengajuan') {
+                itemsHtml = d.items.map(item => `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-3 py-2 text-slate-700 font-medium">${item.customer || '-'}</td>
+                        <td class="px-3 py-2 text-center">${item.quantity || '-'}</td>
+                        <td class="px-3 py-2">-</td>
+                        <td class="px-3 py-2 text-right">Rp ${Number(item.estimated_price || 0).toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.quantity) || 0) * (Number(item.estimated_price) || 0) ).toLocaleString('id-ID')}</td>
+                    </tr>`).join('');
+            } else {
+                itemsHtml = d.items.map(item => `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-3 py-2 text-slate-700 font-medium">${item.name || item.nama_barang || '-'}</td>
+                        <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
+                        <td class="px-3 py-2">${item.unit || item.satuan || '-'}</td>
+                        <td class="px-3 py-2 text-right">Rp ${Number(item.price || item.harga_satuan || 0).toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price || item.harga_satuan) || 0) ).toLocaleString('id-ID')}</td>
+                    </tr>`).join('');
+            }
+            itemsTbody.innerHTML = itemsHtml;
         } else {
             itemsWrap.classList.add('hidden');
         }

@@ -24,146 +24,176 @@
             @csrf
             @method('PUT')
             <input type="hidden" name="type" value="pengajuan">
-            <input type="hidden" name="estimated_price" id="form-estimated-price" value="{{ old('estimated_price', $transaction->estimated_price ?? $transaction->amount ?? 0) }}">
-
+            
             {{-- Container untuk input tersembunyi distribusi --}}
             <div id="distribution-hidden-inputs"></div>
 
+            @php
+                // Build array of items to render. Support old transactions without 'items' JSON data
+                $itemsToRender = is_array($transaction->items) && count($transaction->items) > 0 
+                    ? $transaction->items 
+                    : [
+                        [
+                            'customer'        => $transaction->customer,
+                            'vendor'          => $transaction->vendor,
+                            'link'            => $transaction->link,
+                            'description'     => $transaction->description,
+                            'purchase_reason' => $transaction->purchase_reason,
+                            'quantity'        => $transaction->quantity ?? 1,
+                            'estimated_price' => $transaction->estimated_price ?? $transaction->amount ?? 0,
+                            'specs'           => is_array($transaction->specs) ? $transaction->specs : []
+                        ]
+                    ];
+            @endphp
+            
             {{-- ══════════════════════════════════ --}}
-            {{-- GRID 2 KOLOM (KIRI: FORM | KANAN: BIAYA & DISTRIBUSI) --}}
+            {{-- 2. DAFTAR BARANG (DYNAMIC) --}}
             {{-- ══════════════════════════════════ --}}
-            {{-- ══════════════════════════════════ --}}
-            {{-- GRID 2 KOLOM (KIRI: FORM | KANAN: BIAYA) --}}
-            {{-- ══════════════════════════════════ --}}
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 mb-8 md:mb-10">
-                
-                {{-- 📍 KOLOM KIRI (UTAMA) --}}
-                <div class="lg:col-span-8 space-y-8 md:space-y-10">
-                    
-                    {{-- 1. INFORMASI BARANG --}}
+            <div class="mb-8 md:mb-10">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                     <div>
-                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">
-                            Informasi Barang / Jasa
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            Daftar Barang
                         </label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
-                                <input type="text" name="customer"
-                                    value="{{ old('customer', $transaction->customer) }}" required
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: Router Mikrotik">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
-                                <input type="text" name="vendor"
-                                    value="{{ old('vendor', $transaction->vendor) }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: Toko Komputer Jaya">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi</label>
-                                <input type="url" name="link"
-                                    value="{{ old('link', $transaction->link) }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="https://tokopedia.link/...">
-                            </div>
-                        </div>
+                        <p class="text-[10px] md:text-xs text-slate-400 mt-1">Kelola barang yang diajukan</p>
                     </div>
-
-                    {{-- 2. SPESIFIKASI --}}
-                    <div class="mt-8">
-                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Merk</label>
-                                <input type="text" name="specs[merk]"
-                                    value="{{ old('specs.merk', $transaction->specs['merk'] ?? '') }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: Xpon CDATA">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Tipe / Seri</label>
-                                <input type="text" name="specs[tipe]"
-                                    value="{{ old('specs.tipe', $transaction->specs['tipe'] ?? '') }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: FD512XW-R460">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Ukuran</label>
-                                <input type="text" name="specs[ukuran]"
-                                    value="{{ old('specs.ukuran', $transaction->specs['ukuran'] ?? '') }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: 30x30">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Warna</label>
-                                <input type="text" name="specs[warna]"
-                                    value="{{ old('specs.warna', $transaction->specs['warna'] ?? '') }}"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                    placeholder="Contoh: Putih">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- 3. ALASAN --}}
-                    <div>
-                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 mt-6 tracking-wider">Alasan Pembelian *</label>
-                        <div class="relative">
-                            <select name="purchase_reason" id="purchase-reason" required
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
-                                <option value="">— Pilih alasan —</option>
-                                @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
-                                    <option value="{{ $key }}"
-                                        {{ old('purchase_reason', $transaction->purchase_reason) == $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-                        </div>
-                        <div class="mt-4" id="keterangan-container">
-                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">
-                                Keterangan <span id="keterangan-required" class="text-red-500 hidden">*</span>
-                            </label>
-                            <textarea name="description" id="purchase-description" rows="3"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                placeholder="Tambahkan detail/alasan tambahan jika diperlukan...">{{ old('description', $transaction->description) }}</textarea>
-                        </div>
-                    </div>
-
+                    <button type="button" id="btn-add-item" class="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Tambah Barang
+                    </button>
                 </div>
 
-                {{-- 📍 KOLOM KANAN (SIDEBAR STICKY) --}}
-                <div class="lg:col-span-4">
-                    <div class="sticky top-8 space-y-6 md:space-y-8">
-                        
-                        {{-- 4. JUMLAH & HARGA --}}
-                        <div class="bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-100">
-                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Estimasi Biaya</label>
-                            <div class="space-y-5">
-                                <div>
-                                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Jumlah *</label>
-                                    <input type="number" name="quantity"
-                                        value="{{ old('quantity', $transaction->quantity ?? 1) }}"
-                                        required min="1" id="input-quantity"
-                                        class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
-                                    <div class="relative">
-                                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
-                                        <input type="text" id="input-price-display" required
-                                            class="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                            value="{{ old('estimated_price') ? number_format(old('estimated_price'), 0, ',', '.') : ($transaction->estimated_price ? number_format($transaction->estimated_price, 0, ',', '.') : '') }}">
+                <div id="items-container" class="space-y-6">
+                    @foreach($itemsToRender as $index => $item)
+                        @php
+                            $errPrefix = "items." . $index . ".";
+                            $qty = old($errPrefix . 'quantity', $item['quantity'] ?? 1);
+                            $price = old($errPrefix . 'estimated_price', $item['estimated_price'] ?? 0);
+                            $subtotal = $qty * $price;
+                            $specs = old($errPrefix . 'specs', $item['specs'] ?? []);
+                        @endphp
+                        <div class="item-card bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow" data-index="{{ $index }}">
+                            {{-- Header (Clickable for expand/collapse) --}}
+                            <div class="item-header bg-slate-50 px-5 py-4 cursor-pointer flex items-center justify-between border-b border-slate-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs item-number">{{ $index + 1 }}</div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-sm item-title">{{ old($errPrefix . 'customer', $item['customer'] ?? 'Barang Tanpa Nama') }}</h4>
+                                        <p class="text-[10px] item-subtitle text-slate-400">Rp {{ number_format($price, 0, ',', '.') }} x {{ $qty }}</p>
                                     </div>
                                 </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors {{ count($itemsToRender) <= 1 ? 'hidden' : '' }}" title="Hapus Barang">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                                </div>
                             </div>
-                            <div class="mt-4 bg-teal-50 border border-teal-100 rounded-xl p-4 flex justify-between items-center shadow-sm">
-                                <span class="text-xs font-bold text-teal-700">Total Estimasi</span>
-                                <div id="total-estimate" class="transition-transform duration-200 text-lg md:text-xl font-bold text-emerald-600">Rp 0</div>
+
+                            {{-- Body (Collapsible) --}}
+                            <div class="item-body p-5 md:p-6 space-y-8">
+                                
+                                {{-- 2. INFORMASI BARANG --}}
+                                <div>
+                                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">
+                                        Informasi Barang / Jasa
+                                    </label>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                                        <div class="md:col-span-2">
+                                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
+                                            <input type="text" name="items[{{ $index }}][customer]" required value="{{ old($errPrefix . 'customer', $item['customer'] ?? '') }}"
+                                                class="input-customer w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                                placeholder="Contoh: Router Mikrotik">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
+                                            <input type="text" name="items[{{ $index }}][vendor]" value="{{ old($errPrefix . 'vendor', $item['vendor'] ?? '') }}"
+                                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                                placeholder="Contoh: Toko Komputer Jaya">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi</label>
+                                            <input type="url" name="items[{{ $index }}][link]" value="{{ old($errPrefix . 'link', $item['link'] ?? '') }}"
+                                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                                placeholder="https://tokopedia.link/...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- 3. SPESIFIKASI --}}
+                                <div class="mt-8">
+                                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+                                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Merk</label><input type="text" name="items[{{ $index }}][specs][merk]" value="{{ $specs['merk'] ?? '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: Xpon CDATA"></div>
+                                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Tipe / Seri</label><input type="text" name="items[{{ $index }}][specs][tipe]" value="{{ $specs['tipe'] ?? '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: FD512XW-R460"></div>
+                                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Ukuran</label><input type="text" name="items[{{ $index }}][specs][ukuran]" value="{{ $specs['ukuran'] ?? '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: 30x30"></div>
+                                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Warna</label><input type="text" name="items[{{ $index }}][specs][warna]" value="{{ $specs['warna'] ?? '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: Putih"></div>
+                                    </div>
+                                </div>
+
+                                {{-- 4 & 5. ALASAN & HARGA --}}
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                                    
+                                    {{-- Alasan Pembelian --}}
+                                    <div>
+                                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                                        <div class="relative">
+                                            <select name="items[{{ $index }}][purchase_reason]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                                                <option value="">— Pilih alasan —</option>
+                                                @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
+                                                    <option value="{{ $key }}" {{ old($errPrefix . 'purchase_reason', $item['purchase_reason'] ?? '') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                        </div>
+                                        <div class="mt-4 keterangan-container">
+                                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">
+                                                Keterangan <span class="keterangan-required text-red-500 hidden">*</span>
+                                            </label>
+                                            <textarea name="items[{{ $index }}][description]" rows="2"
+                                                class="input-desc w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                                placeholder="Tambahkan detail/alasan tambahan...">{{ old($errPrefix . 'description', $item['description'] ?? '') }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    {{-- Estimasi Biaya --}}
+                                    <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-100">
+                                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Estimasi Biaya</label>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
+                                                <div class="relative">
+                                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
+                                                    <input type="text" required class="input-price-display w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" value="{{ $price > 0 ? number_format($price, 0, ',', '.') : '' }}">
+                                                    <input type="hidden" name="items[{{ $index }}][estimated_price]" class="input-price-hidden" value="{{ $price }}">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Jumlah *</label>
+                                                <input type="number" name="items[{{ $index }}][quantity]" value="{{ $qty }}" required min="1" class="input-qty w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all">
+                                            </div>
+                                            <div class="pt-2 border-t border-slate-200 flex justify-between items-center">
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subtotal</span>
+                                                <span class="text-sm md:text-base font-bold text-emerald-600 item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
-
+                    @endforeach
+                </div>
+                
+                {{-- Global Total Estimate (Replaces the specific sidebar) --}}
+                <div class="mt-6 bg-slate-50 p-5 md:p-6 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <span class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Estimasi Biaya Keseluruhan</span>
+                        <p class="text-xs text-slate-500">Total estimasi dari seluruh barang di atas</p>
+                    </div>
+                    <div class="text-left sm:text-right w-full sm:w-auto bg-white border border-slate-200 px-6 py-4 rounded-xl shadow-sm">
+                        <div id="total-estimate-global" class="text-xl md:text-2xl font-black text-emerald-600">Rp 0</div>
+                        <input type="hidden" name="estimated_price" id="form-total-estimated-price" value="0">
                     </div>
                 </div>
             </div>
@@ -259,7 +289,7 @@
             </div>
 
             @if($errors->any())
-                <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-4">
+                <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-4 hidden" id="fallback-error-msg">
                     <div class="flex items-start gap-2">
                         <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 mt-0.5 shrink-0"></i>
                         <div class="text-xs text-red-600 font-medium">
@@ -272,86 +302,386 @@
             @endif
         </form>
     </div>
+
+    {{-- Toast Container --}}
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+    
+    {{-- ITEM TEMPLATE FOR JS --}}
+    <template id="item-template">
+        <div class="item-card bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow" data-index="__INDEX__">
+            {{-- Header (Clickable for expand/collapse) --}}
+            <div class="item-header bg-slate-50 px-5 py-4 cursor-pointer flex items-center justify-between border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs item-number">__NUM__</div>
+                    <div>
+                        <h4 class="font-bold text-slate-700 text-sm item-title">Barang Baru</h4>
+                        <p class="text-[10px] item-subtitle text-slate-400">Rp 0 x 1</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors hidden" title="Hapus Barang">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                </div>
+            </div>
+
+            {{-- Body (Collapsible) --}}
+            <div class="item-body p-5 md:p-6 space-y-8">
+                
+                {{-- 2. INFORMASI BARANG --}}
+                <div>
+                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">
+                        Informasi Barang / Jasa
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
+                            <input type="text" name="items[__INDEX__][customer]" required
+                                class="input-customer w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                placeholder="Contoh: Router Mikrotik">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
+                            <input type="text" name="items[__INDEX__][vendor]"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                placeholder="Contoh: Toko Komputer Jaya">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi</label>
+                            <input type="url" name="items[__INDEX__][link]"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                placeholder="https://tokopedia.link/...">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 3. SPESIFIKASI --}}
+                <div class="mt-8">
+                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Spesifikasi Barang</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Merk</label><input type="text" name="items[__INDEX__][specs][merk]" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: Xpon CDATA"></div>
+                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Tipe / Seri</label><input type="text" name="items[__INDEX__][specs][tipe]" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: FD512XW-R460"></div>
+                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Ukuran</label><input type="text" name="items[__INDEX__][specs][ukuran]" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: 30x30"></div>
+                        <div><label class="block text-[10px] md:text-[11px] mb-2 font-bold text-slate-500 uppercase tracking-wider">Warna</label><input type="text" name="items[__INDEX__][specs][warna]" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-all" placeholder="Contoh: Putih"></div>
+                    </div>
+                </div>
+
+                {{-- 4 & 5. ALASAN & HARGA --}}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                    
+                    {{-- Alasan Pembelian --}}
+                    <div>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                        <div class="relative">
+                            <select name="items[__INDEX__][purchase_reason]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                                <option value="">— Pilih alasan —</option>
+                                @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                        <div class="mt-4 keterangan-container">
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">
+                                Keterangan <span class="keterangan-required text-red-500 hidden">*</span>
+                            </label>
+                            <textarea name="items[__INDEX__][description]" rows="2"
+                                class="input-desc w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
+                                placeholder="Tambahkan detail/alasan tambahan..."></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Estimasi Biaya --}}
+                    <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-100">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Estimasi Biaya</label>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">Rp</span>
+                                    <input type="text" required class="input-price-display w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all" value="">
+                                    <input type="hidden" name="items[__INDEX__][estimated_price]" class="input-price-hidden" value="0">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Jumlah *</label>
+                                <input type="number" name="items[__INDEX__][quantity]" value="1" required min="1" class="input-qty w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all">
+                            </div>
+                            <div class="pt-2 border-t border-slate-200 flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subtotal</span>
+                                <span class="text-sm md:text-base font-bold text-emerald-600 item-subtotal">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </template>
 @endsection
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // ─────────────────────────────
-    // VARIABLES & SELECTORS
-    // ─────────────────────────────
-    const priceDisplay      = document.getElementById('input-price-display');
-    const priceHidden       = document.getElementById('form-estimated-price');
-    const quantityInput     = document.getElementById('input-quantity');
-    const totalEstimate     = document.getElementById('total-estimate');
+        // ═══════════════════════════════════════
+        // TOAST NOTIFICATIONS
+        // ═══════════════════════════════════════
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
 
+            let bgColors = 'bg-red-50 border-red-200 text-red-800';
+            let accentClasses = 'bg-red-500';
+            let iconBody = '<i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500"></i>';
+
+            if (type === 'success') {
+                bgColors = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+                accentClasses = 'bg-emerald-500';
+                iconBody = '<i data-lucide="check-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500"></i>';
+            } else if (type === 'info') {
+                bgColors = 'bg-blue-50 border-blue-200 text-blue-800';
+                accentClasses = 'bg-blue-500';
+                iconBody = '<i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500"></i>';
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `relative flex items-start gap-3 p-4 rounded-xl shadow-lg border text-sm font-bold transform transition-all duration-300 translate-x-[120%] opacity-0 overflow-hidden ${bgColors}`;
+            toast.innerHTML = `
+                <div class="absolute left-0 top-0 bottom-0 w-1 ${accentClasses}"></div>
+                ${iconBody}
+                <div class="flex-1 right-0 text-xs">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-[120%]', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            });
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons({ root: toast });
+            }
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-[120%]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Show validation errors via toast if they exist
+        @if($errors->any())
+            @foreach($errors->all() as $error)
+                setTimeout(() => {
+                    showToast("{{ $error }}", 'error');
+                }, {{ $loop->index * 300 }}); // stagger multiple toasts
+            @endforeach
+        @endif
+
+        // ═══════════════════════════════════════
+        // INITIAL DATA LOAD
+        // ═══════════════════════════════════════
+    const itemsContainer = document.getElementById('items-container');
+    const btnAddItem = document.getElementById('btn-add-item');
+    const itemTemplate = document.getElementById('item-template').innerHTML;
+    const formTotalInput = document.getElementById('form-total-estimated-price');
+    const globalTotalDisplay = document.getElementById('total-estimate-global');
+    
+    // ═══════════════════════════════════════
+    // DISTRIBUTION VARIABLES & ELEMENTS
+    // ═══════════════════════════════════════
     const branchPills       = document.querySelectorAll('.branch-pill');
     const methodBtns        = document.querySelectorAll('.method-btn');
     const distributionList  = document.getElementById('distribution-list');
     const hiddenInputsContainer = document.getElementById('distribution-hidden-inputs');
     const percentWarning    = document.getElementById('percent-warning');
-
+    
     const summarySection    = document.getElementById('summary-billing-section');
     const summaryTotal      = document.getElementById('summary-total');
     const summaryMethod     = document.getElementById('summary-method');
     const summaryBranchCount = document.getElementById('summary-branch-count');
     const summaryBranchesList = document.getElementById('summary-branches-list');
     const summarySubmit     = document.getElementById('summary-submit');
-
-    const purchaseReason    = document.getElementById('purchase-reason');
-    const purchaseDesc      = document.getElementById('purchase-description');
-    const keteranganReq     = document.getElementById('keterangan-required');
-
-    function updateKeteranganValidation() {
-        if (purchaseReason.value === 'lainnya') {
-            purchaseDesc.required = true;
-            keteranganReq.classList.remove('hidden');
-        } else {
-            purchaseDesc.required = false;
-            keteranganReq.classList.add('hidden');
-        }
-    }
-
-    purchaseReason.addEventListener('change', updateKeteranganValidation);
-    updateKeteranganValidation(); // Initial check
-
+    
     let selectedBranches = []; // { id, name, value, percent }
     let currentMethod    = 'equal';
+    
+    @php
+        $itemCount = count($itemsToRender);
+    @endphp
+    let itemCounter = {{ $itemCount }};
 
-    // ─────────────────────────────
-    // HELPER FUNCTIONS
-    // ─────────────────────────────
-    function parseRupiah(str) {
-        return parseInt((str || '').replace(/\D/g, '') || '0');
-    }
+    // Helper functions
+    function parseRupiah(str) { return parseInt((str || '').toString().replace(/\D/g, '') || '0'); }
+    function formatRupiah(num) { return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
-    function formatRupiah(num) {
-        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
+    // Core dynamic logic
+    function updateGlobalTotal() {
+        let total = 0;
+        const itemCards = itemsContainer.querySelectorAll('.item-card');
+        
+        itemCards.forEach(card => {
+            const priceInput = card.querySelector('.input-price-hidden');
+            const qtyInput = card.querySelector('.input-qty');
+            const subtotalDisplay = card.querySelector('.item-subtotal');
+            const titleDisplay = card.querySelector('.item-title');
+            const subtitleDisplay = card.querySelector('.item-subtitle');
+            const customerInput = card.querySelector('.input-customer');
+            
+            const price = parseRupiah(priceInput.value);
+            const qty = parseInt(qtyInput.value) || 1;
+            const subtotal = price * qty;
+            total += subtotal;
+            
+            if(subtotalDisplay) subtotalDisplay.textContent = 'Rp ' + formatRupiah(subtotal);
+            
+            if(titleDisplay && customerInput) {
+                titleDisplay.textContent = customerInput.value || 'Barang Baru';
+            }
+            if(subtitleDisplay) {
+                subtitleDisplay.textContent = `Rp ${formatRupiah(price)} x ${qty}`;
+            }
+        });
 
-    function getTotal() {
-        const price = parseRupiah(priceHidden.value);
-        const qty   = parseInt(quantityInput.value) || 1;
-        return price * qty;
-    }
-
-    function updateTotalDisplay() {
-        const total = getTotal();
-        totalEstimate.textContent = 'Rp ' + formatRupiah(total);
+        formTotalInput.value = total;
+        globalTotalDisplay.textContent = 'Rp ' + formatRupiah(total);
+        
         renderDistribution();
     }
 
-    // ─────────────────────────────
-    // EVENT LISTENERS: PRICE & QTY
-    // ─────────────────────────────
-    priceDisplay.addEventListener('input', function () {
-        const raw = parseRupiah(this.value);
-        this.value = raw > 0 ? formatRupiah(raw) : '';
-        priceHidden.value = raw;
-        updateTotalDisplay();
-    });
+    function setupItemCardEvents(card) {
+        const priceDisp = card.querySelector('.input-price-display');
+        const priceHid = card.querySelector('.input-price-hidden');
+        const qtyInput = card.querySelector('.input-qty');
+        const customerInput = card.querySelector('.input-customer');
+        
+        if(priceDisp) {
+            priceDisp.addEventListener('input', function() {
+                let raw = parseRupiah(this.value);
+                this.value = raw > 0 ? formatRupiah(raw) : '';
+                priceHid.value = raw;
+                updateGlobalTotal();
+            });
+        }
+        if(qtyInput) qtyInput.addEventListener('input', updateGlobalTotal);
+        if(customerInput) customerInput.addEventListener('input', updateGlobalTotal);
+        
+        const reasonSelect = card.querySelector('.input-reason');
+        const descInput = card.querySelector('.input-desc');
+        const reqSpan = card.querySelector('.keterangan-required');
+        
+        function checkKeterangan() {
+            if (reasonSelect.value === 'lainnya') {
+                descInput.required = true;
+                reqSpan.classList.remove('hidden');
+            } else {
+                descInput.required = false;
+                reqSpan.classList.add('hidden');
+            }
+        }
+        
+        if(reasonSelect && descInput && reqSpan) {
+            reasonSelect.addEventListener('change', checkKeterangan);
+            checkKeterangan(); // init
+        }
 
-    quantityInput.addEventListener('input', updateTotalDisplay);
+        const header = card.querySelector('.item-header');
+        const body = card.querySelector('.item-body');
+        const iconCollapse = card.querySelector('.icon-collapse');
+        
+        if(header && body && iconCollapse) {
+            header.addEventListener('click', function(e) {
+                if(e.target.closest('.btn-remove-item')) return;
+                
+                body.classList.toggle('hidden');
+                const isHidden = body.classList.contains('hidden');
+                if(isHidden) {
+                    iconCollapse.classList.add('rotate-180');
+                } else {
+                    iconCollapse.classList.remove('rotate-180');
+                }
+            });
+        }
+
+        const btnRemove = card.querySelector('.btn-remove-item');
+        if(btnRemove) {
+            btnRemove.addEventListener('click', function(e) {
+                card.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    card.remove();
+                    updateItemNumbers();
+                    updateGlobalTotal();
+                    updateRemoveButtons();
+                }, 300);
+            });
+        }
+    }
+
+    function updateItemNumbers() {
+        const cards = itemsContainer.querySelectorAll('.item-card');
+        cards.forEach((card, idx) => {
+            const numBox = card.querySelector('.item-number');
+            if(numBox) numBox.textContent = idx + 1;
+        });
+    }
+    
+    function updateRemoveButtons() {
+        const cards = itemsContainer.querySelectorAll('.item-card');
+        cards.forEach((card, idx) => {
+            const btn = card.querySelector('.btn-remove-item');
+            if(btn) {
+                if(cards.length <= 1) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                }
+            }
+        });
+    }
+
+    function addItem() {
+        const tempDiv = document.createElement('div');
+        let html = itemTemplate.replace(/__INDEX__/g, itemCounter).replace(/__NUM__/g, itemCounter + 1);
+        tempDiv.innerHTML = html;
+        const newCard = tempDiv.firstElementChild;
+        
+        setupItemCardEvents(newCard);
+        
+        // Expand newly added card and collapse others
+        const existingCards = itemsContainer.querySelectorAll('.item-card');
+        existingCards.forEach(card => {
+            const body = card.querySelector('.item-body');
+            const icon = card.querySelector('.icon-collapse');
+            if(body && !body.classList.contains('hidden')) {
+                body.classList.add('hidden');
+                if(icon) icon.classList.add('rotate-180');
+            }
+        });
+
+        itemsContainer.appendChild(newCard);
+        itemCounter++;
+        
+        updateRemoveButtons();
+        
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: newCard });
+        
+        setTimeout(() => {
+            const input = newCard.querySelector('.input-customer');
+            if(input) input.focus();
+            
+            if (itemCounter > 1) {
+                newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+    
+    btnAddItem.addEventListener('click', addItem);
+        
+    // Inisialisasi event untuk existing items
+    itemsContainer.querySelectorAll('.item-card').forEach(setupItemCardEvents);
+    updateGlobalTotal();
 
     // ─────────────────────────────
     // EVENT LISTENERS: BRANCH PILLS
@@ -420,7 +750,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         summarySection.classList.remove('hidden');
-        const totalAmount = getTotal();
+        const totalAmount = parseInt(formTotalInput.value) || 0;
 
         selectedBranches.forEach((branch, idx) => {
             if (currentMethod === 'equal') {
@@ -493,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateSummaryList() {
         summaryBranchesList.innerHTML = '';
-        const totalAmount = getTotal();
+        const totalAmount = parseInt(formTotalInput.value) || 0;
 
         selectedBranches.forEach(branch => {
             const pct = totalAmount > 0
@@ -519,7 +849,7 @@ document.addEventListener('DOMContentLoaded', function () {
     distributionList.addEventListener('input', function(e) {
         const index = e.target.dataset.index;
         if (index === undefined) return;
-        const totalAmount = getTotal();
+        const totalAmount = parseInt(formTotalInput.value) || 0;
 
         if (e.target.classList.contains('dist-input-percent')) {
             const val = parseFloat(e.target.value) || 0;
@@ -544,6 +874,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function validateAndSubmit() {
         let isValid = true;
+        const totalAmount = parseInt(formTotalInput.value) || 0;
 
         if (currentMethod === 'percent') {
             const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
@@ -557,11 +888,20 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             percentWarning.classList.add('hidden');
         }
+        
+        if (totalAmount <= 0) isValid = false;
 
         summarySubmit.disabled = !isValid;
     }
 
     document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
+        const totalAmount = parseInt(formTotalInput.value) || 0;
+        if(totalAmount <= 0) {
+            e.preventDefault();
+            alert('Total estimasi tidak boleh Rp 0. Silakan isi harga barang.');
+            return;
+        }
+
         if (summarySubmit.disabled) {
             e.preventDefault();
             return;
@@ -575,7 +915,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // INITIALIZE with existing data
     // ─────────────────────────────
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    updateTotalDisplay();  // This also calls renderDistribution which shows summary if branches exist
+    // Re-render to show correct calculation with distributed values
+    renderDistribution();
 });
 </script>
 @endpush

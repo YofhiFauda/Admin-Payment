@@ -84,22 +84,27 @@ class PengajuanController extends Controller
             : IdGeneratorService::nextInvoiceNumber(); // fallback if no upload happened
 
         $request->validate([
-            'customer'        => 'required|string|max:255',  // Nama barang/jasa
-            'vendor'          => 'nullable|string|max:255',
-            'link'            => 'nullable|url|max:1000',
-            'description'     => 'required_if:purchase_reason,lainnya|nullable|string|max:2000',
-            'specs'           => 'nullable|array',
-            'specs.merk'      => 'nullable|string|max:255',
-            'specs.tipe'      => 'nullable|string|max:255',
-            'specs.ukuran'    => 'nullable|string|max:255',
-            'specs.warna'     => 'nullable|string|max:255',
-            'quantity'        => 'required|integer|min:1',
-            'estimated_price' => 'required|numeric|min:1',
-            'purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+            'items'           => 'required|array|min:1',
+            'items.*.customer'=> 'required|string|max:255',
+            'items.*.vendor'  => 'nullable|string|max:255',
+            'items.*.link'    => 'nullable|url|max:1000',
+            'items.*.purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+            'items.*.description' => 'nullable|string|max:2000',
+            'items.*.specs'   => 'nullable|array',
+            'items.*.quantity'=> 'required|integer|min:1',
+            'items.*.estimated_price' => 'required|numeric|min:0',
+            'estimated_price' => 'required|numeric|min:1', // Total amount
             'branches'        => 'nullable|array',
             'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
             'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
             'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+        ], [
+            'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
+            'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
+            'items.*.purchase_reason.required' => 'Alasan Pembelian pada salah satu daftar barang wajib dipilih.',
+            'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
+            'items.*.estimated_price.required' => 'Estimasi harga satuan wajib diisi.',
+            'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
         ]);
 
         // File sudah final di path 'pengajuan/' (tidak perlu dipindah)
@@ -128,18 +133,25 @@ class PengajuanController extends Controller
             // dengan nama UP-YYYYMMDD-XXXXX — tidak perlu upload ulang di sini
             $filePath = $permanentPath;
 
+            $items = $request->items;
+            $firstItem = $items[0] ?? [];
+            $totalAmount = collect($items)->sum(function($item) {
+                return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
+            });
+
             $transaction = Transaction::create([
                 'type'            => Transaction::TYPE_PENGAJUAN,
                 'invoice_number'  => $invoiceNumber,
-                'customer'        => $request->customer,  // nama barang/jasa
-                'vendor'          => $request->vendor,
-                'link'            => $request->link,
-                'description'     => $request->description,
-                'specs'           => $request->specs,
-                'quantity'        => $request->quantity,
-                'estimated_price' => $request->estimated_price,
-                'purchase_reason' => $request->purchase_reason,
-                'amount'          => $request->estimated_price * $request->quantity,
+                'customer'        => $firstItem['customer'] ?? 'Multiple Items',
+                'vendor'          => $firstItem['vendor'] ?? null,
+                'link'            => $firstItem['link'] ?? null,
+                'description'     => $firstItem['description'] ?? null,
+                'specs'           => $firstItem['specs'] ?? null,
+                'quantity'        => $firstItem['quantity'] ?? 1,
+                'estimated_price' => $firstItem['estimated_price'] ?? 0,
+                'purchase_reason' => $firstItem['purchase_reason'] ?? array_key_first(Transaction::PURCHASE_REASONS),
+                'amount'          => $totalAmount,
+                'items'           => $items,
                 'file_path'       => $filePath,
                 'date'            => now()->format('Y-m-d'),
                 'status'          => 'pending',
