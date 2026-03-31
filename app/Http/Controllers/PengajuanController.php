@@ -86,6 +86,8 @@ class PengajuanController extends Controller
         $request->validate([
             'customer'        => 'required|string|max:255',  // Nama barang/jasa
             'vendor'          => 'nullable|string|max:255',
+            'link'            => 'nullable|url|max:1000',
+            'description'     => 'required_if:purchase_reason,lainnya|nullable|string|max:2000',
             'specs'           => 'nullable|array',
             'specs.merk'      => 'nullable|string|max:255',
             'specs.tipe'      => 'nullable|string|max:255',
@@ -131,6 +133,8 @@ class PengajuanController extends Controller
                 'invoice_number'  => $invoiceNumber,
                 'customer'        => $request->customer,  // nama barang/jasa
                 'vendor'          => $request->vendor,
+                'link'            => $request->link,
+                'description'     => $request->description,
                 'specs'           => $request->specs,
                 'quantity'        => $request->quantity,
                 'estimated_price' => $request->estimated_price,

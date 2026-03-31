@@ -240,6 +240,8 @@ class TransactionController extends Controller
             $request->validate([
                 'customer'        => 'required|string|max:255',
                 'vendor'          => 'nullable|string|max:255',
+                'link'            => 'nullable|url|max:1000',
+                'description'     => 'required_if:purchase_reason,lainnya|nullable|string|max:2000',
                 'specs'           => 'nullable|array',
                 'quantity'        => 'required|integer|min:1',
                 'estimated_price' => 'required|numeric|min:1',
@@ -284,6 +286,8 @@ class TransactionController extends Controller
                 $transaction->update([
                     'customer'        => $request->customer,
                     'vendor'          => $request->vendor,
+                    'link'            => $request->link,
+                    'description'     => $request->description,
                     'specs'           => $request->specs,
                     'quantity'        => $request->quantity,
                     'estimated_price' => $request->estimated_price,
