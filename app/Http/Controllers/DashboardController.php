@@ -220,7 +220,11 @@ class DashboardController extends Controller
                     }
                     return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
                 })->map(function ($group) {
-                    return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
+                    return $group->sum(function($t) {
+                        return ($t->pivot->allocation_amount > 0) 
+                            ? $t->pivot->allocation_amount 
+                            : round(($t->effective_amount * ($t->pivot->allocation_percent ?? 100)) / 100);
+                    });
                 })->sortByDesc(fn($v) => $v);
 
                 return (object) [
@@ -289,7 +293,11 @@ class DashboardController extends Controller
                 }
                 return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
             })->map(function ($group) {
-                return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
+                return $group->sum(function($t) {
+                    return ($t->pivot->allocation_amount > 0) 
+                        ? $t->pivot->allocation_amount 
+                        : round(($t->effective_amount * ($t->pivot->allocation_percent ?? 100)) / 100);
+                });
             })->sortByDesc(fn($v) => $v);
 
             return (object) [
@@ -368,20 +376,32 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
-        $totalHutang = $transactions->sum(fn ($t) => $t->effective_amount);
+        $data = $transactions->map(function ($t) use ($branchName) {
+            // Find the specific branch to get its allocated amount from pivot
+            $branch = $t->branches->firstWhere('name', $branchName);
+            
+            // Logika robust: jika allocation_amount <= 0, hitung manual dari persen sebagai fallback
+            if ($branch) {
+                $allocatedAmount = ($branch->pivot->allocation_amount > 0)
+                    ? $branch->pivot->allocation_amount
+                    : (int) round(($t->effective_amount * ($branch->pivot->allocation_percent ?? 100)) / 100);
+            } else {
+                $allocatedAmount = $t->effective_amount;
+            }
 
-        $data = $transactions->map(function ($t) {
             return [
                 'id'               => $t->id,
                 'invoice_number'   => $t->invoice_number,
                 'submitter_name'   => $t->submitter->name ?? '-',
                 'status'           => $t->status,
-                'amount'           => $t->effective_amount,
-                'formatted_amount' => 'Rp ' . number_format($t->effective_amount, 0, ',', '.'),
+                'amount'           => $allocatedAmount,
+                'formatted_amount' => 'Rp ' . number_format($allocatedAmount, 0, ',', '.'),
                 'created_at'       => $t->created_at->format('d M Y'),
                 'category'         => Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya',
             ];
         });
+
+        $totalHutang = $data->sum('amount');
 
         return response()->json([
             'transactions'    => $data,
