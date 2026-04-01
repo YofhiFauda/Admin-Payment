@@ -2205,13 +2205,24 @@
         const bankInput = document.getElementById('transfer_bank');
         const nomorInput = document.getElementById('transfer_nomor');
         const namaInput = document.getElementById('transfer_nama');
+        const paymentFileInput = document.getElementById('payment_file_input');
+        const paymentLabel = document.getElementById('payment-modal-label');
 
         // Reset validasi required untuk menghindari pemblokiran pada opsi Cash
         if (bankInput) bankInput.required = false;
         if (nomorInput) nomorInput.required = false;
         if (namaInput) namaInput.required = false;
 
-        if (paymentMethod && paymentMethod.includes('transfer')) {
+        // Dynamic File Requirement (Mandatory for Transfer, Optional for Cash)
+        const isTransfer = paymentMethod && paymentMethod.includes('transfer');
+        if (paymentFileInput) paymentFileInput.required = isTransfer;
+        if (paymentLabel) {
+            paymentLabel.innerHTML = isTransfer 
+                ? 'Unggah Foto / Screenshot <span class="text-red-500">*</span>'
+                : 'Unggah Foto / Screenshot <span class="text-slate-400 font-normal">(Opsional)</span>';
+        }
+
+        if (isTransfer) {
             endpoint = '/api/v1/payment/transfer/upload';
             document.getElementById('transfer-fields').classList.remove('hidden');
 

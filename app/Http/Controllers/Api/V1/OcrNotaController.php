@@ -248,11 +248,9 @@ class OcrNotaController extends Controller
         }
 
         $fileInput = $request->hasFile('foto_penyerahan') ? 'foto_penyerahan' : 'file';
-        if (!$request->hasFile($fileInput)) {
-            return response()->json(['message' => 'Foto penyerahan wajib diunggah.'], 422);
-        }
-
-        $path = $request->file($fileInput)->store('payments/cash', 'public');
+        $path = $request->hasFile($fileInput) 
+            ? $request->file($fileInput)->store('payments/cash', 'public') 
+            : null;
 
         $transaction->update([
             'foto_penyerahan' => $path,
