@@ -199,17 +199,42 @@ class DashboardController extends Controller
         // ─────────────────────────────────────────────
         // 6. BRANCH COST BREAKDOWN (admin only)
         // ─────────────────────────────────────────────
+        $startDate = request('start_date');
+        $endDate   = request('end_date');
+
         $branchCostBreakdown = collect();
         if ($isAdmin) {
-            $branchCostBreakdown = Branch::whereHas('transactions', function ($q) {
-                $q->whereIn('status', ['approved', 'completed'])
-                  ->whereMonth('transactions.created_at', now()->month)
-                  ->whereYear('transactions.created_at', now()->year);
+            $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($startDate, $endDate) {
+                $q->whereIn('status', ['approved', 'completed']);
+                if ($startDate && $endDate) {
+                    $q->whereBetween('transactions.created_at', [
+                        Carbon::parse($startDate)->startOfDay(),
+                        Carbon::parse($endDate)->endOfDay()
+                    ]);
+                } elseif ($startDate) {
+                    $q->whereDate('transactions.created_at', '>=', $startDate);
+                } elseif ($endDate) {
+                    $q->whereDate('transactions.created_at', '<=', $endDate);
+                } else {
+                    $q->whereMonth('transactions.created_at', now()->month)
+                      ->whereYear('transactions.created_at', now()->year);
+                }
             })
-            ->with(['transactions' => function ($q) {
-                $q->whereIn('status', ['approved', 'completed'])
-                  ->whereMonth('transactions.created_at', now()->month)
-                  ->whereYear('transactions.created_at', now()->year);
+            ->with(['transactions' => function ($q) use ($startDate, $endDate) {
+                $q->whereIn('status', ['approved', 'completed']);
+                if ($startDate && $endDate) {
+                    $q->whereBetween('transactions.created_at', [
+                        Carbon::parse($startDate)->startOfDay(),
+                        Carbon::parse($endDate)->endOfDay()
+                    ]);
+                } elseif ($startDate) {
+                    $q->whereDate('transactions.created_at', '>=', $startDate);
+                } elseif ($endDate) {
+                    $q->whereDate('transactions.created_at', '<=', $endDate);
+                } else {
+                    $q->whereMonth('transactions.created_at', now()->month)
+                      ->whereYear('transactions.created_at', now()->year);
+                }
             }])
             ->orderBy('name')
             ->get()
@@ -271,18 +296,46 @@ class DashboardController extends Controller
             return response()->json(['html' => '', 'count' => 0]);
         }
 
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+
+        // Fallback to current month if no range given
         $month = (int) $request->input('month', now()->month);
         $year  = (int) $request->input('year', now()->year);
 
-        $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($month, $year) {
-            $q->whereIn('status', ['approved', 'completed'])
-              ->whereMonth('transactions.created_at', $month)
-              ->whereYear('transactions.created_at', $year);
+        $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($startDate, $endDate, $month, $year) {
+            $q->whereIn('status', ['approved', 'completed']);
+            
+            if ($startDate && $endDate) {
+                $q->whereBetween('transactions.created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $q->whereDate('transactions.created_at', '>=', $startDate);
+            } elseif ($endDate) {
+                $q->whereDate('transactions.created_at', '<=', $endDate);
+            } else {
+                $q->whereMonth('transactions.created_at', $month)
+                  ->whereYear('transactions.created_at', $year);
+            }
         })
-        ->with(['transactions' => function ($q) use ($month, $year) {
-            $q->whereIn('status', ['approved', 'completed'])
-              ->whereMonth('transactions.created_at', $month)
-              ->whereYear('transactions.created_at', $year);
+        ->with(['transactions' => function ($q) use ($startDate, $endDate, $month, $year) {
+            $q->whereIn('status', ['approved', 'completed']);
+
+            if ($startDate && $endDate) {
+                $q->whereBetween('transactions.created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $q->whereDate('transactions.created_at', '>=', $startDate);
+            } elseif ($endDate) {
+                $q->whereDate('transactions.created_at', '<=', $endDate);
+            } else {
+                $q->whereMonth('transactions.created_at', $month)
+                  ->whereYear('transactions.created_at', $year);
+            }
         }])
         ->orderBy('name')
         ->get()

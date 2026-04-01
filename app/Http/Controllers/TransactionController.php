@@ -88,6 +88,14 @@ class TransactionController extends Controller
             }
         }
 
+        // Date Range filter
+        if ($startDate = $request->input('start_date')) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate = $request->input('end_date')) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
         $transactions = $query->paginate(20);
 
         // Stats - scoped per role and cached
@@ -676,6 +684,14 @@ class TransactionController extends Controller
             if ($category !== 'all') {
                 $query->where('category', $category);
             }
+        }
+
+        // Date Range filter
+        if ($startDate = $request->input('start_date')) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate = $request->input('end_date')) {
+            $query->whereDate('created_at', '<=', $endDate);
         }
 
         // Auto-cleanup stuck processing (timeout > 5 minutes)

@@ -330,12 +330,22 @@ document.addEventListener('DOMContentLoaded', function () {
     @if($isAdmin)
     (function() {
         const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        const monthSel = document.getElementById('branch-cost-month');
-        const yearSel  = document.getElementById('branch-cost-year');
-        const periodEl = document.getElementById('branch-cost-period');
+        const monthSel   = document.getElementById('branch-cost-month');
+        const yearSel    = document.getElementById('branch-cost-year');
+        const startInput = document.getElementById('branch-cost-start');
+        const endInput   = document.getElementById('branch-cost-end');
+        const periodEl   = document.getElementById('branch-cost-period');
 
         function updatePeriodLabel() {
-            if (periodEl && monthSel && yearSel) {
+            if (!periodEl) return;
+            
+            const s = startInput.value;
+            const e = endInput.value;
+
+            if (s || e) {
+                const fmt = d => d ? new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) : '...';
+                periodEl.textContent = (s ? fmt(s) : 'Awal') + ' - ' + (e ? fmt(e) : 'Sekarang');
+            } else if (monthSel && yearSel) {
                 periodEl.textContent = monthNames[monthSel.value - 1] + ' ' + yearSel.value;
             }
         }
@@ -346,12 +356,21 @@ document.addEventListener('DOMContentLoaded', function () {
             const countEl = document.getElementById('branch-cost-count');
             if (!grid) return;
 
-            const m = monthSel ? monthSel.value : {{ now()->month }};
-            const y = yearSel  ? yearSel.value  : {{ now()->year }};
+            const s = startInput ? startInput.value : '';
+            const e = endInput   ? endInput.value : '';
+            const m = monthSel   ? monthSel.value : '';
+            const y = yearSel    ? yearSel.value : '';
 
-            fetch('{{ route("dashboard.branchCostData") }}?month=' + m + '&year=' + y, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
+            let url = '{{ route("dashboard.branchCostData") }}?';
+            if (s || e) {
+                if (s) url += '&start_date=' + s;
+                if (e) url += '&end_date=' + e;
+            } else {
+                if (m) url += '&month=' + m;
+                if (y) url += '&year=' + y;
+            }
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(data => {
                 if (data.count > 0) {
@@ -368,21 +387,25 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => {});
         }
 
-        // Filter change → immediate refresh
-        if (monthSel) monthSel.addEventListener('change', silentRefreshBranchCost);
-        if (yearSel)  yearSel.addEventListener('change', silentRefreshBranchCost);
+        // Event listeners
+        const refresh = () => { silentRefreshBranchCost(); if (typeof loadAllHutangAmounts === 'function') loadAllHutangAmounts(); };
 
-        // Silent auto-refresh every 15 seconds
-        setInterval(silentRefreshBranchCost, 15000);
+        if (monthSel) monthSel.addEventListener('change', () => { 
+            if (startInput) startInput.value = ''; 
+            if (endInput)   endInput.value = ''; 
+            refresh(); 
+        });
+        if (yearSel) yearSel.addEventListener('change', () => { 
+            if (startInput) startInput.value = ''; 
+            if (endInput)   endInput.value = ''; 
+            refresh(); 
+        });
 
-        // After grid refreshes, reload hutang amounts
-        const origSilentRefresh = silentRefreshBranchCost;
-        function wrappedRefresh() {
-            origSilentRefresh();
-            setTimeout(loadAllHutangAmounts, 800);
-        }
-        if (monthSel) monthSel.addEventListener('change', loadAllHutangAmounts);
-        if (yearSel)  yearSel.addEventListener('change', loadAllHutangAmounts);
+        if (startInput) startInput.addEventListener('change', refresh);
+        if (endInput)   endInput.addEventListener('change', refresh);
+
+        // Silent auto-refresh every 30 seconds
+        setInterval(silentRefreshBranchCost, 30000);
     })();
     @endif
 
@@ -942,21 +965,32 @@ async function loadAllHutangAmounts() {
                 </div>
             </div>
 
-            {{-- Month/Year Filter --}}
-            <div class="flex items-center gap-2">
-                <select id="branch-cost-month" class="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
-                    @php
-                        $bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-                    @endphp
-                    @foreach($bulan as $i => $b)
-                        <option value="{{ $i + 1 }}" {{ ($i + 1) == now()->month ? 'selected' : '' }}>{{ $b }}</option>
-                    @endforeach
-                </select>
-                <select id="branch-cost-year" class="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
-                    @for($y = now()->year; $y >= now()->year - 2; $y--)
-                        <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
+            {{-- Filters: Month/Year + Custom Date Range --}}
+            <div class="flex flex-wrap items-center gap-2">
+                {{-- Month/Year Selectors --}}
+                <div class="flex items-center gap-2">
+                    <select id="branch-cost-month" class="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
+                        @php $bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; @endphp
+                        @foreach($bulan as $i => $b)
+                            <option value="{{ $i + 1 }}" {{ ($i + 1) == now()->month ? 'selected' : '' }}>{{ $b }}</option>
+                        @endforeach
+                    </select>
+                    <select id="branch-cost-year" class="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none cursor-pointer transition-all hover:border-slate-300">
+                        @for($y = now()->year; $y >= now()->year - 2; $y--)
+                            <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
+
+                <span class="text-slate-200 mx-1 hidden lg:inline">|</span>
+
+                {{-- Custom Date Range --}}
+                <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-sm focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-400 transition-all">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 ml-1"></i>
+                    <input type="date" id="branch-cost-start" value="{{ request('start_date') }}" title="Tanggal Mulai" class="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer p-1">
+                    <span class="text-slate-300 text-[10px]">—</span>
+                    <input type="date" id="branch-cost-end" value="{{ request('end_date') }}" title="Tanggal Selesai" class="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer p-1">
+                </div>
             </div>
         </div>
 
