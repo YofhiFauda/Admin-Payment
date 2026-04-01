@@ -88,6 +88,15 @@ class TransactionController extends Controller
             }
         }
 
+        // Branch filter
+        if ($branchId = $request->input('branch_id')) {
+            if ($branchId !== 'all') {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
+            }
+        }
+
         // Date Range filter
         if ($startDate = $request->input('start_date')) {
             $query->whereDate('created_at', '>=', $startDate);
@@ -97,6 +106,12 @@ class TransactionController extends Controller
         }
 
         $transactions = $query->paginate(20);
+
+        // Fetch filter data
+        $branches = Branch::orderBy('name')->get();
+        // Merge Rembush & Pengajuan Categories as a unique list
+        $categories = array_unique(array_merge(Transaction::CATEGORIES, Transaction::PURCHASE_REASONS));
+        asort($categories);
 
         // Stats - scoped per role and cached
         $isTeknisi = Auth::user()->isTeknisi();
@@ -120,7 +135,7 @@ class TransactionController extends Controller
             ];
         });
 
-        return view('transactions.index', compact('transactions', 'stats'));
+        return view('transactions.index', compact('transactions', 'stats', 'branches', 'categories'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -682,7 +697,19 @@ class TransactionController extends Controller
         // Category filter
         if ($category = $request->input('category')) {
             if ($category !== 'all') {
-                $query->where('category', $category);
+                $query->where(function($q) use ($category) {
+                    $q->where('category', $category)
+                      ->orWhere('purchase_reason', $category);
+                });
+            }
+        }
+
+        // Branch filter
+        if ($branchId = $request->input('branch_id')) {
+            if ($branchId !== 'all') {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
             }
         }
 

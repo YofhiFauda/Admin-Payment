@@ -33,15 +33,37 @@
                     </button>
                 </div>
 
-                {{-- Date Range --}}
-                <div class="flex items-center gap-2">
-                    <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all">
-                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400"></i>
-                        <input type="date" id="filter-start-date" value="{{ request('start_date') }}" title="Mulai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
-                        <span class="text-gray-300 text-[10px]">—</span>
-                        <input type="date" id="filter-end-date" value="{{ request('end_date') }}" title="Selesai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
+                @if(auth()->user()->role !== 'teknisi')
+                    {{-- Date Range --}}
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400"></i>
+                            <input type="date" id="filter-start-date" value="{{ request('start_date') }}" title="Mulai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
+                            <span class="text-gray-300 text-[10px]">—</span>
+                            <input type="date" id="filter-end-date" value="{{ request('end_date') }}" title="Selesai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
+                        </div>
                     </div>
-                </div>
+
+                    {{-- Branch Filter --}}
+                    <div class="flex items-center gap-2">
+                        <select id="filter-branch-id" title="Cabang" class="text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all cursor-pointer">
+                            <option value="all">Semua Cabang</option>
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}" {{ request('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Category Filter --}}
+                    <div class="flex items-center gap-2">
+                        <select id="filter-category" title="Kategori" class="text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all cursor-pointer">
+                            <option value="all">Semua Kategori</option>
+                            @foreach($categories as $key => $val)
+                                <option value="{{ $key }}" {{ request('category') == $key ? 'selected' : '' }}>{{ $val }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
             </div>
 
             {{-- Type Filter --}}
@@ -63,6 +85,13 @@
                     <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Pengajuan
                 </a>
             </div>
+        </div>
+
+        {{-- Active Filters Indicator --}}
+        <div id="active-filters-bar" class="px-3 sm:px-5 py-2 border-b border-gray-50 bg-gray-50/30 flex flex-wrap items-center gap-2 hidden">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Filter Aktif:</span>
+            <div id="active-filters-chips" class="flex flex-wrap items-center gap-2"></div>
+            <button type="button" id="clear-all-filters" class="text-[10px] font-bold text-red-500 hover:text-red-600 ml-auto transition-colors">Hapus Semua</button>
         </div>
 
         {{-- Status Tabs --}}
@@ -745,10 +774,18 @@
             const params = new URLSearchParams(url.search);
             
             // Add date range to params
-            const startDate = document.getElementById('filter-start-date').value;
-            const endDate = document.getElementById('filter-end-date').value;
-            if (startDate) params.set('start_date', startDate);
-            if (endDate) params.set('end_date', endDate);
+            const startDateEl = document.getElementById('filter-start-date');
+            const endDateEl = document.getElementById('filter-end-date');
+            if (startDateEl?.value) params.set('start_date', startDateEl.value);
+            if (endDateEl?.value) params.set('end_date', endDateEl.value);
+
+            // Add branch and category to params
+            const branchIdEl = document.getElementById('filter-branch-id');
+            const categoryEl = document.getElementById('filter-category');
+            if (branchIdEl?.value && branchIdEl.value !== 'all') params.set('branch_id', branchIdEl.value);
+            if (categoryEl?.value && categoryEl.value !== 'all') params.set('category', categoryEl.value);
+
+            updateActiveFilters();
 
             console.log('[SearchEngine] Fetching data from:', '/transactions/search-data?' + params.toString());
             
@@ -1496,9 +1533,6 @@
         if (imageViewer) imageViewer.setAttribute('aria-hidden', 'true');
         if (rejectModal) rejectModal.setAttribute('aria-hidden', 'true');
 
-        // Load data
-        SearchEngine.init();
-
         // Setup instant search
         const searchInput = document.getElementById('instant-search');
         const clearBtn = document.getElementById('search-clear');
@@ -1533,6 +1567,98 @@
                 });
             }
         });
+
+        // Setup Branch & Category Filters
+        const branchInput = document.getElementById('filter-branch-id');
+        const categoryInput = document.getElementById('filter-category');
+        
+        [branchInput, categoryInput].forEach(el => {
+            if (el) {
+                el.addEventListener('change', function() {
+                    SearchEngine.init(); 
+                });
+            }
+        });
+
+        // Clear All Filters
+        document.getElementById('clear-all-filters')?.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput)   endDateInput.value = '';
+            if (branchInput)    branchInput.value = 'all';
+            if (categoryInput)  categoryInput.value = 'all';
+            
+            SearchEngine.init();
+        });
+
+        // --- Visual Indicator Helpers ---
+        function updateActiveFilters() {
+            const bar = document.getElementById('active-filters-bar');
+            const chips = document.getElementById('active-filters-chips');
+            if (!bar || !chips) return;
+
+            chips.innerHTML = '';
+            let activeCount = 0;
+
+            // Branch
+            if (branchInput && branchInput.value !== 'all') {
+                const name = branchInput.options[branchInput.selectedIndex].text;
+                chips.appendChild(createFilterChip('Cabang: ' + name, () => {
+                    branchInput.value = 'all';
+                    SearchEngine.init();
+                }));
+                branchInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+                activeCount++;
+            } else if (branchInput) {
+                branchInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            }
+
+            // Category
+            if (categoryInput && categoryInput.value !== 'all') {
+                const name = categoryInput.options[categoryInput.selectedIndex].text;
+                chips.appendChild(createFilterChip('Kategori: ' + name, () => {
+                    categoryInput.value = 'all';
+                    SearchEngine.init();
+                }));
+                categoryInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+                activeCount++;
+            } else if (categoryInput) {
+                categoryInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            }
+
+            // Dates
+            if (startDateInput && startDateInput.value) {
+                activeCount++;
+                startDateInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            } else if (startDateInput) {
+                startDateInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            }
+            if (endDateInput && endDateInput.value) {
+                activeCount++;
+                endDateInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            } else if (endDateInput) {
+                endDateInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            }
+
+            bar.classList.toggle('hidden', activeCount === 0);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function createFilterChip(label, onClear) {
+            const chip = document.createElement('div');
+            chip.className = 'flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-200 rounded-lg shadow-sm text-[10px] font-bold text-gray-600';
+            chip.innerHTML = `
+                <span>${label}</span>
+                <button type="button" class="hover:text-red-500 transition-colors">
+                    <i data-lucide="x" class="w-2.5 h-2.5"></i>
+                </button>
+            `;
+            chip.querySelector('button').onclick = onClear;
+            return chip;
+        }
+
+        // Attach updateActiveFilters to window so SearchEngine can call it
+        window.updateActiveFilters = updateActiveFilters;
 
         // Show session toasts
         @if(session('success'))
@@ -1602,6 +1728,9 @@
                 ( @if(auth()->user()->role === 'teknisi') 'transactions.{{ auth()->id() }}' @else 'transactions' @endif )
             );
         }
+
+        // --- Initial Load ---
+        SearchEngine.init();
     });
 
     // Toast function
