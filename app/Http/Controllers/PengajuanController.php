@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\TransactionCategory;
 use App\Services\IdGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,9 @@ class PengajuanController extends Controller
     public function showForm()
     {
         $branches = Branch::all();
-        return view('transactions.form-pengajuan', compact('branches'));
+        $pengajuanCategories = TransactionCategory::forPengajuan()->active()->get();
+
+        return view('transactions.form-pengajuan', compact('branches', 'pengajuanCategories'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -66,28 +69,30 @@ class PengajuanController extends Controller
     public function store(Request $request)
     {
         $role = Auth::user()->role;
-        $fileRule = in_array($role, ['owner', 'atasan']) ? 'nullable|image|max:1024' : 'required|image|max:1024';
-
+        
         $request->validate([
-            'file'            => $fileRule,
-            'items'           => 'required|array|min:1',
-            'items.*.customer'=> 'required|string|max:255',
-            'items.*.vendor'  => 'nullable|string|max:255',
-            'items.*.link'    => 'nullable|url|max:1000',
-            'items.*.purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
-            'items.*.description' => 'nullable|string|max:2000',
-            'items.*.specs'   => 'nullable|array',
-            'items.*.quantity'=> 'required|integer|min:1',
-            'items.*.estimated_price' => 'required|numeric|min:0',
-            'estimated_price' => 'required|numeric|min:1', // Total amount
-            'branches'        => 'nullable|array',
-            'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
-            'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
-            'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+            'type'                              => 'required|in:pengajuan',
+            'file'                              => 'nullable|image|max:2048',
+            'items'                             => 'required|array|min:1',
+            'items.*.customer'                  => 'required|string|max:255',
+            'items.*.category'                  => ['required', 'string', function($attr, $val, $fail) {
+                $exists = \App\Models\TransactionCategory::where('name', $val)
+                    ->where('type', 'pengajuan')
+                    ->where('is_active', true)
+                    ->exists();
+                if (!$exists) $fail('Alasan/Kategori tidak valid.');
+            }],
+            'items.*.estimated_price'           => 'required|integer|min:0',
+            'items.*.quantity'                  => 'required|integer|min:1',
+            'branches'                          => 'nullable|array',
+            'branches.*.branch_id'              => 'required_with:branches|exists:branches,id',
+            'branches.*.allocation_percent'     => 'required_with:branches|numeric|min:0|max:100',
+            'branches.*.allocation_amount'      => 'nullable|numeric|min:0',
+            'global_notes'                      => 'nullable|string|max:2000',
+            'estimated_price'                   => 'nullable|numeric|min:0',
         ], [
             'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
             'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
-            'items.*.purchase_reason.required' => 'Alasan Pembelian pada salah satu daftar barang wajib dipilih.',
             'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
             'items.*.estimated_price.required' => 'Estimasi harga satuan wajib diisi.',
             'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
@@ -123,8 +128,19 @@ class PengajuanController extends Controller
         DB::beginTransaction();
 
         try {
-            $items = $request->items;
-            $firstItem = $items[0] ?? [];
+            $items = array_map(function ($item) {
+                return [
+                    'customer'        => $item['customer']        ?? '',
+                    'vendor'          => $item['vendor']          ?? '',
+                    'link'            => $item['link']            ?? '',
+                    'category'        => $item['category']        ?? '',  // unified field
+                    'description'     => $item['description']     ?? '',
+                    'specs'           => $item['specs']           ?? [],
+                    'estimated_price' => intval($item['estimated_price'] ?? 0),
+                    'quantity'        => intval($item['quantity']        ?? 1),
+                ];
+            }, $request->items);
+
             $totalAmount = collect($items)->sum(function($item) {
                 return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
             });
@@ -132,14 +148,10 @@ class PengajuanController extends Controller
             $transaction = Transaction::create([
                 'type'            => Transaction::TYPE_PENGAJUAN,
                 'invoice_number'  => $invoiceNumber,
-                'customer'        => $firstItem['customer'] ?? 'Multiple Items',
-                'vendor'          => $firstItem['vendor'] ?? null,
-                'link'            => $firstItem['link'] ?? null,
-                'description'     => $firstItem['description'] ?? null,
-                'specs'           => $firstItem['specs'] ?? null,
-                'quantity'        => $firstItem['quantity'] ?? 1,
-                'estimated_price' => $firstItem['estimated_price'] ?? 0,
-                'purchase_reason' => $firstItem['purchase_reason'] ?? array_key_first(Transaction::PURCHASE_REASONS),
+                'customer'        => $items[0]['customer'] ?? 'Multiple Items',
+                'vendor'          => $items[0]['vendor'] ?? null,
+                'link'            => $items[0]['link'] ?? null,
+                'description'     => $request->global_notes,
                 'amount'          => $totalAmount,
                 'items'           => $items,
                 'file_path'       => $filePath,

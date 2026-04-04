@@ -17,50 +17,6 @@ class Transaction extends Model
         self::TYPE_PENGAJUAN => 'Pengajuan',
     ];
 
-    // ─── Category Constants (Rembush) ─────────────────
-    const CATEGORIES = [
-        'biaya_marketing' => 'Biaya Marketing',
-        'beban_entertain' => 'Beban Entertain',
-        'beban_komisi' => 'Beban Komisi',
-        'beban_bensin_parkir_tol_kendaraan' => 'Beban Bensin, Parkir, Tol Kendaraan',
-        'beban_gaji_upah_honorar' => 'Beban Gaji, Upah & Honorar',
-        'beban_pertemuan' => 'Beban Pertemuan',
-        'beban_konsumsi' => 'Beban Konsumsi',
-        'beban_listrik' => 'Beban Listrik',
-        'beban_perlengkapan_kantor' => 'Beban Perlengkapan Kantor',
-        'beban_perawatan_dan_perbaikan' => 'Beban Perawatan dan Perbaikan',
-        'beban_repeter' => 'Beban Repeter',
-        'beban_lain_lain' => 'Beban Lain-lain',
-        'beban_ai' => 'Beban AI',
-        'beban_administrasi_bank' => 'Beban Administrasi Bank',
-        'beban_ekspedisi_pos_materai' => 'Beban Ekspedisi, Pos & Materai',
-        'beban_sewa' => 'Beban Sewa',
-        'beban_tagihan_bpjs_ketenagakerjaan' => 'Beban Tagihan BPJS Ketenagakerjaan',
-        'beban_pembayaran_bpjs_kesehatan' => 'Beban Pembayaran BPJS Kesehatan',
-        'beban_seragam_karyawan' => 'Beban Seragam Karyawan',
-        'beban_promosi_iklan' => 'Beban Promosi/Iklan',
-        'beban_kebersihan_dan_keamanan' => 'Beban Kebersihan dan Keamanan',
-        'beban_konsultan' => 'Beban Konsultan',
-        'pph_final' => 'PPH Final',
-        'pph_21' => 'PPH 21',
-        'beban_sumbangan_amal' => 'Beban Sumbangan / Amal',
-        'beban_telekomunikasi' => 'Beban Telekomunikasi',
-        'pembelian_internet' => 'Pembelian Internet',
-        'peralatan' => 'Peralatan',
-        'persediaan' => 'Persediaan',
-        'piutang_usaha' => 'Piutang Usaha',
-        'piutang_karyawan' => 'Piutang Karyawan',
-        'prive' => 'Prive',
-        'diskon_penjualan' => 'Diskon Penjualan',
-        'kendaraan' => 'Kendaraan',
-        'retur_penjualan' => 'Retur Penjualan',
-        'utang_usaha' => 'Utang Usaha',
-        'perlengkapan' => 'Perlengkapan',
-        'beban_operasional_lainnya' => 'Beban Operasional Lainnya',
-        'beban_vendor' => 'Beban Vendor',
-        'bagi_hasil' => 'Bagi Hasil',
-    ];
-
     // ─── Payment Methods (Rembush) ────────────────────
     const PAYMENT_METHODS = [
         'transfer_teknisi' => 'Transfer ke Teknisi',
@@ -68,26 +24,75 @@ class Transaction extends Model
         'transfer_penjual' => 'Transfer ke Penjual',
     ];
 
-    // ─── Purchase Reasons (Pengajuan) ─────────────────
-    const PURCHASE_REASONS = [
-        'persediaan' => 'Persediaan',
-        'peralatan' => 'Peralatan',
-        'perlengkapan' => 'Perlengkapan',
-        'cadangan' => 'Cadangan',
-        'kebutuhan_rutin' => 'Kebutuhan Rutin',
-        'perawatan' => 'Perawatan',
-        'ekspansi' => 'Ekspansi',
-        'perbaikan' => 'Mengganti Barang Rusak/Perbaikan',
-        'upgrade' => 'Upgrade',
-        'inventaris' => 'Inventaris',
-        'marketing' => 'Marketing',
-        'perizinan' => 'Perizinan',
+    /**
+     * Old purchase_reason key → label map for backward compatibility.
+     * Used by the Accessor to normalize old JSON items that still have 'purchase_reason' key.
+     */
+    private const LEGACY_PURCHASE_REASON_MAP = [
+        'persediaan'          => 'Persediaan',
+        'peralatan'           => 'Peralatan',
+        'perlengkapan'        => 'Perlengkapan',
+        'cadangan'            => 'Cadangan',
+        'kebutuhan_rutin'     => 'Kebutuhan Rutin',
+        'perawatan'           => 'Perawatan',
+        'ekspansi'            => 'Ekspansi',
+        'perbaikan'           => 'Mengganti Barang Rusak/Perbaikan',
+        'upgrade'             => 'Upgrade',
+        'inventaris'          => 'Inventaris',
+        'marketing'           => 'Marketing',
+        'perizinan'           => 'Perizinan',
         'kelengkapan_teknisi' => 'Kelengkapan Teknisi/Penunjang Teknisi',
-        'linsensi' => 'Lisensi',
+        'linsensi'            => 'Lisensi',
         'optimalisasi_sistem' => 'Optimalisasi Sistem',
-        'vendor' => 'Vendor',
-        'efisien_kerja' => 'Meningkatkan Efisien Kerja (AI)',
-        'lainnya' => 'Lainnya',
+        'vendor'              => 'Vendor',
+        'efisien_kerja'       => 'Meningkatkan Efisien Kerja (AI)',
+        'lainnya'             => 'Lainnya',
+    ];
+
+    /**
+     * Old rembush category key → label map for backward compatibility.
+     */
+    private const LEGACY_CATEGORY_MAP = [
+        'biaya_marketing'                    => 'Biaya Marketing',
+        'beban_entertain'                    => 'Beban Entertain',
+        'beban_komisi'                       => 'Beban Komisi',
+        'beban_bensin_parkir_tol_kendaraan'  => 'Beban Bensin, Parkir, Tol Kendaraan',
+        'beban_gaji_upah_honorar'            => 'Beban Gaji, Upah & Honorar',
+        'beban_pertemuan'                    => 'Beban Pertemuan',
+        'beban_konsumsi'                     => 'Beban Konsumsi',
+        'beban_listrik'                      => 'Beban Listrik',
+        'beban_perlengkapan_kantor'          => 'Beban Perlengkapan Kantor',
+        'beban_perawatan_dan_perbaikan'      => 'Beban Perawatan dan Perbaikan',
+        'beban_repeter'                      => 'Beban Repeter',
+        'beban_lain_lain'                    => 'Beban Lain-lain',
+        'beban_ai'                           => 'Beban AI',
+        'beban_administrasi_bank'            => 'Beban Administrasi Bank',
+        'beban_ekspedisi_pos_materai'        => 'Beban Ekspedisi, Pos & Materai',
+        'beban_sewa'                         => 'Beban Sewa',
+        'beban_tagihan_bpjs_ketenagakerjaan' => 'Beban Tagihan BPJS Ketenagakerjaan',
+        'beban_pembayaran_bpjs_kesehatan'    => 'Beban Pembayaran BPJS Kesehatan',
+        'beban_seragam_karyawan'             => 'Beban Seragam Karyawan',
+        'beban_promosi_iklan'                => 'Beban Promosi/Iklan',
+        'beban_kebersihan_dan_keamanan'      => 'Beban Kebersihan dan Keamanan',
+        'beban_konsultan'                    => 'Beban Konsultan',
+        'pph_final'                          => 'PPH Final',
+        'pph_21'                             => 'PPH 21',
+        'beban_sumbangan_amal'               => 'Beban Sumbangan / Amal',
+        'beban_telekomunikasi'               => 'Beban Telekomunikasi',
+        'pembelian_internet'                 => 'Pembelian Internet',
+        'peralatan'                          => 'Peralatan',
+        'persediaan'                         => 'Persediaan',
+        'piutang_usaha'                      => 'Piutang Usaha',
+        'piutang_karyawan'                   => 'Piutang Karyawan',
+        'prive'                              => 'Prive',
+        'diskon_penjualan'                   => 'Diskon Penjualan',
+        'kendaraan'                          => 'Kendaraan',
+        'retur_penjualan'                    => 'Retur Penjualan',
+        'utang_usaha'                        => 'Utang Usaha',
+        'perlengkapan'                       => 'Perlengkapan',
+        'beban_operasional_lainnya'          => 'Beban Operasional Lainnya',
+        'beban_vendor'                       => 'Beban Vendor',
+        'bagi_hasil'                         => 'Bagi Hasil',
     ];
 
     protected $fillable = [
@@ -114,7 +119,6 @@ class Transaction extends Model
         'specs',
         'quantity',
         'estimated_price',
-        'purchase_reason',
         'upload_id',
         'trace_id',
         // Payment & OCR fields
@@ -346,6 +350,56 @@ class Transaction extends Model
     /**
      * Standardize response data shape for frontend search and real-time broadcasting.
      */
+    // ─── Category Accessor (Backward Compatibility) ────────────────
+
+    /**
+     * Resolve category label.
+     * After migration, category stores the human-readable label directly.
+     * This accessor handles cases where old snake_case keys may still exist.
+     */
+    public function getCategoryLabelAttribute(): string
+    {
+        if (!$this->category) {
+            return '-';
+        }
+
+        // If it looks like a label already (contains space or capital), return as-is
+        if (str_contains($this->category, ' ') || preg_match('/[A-Z]/', $this->category)) {
+            return $this->category;
+        }
+
+        // Legacy snake_case key → resolve from map
+        if ($this->type === 'pengajuan') {
+            return self::LEGACY_PURCHASE_REASON_MAP[$this->category] ?? $this->category;
+        }
+
+        return self::LEGACY_CATEGORY_MAP[$this->category] ?? $this->category;
+    }
+
+    /**
+     * Normalize items array for backward compatibility.
+     * Old Pengajuan items had 'purchase_reason' key (snake_case code).
+     * New items use 'category' key (human-readable label).
+     * This accessor returns normalized items regardless of format.
+     */
+    public function getNormalizedItemsAttribute(): ?array
+    {
+        $items = $this->items;
+        if (!is_array($items)) {
+            return $items;
+        }
+
+        return array_map(function (array $item) {
+            // Normalize: if item has 'purchase_reason' key (old format), convert to 'category'
+            if (isset($item['purchase_reason']) && !isset($item['category'])) {
+                $key = $item['purchase_reason'];
+                $item['category'] = self::LEGACY_PURCHASE_REASON_MAP[$key] ?? $key;
+                unset($item['purchase_reason']);
+            }
+            return $item;
+        }, $items);
+    }
+
     public function toSearchArray(): array
     {
         // Hubungan (submitter, reviewer, branches) HARUS dipastikan diload sebelumnya via `with()` 
@@ -361,9 +415,7 @@ class Transaction extends Model
             'type' => $this->type,
             'type_label' => $this->type_label,
             'category' => $this->category,
-            'category_label' => $this->type === 'pengajuan' 
-                ? (self::PURCHASE_REASONS[$this->purchase_reason] ?? '-')
-                : (self::CATEGORIES[$this->category] ?? '-'),
+            'category_label' => $this->category_label,
             'status' => $this->status,
             'status_label' => $this->status_label,
             'amount' => $this->amount,
@@ -389,14 +441,15 @@ class Transaction extends Model
             'submitter_has_telegram' => (bool) ($this->submitter->telegram_chat_id ?? false),
             'rejection_reason' => $this->rejection_reason,
             'effective_amount' => $this->effective_amount,
-            'purchase_reason' => $this->purchase_reason,
-            'purchase_reason_label' => $this->purchase_reason ? (self::PURCHASE_REASONS[$this->purchase_reason] ?? '') : '',
+            // category now unified — alias purchase_reason_label for frontend compat
+            'purchase_reason' => $this->category,
+            'purchase_reason_label' => $this->category_label,
             // ✅ Versioning fields for Detail Modal
             'is_edited_by_management' => (bool) $this->is_edited_by_management,
             'revision_count' => $this->revision_count ?? 0,
             'edited_at' => $this->edited_at ? $this->edited_at->format('d M Y, H:i') : null,
             'editor_name' => $this->relationLoaded('editor') && $this->editor ? $this->editor->name : null,
-            'items' => $this->items,
+            'items' => $this->normalized_items,
             'items_snapshot' => $this->getOriginalVersion(),
             'changes' => $this->getItemChanges(),
             // Search string untuk matching
@@ -519,7 +572,7 @@ class Transaction extends Model
      */
     private function compareItems(array $original, array $current): array
     {
-        $fields = ['customer', 'vendor', 'link', 'description', 'quantity', 'estimated_price', 'purchase_reason', 'specs'];
+        $fields = ['customer', 'vendor', 'link', 'description', 'quantity', 'estimated_price', 'category', 'specs'];
         $changes = [];
         
         foreach ($fields as $field) {

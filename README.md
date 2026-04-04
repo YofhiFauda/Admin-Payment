@@ -34,6 +34,7 @@
 | **Edit Protection** | Proteksi otomatis: Transaksi dengan status `completed` tidak dapat diedit oleh peran apapun (termasuk Owner). |
 | **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending. |
 | **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi (Equal, Percentage, atau Manual). |
+| **Kelola Kategori** | Sistem manajemen kategori dinamis untuk Rembush & Pengajuan dengan antarmuka **Glass Admin** modern. |
 | **Rekening Cabang** | Manajemen rekening bank/e-wallet untuk tiap cabang dengan kontrol akses ketat (Owner full-access, Atasan & Admin read-only). |
 | **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR. |
 | **Bypass AI Control** | Fitur **Override** (untuk memulihkan auto-reject) dan **Force Approve** (untuk memulihkan flagged nominal). |
@@ -403,7 +404,14 @@ Alur pengajuan tanpa OCR:
 - Owner bisa mengelola semua role
 - Tidak dapat menghapus akun sendiri
 
-### 8. 🔔 Notifikasi (`NotificationController`)
+### 8. 📁 Kelola Kategori (`TransactionCategoryController`)
+
+- **Manajemen Dinamis**: CRUD kategori untuk tipe Rembush dan Pengajuan.
+- **Toggle Status**: Aktifkan/Nonaktifkan kategori tanpa menghapus data historis.
+- **UI Modern**: Desain Glassmorphism dengan statistik ringkasan dan pencarian real-time.
+- **Sync Otomatis**: Kategori yang aktif langsung muncul di form Rembush & Pengajuan.
+
+### 9. 🔔 Notifikasi (`NotificationController`)
 
 - Notifikasi in-app menggunakan Laravel Notification system
 - Filter berdasarkan tipe (OCR status, transaction status)
@@ -579,7 +587,12 @@ transactions
 ├── submitted_by → users.id
 ├── reviewed_by → users.id, reviewed_at, rejection_reason
 ├── ai_status, confidence
-├── vendor, specs (JSON), quantity, estimated_price, purchase_reason
+├── vendor, specs (JSON), quantity, estimated_price
+└── created_at, updated_at
+
+transaction_categories
+├── id, name, type (rembush/pengajuan)
+├── is_active, color_code
 └── created_at, updated_at
 
 branches

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\OcrProcessingJob;
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\TransactionCategory;
 use App\Services\IdGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -210,9 +211,10 @@ class RembushController extends Controller
         }
  
         $branches = Branch::all();
+        $rembushCategories = TransactionCategory::forRembush()->get();
 
         return view('transactions.form', compact(
-            'branches', 'base64', 'mime', 'uploadId', 'aiData'
+            'branches', 'base64', 'mime', 'uploadId', 'aiData', 'rembushCategories'
         ));
     }
 
@@ -228,7 +230,13 @@ class RembushController extends Controller
     {
         $request->validate([
             'customer'       => 'nullable|string|max:255',
-            'category'       => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
+            'category'       => ['required', 'string', function($attr, $val, $fail) {
+                $exists = \App\Models\TransactionCategory::where('name', $val)
+                    ->where('type', 'rembush')
+                    ->where('is_active', true)
+                    ->exists();
+                if (!$exists) $fail('Kategori tidak valid.');
+            }],
             'amount'         => 'nullable|numeric|min:0',
             'description'    => 'nullable|string|max:2000',
             'payment_method' => 'required|string|in:' . implode(',', array_keys(Transaction::PAYMENT_METHODS)),

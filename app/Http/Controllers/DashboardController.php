@@ -66,10 +66,7 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->get()
             ->groupBy(function ($t) {
-                if ($t->type === 'rembush') {
-                    return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                }
-                return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
+                return $t->category_label ?: 'Lainnya';
             })
             ->map(fn($grp) => $grp->sum(fn($t) => $t->effective_amount))
             ->sortByDesc(fn($v) => $v)
@@ -240,10 +237,7 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($branch) {
                 $categories = $branch->transactions->groupBy(function ($t) {
-                    if ($t->type === 'rembush') {
-                        return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                    }
-                    return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
+                    return $t->category_label ?: 'Lainnya';
                 })->map(function ($group) {
                     return $group->sum(function($t) {
                         return ($t->pivot->allocation_amount > 0) 
@@ -341,10 +335,7 @@ class DashboardController extends Controller
         ->get()
         ->map(function ($branch) {
             $categories = $branch->transactions->groupBy(function ($t) {
-                if ($t->type === 'rembush') {
-                    return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                }
-                return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
+                return $t->category_label ?: 'Lainnya';
             })->map(function ($group) {
                 return $group->sum(function($t) {
                     return ($t->pivot->allocation_amount > 0) 
@@ -451,7 +442,7 @@ class DashboardController extends Controller
                 'amount'           => $allocatedAmount,
                 'formatted_amount' => 'Rp ' . number_format($allocatedAmount, 0, ',', '.'),
                 'created_at'       => $t->created_at->format('d M Y'),
-                'category'         => Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya',
+                'category'         => $t->category_label ?: 'Lainnya',
                 'is_inter_branch'  => false,
             ];
         });

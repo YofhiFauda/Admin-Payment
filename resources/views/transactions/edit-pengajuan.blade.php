@@ -128,15 +128,15 @@
 
             @php
                 // Build array of items to render. Support old transactions without 'items' JSON data
-                $itemsToRender = is_array($transaction->items) && count($transaction->items) > 0 
-                    ? $transaction->items 
+                $itemsToRender = is_array($transaction->normalized_items) && count($transaction->normalized_items) > 0 
+                    ? $transaction->normalized_items 
                     : [
                         [
                             'customer'        => $transaction->customer,
                             'vendor'          => $transaction->vendor,
                             'link'            => $transaction->link,
                             'description'     => $transaction->description,
-                            'purchase_reason' => $transaction->purchase_reason,
+                            'category'        => $transaction->category_label, // Use normalized label
                             'quantity'        => $transaction->quantity ?? 1,
                             'estimated_price' => $transaction->estimated_price ?? $transaction->amount ?? 0,
                             'specs'           => is_array($transaction->specs) ? $transaction->specs : []
@@ -263,12 +263,12 @@
                                     
                                     {{-- Alasan Pembelian --}}
                                     <div>
-                                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian / Kategori *</label>
                                         <div class="relative">
-                                            <select name="items[{{ $index }}][purchase_reason]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                                            <select name="items[{{ $index }}][category]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
                                                 <option value="">— Pilih alasan —</option>
-                                                @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
-                                                    <option value="{{ $key }}" {{ old($errPrefix . 'purchase_reason', $item['purchase_reason'] ?? '') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                                @foreach($pengajuanCategories as $cat)
+                                                    <option value="{{ $cat->name }}" {{ old($errPrefix . 'category', $item['category'] ?? '') == $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
                                                 @endforeach
                                             </select>
                                             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
@@ -545,12 +545,12 @@
                     
                     {{-- Alasan Pembelian --}}
                     <div>
-                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian *</label>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian / Kategori *</label>
                         <div class="relative">
-                            <select name="items[__INDEX__][purchase_reason]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
+                            <select name="items[__INDEX__][category]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
                                 <option value="">— Pilih alasan —</option>
-                                @foreach(\App\Models\Transaction::PURCHASE_REASONS as $key => $label)
-                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @foreach($pengajuanCategories as $cat)
+                                    <option value="{{ $cat->name }}">{{ $cat->name }}</option>
                                 @endforeach
                             </select>
                             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>

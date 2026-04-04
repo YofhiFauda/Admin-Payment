@@ -288,7 +288,7 @@
                         <a href="{{ route('transactions.create') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
                             {{ request()->routeIs('transactions.create') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
-                            <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
+                            <i data-lucide="file-up" class="w-4 h-4"></i> Input Transaksi
                         </a>
                         <a href="{{ route('transactions.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
@@ -495,6 +495,12 @@
                     <i data-lucide="building-2" class="w-4 h-4"></i> Kelola Cabang
                 </a>
 
+                <a href="{{ route('transaction-categories.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('transaction-categories.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="tags" class="w-4 h-4"></i> Kelola Kategori
+                </a>
+
                 <a href="{{ route('activity-logs.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
@@ -544,7 +550,8 @@
             $hideHeaderOnPc = request()->routeIs('transactions.create') 
                 || request()->routeIs('notifications.index') 
                 || request()->routeIs('activity-logs.index') 
-                || request()->routeIs('transactions.confirm');
+                || request()->routeIs('transactions.confirm')
+                || request()->routeIs('transaction-categories.index');
         @endphp
 
         <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden page-enter">
@@ -562,7 +569,7 @@
                             <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
                         </button>
                         <h2 class="text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate">
-                            @yield('page-title', 'Dashboard')
+                            @yield('page-title', '')
                         </h2>
                     </div>
                 </header>

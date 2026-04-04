@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\TransactionCategory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -109,9 +110,11 @@ class TransactionController extends Controller
 
         // Fetch filter data
         $branches = Branch::orderBy('name')->get();
-        // Merge Rembush & Pengajuan Categories as a unique list
-        $categories = array_unique(array_merge(Transaction::CATEGORIES, Transaction::PURCHASE_REASONS));
-        asort($categories);
+        // Merge Rembush & Pengajuan Categories from DB as unique sorted list
+        $categories = TransactionCategory::active()
+            ->orderBy('name')
+            ->pluck('name', 'name')
+            ->toArray();
 
         // Stats - scoped per role and cached
         $isTeknisi = Auth::user()->isTeknisi();
@@ -176,21 +179,21 @@ class TransactionController extends Controller
             'customer'        => $t->customer,
             'vendor'          => $t->vendor,
             'category'        => $t->category,
-            'category_label'  => $t->category ? (Transaction::CATEGORIES[$t->category] ?? $t->category) : null,
+            'category_label'  => $t->category_label,
             'description'     => $t->description,
             'payment_method'  => $t->payment_method,
             'payment_method_label' => $t->payment_method ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method) : null,
             'amount'          => $t->amount,
             'formatted_amount'=> $t->formatted_amount,
-            'items'           => $t->items,
+            'items'           => $t->normalized_items,
             'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
             'status'          => $t->status,
             'status_label'    => $t->status_label,
             'specs'           => $t->specs,
             'quantity'        => $t->quantity,
             'estimated_price' => $t->estimated_price,
-            'purchase_reason' => $t->purchase_reason,
-            'purchase_reason_label' => $t->purchase_reason ? (Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason) : null,
+            'purchase_reason' => $t->category,
+            'purchase_reason_label' => $t->category_label,
             'ai_status'       => $t->ai_status,
             'upload_id'       => $t->upload_id,
             'file_path'       => $t->file_path,
@@ -307,14 +310,17 @@ class TransactionController extends Controller
             // Admin selalu read-only. Atasan & Owner read-only JIKA status selesai
             $isReadOnly = $user->isAdmin() || $isCompleted;
 
+            $pengajuanCategories = TransactionCategory::forPengajuan()->active()->get();
+
             return view('transactions.edit-pengajuan', compact(
-                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted'
+                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted', 'pengajuanCategories'
             ));
         }
 
         // Rembush — semua management role bisa edit
         $isReadOnly = false;
-        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount', 'isReadOnly'));
+        $rembushCategories = TransactionCategory::forRembush()->get();
+        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount', 'isReadOnly', 'rembushCategories'));
     }
 
     public function update(Request $request, $id)
@@ -343,12 +349,18 @@ class TransactionController extends Controller
                 'items.*.customer'=> 'required|string|max:255',
                 'items.*.vendor'  => 'nullable|string|max:255',
                 'items.*.link'    => 'nullable|url|max:1000',
-                'items.*.purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
+                'items.*.category'=> ['required', 'string', function($attr, $val, $fail) {
+                    $exists = TransactionCategory::where('name', $val)
+                        ->where('type', 'pengajuan')
+                        ->where('is_active', true)
+                        ->exists();
+                    if (!$exists) $fail('Alasan/Kategori tidak valid.');
+                }],
                 'items.*.description' => 'nullable|string|max:2000',
                 'items.*.specs'   => 'nullable|array',
                 'items.*.quantity'=> 'required|integer|min:1',
                 'items.*.estimated_price' => 'required|numeric|min:0',
-                'estimated_price' => 'required|numeric|min:1', // Total amount
+                'estimated_price' => 'nullable|numeric|min:0',
                 'branches'        => 'nullable|array',
                 'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
@@ -356,15 +368,19 @@ class TransactionController extends Controller
             ], [
                 'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
                 'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
-                'items.*.purchase_reason.required' => 'Alasan Pembelian pada salah satu daftar barang wajib dipilih.',
                 'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
                 'items.*.estimated_price.required' => 'Estimasi harga satuan wajib diisi.',
-                'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
             ]);
         } else {
             $request->validate([
                 'customer'       => 'nullable|string|max:255',
-                'category'       => 'required|string|in:' . implode(',', array_keys(Transaction::CATEGORIES)),
+                'category'       => ['required', 'string', function($attr, $val, $fail) {
+                    $exists = TransactionCategory::where('name', $val)
+                        ->where('type', 'rembush')
+                        ->where('is_active', true)
+                        ->exists();
+                    if (!$exists) $fail('Kategori tidak valid.');
+                }],
                 'amount'         => 'nullable|numeric|min:0',
                 'description'    => 'nullable|string|max:2000',
                 'payment_method' => 'nullable|string|in:' . implode(',', array_keys(Transaction::PAYMENT_METHODS)),
@@ -424,7 +440,19 @@ class TransactionController extends Controller
                 }
             }
             if ($transaction->isPengajuan()) {
-                $items = $request->items;
+                $items = array_map(function ($item) {
+                    return [
+                        'customer'        => $item['customer']        ?? '',
+                        'vendor'          => $item['vendor']          ?? '',
+                        'link'            => $item['link']            ?? '',
+                        'category'        => $item['category']        ?? '', 
+                        'description'     => $item['description']     ?? '',
+                        'specs'           => $item['specs']           ?? [],
+                        'estimated_price' => intval($item['estimated_price'] ?? 0),
+                        'quantity'        => intval($item['quantity']        ?? 1),
+                    ];
+                }, $request->items);
+
                 $firstItem = $items[0] ?? [];
                 $totalAmount = collect($items)->sum(function($item) {
                     return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
@@ -434,11 +462,11 @@ class TransactionController extends Controller
                     'customer'        => $firstItem['customer'] ?? 'Multiple Items',
                     'vendor'          => $firstItem['vendor'] ?? null,
                     'link'            => $firstItem['link'] ?? null,
-                    'description'     => $firstItem['description'] ?? null,
+                    'description'     => $request->global_notes ?? $firstItem['description'] ?? null,
                     'specs'           => $firstItem['specs'] ?? null,
                     'quantity'        => $firstItem['quantity'] ?? 1,
                     'estimated_price' => $firstItem['estimated_price'] ?? 0,
-                    'purchase_reason' => $firstItem['purchase_reason'] ?? array_key_first(Transaction::PURCHASE_REASONS),
+                    'category'        => $firstItem['category'] ?? null,
                     'amount'          => $totalAmount,
                     'items'           => $items,
                 ]);

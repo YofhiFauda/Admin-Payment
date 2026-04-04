@@ -58,8 +58,8 @@
                             <select name="category" id="category" required
                                 class="w-full appearance-none bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 pr-10 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all">
                                 <option value="" disabled>Pilih kategori...</option>
-                                @foreach(\App\Models\Transaction::CATEGORIES as $key => $label)
-                                    <option value="{{ $key }}" {{ old('category', $transaction->category) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                @foreach($rembushCategories as $cat)
+                                    <option value="{{ $cat->name }}" {{ old('category', $transaction->category) == $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
                                 @endforeach
                             </select>
                             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>

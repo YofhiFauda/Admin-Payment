@@ -10,6 +10,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UserBankAccountController;
+use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\Api\V1\OcrNotaController;
 use App\Http\Controllers\OtherExpenditureController;
 use App\Http\Controllers\SalaryController;
@@ -117,6 +118,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,atasan,owner')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
+        // ── Kelola Kategori ───────────────────────────────────────
+        Route::get('/transaction-categories', [TransactionCategoryController::class, 'index'])->name('transaction-categories.index');
+        Route::post('/transaction-categories', [TransactionCategoryController::class, 'store'])->name('transaction-categories.store');
+        Route::put('/transaction-categories/{id}', [TransactionCategoryController::class, 'update'])->name('transaction-categories.update');
+        Route::patch('/transaction-categories/{id}/toggle', [TransactionCategoryController::class, 'toggleActive'])->name('transaction-categories.toggle');
+        Route::delete('/transaction-categories/{id}', [TransactionCategoryController::class, 'destroy'])->name('transaction-categories.destroy');
 
         // ── Branch Management ─────────────────────────────────────
         Route::get('/branches', [BranchController::class, 'index'])->name('branches.index');
