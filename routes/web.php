@@ -149,6 +149,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/user-bank-accounts/{id}', [UserBankAccountController::class, 'update'])->name('user-bank-accounts.update');
     Route::delete('/user-bank-accounts/{id}', [UserBankAccountController::class, 'destroy'])->name('user-bank-accounts.destroy');
 
+    // ── Branch Bank Accounts ──
+    Route::get('/branch-bank-accounts/{branch_id}', [\App\Http\Controllers\BranchBankAccountController::class, 'index'])->name('branch-bank-accounts.index');
+    Route::post('/branch-bank-accounts', [\App\Http\Controllers\BranchBankAccountController::class, 'store'])->name('branch-bank-accounts.store');
+    Route::put('/branch-bank-accounts/{id}', [\App\Http\Controllers\BranchBankAccountController::class, 'update'])->name('branch-bank-accounts.update');
+    Route::delete('/branch-bank-accounts/{id}', [\App\Http\Controllers\BranchBankAccountController::class, 'destroy'])->name('branch-bank-accounts.destroy');
+
+
     // ── Input Pengeluaran Lain (admin, atasan, owner) ──
     Route::middleware('role:admin,atasan,owner')->prefix('pengeluaran-lain')->name('pengeluaran-lain.')->group(function () {
 

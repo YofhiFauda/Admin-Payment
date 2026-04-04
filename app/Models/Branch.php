@@ -16,6 +16,14 @@ class Branch extends Model
     }
 
     /**
+     * Rekening bank yang dimiliki cabang ini
+     */
+    public function bankAccounts()
+    {
+        return $this->hasMany(BranchBankAccount::class, 'branch_id');
+    }
+
+    /**
      * Hutang yang dimiliki cabang ini (sebagai debtor/yang berhutang)
      */
     public function debtsAsDebtor()

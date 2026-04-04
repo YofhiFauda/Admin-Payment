@@ -140,6 +140,11 @@
                         </td>
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="openBranchBankAccountsModal({{ $branch->id }}, '{{ addslashes($branch->name) }}')"
+                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors">
+                                    <i data-lucide="credit-card" class="w-3 h-3"></i>
+                                    <span class="hidden sm:inline">Rekening</span>
+                                </button>
                                 <button onclick="openEditModal({{ $branch->id }}, '{{ addslashes($branch->name) }}')"
                                     class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-colors">
                                     <i data-lucide="pencil" class="w-3 h-3"></i>
@@ -251,6 +256,132 @@
                 onclick="submitDelete()">
                 Ya, Hapus Cabang
             </button>
+        </div>
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════════ --}}
+{{-- MODAL: Branch Bank Accounts             --}}
+{{-- ═══════════════════════════════════════ --}}
+<div id="modal-branch-bank-accounts" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeBranchBankAccountsModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl pointer-events-auto transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90vh]" id="branchBankAccountsModalContent">
+            {{-- Header --}}
+            <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                        <i data-lucide="credit-card" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800 leading-tight">Rekening Cabang</h3>
+                        <p class="text-sm font-medium text-slate-500" id="branchAccountTitle">Kelola rekening untuk cabang terpilih</p>
+                    </div>
+                </div>
+                <button onclick="closeBranchBankAccountsModal()" class="w-10 h-10 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            {{-- List Section --}}
+            <div class="flex-1 overflow-y-auto px-8 py-6" id="bbaListContainer">
+                <div id="bbaLoading" class="flex flex-col items-center justify-center py-12">
+                    <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 text-sm font-bold text-slate-400">Memuat data...</p>
+                </div>
+                <div id="bbaList" class="space-y-4 hidden">
+                    {{-- Dynamically populated --}}
+                </div>
+                <div id="bbaEmpty" class="hidden flex flex-col items-center justify-center py-12 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
+                        <i data-lucide="wallet" class="w-8 h-8"></i>
+                    </div>
+                    <p class="text-slate-500 font-bold">Belum ada rekening tertaut</p>
+                    <p class="text-slate-400 text-xs mt-1">Cabang ini belum memiliki data rekening</p>
+                </div>
+            </div>
+
+            {{-- Form Section (Hidden by default) --}}
+            <div id="bbaFormContainer" class="hidden px-8 py-6 border-t border-slate-100 bg-slate-50/50">
+                <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4" id="bbaFormTitle">Tambah Rekening Baru</h4>
+                <form id="bbaForm" onsubmit="saveBranchBankAccount(event)" class="space-y-4">
+                    <input type="hidden" id="bba_id">
+                    <input type="hidden" id="bba_branch_id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
+                            <input type="text" id="bba_bank_name" required placeholder="Contoh: BCA, MANDIRI" 
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
+                            <input type="text" id="bba_account_number" required placeholder="Nomor rekening"
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
+                        <input type="text" id="bba_account_name" required placeholder="Nama pemilik rekening"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" onclick="hideBranchBankAccountForm()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-white transition-all">
+                            Batal
+                        </button>
+                        <button type="submit" id="bbaSaveBtn" class="flex-[2] px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Simpan Rekening</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Footer (Action Buttons) --}}
+            <div class="px-8 py-6 border-t border-slate-100 flex items-center justify-between shrink-0" id="bbaModalFooter">
+                <button type="button" onclick="showBranchBankAccountForm()" class="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl transition-all items-center gap-2" id="bbaBtnAdd" style="display: {{ Auth::user()->role === 'owner' ? 'flex' : 'none' }}">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Tambah Rekening</span>
+                </button>
+                <div class="ml-auto flex flex-col justify-end">
+                  <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">FinanceOps Secure Storage</p>
+                  @if(Auth::user()->role !== 'owner')
+                  <p class="text-[10px] font-bold text-rose-400 uppercase tracking-widest text-right mt-1">Read-Only Mode</p>
+                  @endif
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Delete Reason Modal (Owner only depending on design, used here for consistency) --}}
+<div id="bbaDeleteReasonModal" class="fixed inset-0 z-[70] hidden">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeBBADeleteReasonModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl pointer-events-auto p-8 text-center sm:text-left">
+            <div class="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 mx-auto sm:mx-0 mb-6">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 mb-2">Konfirmasi Hapus</h3>
+            <p class="text-slate-500 font-medium mb-6">Penghapusan rekening memerlukan alasan penyingkatan.</p>
+            
+            <form onsubmit="confirmBBADeleteAccount(event)">
+                <input type="hidden" id="bba_delete_id">
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 text-left">Alasan Penghapusan</label>
+                    <textarea id="bba_delete_reason" required placeholder="Contoh: Rekening sudah tidak aktif / Salah input"
+                        class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 min-h-[100px]"></textarea>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="closeBBADeleteReasonModal()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 px-6 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-all">
+                        Hapus Permanen
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -400,6 +531,194 @@ document.getElementById('edit-name').addEventListener('keydown', e => { if(e.key
 const style = document.createElement('style');
 style.textContent = '@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}';
 document.head.appendChild(style);
+// ─── Branch Bank Accounts Modal Logic ───────────────────
+const isOwner = {{ Auth::user()->role === 'owner' ? 'true' : 'false' }};
+const bbaModal = document.getElementById('modal-branch-bank-accounts');
+const bbaContent = document.getElementById('branchBankAccountsModalContent');
+
+function openBranchBankAccountsModal(branchId, branchName) {
+    document.getElementById('bba_branch_id').value = branchId;
+    document.getElementById('branchAccountTitle').textContent = `Kelola rekening - ${branchName}`;
+    bbaModal.classList.remove('hidden');
+    setTimeout(() => {
+        bbaContent.classList.remove('scale-95', 'opacity-0');
+        bbaContent.classList.add('scale-100', 'opacity-100');
+    }, 10);
+    fetchBranchBankAccounts(branchId);
+}
+
+function closeBranchBankAccountsModal() {
+    bbaContent.classList.add('scale-95', 'opacity-0');
+    bbaContent.classList.remove('scale-100', 'opacity-100');
+    setTimeout(() => {
+        bbaModal.classList.add('hidden');
+        hideBranchBankAccountForm();
+    }, 300);
+}
+
+function fetchBranchBankAccounts(branchId) {
+    const list = document.getElementById('bbaList');
+    const loading = document.getElementById('bbaLoading');
+    const empty = document.getElementById('bbaEmpty');
+
+    list.classList.add('hidden');
+    loading.classList.remove('hidden');
+    empty.classList.add('hidden');
+
+    fetch(`/branch-bank-accounts/${branchId}`)
+        .then(r => r.json())
+        .then(accounts => {
+            loading.classList.add('hidden');
+            list.innerHTML = '';
+
+            if (accounts.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            list.classList.remove('hidden');
+            accounts.forEach(acc => {
+                const actionButtons = isOwner ? `
+                    <div class="flex items-center gap-2 scale-90 sm:scale-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick='showBranchBankAccountForm(${JSON.stringify(acc)})' class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteBranchBankAccount(${acc.id})" class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                ` : '';
+
+                const card = `
+                    <div class="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center transition-colors shadow-inner">
+                                <i data-lucide="landmark" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-black bg-slate-800 text-white px-1.5 py-0.5 rounded uppercase tracking-widest">${acc.bank_name}</span>
+                                    <h4 class="text-sm font-black text-slate-800 tracking-tight">${acc.account_number}</h4>
+                                </div>
+                                <p class="text-xs font-bold text-slate-400 mt-1 uppercase">${acc.account_name}</p>
+                            </div>
+                        </div>
+                        ${actionButtons}
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', card);
+            });
+            lucide.createIcons();
+        });
+}
+
+function showBranchBankAccountForm(data = null) {
+    if (!isOwner) return; // double check
+
+    const container = document.getElementById('bbaFormContainer');
+    const footer = document.getElementById('bbaModalFooter');
+    const list = document.getElementById('bbaListContainer');
+    const title = document.getElementById('bbaFormTitle');
+    const submitBtnText = document.querySelector('#bbaSaveBtn span');
+
+    document.getElementById('bba_id').value = data ? data.id : '';
+    document.getElementById('bba_bank_name').value = data ? data.bank_name : '';
+    document.getElementById('bba_account_number').value = data ? data.account_number : '';
+    document.getElementById('bba_account_name').value = data ? data.account_name : '';
+
+    title.textContent = data ? 'Edit Rekening Cabang' : 'Tambah Rekening Cabang Baru';
+    submitBtnText.textContent = data ? 'Update Rekening' : 'Simpan Rekening';
+
+    list.classList.add('hidden');
+    footer.classList.add('hidden');
+    container.classList.remove('hidden');
+}
+
+function hideBranchBankAccountForm() {
+    document.getElementById('bbaFormContainer').classList.add('hidden');
+    document.getElementById('bbaModalFooter').classList.remove('hidden');
+    document.getElementById('bbaListContainer').classList.remove('hidden');
+    document.getElementById('bbaForm').reset();
+}
+
+function saveBranchBankAccount(e) {
+    e.preventDefault();
+    const id = document.getElementById('bba_id').value;
+    const branchId = document.getElementById('bba_branch_id').value;
+    const url = id ? `/branch-bank-accounts/${id}` : '/branch-bank-accounts';
+    const method = id ? 'PUT' : 'POST';
+
+    const btn = document.getElementById('bbaSaveBtn');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            branch_id: branchId,
+            bank_name: document.getElementById('bba_bank_name').value,
+            account_number: document.getElementById('bba_account_number').value,
+            account_name: document.getElementById('bba_account_name').value
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            hideBranchBankAccountForm();
+            fetchBranchBankAccounts(branchId);
+            showToast(res.message);
+        } else {
+            showToast(res.message || 'Gagal menyimpan rekening', 'error');
+        }
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+        lucide.createIcons();
+    });
+}
+
+function deleteBranchBankAccount(id) {
+    if (!isOwner) return;
+    document.getElementById('bba_delete_id').value = id;
+    document.getElementById('bbaDeleteReasonModal').classList.remove('hidden');
+}
+
+function closeBBADeleteReasonModal() {
+    document.getElementById('bbaDeleteReasonModal').classList.add('hidden');
+    document.getElementById('bba_delete_reason').value = '';
+}
+
+function confirmBBADeleteAccount(e) {
+    e.preventDefault();
+    const id = document.getElementById('bba_delete_id').value;
+    const reason = document.getElementById('bba_delete_reason').value;
+    const branchId = document.getElementById('bba_branch_id').value;
+
+    fetch(`/branch-bank-accounts/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ reason })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            closeBBADeleteReasonModal();
+            fetchBranchBankAccounts(branchId);
+            showToast(res.message);
+        } else {
+            showToast('Gagal menghapus rekening: ' + res.message, 'error');
+        }
+    });
+}
 </script>
 @endpush
 @endsection

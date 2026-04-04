@@ -34,6 +34,7 @@
 | **Edit Protection** | Proteksi otomatis: Transaksi dengan status `completed` tidak dapat diedit oleh peran apapun (termasuk Owner). |
 | **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending. |
 | **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi (Equal, Percentage, atau Manual). |
+| **Rekening Cabang** | Manajemen rekening bank/e-wallet untuk tiap cabang dengan kontrol akses ketat (Owner full-access, Atasan & Admin read-only). |
 | **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR. |
 | **Bypass AI Control** | Fitur **Override** (untuk memulihkan auto-reject) dan **Force Approve** (untuk memulihkan flagged nominal). |
 | **Telegram Bot Sync** | Notifikasi real-time, konfirmasi pembayaran cash, dan alert selisih nominal langsung ke Telegram. |
@@ -496,6 +497,7 @@ Dalam dokumentasi API, Anda akan menemukan beberapa endpoint yang ditandai sebag
 | `DELETE` | `/transactions/{id}` | `TransactionController@destroy` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/users/*` | `UserController` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/branches/*` | `BranchController` | Admin, Atasan, Owner |
+| `GET/POST/...` | `/branch-bank-accounts/*` | `BranchBankAccountController` | Admin, Atasan, Owner (Mutasi hanya Owner) |
 | `GET` | `/activity-logs` | `ActivityLogController@index` | Admin, Atasan, Owner |
 | `GET/POST/DELETE` | `/notifications/*` | `NotificationController` | Auth |
 
