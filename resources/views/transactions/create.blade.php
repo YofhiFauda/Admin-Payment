@@ -715,9 +715,14 @@
                     <p class="ic-upload-hint">JPG, PNG — Maks. 1MB</p>
                 </div>
 
-                <div id="uploadPreview" class="ic-file-preview">
-                    <span class="ic-file-preview-icon">📎</span>
-                    <span class="ic-file-name" id="fileName"></span>
+                <div id="uploadPreview" class="ic-file-preview relative group overflow-hidden">
+                    <div class="flex items-center gap-3">
+                        <img id="fileNameImg" class="w-12 h-12 object-cover rounded-lg border border-slate-200 bg-white">
+                        <div class="flex flex-col items-start">
+                            <span class="ic-file-name block max-w-[180px] truncate" id="fileName"></span>
+                            <span class="text-[9px] text-emerald-600 font-bold uppercase tracking-wider">Siap diunggah</span>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="button" id="select-file-btn" class="ic-upload-btn">
@@ -803,6 +808,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── CARD SELECTION ────────────────────────────────────
     function selectCard(type) {
+        if (type === 'pengajuan') {
+            cardPengajuan.classList.add('selected');
+            cardRembush.classList.remove('selected');
+            loadingSpinner.classList.add('teal-spin');
+            showLoading('Menyiapkan Form Pengajuan...', 'Mohon tunggu sebentar');
+            setTimeout(() => {
+                window.location.href = "{{ route('pengajuan.form') }}";
+            }, 400);
+            return;
+        }
+
         selectedType = type;
 
         cardRembush.classList.toggle('selected', type === 'rembush');
@@ -844,17 +860,49 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.click();
     });
 
-    fileInput.addEventListener('change', function () {
-        if (!this.files[0]) return;
-        const file = this.files[0];
-        if (file.size > MAX_SIZE) { showToast('Ukuran file maksimal 1MB!'); fileInput.value = ''; return; }
+    const fileNameImg    = document.getElementById('fileNameImg');
 
-        selectedFile = file;
-        fileNameEl.textContent = selectedFile.name;
-        uploadDefault.style.display = 'none';
-        uploadPreview.classList.add('show');
-        updateSubmitState();
+    fileInput.addEventListener('change', function () {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            if (file.size > MAX_SIZE) {
+                showToast('Ukuran file terlalu besar (Maks. 1MB)');
+                this.value = '';
+                resetUploadUI();
+                return;
+            }
+
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+
+            // Image preview logic
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fileNameImg.src = e.target.result;
+                    uploadPreview.classList.add('show');
+                    uploadDefault.classList.add('hidden');
+                    submitWrap.classList.add('visible');
+                    
+                    // Add success effect to upload area
+                    uploadArea.classList.add(selectedType === 'rembush' ? 'active-rembush' : 'active-pengajuan');
+                }
+                reader.readAsDataURL(file);
+            }
+        } else {
+            resetUploadUI();
+        }
     });
+
+    function resetUploadUI() {
+        uploadPreview.classList.remove('show');
+        uploadDefault.classList.remove('hidden');
+        submitWrap.classList.remove('visible');
+        uploadArea.classList.remove('active-rembush', 'active-pengajuan');
+        fileNameImg.src = '';
+        fileNameEl.textContent = '';
+        selectedFile = null;
+    }
 
     function updateSubmitState() {
         submitWrap.classList.toggle('visible', !!(selectedFile && selectedType));

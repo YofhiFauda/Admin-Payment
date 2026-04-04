@@ -55,15 +55,13 @@ class AiAutoFillController extends Controller
     }
 
     /**
-     * ─────────────────────────────────────────────────────────
-     *  POST /api/ai/auto-fill
-     *  Callback dari n8n setelah Gemini selesai OCR
-     *
-     *  ✅ FIX Bug #1: auto_reject & low_confidence kini masuk handleOcrFailed()
-     *  ✅ FIX Bug #1: Validator menerima auto_reject & low_confidence
-     * ─────────────────────────────────────────────────────────
+     * AI Auto-Fill Callback (Primary)
+     * 
+     * Primary callback endpoint for n8n/Gemini to submit OCR extraction results.
+     * 
+     * @unauthenticated
      */
-    public function store(Request $request)
+    public function store(Request $request): \Illuminate\Http\JsonResponse
     {
         Log::channel('ai_autofill')->info('📥 [AI CALLBACK] RAW REQUEST BODY', [
             'body' => $request->all(),
@@ -200,6 +198,18 @@ class AiAutoFillController extends Controller
             'confidence'       => $cacheData['confidence'],
             'confidence_label' => $cacheData['confidence_label'],
         ]);
+    }
+    
+    /**
+     * AI Auto-Fill Callback (Legacy)
+     * 
+     * Legacy callback endpoint (handles typos like /ai/auto-fil).
+     * 
+     * @unauthenticated
+     */
+    public function storeLegacy(Request $request): \Illuminate\Http\JsonResponse
+    {
+        return $this->store($request);
     }
 
         private function isAuthorized(Request $request): bool
@@ -586,12 +596,13 @@ class AiAutoFillController extends Controller
         }
 
 
-        /**
-         * GET /api/ai/auto-fill/status/{uploadId}
-         * Polling dari loading.blade.php
-         */
-        public function status($uploadId)
-        {
+    /**
+     * Get OCR Status (Primary)
+     * 
+     * Primary polling endpoint for the frontend to check the current status of an AI OCR process.
+     */
+    public function status($uploadId): \Illuminate\Http\JsonResponse
+    {
             $cacheKey = "ai_autofill:{$uploadId}";
             $data     = Cache::get($cacheKey);
 
@@ -691,12 +702,24 @@ class AiAutoFillController extends Controller
                 'estimated_wait' => $phase === 'queued' ? 30 : ($phase === 'processing' ? 15 : null),
             ]);
         }
+    
+    /**
+     * Get OCR Status (Legacy)
+     * 
+     * Legacy polling endpoint for backward compatibility.
+     */
+    public function statusLegacy($uploadId): \Illuminate\Http\JsonResponse
+    {
+        return $this->status($uploadId);
+    }
 
 
     /**
-     * GET /api/admin/ocr-status
+     * Admin OCR Monitoring
+     * 
+     * Provides status updates on rate limits and queue lengths. Restricted to Admin/Owner.
      */
-    public function ocrStatus(GeminiRateLimiter $rateLimiter)
+    public function ocrStatus(GeminiRateLimiter $rateLimiter): \Illuminate\Http\JsonResponse
     {
         if (!auth()->check() || !in_array(auth()->user()->role, ['admin', 'owner'])) {
             Log::channel('ai_autofill')->warning('🔒 [AI ADMIN] OCR STATUS FORBIDDEN', [
@@ -728,16 +751,13 @@ class AiAutoFillController extends Controller
 
 
     /**
-     * ─────────────────────────────────────────────────────────
-     *  POST /api/pembayaran/update-status
-     *  Callback dari n8n untuk update status pembayaran (Transfer/Cash)
-     *
-     *  ✅ FIX Bug #2: Status dinormalisasi sebelum disimpan
-     *  n8n mengirim "Selesai" atau "Flagged - Selisih Nominal"
-     *  → dinormalisasi ke "completed" atau "flagged"
-     * ─────────────────────────────────────────────────────────
+     * Update Payment Status (AI Callback)
+     * 
+     * Callback for n8n to update payment status after verifying transfer/cash receipts via OCR.
+     * 
+     * @unauthenticated
      */
-    public function updateStatus(Request $request)
+    public function updateStatus(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'upload_id'      => 'required|string',

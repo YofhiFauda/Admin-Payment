@@ -15,6 +15,8 @@ use App\Http\Controllers\OtherExpenditureController;
 use App\Http\Controllers\SalaryController;
 use Illuminate\Support\Facades\Route;
 
+
+
 // Redirect root: ke dashboard jika login, ke login jika guest
 Route::get('/', function () {
     if (auth()->check()) {
@@ -106,6 +108,9 @@ Route::middleware('auth')->group(function () {
             ->name('transactions.forceApprove');
         
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+
+        // ── Hutang Antar Cabang (Branch Debt Settlement) ──
+        Route::patch('/branch-debts/{id}/settle', [TransactionController::class, 'settleBranchDebt'])->name('branch-debts.settle');
     });
 
     // ── User, Branch & Activity Management (admin, atasan, owner) ──

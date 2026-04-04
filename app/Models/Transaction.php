@@ -132,6 +132,21 @@ class Transaction extends Model
         'overall_confidence',
         'confidence_label',
         'field_confidence',
+        // Invoice Payment fields
+        'invoice_file_path',
+        'diskon_pengiriman',
+        'ongkir',
+        'biaya_layanan_1',
+        'biaya_layanan_2',
+        'voucher_diskon',
+        'sumber_dana_branch_id',
+        'sumber_dana_data',
+        // ✅ Versioning fields (Dual-Version System)
+        'items_snapshot',
+        'is_edited_by_management',
+        'edited_by',
+        'edited_at',
+        'revision_count',
     ];
 
     protected function casts(): array
@@ -147,6 +162,13 @@ class Transaction extends Model
             'confidence' => 'integer',
             'overall_confidence' => 'integer',
             'field_confidence' => 'array',
+            // ✅ NEW: Versioning casts
+            'items_snapshot' => 'array',
+            'is_edited_by_management' => 'boolean',
+            'edited_at' => 'datetime',
+            'revision_count' => 'integer',
+            // ✅ Multi Sumber Dana
+            'sumber_dana_data' => 'array',
         ];
     }
 
@@ -233,6 +255,33 @@ class Transaction extends Model
         return $this->belongsToMany(Branch::class, 'transaction_branches')
                     ->withPivot('allocation_percent', 'allocation_amount')
                     ->withTimestamps();
+    }
+
+    public function sumberDanaBranch()
+    {
+        return $this->belongsTo(Branch::class, 'sumber_dana_branch_id');
+    }
+
+    /**
+     * Hutang antar cabang yang dihasilkan dari pembayaran Pengajuan ini.
+     */
+    public function branchDebts()
+    {
+        return $this->hasMany(BranchDebt::class);
+    }
+
+    /**
+     * The management user who last edited this Pengajuan.
+     * Used by the dual-version system.
+     */
+    public function editor()
+    {
+        return $this->belongsTo(User::class, 'edited_by')
+                    ->withDefault([
+                        'id'   => null,
+                        'name' => null,
+                        'role' => null,
+                    ]);
     }
 
     // ─── Type Helpers ─────────────────────────────────
@@ -342,6 +391,14 @@ class Transaction extends Model
             'effective_amount' => $this->effective_amount,
             'purchase_reason' => $this->purchase_reason,
             'purchase_reason_label' => $this->purchase_reason ? (self::PURCHASE_REASONS[$this->purchase_reason] ?? '') : '',
+            // ✅ Versioning fields for Detail Modal
+            'is_edited_by_management' => (bool) $this->is_edited_by_management,
+            'revision_count' => $this->revision_count ?? 0,
+            'edited_at' => $this->edited_at ? $this->edited_at->format('d M Y, H:i') : null,
+            'editor_name' => $this->relationLoaded('editor') && $this->editor ? $this->editor->name : null,
+            'items' => $this->items,
+            'items_snapshot' => $this->getOriginalVersion(),
+            'changes' => $this->getItemChanges(),
             // Search string untuk matching
             'search_text' => strtolower(
                 ($this->submitter->name ?? '') . ' ' .
@@ -352,4 +409,171 @@ class Transaction extends Model
             ),
         ];
     }
+
+
+
+
+    // ─── Versioning Helper Methods ───────────────────────────────
+    /**
+     * Cek apakah pengajuan pernah diedit oleh management
+     */
+    public function hasBeenEditedByManagement(): bool
+    {
+        return (bool) $this->is_edited_by_management;
+    }
+    
+    /**
+     * Get versi asli pengajuan (dari teknisi)
+     * Returns: array of items atau null
+     */
+    public function getOriginalVersion(): ?array
+    {
+        if (!$this->isPengajuan()) {
+            return null;
+        }
+        
+        // Jika belum pernah diedit, items_snapshot = items
+        return $this->items_snapshot ?? $this->items;
+    }
+    
+    /**
+     * Get versi management (hasil edit Owner/Atasan)
+     * Returns: array of items
+     */
+    public function getManagementVersion(): array
+    {
+        return $this->items ?? [];
+    }
+    
+    /**
+     * Cek apakah ada perubahan antara versi asli dan versi management
+     */
+    public function hasRevisionChanges(): bool
+    {
+        if (!$this->hasBeenEditedByManagement()) {
+            return false;
+        }
+        
+        $original = $this->getOriginalVersion();
+        $current = $this->getManagementVersion();
+        
+        return json_encode($original) !== json_encode($current);
+    }
+    
+    /**
+     * Get detail perubahan untuk setiap item
+     * Returns array of change details per item
+     */
+    public function getItemChanges(): array
+    {
+        if (!$this->hasRevisionChanges()) {
+            return [];
+        }
+        
+        $original = $this->getOriginalVersion() ?? [];
+        $current = $this->getManagementVersion();
+        
+        $changes = [];
+        $maxCount = max(count($original), count($current));
+        
+        for ($i = 0; $i < $maxCount; $i++) {
+            $origItem = $original[$i] ?? null;
+            $currItem = $current[$i] ?? null;
+            
+            if (!$origItem && $currItem) {
+                // Item baru ditambahkan oleh management
+                $changes[] = [
+                    'index' => $i,
+                    'type' => 'added',
+                    'original' => null,
+                    'current' => $currItem,
+                ];
+            } elseif ($origItem && !$currItem) {
+                // Item dihapus oleh management
+                $changes[] = [
+                    'index' => $i,
+                    'type' => 'removed',
+                    'original' => $origItem,
+                    'current' => null,
+                ];
+            } elseif ($origItem && $currItem) {
+                // Cek field-by-field
+                $fieldChanges = $this->compareItems($origItem, $currItem);
+                if (!empty($fieldChanges)) {
+                    $changes[] = [
+                        'index' => $i,
+                        'type' => 'modified',
+                        'original' => $origItem,
+                        'current' => $currItem,
+                        'fields' => $fieldChanges,
+                    ];
+                }
+            }
+        }
+        
+        return $changes;
+    }
+    
+    /**
+     * Compare 2 items dan return field yang berbeda
+     */
+    private function compareItems(array $original, array $current): array
+    {
+        $fields = ['customer', 'vendor', 'link', 'description', 'quantity', 'estimated_price', 'purchase_reason', 'specs'];
+        $changes = [];
+        
+        foreach ($fields as $field) {
+            $origVal = $original[$field] ?? null;
+            $currVal = $current[$field] ?? null;
+            
+            // Deep compare untuk array (specs)
+            if (is_array($origVal) || is_array($currVal)) {
+                if (json_encode($origVal) !== json_encode($currVal)) {
+                    $changes[$field] = [
+                        'old' => $origVal,
+                        'new' => $currVal,
+                    ];
+                }
+            } else {
+                // String/number compare
+                if ($origVal != $currVal) {
+                    $changes[$field] = [
+                        'old' => $origVal,
+                        'new' => $currVal,
+                    ];
+                }
+            }
+        }
+        
+        return $changes;
+    }
+    
+    /**
+     * Snapshot data asli saat pertama kali submit (called from PengajuanController::store)
+     */
+    public function snapshotOriginalData(): void
+    {
+        if ($this->isPengajuan() && !$this->items_snapshot) {
+            $this->items_snapshot = $this->items;
+            $this->save();
+        }
+    }
+    
+    /**
+     * Mark sebagai edited by management
+     */
+    public function markAsEditedByManagement(int $userId): void
+    {
+        if (!$this->is_edited_by_management) {
+            // First time edit → freeze snapshot
+            $this->items_snapshot = $this->getOriginal('items');
+        }
+        
+        $this->is_edited_by_management = true;
+        $this->edited_by = $userId;
+        $this->edited_at = \Illuminate\Support\Carbon::now();
+        $this->revision_count = ($this->revision_count ?? 0) + 1;
+        $this->save();
+    }
+    
 }

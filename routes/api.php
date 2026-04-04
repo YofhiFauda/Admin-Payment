@@ -43,6 +43,9 @@ Route::prefix('v1')->group(function () {
     // Flow 3 (Transfer)
     Route::post('/payment/transfer/upload', [OcrNotaController::class, 'uploadTransfer']);
 
+    // Flow 4 (Pengajuan Invoice)
+    Route::post('/payment/pengajuan/upload', [OcrNotaController::class, 'uploadPengajuanInvoice']);
+
     // Banks dictionary removed (Moved to UserBankAccount system)
 });
 
@@ -53,7 +56,7 @@ Route::middleware(N8nSecretMiddleware::class)->group(function () {
     Route::post('/ai/auto-fill', [AiAutoFillController::class, 'store']);
     // ✅ FIX Bug: Typo dari n8n callback url (kurang huruf 'l' di belakang)
     // Menangkap POST /api/ai/auto-fil dan meroutekannya ke endpoint yang benar
-    Route::post('/ai/auto-fil', [AiAutoFillController::class, 'store'])
+    Route::post('/ai/auto-fil', [AiAutoFillController::class, 'storeLegacy'])
         ->middleware('throttle:ai-auto-fill');
 
 
@@ -80,7 +83,7 @@ Route::get('/ai/auto-fill/status/{uploadId}', [AiAutoFillController::class, 'sta
     ->middleware('throttle:60,1');
 
 // Legacy route (backward compatibility)
-Route::get('/ai/ai-status/{uploadId}', [AiAutoFillController::class, 'status']);
+Route::get('/ai/ai-status/{uploadId}', [AiAutoFillController::class, 'statusLegacy']);
 
 
 // ─── Admin Monitoring ───────────────────────────────────

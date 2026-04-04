@@ -19,18 +19,8 @@ class PengajuanController extends Controller
 
     public function showForm()
     {
-        $uploadId = session('pengajuan_upload_id');
-        $filePath = session('pengajuan_file_path');
-        $base64   = session('pengajuan_file_base64');  // ← Ambil base64
-        $mime     = session('pengajuan_file_mime');     // ← Ambil mime
-        
-        // Fallback jika file tidak exist di disk
-        if ($filePath && !Storage::disk('public')->exists($filePath)) {
-            $filePath = null;
-        }
-        
         $branches = Branch::all();
-        return view('transactions.form-pengajuan', compact('filePath', 'branches', 'base64', 'mime'));
+        return view('transactions.form-pengajuan', compact('branches'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -75,15 +65,11 @@ class PengajuanController extends Controller
 
     public function store(Request $request)
     {
-        $uploadFilePath = session('pengajuan_file_path');
-        $uploadId       = session('pengajuan_upload_id');
-        // Derive invoice number from the SAME sequence used for upload_id
-        $seq            = session('pengajuan_seq');
-        $invoiceNumber  = $seq
-            ? IdGeneratorService::buildInvoiceNumber((int) $seq)
-            : IdGeneratorService::nextInvoiceNumber(); // fallback if no upload happened
+        $role = Auth::user()->role;
+        $fileRule = in_array($role, ['owner', 'atasan']) ? 'nullable|image|max:1024' : 'required|image|max:1024';
 
         $request->validate([
+            'file'            => $fileRule,
             'items'           => 'required|array|min:1',
             'items.*.customer'=> 'required|string|max:255',
             'items.*.vendor'  => 'nullable|string|max:255',
@@ -107,10 +93,18 @@ class PengajuanController extends Controller
             'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
         ]);
 
-        // File sudah final di path 'pengajuan/' (tidak perlu dipindah)
-        $permanentPath = null;
-        if ($uploadFilePath && Storage::disk('public')->exists($uploadFilePath)) {
-            $permanentPath = $uploadFilePath; // already in permanent location
+        // Generate identifiers
+        $seq = IdGeneratorService::nextSequence();
+        $uploadId = IdGeneratorService::buildUploadId($seq);
+        $invoiceNumber = IdGeneratorService::buildInvoiceNumber((int) $seq);
+
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $extension = $file->getClientOriginalExtension();
+            $fileName   = $uploadId . '.' . $extension;   // UP-20260302-00002.jpeg
+            Storage::disk('public')->put($fileName, file_get_contents($file));
+            $filePath = $fileName;
         }
 
         // Validate branch allocation if provided
@@ -129,10 +123,6 @@ class PengajuanController extends Controller
         DB::beginTransaction();
 
         try {
-            // $filePath sudah di-set dari session oleh uploadPhoto()
-            // dengan nama UP-YYYYMMDD-XXXXX — tidak perlu upload ulang di sini
-            $filePath = $permanentPath;
-
             $items = $request->items;
             $firstItem = $items[0] ?? [];
             $totalAmount = collect($items)->sum(function($item) {
@@ -160,6 +150,11 @@ class PengajuanController extends Controller
                 'submitted_by'    => Auth::id(),
             ]);
 
+
+            // ✅ SNAPSHOT data asli pengaju (immutable)
+            $transaction->items_snapshot = $transaction->items;
+            $transaction->save();
+
             // Attach branches if provided
             if ($request->branches && count($request->branches) > 0) {
                 $effectiveAmount = $transaction->amount;
@@ -177,14 +172,6 @@ class PengajuanController extends Controller
 
             broadcast(new \App\Events\TransactionCreated($transaction));
             DB::commit();
-
-            session()->forget([
-                'pengajuan_seq',
-                'pengajuan_upload_id',
-                'pengajuan_file_path',
-                'pengajuan_file_base64',   // ← ADDED
-                'pengajuan_file_mime',     // ← ADDED
-            ]);
 
             return redirect()->route('transactions.confirm', $transaction->id);
 

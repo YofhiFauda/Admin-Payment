@@ -444,6 +444,7 @@ class DashboardController extends Controller
 
             return [
                 'id'               => $t->id,
+                'type_label'       => 'Hutang Rembush',
                 'invoice_number'   => $t->invoice_number,
                 'submitter_name'   => $t->submitter->name ?? '-',
                 'status'           => $t->status,
@@ -451,13 +452,39 @@ class DashboardController extends Controller
                 'formatted_amount' => 'Rp ' . number_format($allocatedAmount, 0, ',', '.'),
                 'created_at'       => $t->created_at->format('d M Y'),
                 'category'         => Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya',
+                'is_inter_branch'  => false,
             ];
         });
 
-        $totalHutang = $data->sum('amount');
+        // ✅ Inject Hutang Antar Cabang (Pengajuan Debts)
+        $branchDebts = \App\Models\BranchDebt::with(['transaction', 'creditorBranch'])
+            ->whereHas('debtorBranch', function($q) use ($branchName) {
+                $q->where('name', $branchName);
+            })
+            ->where('status', 'pending')
+            ->get();
+
+        $debtData = $branchDebts->map(function ($debt) {
+            return [
+                'id'               => $debt->id,
+                'type_label'       => 'Hutang ke Cab. ' . $debt->creditorBranch->name,
+                'invoice_number'   => $debt->transaction->invoice_number ?? '-',
+                'submitter_name'   => 'Antar Cabang', // Or transaction submitter
+                'status'           => 'waiting_payment', // mapping UX style
+                'amount'           => $debt->amount,
+                'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
+                'created_at'       => $debt->created_at->format('d M Y'),
+                'category'         => 'Pengajuan Multi-Source',
+                'is_inter_branch'  => true,
+            ];
+        });
+
+        $finalData = $data->concat($debtData)->sortByDesc('created_at')->values();
+
+        $totalHutang = $finalData->sum('amount');
 
         return response()->json([
-            'transactions'    => $data,
+            'transactions'    => $finalData,
             'total_hutang'    => $totalHutang,
             'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
         ]);

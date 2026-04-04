@@ -211,6 +211,9 @@
                 <div class="p-6 space-y-6 overflow-y-auto grow min-h-0">
                     <div class="flex items-center gap-2 flex-wrap" id="v-badges"></div>
                     
+                    {{-- ✅ Revisi Banner (Pengajuan yang direvisi Management) --}}
+                    <div id="v-revision-banner" class="hidden"></div>
+
                     {{-- ✅ UPDATED: Foto dengan Click-to-Zoom --}}
                     <div id="v-image-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Foto Nota / Referensi</label>
@@ -230,7 +233,8 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="v-fields"></div>
                     <div id="v-items-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Daftar Barang</label>
-                        <div class="border border-slate-100 rounded-xl overflow-hidden">
+                        {{-- Table Container untuk Rembush --}}
+                        <div id="v-items-table-container" class="border border-slate-100 rounded-xl overflow-hidden hidden">
                             <table class="w-full text-xs">
                                 <thead class="bg-slate-50 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                                     <tr>
@@ -244,11 +248,28 @@
                                 <tbody id="v-items-tbody" class="divide-y divide-slate-50"></tbody>
                             </table>
                         </div>
+                        {{-- Div Container untuk Pengajuan (Cards Grid) --}}
+                        <div id="v-items-div-container" class="hidden flex-col"></div>
                     </div>
                     <div id="v-specs-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Spesifikasi</label>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="v-specs"></div>
                     </div>
+                    
+                    {{-- ✅ Summary Area (Keterangan Global & Total Estimasi) --}}
+                    <div id="v-summary-wrap" class="hidden mt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div id="v-summary-desc-wrap" class="md:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4 hidden">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Keterangan Global</label>
+                                <p class="text-xs font-medium text-slate-700 whitespace-pre-wrap leading-relaxed" id="v-summary-desc"></p>
+                            </div>
+                            <div id="v-summary-total-wrap" class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm">
+                                <label class="block text-[10px] font-bold text-blue-800/60 uppercase tracking-wider mb-1">Total Estimasi</label>
+                                <p class="text-lg md:text-xl font-black text-blue-700 tracking-tight flex items-baseline" id="v-summary-total"></p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="v-branches-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Pembagian Cabang</label>
                         <div class="space-y-2" id="v-branches"></div>
@@ -465,7 +486,8 @@
                     
                     <div id="p-items-wrap" class="hidden">
                          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Daftar Barang</label>
-                         <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                         {{-- Table Container untuk Rembush --}}
+                         <div id="p-items-table-container" class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hidden">
                              <table class="w-full text-xs text-left">
                                  <thead class="bg-slate-100/50 text-slate-500 font-bold uppercase tracking-wider">
                                      <tr>
@@ -479,12 +501,11 @@
                                  <tbody id="p-items-tbody" class="divide-y divide-slate-100"></tbody>
                              </table>
                          </div>
+                         {{-- Div Container untuk Pengajuan (Cards Grid) --}}
+                         <div id="p-items-div-container" class="hidden flex-col"></div>
                     </div>
 
-                    <div id="p-specs-wrap" class="hidden">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Spesifikasi Tambahan</label>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="p-specs"></div>
-                    </div>
+
 
                     <div id="p-branches-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider mt-4">Pembagian Cabang</label>
@@ -492,9 +513,9 @@
                     </div>
                 </div>
 
-                <div class="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between mb-4">
-                    <span>Tagihan Pembayaran:</span>
-                    <span id="payment-modal-amount" class="text-emerald-600 font-bold text-sm">Rp 0</span>
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4 flex flex-col justify-center shadow-sm">
+                    <label class="block text-[10px] font-bold text-blue-800/60 uppercase tracking-wider mb-1">Tagihan Pembayaran</label>
+                    <p class="text-lg md:text-xl font-black text-blue-700 tracking-tight flex items-baseline" id="payment-modal-amount"></p>
                 </div>
 
                 <form id="payment-form" method="POST" action="" enctype="multipart/form-data">
@@ -507,7 +528,7 @@
                         </label>
                         <input type="file" name="file" id="payment_file_input" required accept=".jpg,.jpeg,.png,.pdf"
                             class="w-full border border-cyan-200 rounded-xl p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 transition-all cursor-pointer bg-white">
-                        <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG, PDF. Max 5MB.</p>
+                        <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG, PDF. Max 2MB.</p>
                     </div>
 
                     {{-- TRANSFER FIELDS (Hidden by default) --}}
@@ -562,6 +583,93 @@
                             <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan Tambahan (Opsional)</label>
                             <textarea name="catatan" id="cash_catatan" rows="2" placeholder="Cth: Uang diserahkan ke teknisi A..."
                                 class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- PENGAJUAN INVOICE FIELDS (Hidden by default) --}}
+                    <div id="pengajuan-invoice-fields" class="hidden space-y-4 mb-5 border-t border-slate-100 pt-4">
+                        <div class="p-3 bg-teal-50 border border-teal-100 rounded-lg flex items-start gap-2 mb-4">
+                            <i data-lucide="info" class="w-4 h-4 text-teal-600 mt-0.5"></i>
+                            <div class="text-[11px] text-teal-800 font-medium">
+                                Pilih cabang <strong>Sumber Dana</strong> dan masukkan nominal yang dibayarkan. Cabang yang tidak dipilih otomatis <strong class="text-red-600">berhutang</strong>.
+                            </div>
+                        </div>
+
+                        {{-- Multi Sumber Dana Section --}}
+                        <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                            <div class="px-5 py-4 border-b border-slate-50">
+                                <label class="text-xs font-black text-slate-800 uppercase tracking-widest">Rincian Sumber Dana <span class="text-red-500">*</span></label>
+                            </div>
+                            <div id="p_sumber_dana_container" class="p-5 space-y-4">
+                                {{-- Dynamically populated by JS --}}
+                            </div>
+
+                            <div id="p_sumber_dana_total" class="px-6 py-5 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center hidden">
+                                <div class="space-y-1">
+                                    <span class="block text-xs font-black text-slate-800 uppercase tracking-widest leading-none">Total Sumber Dana</span>
+                                    <div id="p_sumber_dana_diff" class="text-[10px] font-bold tracking-tight"></div>
+                                </div>
+                                <span id="p_sumber_dana_total_value" class="text-2xl font-black text-teal-600 tracking-tighter">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Ongkir</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="ongkir" id="p_ongkir" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Diskon Pengiriman</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="diskon_pengiriman" id="p_diskon_pengiriman" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Voucher Diskon</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="voucher_diskon" id="p_voucher_diskon" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Biaya Layanan 1</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="biaya_layanan_1" id="p_biaya_layanan_1" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">Biaya Layanan 2</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="biaya_layanan_2" id="p_biaya_layanan_2" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan (Opsional)</label>
+                            <textarea name="catatan" id="p_catatan" rows="2" placeholder="Cth: Pembayaran via Invoice..."
+                                class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 resize-none"></textarea>
+                        </div>
+
+                        {{-- Debt Preview --}}
+                        <div id="p_debt_preview" class="hidden border border-red-100 rounded-2xl overflow-hidden mt-6 shadow-sm">
+                            <div class="bg-red-50/50 px-4 py-3.5 border-b border-red-100 flex items-center gap-2.5">
+                                <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-600"></i>
+                                </div>
+                                <span class="text-[11px] font-black text-red-700 uppercase tracking-widest">Preview Hutang Otomatis</span>
+                            </div>
+                            <div id="p_debt_preview_list" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/50"></div>
                         </div>
                     </div>
 
@@ -1155,11 +1263,8 @@
                                 <i data-lucide="eye" class="w-4 h-4"></i>
                             </button>
                             ${canManage ? `
-                                <a href="/transactions/${t.id}/edit" title="Edit"
-                                      class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 active:scale-95 transition-all outline-none">
-                                    <i data-lucide="pencil" class="w-4 h-4"></i>
-                                </a>
-                                ${!isAdmin ? `
+                                ${buildEditButton(t, 'desktop')}
+                                ${(!isAdmin) ? `
                                     <form action="/transactions/${t.id}" method="POST" onsubmit="return confirm('Apakah anda yakin ingin menghapus transaksi ${t.invoice_number}?')">
                                         <input type="hidden" name="_token" value="${csrfToken}">
                                         <input type="hidden" name="_method" value="DELETE">
@@ -1175,8 +1280,38 @@
                 </tr>
             `;
         }
+        
+        // ───────────────────────────────────────────────────
+        // ✅ Edit button builder — enforces spec rules:
+        //   - Pengajuan + status completed → sembunyikan
+        //   - Admin → tampilkan dengan label "Lihat Versi" (read-only di server)
+        // ───────────────────────────────────────────────────
+        function buildEditButton(t, style = 'desktop') {
+            const isCompleted = t.status === 'completed';
+            
+            // Tentukan label berdasar status Read-Only
+            let label = 'Edit';
+            if (t.type === 'pengajuan') {
+                if (isAdmin) label = 'Lihat Versi (View Only)';
+                else if (isCompleted) label = 'View Only';
+            }
 
-        // Generate HTML for mobile card
+            // Selalu gunakan icon edit (pencil), namun fungsionalnya read-only di backend jika memenuhi syarat
+            const icon  = 'pencil';
+
+            if (style === 'desktop') {
+                return `<a href="/transactions/${t.id}/edit" title="${label}"
+                    class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 active:scale-95 transition-all outline-none">
+                    <i data-lucide="${icon}" class="w-4 h-4"></i>
+                </a>`;
+            } else {
+                return `<a href="/transactions/${t.id}/edit"
+                    class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-amber-600 hover:border-amber-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                    <i data-lucide="${icon}" class="w-3 h-3"></i> ${label}
+                </a>`;
+            }
+        }
+
         function generateMobileCard(t, rowNum = '') {
             const mStatusBadge = {
                 pending:   'bg-amber-50 text-amber-700 border-amber-200',
@@ -1213,11 +1348,8 @@
                     <i data-lucide="eye" class="w-3 h-3"></i> Lihat
                 </button>
                 ${canManage ? `
-                    <a href="/transactions/${t.id}/edit"
-                        class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-amber-600 hover:border-amber-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
-                        <i data-lucide="pencil" class="w-3 h-3"></i> Edit
-                    </a>
-                    ${!isAdmin ? `
+                    ${buildEditButton(t, 'mobile')}
+                    ${(!isAdmin) ? `
                         <form action="/transactions/${t.id}" method="POST" class="inline" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
                             <input type="hidden" name="_token" value="${csrfToken}">
                             <input type="hidden" name="_method" value="DELETE">
@@ -1341,8 +1473,16 @@
             if (!canManage) return '';
 
             let html = '';
-            if (!isOwner && t.status === 'pending') {
-                const approveTitle = t.effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui';
+            const isPengajuan = t.type === 'pengajuan';
+            const canApprovePengajuan = isOwner || userRole === 'atasan';
+
+            if (t.status === 'pending') {
+                // For Pengajuan, only Atasan/Owner can approve
+                if (isPengajuan && !canApprovePengajuan) {
+                    return '';
+                }
+
+                const approveTitle = (!isPengajuan && t.effective_amount >= 1000000) ? 'Setujui (Menunggu Owner)' : 'Setujui';
                 html = `
                     <div class="flex items-center gap-1 ml-1">
                         <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
@@ -1355,8 +1495,8 @@
                         </button>
                     </div>
                 `;
-            } else if (isOwner && ['pending', 'approved'].includes(t.status)) {
-                const approveTitle = t.status === 'approved' ? 'Approve Final' : 'Setujui';
+            } else if (isOwner && t.status === 'approved' && !isPengajuan) {
+                const approveTitle = 'Approve Final';
                 html = `
                     <div class="flex items-center gap-1 ml-1">
                         <button type="button" onclick="performStatusAction(${t.id}, 'approved', this)" title="${approveTitle}"
@@ -1422,13 +1562,22 @@
 
             let showActions = false;
             let approveTitle = 'Setujui';
+            const isPengajuan = t.type === 'pengajuan';
+            const canApprovePengajuan = isOwner || userRole === 'atasan';
 
-            if (!isOwner && t.status === 'pending') {
+            if (t.status === 'pending') {
+                if (isPengajuan) {
+                    if (canApprovePengajuan) {
+                        showActions = true;
+                        approveTitle = 'Setujui';
+                    }
+                } else {
+                    showActions = true;
+                    approveTitle = t.effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui';
+                }
+            } else if (isOwner && t.status === 'approved' && !isPengajuan) {
                 showActions = true;
-                approveTitle = t.effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui';
-            } else if (isOwner && ['pending', 'approved'].includes(t.status)) {
-                showActions = true;
-                approveTitle = t.status === 'approved' ? 'Approve Final' : 'Setujui';
+                approveTitle = 'Approve Final';
             }
 
             let extraActionHtml = '';
@@ -1776,9 +1925,132 @@
     // ═══════════════════════════════════════════════════════════════
     // VIEW MODAL & OTHER FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    
-    function openViewModal(id) {
-        currentTransactionId = id;
+
+    /**
+     * Helper to render application items with highlighting
+     */
+    function renderTransactionItemsCards(items, version, originalItems = []) {
+        const purchaseReasons = {
+            'rusak': 'Barang Rusak/Usang',
+            'hilang': 'Barang Hilang',
+            'upgrade': 'Upgrade/Peningkatan',
+            'kebutuhan_baru': 'Kebutuhan Baru',
+            'proyek': 'Keperluan Proyek',
+            'lainnya': 'Lainnya'
+        };
+
+        return items.map((item, idx) => {
+            const price = Number(item.estimated_price || 0);
+            const qty = Number(item.quantity || 0);
+            const total = price * qty;
+
+            const originalItem = (version === 'management') ? (originalItems[idx] || null) : null;
+            const isNew = version === 'management' && originalItems.length > 0 && idx >= originalItems.length;
+
+            // Helper to check if a field has changed
+            const isFieldChanged = (fieldName) => {
+                if (version !== 'management' || isNew || !originalItem) return false;
+                if (fieldName === 'specs') {
+                    return JSON.stringify(item.specs) !== JSON.stringify(originalItem.specs);
+                }
+                return item[fieldName] != originalItem[fieldName];
+            };
+
+            const hasAnyChange = version === 'management' && originalItem && JSON.stringify(item) !== JSON.stringify(originalItem);
+
+            const cardClass = isNew 
+                ? 'border-emerald-200 bg-emerald-50/30' 
+                : (hasAnyChange ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-white');
+
+            const fieldClass = (f) => isFieldChanged(f) 
+                ? 'bg-orange-100/50 border-orange-300 ring-1 ring-orange-200' 
+                : 'bg-white border-slate-200';
+
+            const specsHTML = item.specs ? Object.entries({merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna'}).map(([key, label]) => {
+                return item.specs[key] ? `
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">${label}</label>
+                        <div class="${fieldClass('specs')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800">${item.specs[key]}</div>
+                    </div>
+                ` : '';
+            }).join('') : '';
+
+            return `
+                <div class="border ${cardClass} rounded-2xl overflow-hidden shadow-sm mb-4 last:mb-0 transition-all duration-300">
+                    <!-- Card Header -->
+                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-100/50 transition-colors" onclick="const body = this.nextElementSibling; body.classList.toggle('hidden'); this.querySelector('.icon-collapse').classList.toggle('rotate-180')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full ${isNew ? 'bg-emerald-100 text-emerald-600' : (hasAnyChange ? 'bg-orange-100 text-orange-600' : 'bg-slate-200 text-slate-500')} flex items-center justify-center font-bold text-xs transition-colors">${idx + 1}</div>
+                            <div>
+                                <h4 class="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                    ${item.customer || '-'}
+                                    ${isNew ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[9px] uppercase tracking-tighter font-black animate-pulse">Baru</span>' : ''}
+                                    ${hasAnyChange ? '<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 text-[9px] uppercase tracking-tighter font-black">Diedit</span>' : ''}
+                                </h4>
+                                <p class="text-[10px] text-slate-400">Rp ${price.toLocaleString('id-ID')} x ${qty}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-emerald-600 text-sm hidden sm:inline mr-2">Rp ${total.toLocaleString('id-ID')}</span>
+                            <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse ${idx !== 0 ? 'rotate-180' : ''}"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-4 sm:p-5 space-y-5 ${idx !== 0 ? 'hidden' : ''}">
+                        <div>
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Barang / Jasa</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="md:col-span-2">
+                                    <span class="block text-[10px] text-slate-400">Vendor</span>
+                                    <div class="${fieldClass('vendor')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800">${item.vendor || '-'}</div>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <span class="block text-[10px] text-slate-400">Link Rekomendasi</span>
+                                    <div class="${fieldClass('link')} border rounded-lg px-3 py-2 text-xs">
+                                        ${item.link ? `<a href="${item.link}" target="_blank" class="font-medium text-blue-600 hover:underline break-all">${item.link}</a>` : `<span class="font-medium text-slate-800">-</span>`}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${specsHTML ? `
+                        <div>
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Spesifikasi Barang</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">${specsHTML}</div>
+                        </div>` : ''}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Alasan Pembelian</label>
+                                <div class="${fieldClass('purchase_reason')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800">
+                                    ${purchaseReasons[item.purchase_reason] || item.purchase_reason || '-'}
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Keterangan</label>
+                                <div class="${fieldClass('description')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800 text-wrap whitespace-pre-wrap">${item.description || '-'}</div>
+                            </div>
+                        </div>
+
+                        <!-- Price & Qty highlights -->
+                        <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                             <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Harga Satuan</label>
+                                <div class="${fieldClass('estimated_price')} border rounded-lg px-3 py-2 text-xs font-bold text-slate-800">Rp ${price.toLocaleString('id-ID')}</div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jumlah</label>
+                                <div class="${fieldClass('quantity')} border rounded-lg px-3 py-2 text-xs font-bold text-slate-800">${qty}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function openViewModal(id) {        currentTransactionId = id;
 
         const modal      = document.getElementById('view-modal');
         const modalBox   = document.getElementById('view-modal-content');
@@ -1864,6 +2136,39 @@
         if (e.target.id === 'view-modal') closeViewModal();
     });
 
+    function settleBranchDebt(debtId) {
+        if (!confirm('Apakah hutang ini sudah dilunaskan antar cabang?')) return;
+        
+        const catatan = prompt('Catatan pelunasan (Opsional):');
+        if (catatan === null) return; // User cancelled prompt
+
+        fetch('/branch-debts/' + debtId + '/settle', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ notes: catatan })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showToast(res.message, 'success');
+                // Refresh modal content to show updated status
+                if (currentTransactionId) {
+                    openViewModal(currentTransactionId);
+                }
+            } else {
+                showToast(res.message, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Terjadi kesalahan jaringan.', 'error');
+        });
+    }
+
     function renderViewModal(d) {
         currentTransactionId = d.id;
 
@@ -1894,6 +2199,57 @@
             imgWrap.classList.add('hidden');
         }
 
+        // ✅ Revisi Banner untuk Pengajuan yang sudah diedit Management
+        const revisBannerContainer = document.getElementById('v-revision-banner');
+        if (revisBannerContainer) {
+            if (d.type === 'pengajuan' && d.is_edited_by_management) {
+                revisBannerContainer.innerHTML = `
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col gap-3">
+                        <div class="flex items-start gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="git-branch" class="w-4 h-4 text-blue-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold text-slate-800">Direvisi oleh Management</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                    Diedit oleh <strong class="text-blue-600">${d.editor_name || '-'}</strong>
+                                    pada ${d.edited_at || '-'}
+                                    &nbsp;<span class="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">Revisi ke-${d.revision_count}</span>
+                                </p>
+                            </div>
+                        </div>
+                        ${(d.items_snapshot && d.items_snapshot.length > 0) ? `
+                        <div class="flex gap-2">
+                            <button type="button" id="v-toggle-original"
+                                onclick="toggleVersionInModal('original')"
+                                class="flex-1 px-3 py-2 rounded-lg text-[11px] font-bold bg-white text-slate-600 border border-slate-200 shadow-sm transition-all hover:bg-slate-50">
+                                <i data-lucide="user" class="w-3.5 h-3.5 inline mr-1"></i>Versi Pengaju (V1)
+                            </button>
+                            <button type="button" id="v-toggle-management"
+                                onclick="toggleVersionInModal('management')"
+                                class="flex-1 px-3 py-2 rounded-lg text-[11px] font-bold bg-blue-500 text-white shadow-sm transition-all">
+                                <i data-lucide="shield-check" class="w-3.5 h-3.5 inline mr-1"></i>Versi Management (V${(d.revision_count || 0) + 1})
+                            </button>
+                        </div>` : ''}
+                    </div>`;
+                revisBannerContainer.classList.remove('hidden');
+
+                // Store version data on modal for toggle function
+                window._modalVersionData = {
+                    original: d.items_snapshot || [],
+                    management: d.items || [],
+                };
+                window._modalCurrentVersion = 'management'; // Default to management if edited
+            } else {
+                revisBannerContainer.innerHTML = '';
+                revisBannerContainer.classList.add('hidden');
+                window._modalVersionData = null;
+                window._modalCurrentVersion = 'original';
+            }
+            // Re-init lucide
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: revisBannerContainer });
+        }
+
         const fieldsEl = document.getElementById('v-fields');
         let fieldsHtml = '';
 
@@ -1922,32 +2278,160 @@
                 addField('Alasan Pembelian',      d.purchase_reason_label);
                 addField('Jumlah',                d.quantity);
                 addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
-            } else {
-                addField('Keterangan Global', d.description, true);
             }
-            addField('Total Estimasi',        d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
+            
+            // Note: Keterangan Global & Total Estimasi mapped later to v-summary-wrap
+
+            // Invoice details for Pengajuan
+            if (d.status === 'completed' && d.invoice_file_url) {
+                // Build Multi Sumber Dana HTML
+                let sumberDanaHtml = '';
+                if (d.sumber_dana_data && d.sumber_dana_data.length > 0) {
+                    const branchesLookup = {};
+                    d.branches_raw.forEach(b => branchesLookup[b.id] = b.name);
+                    
+                    sumberDanaHtml = `
+                    <div class="sm:col-span-2 mb-3">
+                        <label class="block text-[9px] font-bold text-teal-600/60 uppercase mb-2">Sumber Dana Pembayaran</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            ${d.sumber_dana_data.map(sd => `
+                                <div class="bg-teal-50 border border-teal-100 rounded-lg p-2 flex justify-between items-center">
+                                    <span class="text-xs font-bold text-slate-700">${branchesLookup[sd.branch_id] || 'Cabang ' + sd.branch_id}</span>
+                                    <span class="text-xs font-bold text-teal-600">Rp ${Number(sd.amount).toLocaleString('id-ID')}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                } else {
+                    // Fallback for old transactions
+                    sumberDanaHtml = `
+                        <div class="sm:col-span-2 bg-teal-50/50 border border-teal-100 rounded-xl px-4 py-3 mb-3">
+                            <label class="block text-[9px] font-bold text-teal-600/60 uppercase mb-1">Sumber Dana</label>
+                            <div class="text-sm font-bold text-slate-700">${d.sumber_dana_branch_name || '-'}</div>
+                        </div>
+                    `;
+                }
+
+                // Build Branch Debts HTML
+                let debtsHtml = '';
+                if (d.branch_debts && d.branch_debts.length > 0) {
+                    debtsHtml = `
+                    <div class="sm:col-span-2 mb-3">
+                        <label class="block text-[9px] font-bold text-red-500 uppercase mb-2">Hutang Tersisa Antar Cabang</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${d.branch_debts.map(debt => `
+                                <div class="bg-red-50 border border-red-100 rounded-lg p-3 ${debt.status === 'paid' ? 'opacity-50' : ''}">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <div class="text-[11px]"><span class="font-bold text-red-600">${debt.debtor_branch_name}</span> berhutang ke <span class="font-bold text-slate-700">${debt.creditor_branch_name}</span></div>
+                                        <div class="text-xs font-bold ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-600'}">Rp ${Number(debt.amount).toLocaleString('id-ID')}</div>
+                                    </div>
+                                    <div class="text-[10px] font-bold ${debt.status === 'paid' ? 'text-emerald-500' : 'text-red-400'} uppercase tracking-wider flex justify-between items-center mt-2">
+                                        <span>Status: ${debt.status === 'paid' ? 'Lunas' : 'Belum Lunas'}</span>
+                                        ${(debt.status === 'pending' && d.can_manage) ? `
+                                        <button type="button" onclick="settleBranchDebt(${debt.id})" class="bg-red-100/50 border border-red-200 hover:bg-red-200 hover:border-red-300 text-red-700 px-2 py-1 rounded transition-colors active:scale-95">Mark as Lunas</button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                fieldsHtml += `
+                    <div class="sm:col-span-2 mt-4 pt-4 border-t border-slate-100">
+                        <label class="block text-[10px] font-bold text-teal-500 uppercase mb-3 tracking-widest">Detail Pembayaran Invoice</label>
+                        
+                        ${sumberDanaHtml}
+                        ${debtsHtml}
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ongkir</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.ongkir || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Diskon Pengiriman</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.diskon_pengiriman || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Voucher Diskon</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.voucher_diskon || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Biaya Layanan 1</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.biaya_layanan_1 || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Biaya Layanan 2</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.biaya_layanan_2 || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">File Invoice</label>
+                            <a href="${d.invoice_file_url}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-teal-600 hover:bg-teal-50 transition-colors">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Lihat Invoice
+                            </a>
+                        </div>
+                    </div>`;
+            }
         }
 
         fieldsEl.innerHTML = fieldsHtml;
 
+        // Populate Summary Wrap for Pengajuan
+        const summaryWrap = document.getElementById('v-summary-wrap');
+        const summaryDescWrap = document.getElementById('v-summary-desc-wrap');
+        const summaryDesc = document.getElementById('v-summary-desc');
+        const summaryTotalWrap = document.getElementById('v-summary-total-wrap');
+        const summaryTotal = document.getElementById('v-summary-total');
+
+        if (d.type === 'pengajuan') {
+            summaryWrap.classList.remove('hidden');
+
+            if (d.items && d.items.length > 0) {
+                // Show Keterangan Global
+                if (d.description) {
+                    summaryDescWrap.classList.remove('hidden');
+                    summaryDescWrap.classList.add('md:col-span-2');
+                    summaryTotalWrap.className = 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    summaryDesc.textContent = d.description;
+                } else {
+                    summaryDescWrap.classList.add('hidden');
+                    summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                }
+            } else {
+                // If single item pengajuan (no items array), description isn't used as Keterangan Global based on previous logic
+                summaryDescWrap.classList.add('hidden');
+                summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm text-center items-center';
+            }
+            
+            summaryTotal.textContent = d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : '-';
+        } else {
+            summaryWrap.classList.add('hidden');
+        }
+
         const itemsWrap  = document.getElementById('v-items-wrap');
         const itemsTbody = document.getElementById('v-items-tbody');
+        const itemsTableCont = document.getElementById('v-items-table-container');
+        const itemsDivCont   = document.getElementById('v-items-div-container');
         
-        if (d.items && d.items.length > 0) {
+        if ((d.items && d.items.length > 0) || (d.items_snapshot && d.items_snapshot.length > 0)) {
             itemsWrap.classList.remove('hidden');
-            let itemsHtml = '';
             
             if (d.type === 'pengajuan') {
-                itemsHtml = d.items.map(item => `
-                    <tr class="hover:bg-slate-50/50">
-                        <td class="px-3 py-2 text-slate-700 font-medium">${item.customer || '-'}</td>
-                        <td class="px-3 py-2 text-center">${item.quantity || '-'}</td>
-                        <td class="px-3 py-2">-</td>
-                        <td class="px-3 py-2 text-right">Rp ${Number(item.estimated_price || 0).toLocaleString('id-ID')}</td>
-                        <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.quantity) || 0) * (Number(item.estimated_price) || 0) ).toLocaleString('id-ID')}</td>
-                    </tr>`).join('');
+                itemsTableCont.classList.add('hidden');
+                itemsDivCont.classList.remove('hidden');
+                
+                // If it's edited, show the current version (management) by default
+                const itemsToRender = window._modalCurrentVersion === 'management' ? d.items : (d.items_snapshot || d.items);
+                itemsDivCont.innerHTML = renderTransactionItemsCards(itemsToRender, window._modalCurrentVersion, d.items_snapshot || []);
+                
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: itemsDivCont });
             } else {
-                itemsHtml = d.items.map(item => `
+                itemsDivCont.classList.add('hidden');
+                itemsTableCont.classList.remove('hidden');
+                
+                let itemsHtml = d.items.map(item => `
                     <tr class="hover:bg-slate-50/50">
                         <td class="px-3 py-2 text-slate-700 font-medium">${item.name || item.nama_barang || '-'}</td>
                         <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
@@ -1955,15 +2439,15 @@
                         <td class="px-3 py-2 text-right">Rp ${Number(item.price || item.harga_satuan || 0).toLocaleString('id-ID')}</td>
                         <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price || item.harga_satuan) || 0) ).toLocaleString('id-ID')}</td>
                     </tr>`).join('');
+                itemsTbody.innerHTML = itemsHtml;
             }
-            itemsTbody.innerHTML = itemsHtml;
         } else {
             itemsWrap.classList.add('hidden');
         }
 
         const specsWrap = document.getElementById('v-specs-wrap');
         const specsEl   = document.getElementById('v-specs');
-        if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v)) {
+        if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v) && (!d.items || d.items.length === 0)) {
             specsWrap.classList.remove('hidden');
             const specLabels = { merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna' };
             specsEl.innerHTML = Object.entries(specLabels).map(([key, label]) => `
@@ -2021,6 +2505,67 @@
         } else {
             btnReset.classList.add('hidden');
             actionsWrap.classList.add('hidden');
+        }
+    }
+
+    // ─── Version Toggle in Detail Modal ────────────────────────────
+    function toggleVersionInModal(version) {
+        if (!window._modalVersionData) return;
+
+        const items = version === 'original'
+            ? window._modalVersionData.original
+            : window._modalVersionData.management;
+
+        window._modalCurrentVersion = version;
+
+        // Update button states
+        const btnOriginal   = document.getElementById('v-toggle-original');
+        const btnManagement = document.getElementById('v-toggle-management');
+
+        if (btnOriginal && btnManagement) {
+            if (version === 'original') {
+                btnOriginal.className   = 'flex-1 px-3 py-2 rounded-lg text-[11px] font-bold bg-blue-500 text-white shadow-sm transition-all';
+                btnManagement.className = 'flex-1 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-600 bg-white border border-slate-200 transition-all hover:bg-slate-50';
+            } else {
+                btnManagement.className = 'flex-1 px-3 py-2 rounded-lg text-[11px] font-bold bg-blue-500 text-white shadow-sm transition-all';
+                btnOriginal.className   = 'flex-1 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-600 bg-white border border-slate-200 transition-all hover:bg-slate-50';
+            }
+        }
+
+        const itemsWrap      = document.getElementById('v-items-wrap');
+        const itemsTbody     = document.getElementById('v-items-tbody');
+        const itemsDivCont   = document.getElementById('v-items-div-container');
+        const itemsTableCont = document.getElementById('v-items-table-container');
+
+        if (items && items.length > 0) {
+            itemsWrap.classList.remove('hidden');
+            const label = version === 'original'
+                ? '<span class="text-xs text-blue-600 font-bold ml-2">(Versi Pengaju)</span>'
+                : '<span class="text-xs text-emerald-600 font-bold ml-2">(Versi Management)</span>';
+
+            // Update section title
+            const sectionLabel = itemsWrap.querySelector('label');
+            if (sectionLabel) {
+                sectionLabel.innerHTML = 'Daftar Barang' + label;
+            }
+
+            if (itemsDivCont && !itemsDivCont.classList.contains('hidden')) {
+                // Render Cards (Pengajuan)
+                itemsDivCont.innerHTML = renderTransactionItemsCards(items, version, window._modalVersionData.original);
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: itemsDivCont });
+            } else if (itemsTbody) {
+                // Render Table (Rembush)
+                itemsTbody.innerHTML = items.map(item => `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-3 py-2 text-slate-700 font-medium">${item.customer || item.name || item.nama_barang || '-'}</td>
+                        <td class="px-3 py-2 text-center">${item.quantity || item.qty || '-'}</td>
+                        <td class="px-3 py-2">${item.unit || item.satuan || '-'}</td>
+                        <td class="px-3 py-2 text-right">Rp ${Number(item.estimated_price || item.price || item.harga_satuan || 0).toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-right font-bold">Rp ${((Number(item.quantity || item.qty) || 0) * (Number(item.estimated_price || item.price || item.harga_satuan) || 0)).toLocaleString('id-ID')}</td>
+                    </tr>`).join('');
+            }
+        } else {
+            if (itemsWrap) itemsWrap.classList.add('hidden');
         }
     }
 
@@ -2234,47 +2779,58 @@
             addField('Metode Pencairan',  d.payment_method_label);
             addField('Keterangan',        d.description, true);
         } else {
-            addField('Nama Barang/Jasa',      d.customer, true);
-            addField('Vendor',                d.vendor);
-            addField('Alasan Pembelian',      d.purchase_reason_label);
-            addField('Jumlah',                d.quantity);
-            addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            if (!d.items || d.items.length === 0) {
+                addField('Nama Barang/Jasa',      d.customer, true);
+                addField('Vendor',                d.vendor);
+                addField('Alasan Pembelian',      d.purchase_reason_label);
+                addField('Jumlah',                d.quantity);
+                addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            }
         }
 
         fieldsEl.innerHTML = fieldsHtml;
 
-        const itemsWrap  = document.getElementById('p-items-wrap');
-        const itemsTbody = document.getElementById('p-items-tbody');
-        if (d.type === 'rembush' && d.items && d.items.length > 0) {
+        const itemsWrap      = document.getElementById('p-items-wrap');
+        const itemsTbody     = document.getElementById('p-items-tbody');
+        const itemsTableCont = document.getElementById('p-items-table-container');
+        const itemsDivCont   = document.getElementById('p-items-div-container');
+
+        if ((d.items && d.items.length > 0) || (d.items_snapshot && d.items_snapshot.length > 0)) {
             itemsWrap.classList.remove('hidden');
-            itemsTbody.innerHTML = d.items.map(item => `
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
-                    <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
-                    <td class="px-3 py-2">${item.unit || '-'}</td>
-                    <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
-                    <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price) || 0) ).toLocaleString('id-ID')}</td>
-                </tr>`).join('');
+            
+            if (d.type === 'pengajuan') {
+                if (itemsTableCont) itemsTableCont.classList.add('hidden');
+                if (itemsDivCont) {
+                    itemsDivCont.classList.remove('hidden');
+                    const versionToUse = d.is_edited_by_management ? 'management' : 'original';
+                    const itemsToRender = d.is_edited_by_management ? d.items : (d.items_snapshot || d.items);
+                    
+                    itemsDivCont.innerHTML = renderTransactionItemsCards(itemsToRender, versionToUse, d.items_snapshot || []);
+                    if (typeof lucide !== 'undefined') lucide.createIcons({ root: itemsDivCont });
+                }
+            } else {
+                if (itemsDivCont) itemsDivCont.classList.add('hidden');
+                if (itemsTableCont) itemsTableCont.classList.remove('hidden');
+                
+                itemsTbody.innerHTML = d.items.map(item => `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="px-3 py-2 text-slate-700 font-medium">${item.name || '-'}</td>
+                        <td class="px-3 py-2 text-center">${item.qty || '-'}</td>
+                        <td class="px-3 py-2">${item.unit || '-'}</td>
+                        <td class="px-3 py-2 text-right">Rp ${Number(item.price || 0).toLocaleString('id-ID')}</td>
+                        <td class="px-3 py-2 text-right font-bold">Rp ${( (Number(item.qty) || 0) * (Number(item.price) || 0) ).toLocaleString('id-ID')}</td>
+                    </tr>`).join('');
+            }
         } else {
             itemsWrap.classList.add('hidden');
         }
 
-        const specsWrap = document.getElementById('p-specs-wrap');
-        const specsEl   = document.getElementById('p-specs');
-        if (d.type === 'pengajuan' && d.specs && Object.values(d.specs).some(v => v)) {
-            specsWrap.classList.remove('hidden');
-            const specLabels = { merk: 'Merk', tipe: 'Tipe/Seri', ukuran: 'Ukuran', warna: 'Warna' };
-            specsEl.innerHTML = Object.entries(specLabels).map(([key, label]) => `
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">${label}</label>
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800">${d.specs[key] || '-'}</div>
-                </div>`).join('');
-        } else {
-            specsWrap.classList.add('hidden');
-        }
+
 
         const branchesWrap = document.getElementById('p-branches-wrap');
         const branchesEl   = document.getElementById('p-branches');
+        const pSumberDana  = document.getElementById('p_sumber_dana');
+
         if (d.branches && d.branches.length > 0) {
             branchesWrap.classList.remove('hidden');
             branchesEl.innerHTML = d.branches.map(b => `
@@ -2285,14 +2841,283 @@
                         <span class="text-xs text-slate-400 ml-2">(${b.amount})</span>
                     </div>
                 </div>`).join('');
+            
+            // Populate Sumber Dana for Pengajuan
+            if (d.type === 'pengajuan') {
+                const container = document.getElementById('p_sumber_dana_container');
+                if (container) {
+                    container.innerHTML = '';
+                    d.branches_raw.forEach((b, idx) => {
+                        const html = `
+                            <div id="sd_card_${b.id}" class="sd-card p-4 bg-white border-2 border-slate-100 rounded-2xl hover:border-teal-400 transition-all duration-200">
+                                <div class="flex items-center gap-4">
+                                    <div class="relative flex items-center">
+                                        <input type="checkbox" id="sd_check_${b.id}" class="sd-checkbox peer sr-only" value="${b.id}" data-alloc="${b.allocation_amount}" data-percent="${b.allocation_percent}" data-name="${b.name}">
+                                        <label for="sd_check_${b.id}" class="w-8 h-8 border-2 border-slate-200 rounded-xl flex items-center justify-center cursor-pointer transition-all peer-checked:bg-teal-600 peer-checked:border-teal-600 peer-checked:[&_svg]:opacity-100 peer-checked:[&_i]:opacity-100 hover:border-teal-200">
+                                            <i data-lucide="check" class="w-4 h-4 text-white opacity-0 transition-opacity"></i>
+                                        </label>
+                                    </div>
+
+                                    <div class="flex-1">
+                                        <label for="sd_check_${b.id}" class="block cursor-pointer">
+                                            <div class="text-sm font-black text-slate-800 uppercase tracking-tight leading-none mb-1.5">${b.name}</div>
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Alokasi: Rp ${Number(b.allocation_amount).toLocaleString('id-ID')} (${b.allocation_percent}%)</div>
+                                        </label>
+                                    </div>
+
+                                    <div class="w-44 relative">
+                                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">Rp</span>
+                                        <input type="text" id="sd_amount_${b.id}" name="sumber_dana[${idx}][amount]" disabled placeholder="0"
+                                            class="sd-amount nominal-input w-full pl-10 pr-4 py-2.5 text-sm font-black text-slate-800 border-2 border-slate-100 rounded-xl outline-none focus:border-teal-400 focus:ring-4 focus:ring-teal-50 transition-all disabled:bg-slate-50/50 disabled:text-slate-300">
+                                        <input type="hidden" id="sd_branch_${b.id}" name="sumber_dana[${idx}][branch_id]" value="${b.id}" disabled>
+                                    </div>
+                                    </div>
+                                    <div id="sd_status_${b.id}" class="mt-3 text-right text-[10px] font-bold tracking-tight hidden"></div>
+                                    </div>
+                                    `;
+                                    container.insertAdjacentHTML('beforeend', html);
+                                    });
+
+                                    // Re-attach nominal formatters for static and dynamic
+                                    attachNominalFormatters();
+
+                                    // Add event listeners
+                                    document.querySelectorAll('.sd-checkbox').forEach(cb => {
+                                    cb.addEventListener('change', function() {
+                                    const id = this.value;
+                                    const card = document.getElementById('sd_card_' + id);
+                                    const amountInput = document.getElementById('sd_amount_' + id);
+                                    const branchInput = document.getElementById('sd_branch_' + id);
+                                    const alloc = parseInt(this.dataset.alloc);
+
+                                    if (this.checked) {
+                                    amountInput.disabled = false;
+                                    branchInput.disabled = false;
+                                    amountInput.value = formatNumber(alloc); 
+                                    amountInput.required = true;
+                                    card.classList.remove('border-slate-100');
+                                    card.classList.add('border-teal-500', 'bg-teal-50/10');
+                                    } else {
+                                    amountInput.disabled = true;
+                                    branchInput.disabled = true;
+                                    amountInput.value = '';
+                                    amountInput.required = false;
+                                    card.classList.remove('border-teal-500', 'bg-teal-50/10');
+                                    card.classList.add('border-slate-100');
+                                    }
+                                    calculateSumberDanaTotal(d.effective_amount);
+                                    });
+                                    });
+
+                                    document.querySelectorAll('.sd-amount').forEach(inp => {
+                                    inp.addEventListener('input', () => calculateSumberDanaTotal(d.effective_amount));
+                                    });
+
+                                    // Adjustment fields listeners
+                                    ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+                                        document.getElementById(id).addEventListener('input', () => calculateSumberDanaTotal(d.effective_amount));
+                                    });
+                    
+                    // Initial calculation to set initial state (e.g. disable button if total mismatch)
+                    calculateSumberDanaTotal(d.effective_amount);
+                }
+            }
         } else {
             branchesWrap.classList.add('hidden');
+            // Ensure button is not disabled by previous pengajuan mismatch if current is not pengajuan
+            document.getElementById('btnSubmitPayment').disabled = false;
+            document.getElementById('btnSubmitPayment').classList.remove('opacity-50', 'cursor-not-allowed');
         }
         
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NOMINAL FORMATTERS
+    // ═══════════════════════════════════════════════════════════════
+    function formatNumber(n) {
+        if (!n) return '';
+        return n.toString().replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function unformatNumber(s) {
+        if (!s) return 0;
+        return parseInt(s.toString().replace(/\D/g, "")) || 0;
+    }
+
+    function attachNominalFormatters() {
+        document.querySelectorAll('.nominal-input').forEach(inp => {
+            // Remove existing to avoid double binding
+            inp.removeEventListener('input', handleNominalInput);
+            inp.addEventListener('input', handleNominalInput);
+        });
+    }
+
+    function handleNominalInput(e) {
+        let cursor = e.target.selectionStart;
+        let originalLen = e.target.value.length;
+        let formatted = formatNumber(e.target.value);
+        e.target.value = formatted;
+
+        // Adjust cursor position
+        let newLen = formatted.length;
+        e.target.setSelectionRange(cursor + (newLen - originalLen), cursor + (newLen - originalLen));
+    }
+
+    // Initial attach
+    document.addEventListener('DOMContentLoaded', () => {
+        attachNominalFormatters();
+    });
+
+    function calculateSumberDanaTotal(baseTotal) {
+        const totalEl = document.getElementById('p_sumber_dana_total');
+        const totalVal = document.getElementById('p_sumber_dana_total_value');
+        const diffEl = document.getElementById('p_sumber_dana_diff');
+        const debtPreview = document.getElementById('p_debt_preview');
+        const debtList = document.getElementById('p_debt_preview_list');
+        const btnSubmit = document.getElementById('btnSubmitPayment');
+        
+        // Final Total Calculation: base + ongkir + fees - discounts
+        const ongkir      = unformatNumber(document.getElementById('p_ongkir').value);
+        const diskon      = unformatNumber(document.getElementById('p_diskon_pengiriman').value);
+        const voucher     = unformatNumber(document.getElementById('p_voucher_diskon').value);
+        const layanan1    = unformatNumber(document.getElementById('p_biaya_layanan_1').value);
+        const layanan2    = unformatNumber(document.getElementById('p_biaya_layanan_2').value);
+        
+        const finalTotalTarget = baseTotal + ongkir + layanan1 + layanan2 - diskon - voucher;
+
+        totalEl.classList.remove('hidden');
+
+        let total = 0;
+        let creditors = {};
+        let debtors = {};
+        let branches = {};
+
+        document.querySelectorAll('.sd-checkbox').forEach(cb => {
+            const id = cb.value;
+            const name = cb.dataset.name;
+            const percent = parseFloat(cb.dataset.percent);
+            
+            // Recalculate allocation based on final target total
+            const alloc = Math.round((finalTotalTarget * percent) / 100);
+            
+            const statusEl = document.getElementById('sd_status_' + id);
+            const labelEl = document.querySelector(`label[for="sd_check_${id}"] div.text-slate-400`);
+            
+            if (labelEl) {
+                labelEl.textContent = `Alokasi: Rp ${alloc.toLocaleString('id-ID')} (${percent}%)`;
+            }
+            
+            branches[id] = { id, name, alloc };
+
+            const paidValue = cb.checked ? document.getElementById('sd_amount_' + id).value : 0;
+            const paid = unformatNumber(paidValue);
+            total += paid;
+
+            // Per-item status
+            if (cb.checked) {
+                if (paid > alloc) {
+                    creditors[id] = paid - alloc;
+                    statusEl.innerHTML = `<span class="text-teal-600">+ Lebih bayar Rp ${(paid - alloc).toLocaleString('id-ID')} (Menalangi)</span>`;
+                    statusEl.classList.remove('hidden');
+                } else if (paid < alloc) {
+                    debtors[id] = alloc - paid;
+                    statusEl.innerHTML = `<span class="text-red-500">- Kurang bayar Rp ${(alloc - paid).toLocaleString('id-ID')} (Berhutang)</span>`;
+                    statusEl.classList.remove('hidden');
+                } else {
+                    statusEl.classList.add('hidden');
+                }
+            } else {
+                debtors[id] = alloc;
+                statusEl.innerHTML = `<span class="text-red-500">- Kurang bayar Rp ${alloc.toLocaleString('id-ID')} (Berhutang)</span>`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+        totalVal.textContent = 'Rp ' + total.toLocaleString('id-ID');
+
+        // Validation check vs total transaksi
+        if (total !== finalTotalTarget) {
+            totalVal.classList.remove('text-teal-600');
+            totalVal.classList.add('text-red-500');
+            diffEl.classList.remove('text-emerald-500');
+            diffEl.classList.add('text-red-500');
+            const diff = finalTotalTarget - total;
+            diffEl.textContent = diff > 0 ? `Kurang Rp ${diff.toLocaleString('id-ID')} dari Total Tagihan` : `Kelebihan Rp ${Math.abs(diff).toLocaleString('id-ID')} dari Total Tagihan`;
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            totalVal.classList.remove('text-red-500');
+            totalVal.classList.add('text-teal-600');
+            diffEl.classList.remove('text-red-500');
+            diffEl.classList.add('text-emerald-500');
+            diffEl.textContent = 'Nominal sesuai dengan nilai bayar transaksi';
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+        }        
+        // Preview Debt
+        const creditorIds = Object.keys(creditors);
+        const debtorIds = Object.keys(debtors);
+
+        if (creditorIds.length > 0 && debtorIds.length > 0) {
+            debtPreview.classList.remove('hidden');
+            let debtHtml = '';
+
+            const totalExcess = Object.values(creditors).reduce((a,b)=>a+b,0);
+
+            for (let debtorId of debtorIds) {
+                const debtAmt = debtors[debtorId];
+                let cardHtml = `
+                    <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+                        <div class="flex justify-between items-start mb-1.5">
+                            <div class="space-y-0.5">
+                                <h4 class="text-sm font-black text-slate-800 uppercase tracking-tight">${branches[debtorId].name}</h4>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total beban hutang</p>
+                            </div>
+                            <div class="px-2.5 py-1.5 bg-red-50/50 text-red-600 text-[11px] font-black rounded-lg border border-red-50">
+                                Rp ${debtAmt.toLocaleString('id-ID')}
+                            </div>
+                        </div>
+
+                        <div class="my-4 border-t border-slate-50 border-dashed"></div>
+
+                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3">Rincian Pembayaran Ke:</div>
+                        <div class="space-y-3">
+                `;
+
+                for (let creditorId of creditorIds) {
+                    const excess = creditors[creditorId];
+                    const proportion = excess / totalExcess;
+                    const finalAmt = Math.round(debtAmt * proportion);
+
+                    if (finalAmt > 0) {
+                        cardHtml += `
+                            <div class="flex items-center justify-between group">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-4 h-4 rounded-full bg-slate-50 flex items-center justify-center">
+                                        <i data-lucide="arrow-right" class="w-2.5 h-2.5 text-slate-300 group-hover:text-teal-400 transition-colors"></i>
+                                    </div>
+                                    <span class="text-[11px] font-bold text-slate-600 group-hover:text-slate-800 transition-colors uppercase tracking-tight">${branches[creditorId].name}</span>
+                                </div>
+                                <span class="text-[11px] font-black text-slate-800 bg-slate-50/50 px-2 py-1 rounded-md">Rp ${finalAmt.toLocaleString('id-ID')}</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                cardHtml += `
+                        </div>
+                    </div>
+                `;
+                debtHtml += cardHtml;
+            }
+            debtList.innerHTML = debtHtml;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } else {
+            debtPreview.classList.add('hidden');
+            debtList.innerHTML = '';
+        }    }
 
     function openPaymentModal(id) {
         // Find transaction from the existing memory array
@@ -2318,6 +3143,7 @@
         document.getElementById('transfer-profile-alert').classList.add('hidden');
         document.getElementById('cash-fields').classList.add('hidden');
         document.getElementById('transfer-fields').classList.add('hidden');
+        document.getElementById('pengajuan-invoice-fields').classList.add('hidden');
         document.getElementById('p-detail-container').classList.add('hidden');
 
         // Show loading, hide body
@@ -2330,14 +3156,17 @@
         submitBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
         submitBtnText.textContent = 'Upload & Simpan';
 
-        // Check Telegram Registration
-        if (!hasTelegram) {
+        const isPengajuan = transaction.type === 'pengajuan';
+
+        // Check Telegram Registration (Only block for Cash/Transfer that requires tech confirmation)
+        // For Pengajuan Invoice, we don't block because it's processed by management/vendor
+        if (!hasTelegram && !isPengajuan) {
             submitBtn.disabled = true;
             submitBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
             submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
             submitBtnText.textContent = 'Teknisi Belum Daftar Telegram';
             
-            showToast(`<div class="flex items-start gap-2"><i data-lucide="bell-off" class="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600"></i><div><strong class="text-rose-800">Peringatan!</strong><br><span class="text-[11px] opacity-90 text-rose-700">Teknisi belum mendaftarkan Telegram. Pembayaran tidak dapat diproses hingga teknisi mendaftar via bot.</span></div></div>`, 'error');
+            showToast(`<div class="flex items-start gap-2"><i data-lucide="bell-off" class="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600"></i><div><strong class="text-rose-800">Peringatan!</strong><br><span class="text-[11px] opacity-90 text-rose-700">Teknisi belum mendaftarkan Telegram. Pembayaran Cash/Transfer tidak dapat diproses hingga teknisi mendaftar via bot.</span></div></div>`, 'error');
         }
 
         let endpoint = '/api/v1/payment/cash/upload';
@@ -2367,85 +3196,112 @@
         const paymentFileInput = document.getElementById('payment_file_input');
         const paymentLabel = document.getElementById('payment-modal-label');
 
-        // Reset validasi required untuk menghindari pemblokiran pada opsi Cash
-        if (bankInput) bankInput.required = false;
-        if (nomorInput) nomorInput.required = false;
-        if (namaInput) namaInput.required = false;
+        // Reset inputs and validation
+        if (bankInput) { bankInput.required = false; bankInput.disabled = true; }
+        if (nomorInput) { nomorInput.required = false; nomorInput.disabled = true; }
+        if (namaInput) { namaInput.required = false; namaInput.disabled = true; }
+        document.getElementById('cash_catatan').disabled = true;
+        document.getElementById('p_catatan').disabled = true;
+        ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = true;
+        });
 
-        // Dynamic File Requirement (Mandatory for Transfer, Optional for Cash)
-        const isTransfer = paymentMethod && paymentMethod.includes('transfer');
-        if (paymentFileInput) paymentFileInput.required = isTransfer;
-        if (paymentLabel) {
-            paymentLabel.innerHTML = isTransfer 
-                ? 'Unggah Foto / Screenshot <span class="text-red-500">*</span>'
-                : 'Unggah Foto / Screenshot <span class="text-slate-400 font-normal">(Opsional)</span>';
-        }
+        paymentFileInput.name = 'file';
 
-        if (isTransfer) {
-            endpoint = '/api/v1/payment/transfer/upload';
-            document.getElementById('transfer-fields').classList.remove('hidden');
-
-            // Fetch Saved Accounts for Technician
-            if (paymentMethod === 'transfer_teknisi') {
-                const select = document.getElementById('saved_bank_account');
-                const container = document.getElementById('saved-accounts-container');
-                select.innerHTML = '<option value="">-- Pilih Rekening --</option>';
-                container.classList.add('hidden');
-
-                fetch(`/user-bank-accounts/${submitter.id}`)
-                    .then(r => r.json())
-                    .then(accounts => {
-                        if (accounts.length > 0) {
-                            container.classList.remove('hidden');
-                            accounts.forEach(acc => {
-                                const opt = document.createElement('option');
-                                opt.value = JSON.stringify(acc);
-                                opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
-                                select.appendChild(opt);
-                            });
-                        }
-                    });
-            } else {
-                document.getElementById('saved-accounts-container').classList.add('hidden');
-            }
-
-            // Reset readonly state and styles first
-            [bankInput, nomorInput, namaInput].forEach(el => {
-                el.readOnly = false;
-                el.required = true; // Wajib diisi agar btnSubmit memvalidasi form
-                el.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        if (isPengajuan) {
+            endpoint = '/api/v1/payment/pengajuan/upload';
+            document.getElementById('pengajuan-invoice-fields').classList.remove('hidden');
+            document.getElementById('payment-modal-title').textContent = 'Upload Pembayaran Invoice';
+            paymentFileInput.name = 'invoice_file';
+            paymentFileInput.required = true;
+            paymentLabel.innerHTML = 'Unggah Foto Invoice <span class="text-red-500">*</span>';
+            
+            // Enable Pengajuan fields
+            document.getElementById('p_catatan').disabled = false;
+            ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
             });
-
-            if (paymentMethod === 'transfer_teknisi') {
-                document.getElementById('transfer-method-badge').textContent = 'TRANSFER TEKNISI';
-
-                // WAJIB menggunakan Dropdown (Input manual dikunci)
-                [bankInput, nomorInput, namaInput].forEach(el => {
-                    el.readOnly = true;
-                    el.classList.add('bg-slate-100', 'cursor-not-allowed');
-                });
-
-                // Kosongkan secara default agar Admin WAJIB memilih rekening dari Dropdown
-                bankInput.value = '';
-                nomorInput.value = '';
-                namaInput.value = '';
-
-                document.getElementById('transfer-profile-alert').classList.remove('hidden');
-            } else if (paymentMethod === 'transfer_penjual') {
-                document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
-                
-                // Set to Read-Only as per requirement
-                [bankInput, nomorInput, namaInput].forEach(el => {
-                    el.readOnly = true;
-                    el.classList.add('bg-slate-100', 'cursor-not-allowed');
-                });
-
-                bankInput.value = specs.bank_name || '';
-                nomorInput.value = specs.account_number || '';
-                namaInput.value = specs.account_name || '';
-            }
         } else {
-            document.getElementById('cash-fields').classList.remove('hidden');
+            document.getElementById('payment-modal-title').textContent = 'Upload Bukti Transfer/Cash';
+            // Dynamic File Requirement (Mandatory for Transfer, Optional for Cash)
+            const isTransfer = paymentMethod && paymentMethod.includes('transfer');
+            paymentFileInput.required = isTransfer;
+            if (paymentLabel) {
+                paymentLabel.innerHTML = isTransfer 
+                    ? 'Unggah Foto / Screenshot <span class="text-red-500">*</span>'
+                    : 'Unggah Foto / Screenshot <span class="text-slate-400 font-normal">(Opsional)</span>';
+            }
+
+            if (isTransfer) {
+                endpoint = '/api/v1/payment/transfer/upload';
+                document.getElementById('transfer-fields').classList.remove('hidden');
+
+                // Reset readonly state and styles first
+                [bankInput, nomorInput, namaInput].forEach(el => {
+                    el.disabled = false;
+                    el.readOnly = false;
+                    el.required = true; // Wajib diisi agar btnSubmit memvalidasi form
+                    el.classList.remove('bg-slate-100', 'cursor-not-allowed');
+                });
+
+                // Fetch Saved Accounts for Technician
+                if (paymentMethod === 'transfer_teknisi') {
+                    const select = document.getElementById('saved_bank_account');
+                    const container = document.getElementById('saved-accounts-container');
+                    select.innerHTML = '<option value="">-- Pilih Rekening --</option>';
+                    container.classList.add('hidden');
+
+                    fetch(`/user-bank-accounts/${submitter.id}`)
+                        .then(r => r.json())
+                        .then(accounts => {
+                            if (accounts.length > 0) {
+                                container.classList.remove('hidden');
+                                accounts.forEach(acc => {
+                                    const opt = document.createElement('option');
+                                    opt.value = JSON.stringify(acc);
+                                    opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
+                                    select.appendChild(opt);
+                                });
+                            }
+                        });
+                } else {
+                    document.getElementById('saved-accounts-container').classList.add('hidden');
+                }
+
+                if (paymentMethod === 'transfer_teknisi') {
+                    document.getElementById('transfer-method-badge').textContent = 'TRANSFER TEKNISI';
+
+                    // WAJIB menggunakan Dropdown (Input manual dikunci)
+                    [bankInput, nomorInput, namaInput].forEach(el => {
+                        el.readOnly = true;
+                        el.classList.add('bg-slate-100', 'cursor-not-allowed');
+                    });
+
+                    // Kosongkan secara default agar Admin WAJIB memilih rekening dari Dropdown
+                    bankInput.value = '';
+                    nomorInput.value = '';
+                    namaInput.value = '';
+
+                    document.getElementById('transfer-profile-alert').classList.remove('hidden');
+                } else if (paymentMethod === 'transfer_penjual') {
+                    document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
+                    
+                    // Set to Read-Only as per requirement
+                    [bankInput, nomorInput, namaInput].forEach(el => {
+                        el.readOnly = true;
+                        el.classList.add('bg-slate-100', 'cursor-not-allowed');
+                    });
+
+                    bankInput.value = specs.bank_name || '';
+                    nomorInput.value = specs.account_number || '';
+                    namaInput.value = specs.account_name || '';
+                }
+            } else {
+                document.getElementById('cash-fields').classList.remove('hidden');
+                document.getElementById('cash_catatan').disabled = false;
+            }
         }
 
         form.action = endpoint;
@@ -2526,6 +3382,16 @@
 
             // Prepare Data
             const formData = new FormData(this);
+
+            // Clean up nominal inputs before sending
+            this.querySelectorAll('.nominal-input').forEach(inp => {
+                if (inp.name && formData.has(inp.name)) {
+                    // Use unformatNumber to remove non-digit characters
+                    const rawValue = inp.value ? String(inp.value).replace(/\D/g, "") : "0";
+                    formData.set(inp.name, rawValue || "0");
+                }
+            });
+
             // Append _method=PATCH if it's override/force-approve targeting standard updates? No, the PDF API might be POST. 
             // We'll let the HTML form method rule.
 
@@ -2540,7 +3406,11 @@
             })
             .then(async r => {
                 const data = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(data.message || 'Gagal memproses form');
+                if (!r.ok) {
+                    const error = new Error(data.message || 'Gagal memproses form');
+                    error.errors = data.errors;
+                    throw error;
+                }
                 return data;
             })
             .then(data => {
@@ -2554,7 +3424,14 @@
             })
             .catch(err => {
                 console.error(err);
-                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">${err.message || 'Terjadi kesalahan sistem.'}</span></div></div>`, 'error');
+                let errorHtml = err.message || 'Terjadi kesalahan sistem.';
+                if (err.errors) {
+                    const errorList = Object.values(err.errors).flat();
+                    if (errorList.length > 0) {
+                        errorHtml = errorList.join('<br>');
+                    }
+                }
+                showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">${errorHtml}</span></div></div>`, 'error');
             })
             .finally(() => {
                 submitBtn.disabled = false;

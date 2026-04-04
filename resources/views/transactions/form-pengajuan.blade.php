@@ -19,7 +19,6 @@
         <form method="POST" action="{{ route('pengajuan.store') }}" id="pengajuan-form" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="type" value="pengajuan">
-            <input type="hidden" name="has_reference_photo" value="{{ $filePath ? '1' : '0' }}">
             
             {{-- Container untuk input tersembunyi distribusi (PENTING) --}}
             <div id="distribution-hidden-inputs"></div>
@@ -28,47 +27,33 @@
             <div class="mb-8 md:mb-10">
                 <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
                     Foto Referensi 
-                    @if(isset($base64) || isset($filePath))
-                        <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
+                    @if(in_array(auth()->user()->role, ['owner', 'atasan']))
+                        <span class="text-slate-400 font-normal ml-1">(Opsional)</span>
                     @else
-                        <span class="text-slate-400">(Opsional)</span>
+                        <span class="text-red-500 font-normal ml-1">(Wajib)</span>
                     @endif
                 </label>
                 
-                @if((isset($base64) && isset($mime) && str_contains($mime, 'image')) || (isset($filePath) && $filePath))
-                    <div class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-colors group max-w-2xl mx-auto"
-                        id="ref-photo-wrapper"
-                        title="Klik untuk memperbesar">
-                        
-                        @if(isset($base64) && isset($mime) && str_contains($mime, 'image'))
-                            <img src="data:{{ $mime }};base64,{{ $base64 }}" 
-                                class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
-                                alt="Preview Foto Referensi" 
-                                id="ref-photo-img" />
-                        @elseif(isset($filePath) && $filePath)
-                            <img src="{{ Storage::url($filePath) }}" 
-                                class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm" 
-                                alt="Preview Foto Referensi"
-                                id="ref-photo-img"
-                                onerror="this.parentElement.innerHTML='<div class=\'text-red-500 text-sm\'>❌ Gagal memuat foto</div>'" />
-                        @endif
-                        
-                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i data-lucide="expand" class="w-3.5 h-3.5 text-emerald-600"></i>
-                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perbesar</span>
-                        </div>
-                        <div class="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-sm rounded-full px-2.5 py-1 shadow-lg flex items-center gap-1.5">
-                            <i data-lucide="check-circle" class="w-3 h-3 text-white"></i>
-                            <span class="text-[9px] font-bold text-white uppercase tracking-wider">Foto Terupload</span>
+                <div class="relative border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 flex flex-col items-center justify-center text-slate-500 max-w-6xl mx-auto hover:bg-slate-100 hover:border-emerald-300 transition-colors cursor-pointer min-h-[200px]" id="photo-upload-container">
+                    {{-- Placeholder --}}
+                    <div id="photo-placeholder" class="flex flex-col items-center justify-center">
+                        <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-slate-400"></i>
+                        <span class="text-sm font-bold text-slate-700 mb-1" id="photo-name-display">Pilih Foto (Klik atau Drag)</span>
+                        <span class="text-[10px] text-slate-400">Format: JPG, PNG. Maksimal 1MB.</span>
+                    </div>
+
+                    {{-- Preview --}}
+                    <div id="photo-preview-wrapper" class="hidden absolute inset-0 w-full h-full rounded-2xl overflow-hidden group">
+                        <img id="photo-preview-img" src="" class="w-full h-full object-contain bg-slate-100" alt="Preview">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                            <i data-lucide="refresh-cw" class="w-8 h-8 mb-2"></i>
+                            <span class="text-xs font-black uppercase tracking-widest">Ganti Foto</span>
                         </div>
                     </div>
-                @else
-                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 md:p-12 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 max-w-2xl mx-auto">
-                        <i data-lucide="image" class="w-10 h-10 md:w-12 md:h-12 mb-3 opacity-30"></i>
-                        <span class="text-xs md:text-sm font-medium mb-1">Tidak ada foto referensi</span>
-                        <span class="text-[10px] md:text-xs text-slate-300">Pengajuan dapat diproses tanpa foto referensi</span>
-                    </div>
-                @endif
+
+                    <input type="file" name="file" id="reference_photo" accept="image/jpeg,image/png,image/jpg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        {{ in_array(auth()->user()->role, ['owner', 'atasan']) ? '' : 'required' }}>
+                </div>
             </div>
 
             {{-- ══════════════════════════════════ --}}
@@ -443,6 +428,107 @@
         if (closeViewer) { closeViewer.addEventListener('click', function(e) { e.stopPropagation(); closeViewerFn(); }); }
         if (imageViewer) { imageViewer.addEventListener('click', function(e) { if (e.target === imageViewer) closeViewerFn(); }); }
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); });
+
+        // ═══════════════════════════════════════
+        // PHOTO UPLOAD UI LOGIC
+        // ═══════════════════════════════════════
+        const photoContainer = document.getElementById('photo-upload-container');
+        const photoInput = document.getElementById('reference_photo');
+        const photoDisplay = document.getElementById('photo-name-display');
+        const photoPlaceholder = document.getElementById('photo-placeholder');
+        const previewWrapper = document.getElementById('photo-preview-wrapper');
+        const previewImg = document.getElementById('photo-preview-img');
+
+        if (photoContainer && photoInput) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                photoContainer.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                photoContainer.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                photoContainer.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                photoContainer.classList.add('bg-slate-100', 'border-emerald-400');
+            }
+
+            function unhighlight(e) {
+                photoContainer.classList.remove('bg-slate-100', 'border-emerald-400');
+            }
+
+            photoContainer.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                let dt = e.dataTransfer;
+                let files = dt.files;
+                if (files.length) {
+                    photoInput.files = files;
+                    updatePhotoDisplay();
+                }
+            }
+
+            photoInput.addEventListener('change', updatePhotoDisplay);
+
+            function updatePhotoDisplay() {
+                if (photoInput.files && photoInput.files[0]) {
+                    const file = photoInput.files[0];
+                    
+                    // Validasi ukuran (1MB)
+                    if (file.size > 1024 * 1024) {
+                        showToast('Ukuran file terlalu besar (Maks. 1MB)', 'error');
+                        photoInput.value = '';
+                        resetPhotoUI();
+                        return;
+                    }
+
+                    photoDisplay.textContent = file.name;
+                    photoDisplay.classList.remove('text-slate-700');
+                    photoDisplay.classList.add('text-emerald-600');
+                    photoContainer.querySelector('i').classList.add('text-emerald-500');
+                    photoContainer.querySelector('i').classList.remove('text-slate-400', 'opacity-50');
+
+                    // Create preview
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImg.src = e.target.result;
+                        previewWrapper.classList.remove('hidden');
+                        photoPlaceholder.classList.add('hidden');
+                        photoContainer.classList.remove('border-dashed');
+                        photoContainer.classList.add('border-solid', 'border-emerald-200');
+                    }
+                    reader.readAsDataURL(file);
+
+                } else {
+                    resetPhotoUI();
+                }
+            }
+
+            function resetPhotoUI() {
+                photoDisplay.textContent = 'Pilih Foto (Klik atau Drag)';
+                photoDisplay.classList.add('text-slate-700');
+                photoDisplay.classList.remove('text-emerald-600');
+                const icon = photoPlaceholder.querySelector('i');
+                if(icon) {
+                    icon.classList.remove('text-emerald-500');
+                    icon.classList.add('text-slate-400');
+                }
+                
+                previewWrapper.classList.add('hidden');
+                photoPlaceholder.classList.remove('hidden');
+                photoContainer.classList.add('border-dashed');
+                photoContainer.classList.remove('border-solid', 'border-emerald-200');
+                previewImg.src = '';
+            }
+        }
 
         // ═══════════════════════════════════════
         // DYNAMIC ITEMS LOGIC

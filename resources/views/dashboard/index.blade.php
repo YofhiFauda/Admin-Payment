@@ -504,7 +504,7 @@ function renderHutangRow(t) {
     return `<tr class="hover:bg-slate-50 transition-colors">
         <td class="px-5 py-3">
             <span class="text-xs font-bold text-slate-800">${t.invoice_number}</span>
-            <span class="block text-[10px] text-slate-400">${t.created_at}</span>
+            <span class="block text-[10px] ${t.is_inter_branch ? 'text-rose-500 font-bold' : 'text-slate-400'}">${t.type_label} &bull; ${t.created_at}</span>
         </td>
         <td class="px-3 py-3 hidden sm:table-cell">
             <span class="text-xs text-slate-600 font-medium">${t.submitter_name}</span>

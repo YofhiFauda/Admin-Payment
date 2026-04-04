@@ -20,7 +20,105 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form">
+        {{-- ═══════════════════════════════════════════════════════════════
+        VERSION SWITCHER COMPONENT
+        Tambahkan di BAGIAN ATAS edit-pengajuan.blade.php
+        (Setelah header, sebelum form)
+        ═══════════════════════════════════════════════════════════════ --}}
+    
+        {{-- ═══════════════════════════════════════════════════════════════
+        READ-ONLY BANNER — Admin (hanya bisa lihat, tidak bisa edit)
+        & Proteksi Status Selesai
+        ═══════════════════════════════════════════════════════════════ --}}
+
+        @if($isReadOnly ?? false)
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 md:p-5 mb-6 flex items-start gap-3">
+                <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle w-5 h-5 text-amber-600">
+                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                        <path d="M12 9v4"></path>
+                        <path d="M12 17h.01"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-amber-900 mb-0.5">Mode Hanya Baca (Read-Only)</h4>
+                    <p class="text-xs leading-relaxed text-amber-700">
+                        Anda masuk dengan peran <strong>Admin</strong>. Halaman ini difungsikan secara khusus untuk meninjau perbandingan versi pengajuan; modifikasi atau perubahan data tidak dapat dilakukan pada mode ini.
+                    </p>
+                </div>
+            </div>
+        @endif
+
+        @if($transaction->isPengajuan() && $transaction->hasBeenEditedByManagement())
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 md:p-6 mb-6 shadow-sm">
+                
+                {{-- Header Info --}}
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="git-branch" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 mb-1">
+                                Pengajuan Telah Direvisi oleh Management
+                            </h3>
+                            <p class="text-xs text-slate-500">
+                                Terakhir diedit oleh <span class="font-bold text-blue-600">{{ $transaction->editor->name ?? 'N/A' }}</span>
+                                pada {{ $transaction->edited_at ? $transaction->edited_at->format('d M Y, H:i') : '-' }}
+                                <span class="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold ml-1">
+                                    Revisi ke-{{ $transaction->revision_count }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {{-- Version Toggle Switch --}}
+                    <div class="flex bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 self-start md:self-center">
+                        <button type="button" 
+                            id="btn-version-original" 
+                            data-version="original"
+                            class="version-toggle-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-blue-500 text-white shadow-sm">
+                            <i data-lucide="user" class="w-3.5 h-3.5 inline-block mr-1.5"></i>
+                            Versi Pengaju
+                        </button>
+                        <button type="button" 
+                            id="btn-version-management" 
+                            data-version="management"
+                            class="version-toggle-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-800">
+                            <i data-lucide="shield-check" class="w-3.5 h-3.5 inline-block mr-1.5"></i>
+                            Versi Management
+                        </button>
+                    </div>
+                </div>
+        
+                {{-- Legend --}}
+                <div class="flex flex-wrap gap-3 text-[10px] md:text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 bg-emerald-100 border border-emerald-300 rounded"></div>
+                        <span class="text-slate-600 font-medium">Ditambahkan</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 bg-amber-100 border border-amber-300 rounded"></div>
+                        <span class="text-slate-600 font-medium">Diubah</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 bg-red-100 border border-red-300 rounded"></div>
+                        <span class="text-slate-600 font-medium">Dihapus</span>
+                    </div>
+                </div>
+        
+                {{-- Hidden Data untuk JS --}}
+                <script id="version-data" type="application/json">
+                    {!! json_encode([
+                        'original' => $transaction->getOriginalVersion(),
+                        'management' => $transaction->getManagementVersion(),
+                        'changes' => $transaction->getItemChanges(),
+                    ]) !!}
+                </script>
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form" class="{{ ($isReadOnly ?? false) ? 'version-readonly' : '' }}">
             @csrf
             @method('PUT')
             <input type="hidden" name="type" value="pengajuan">
@@ -46,6 +144,30 @@
                     ];
             @endphp
             
+            {{-- 1. FOTO REFERENSI --}}
+            <div class="mb-8 md:mb-10">
+                <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
+                    Foto Referensi
+                </label>
+                
+                @if($transaction->file_path)
+                    <div id="ref-photo-wrapper" tabindex="0" class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors group" title="Klik untuk memperbesar">
+                        <img src="{{ asset('storage/' . $transaction->file_path) }}" class="max-h-48 object-contain rounded-xl" alt="Reference Photo">
+                        
+                        {{-- Preview Badge --}}
+                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Preview Foto</span>
+                        </div>
+                    </div>
+                @else
+                    <div class="relative border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 max-w-6xl mx-auto min-h-[100px]">
+                        <i data-lucide="image-off" class="w-8 h-8 mb-2 opacity-20"></i>
+                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Tidak ada foto referensi</span>
+                    </div>
+                @endif
+            </div>
+
             {{-- ══════════════════════════════════ --}}
             {{-- 2. DAFTAR BARANG (DYNAMIC) --}}
             {{-- ══════════════════════════════════ --}}
@@ -74,7 +196,7 @@
                         @endphp
                         <div class="item-card bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow" data-index="{{ $index }}">
                             {{-- Header (Clickable for expand/collapse) --}}
-                            <div class="item-header bg-slate-50 px-5 py-4 cursor-pointer flex items-center justify-between border-b border-slate-100">
+                            <div class="item-header bg-slate-50 px-4 py-6 cursor-pointer flex items-center justify-between border-b border-slate-100">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs item-number">{{ $index + 1 }}</div>
                                     <div>
@@ -82,11 +204,16 @@
                                         <p class="text-[10px] item-subtitle text-slate-400">Rp {{ number_format($price, 0, ',', '.') }} x {{ $qty }}</p>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors {{ count($itemsToRender) <= 1 ? 'hidden' : '' }}" title="Hapus Barang">
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                    </button>
-                                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                                <div class="item-header-actions flex items-center gap-3">
+                                    {{-- Badge Container for JS --}}
+                                    <div class="badge-mount"></div>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors {{ count($itemsToRender) <= 1 ? 'hidden' : '' }}" title="Hapus Barang">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                                    </div>
                                 </div>
                             </div>
 
@@ -277,7 +404,8 @@
                     </div>
                 </div>
 
-                {{-- Submit Button --}}
+                {{-- Submit Button (Hidden for Read-Only mode) --}}
+                @if(!($isReadOnly ?? false))
                 <button type="submit" id="summary-submit" disabled
                     class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-4 md:py-5 rounded-2xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none text-xs md:text-sm uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     <span id="submit-text">Simpan Perubahan</span>
@@ -286,6 +414,14 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                     </svg>
                 </button>
+                @else
+                {{-- Read-Only: Tampilkan tombol Kembali --}}
+                <a href="{{ route('transactions.index') }}"
+                    class="w-full relative z-10 bg-slate-600 hover:bg-slate-500 text-white font-bold py-4 md:py-5 rounded-2xl transition-all text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    Kembali ke Daftar Transaksi
+                </a>
+                @endif
             </div>
 
             @if($errors->any())
@@ -306,6 +442,38 @@
     {{-- Toast Container --}}
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
     
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- IMAGE VIEWER MODAL                                --}}
+    {{-- hidden → flex saat dibuka via JS                 --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
+         role="dialog" aria-modal="true" aria-label="Preview foto referensi">
+
+        {{-- Card --}}
+        <div class="relative max-w-3xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto referensi" />
+
+            {{-- Hint --}}
+            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
+        </div>
+    </div>
+
     {{-- ITEM TEMPLATE FOR JS --}}
     <template id="item-template">
         <div class="item-card bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow" data-index="__INDEX__">
@@ -318,11 +486,16 @@
                         <p class="text-[10px] item-subtitle text-slate-400">Rp 0 x 1</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors hidden" title="Hapus Barang">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                    <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                <div class="item-header-actions flex items-center gap-3">
+                    {{-- Badge Container --}}
+                    <div class="badge-mount"></div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors hidden" title="Hapus Barang">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
+                    </div>
                 </div>
             </div>
 
@@ -419,7 +592,96 @@
             </div>
         </div>
     </template>
+
+    {{-- Indicator Badge (Tampil di setiap item card) --}}
+    {{-- Template untuk badge change type - akan diinjek via JS --}}
+    <template id="change-badge-template">
+        <div class="change-badge px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+            <i data-lucide="refresh-cw" class="w-3 h-3 badge-icon"></i>
+            <span class="badge-text">Modified</span>
+        </div>
+    </template>
 @endsection
+
+<style>
+    /* Badge styles berdasarkan tipe perubahan */
+    .change-badge {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .change-badge.added {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        color: #059669;
+        border: 1.5px solid #10b981;
+    }
+    
+    .change-badge.modified {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        color: #d97706;
+        border: 1.5px solid #fbbf24;
+    }
+    
+    .change-badge.removed {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        color: #dc2626;
+        border: 1.5px solid #f87171;
+    }
+
+    /* Small screen adjustment */
+    @media (max-width: 640px) {
+        .change-badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 8px;
+        }
+        .change-badge .badge-icon {
+            width: 0.6rem;
+            height: 0.6rem;
+        }
+        .item-header {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+    }
+    
+    /* Highlight fields yang berubah */
+    .field-changed {
+        position: relative;
+    }
+    
+    .field-changed::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+        border: 2px solid #fbbf24;
+        border-radius: 0.75rem;
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .field-changed input,
+    .field-changed select,
+    .field-changed textarea {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Read-only mode untuk versi pengaju */
+    .version-readonly .item-body input,
+    .version-readonly .item-body select,
+    .version-readonly .item-body textarea {
+        background-color: #f8fafc !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+    
+    .version-readonly .btn-remove-item,
+    .version-readonly #btn-add-item {
+        display: none !important;
+    }
+</style>
 
 @push('scripts')
 <script>
@@ -479,6 +741,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 }, {{ $loop->index * 300 }}); // stagger multiple toasts
             @endforeach
         @endif
+
+        // ═══════════════════════════════════════
+        // IMAGE VIEWER MODAL
+        // ═══════════════════════════════════════
+        const imageViewer  = document.getElementById('image-viewer');
+        const viewerImage  = document.getElementById('viewer-image');
+        const closeViewer  = document.getElementById('close-viewer');
+        const refWrapper   = document.getElementById('ref-photo-wrapper');
+
+        function openViewer(src) {
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewerFn() {
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            setTimeout(() => { viewerImage.src = ''; }, 200);
+        }
+
+        if (refWrapper) {
+            refWrapper.addEventListener('click', function () {
+                const img = this.querySelector('img');
+                if (img) openViewer(img.src);
+            });
+            // Handle keyboard enter/space to open preview
+            refWrapper.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const img = this.querySelector('img');
+                    if (img) openViewer(img.src);
+                }
+            });
+        }
+        if (closeViewer) { closeViewer.addEventListener('click', function(e) { e.stopPropagation(); closeViewerFn(); }); }
+        if (imageViewer) { imageViewer.addEventListener('click', function(e) { if (e.target === imageViewer) closeViewerFn(); }); }
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); });
 
         // ═══════════════════════════════════════
         // INITIAL DATA LOAD
@@ -894,6 +1196,334 @@ document.addEventListener('DOMContentLoaded', function () {
         summarySubmit.disabled = !isValid;
     }
 
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     *  VERSION SWITCHING & CHANGE HIGHLIGHTING LOGIC
+     *  
+     *  Tambahkan SETELAH existing JavaScript di edit-pengajuan.blade.php
+     *  (di dalam document.addEventListener('DOMContentLoaded', ...))
+     * ═══════════════════════════════════════════════════════════════
+     */
+
+    // ═══════════════════════════════════════
+    // VERSION SWITCHING SYSTEM
+    // ═══════════════════════════════════════
+    const versionDataEl = document.getElementById('version-data');
+    if (versionDataEl) {
+        const versionData = JSON.parse(versionDataEl.textContent);
+        const originalItems = versionData.original || [];
+        const managementItems = versionData.management || [];
+        const changes = versionData.changes || [];
+        
+        let currentVersion = 'original'; // Start with original version
+        
+        const btnOriginal = document.getElementById('btn-version-original');
+        const btnManagement = document.getElementById('btn-version-management');
+        const itemsContainerVersioned = document.getElementById('items-container');
+        
+        // ───────────────────────────────────────────────────
+        // Toggle Version Button Click
+        // ───────────────────────────────────────────────────
+        document.querySelectorAll('.version-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetVersion = this.dataset.version;
+                
+                if (targetVersion === currentVersion) return; // Already active
+                
+                // Update button states
+                document.querySelectorAll('.version-toggle-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
+                    b.classList.add('text-slate-600', 'hover:text-slate-800');
+                });
+                
+                this.classList.remove('text-slate-600', 'hover:text-slate-800');
+                this.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
+                
+                currentVersion = targetVersion;
+                
+                // Re-render items
+                renderVersion(targetVersion);
+                
+                // Re-init lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
+        });
+        
+        // ───────────────────────────────────────────────────
+        // Render Version
+        // ───────────────────────────────────────────────────
+        function renderVersion(version) {
+            const dataToRender = version === 'original' ? originalItems : managementItems;
+            const isReadOnly = version === 'original';
+            
+            // Clear container
+            itemsContainerVersioned.innerHTML = '';
+            
+            // Reset item counter
+            itemCounter = 0;
+            
+            // Add readonly class if viewing original
+            if (isReadOnly) {
+                itemsContainerVersioned.classList.add('version-readonly');
+                if (btnAddItem) btnAddItem.style.display = 'none';
+            } else {
+                itemsContainerVersioned.classList.remove('version-readonly');
+                if (btnAddItem) btnAddItem.style.display = '';
+            }
+            
+            // Render each item
+            dataToRender.forEach((itemData, index) => {
+                const tempDiv = document.createElement('div');
+                let html = itemTemplate
+                    .replace(/__INDEX__/g, itemCounter)
+                    .replace(/__NUM__/g, itemCounter + 1);
+                
+                tempDiv.innerHTML = html;
+                const newCard = tempDiv.firstElementChild;
+                
+                // Populate data
+                populateItemCard(newCard, itemData, itemCounter);
+                
+                // Mark changes if viewing management version
+                if (version === 'management') {
+                    const change = changes.find(c => c.index === index);
+                    if (change) {
+                        markItemWithChanges(newCard, change);
+                    }
+                }
+                
+                // Setup events
+                setupItemCardEvents(newCard);
+                
+                // Disable editing if readonly
+                if (isReadOnly) {
+                    disableItemCard(newCard);
+                }
+                
+                itemsContainerVersioned.appendChild(newCard);
+                itemCounter++;
+            });
+            
+            // Update global total
+            updateGlobalTotal();
+            
+            // Update remove buttons visibility
+            updateRemoveButtons();
+        }
+        
+        // ───────────────────────────────────────────────────
+        // Populate Item Card with Data
+        // ───────────────────────────────────────────────────
+        function populateItemCard(card, data, index) {
+            // Basic info
+            const customerInput = card.querySelector('.input-customer');
+            if (customerInput) customerInput.value = data.customer || '';
+            
+            const vendorInput = card.querySelector('input[name*="[vendor]"]');
+            if (vendorInput) vendorInput.value = data.vendor || '';
+            
+            const linkInput = card.querySelector('input[name*="[link]"]');
+            if (linkInput) linkInput.value = data.link || '';
+            
+            // Specs
+            const specs = data.specs || {};
+            const merkInput = card.querySelector('input[name*="[specs][merk]"]');
+            if (merkInput) merkInput.value = specs.merk || '';
+            
+            const tipeInput = card.querySelector('input[name*="[specs][tipe]"]');
+            if (tipeInput) tipeInput.value = specs.tipe || '';
+            
+            const ukuranInput = card.querySelector('input[name*="[specs][ukuran]"]');
+            if (ukuranInput) ukuranInput.value = specs.ukuran || '';
+            
+            const warnaInput = card.querySelector('input[name*="[specs][warna]"]');
+            if (warnaInput) warnaInput.value = specs.warna || '';
+            
+            // Purchase reason
+            const reasonSelect = card.querySelector('.input-reason');
+            if (reasonSelect && data.purchase_reason) {
+                reasonSelect.value = data.purchase_reason;
+            }
+            
+            // Description
+            const descInput = card.querySelector('.input-desc');
+            if (descInput) descInput.value = data.description || '';
+            
+            // Pricing
+            const qtyInput = card.querySelector('.input-qty');
+            if (qtyInput) qtyInput.value = data.quantity || 1;
+            
+            const priceHidden = card.querySelector('.input-price-hidden');
+            const priceDisplay = card.querySelector('.input-price-display');
+            const price = parseInt(data.estimated_price) || 0;
+            
+            if (priceHidden) priceHidden.value = price;
+            if (priceDisplay) priceDisplay.value = price > 0 ? formatRupiah(price) : '';
+            
+            // Update title and subtitle
+            const titleEl = card.querySelector('.item-title');
+            if (titleEl) titleEl.textContent = data.customer || 'Barang Tanpa Nama';
+            
+            const subtitleEl = card.querySelector('.item-subtitle');
+            if (subtitleEl) {
+                const qty = data.quantity || 1;
+                subtitleEl.textContent = `Rp ${formatRupiah(price)} x ${qty}`;
+            }
+            
+            // Update subtotal
+            const subtotal = price * (data.quantity || 1);
+            const subtotalEl = card.querySelector('.item-subtotal');
+            if (subtotalEl) subtotalEl.textContent = 'Rp ' + formatRupiah(subtotal);
+        }
+        
+        // ───────────────────────────────────────────────────
+        // Mark Item with Changes (badges + highlights)
+        // ───────────────────────────────────────────────────
+        function markItemWithChanges(card, change) {
+            const changeType = change.type; // 'added', 'modified', 'removed'
+            
+            // Add badge
+            const badgeTemplate = document.getElementById('change-badge-template');
+            if (badgeTemplate) {
+                const badge = badgeTemplate.content.cloneNode(true).querySelector('.change-badge');
+                badge.classList.add(changeType);
+                
+                const badgeText = badge.querySelector('.badge-text');
+                const badgeIcon = badge.querySelector('.badge-icon');
+                
+                if (changeType === 'added') {
+                    badgeText.textContent = 'Ditambahkan';
+                    badgeIcon.setAttribute('data-lucide', 'plus-circle');
+                } else if (changeType === 'modified') {
+                    badgeText.textContent = 'Diubah';
+                    badgeIcon.setAttribute('data-lucide', 'refresh-cw');
+                } else if (changeType === 'removed') {
+                    badgeText.textContent = 'Dihapus';
+                    badgeIcon.setAttribute('data-lucide', 'minus-circle');
+                }
+                
+                // Mount to the specific container in header
+                const mount = card.querySelector('.badge-mount');
+                if (mount) {
+                    mount.innerHTML = ''; // prevent double
+                    mount.appendChild(badge);
+                }
+            }
+            // Add card class & Highlight
+            if (changeType === 'added') {
+                // Card Highlight Hijau untuk barang baru
+                card.classList.add('ring-2', 'ring-emerald-400', 'border-emerald-400', 'shadow-[0_4px_12px_rgba(52,211,153,0.3)]');
+                const header = card.querySelector('.item-header');
+                if (header) {
+                    header.classList.remove('bg-slate-50', 'border-slate-100');
+                    header.classList.add('bg-emerald-50', 'border-emerald-200');
+                }
+            } else if (changeType === 'modified') {
+                // Card Highlight Orange untuk barang yang diperbarui/diedit
+                card.classList.add('ring-2', 'ring-amber-400', 'border-amber-400', 'shadow-[0_4px_12px_rgba(251,191,36,0.3)]');
+                const header = card.querySelector('.item-header');
+                if (header) {
+                    header.classList.remove('bg-slate-50', 'border-slate-100');
+                    header.classList.add('bg-amber-50', 'border-amber-200');
+                }
+            } else if (changeType === 'removed') {
+                card.classList.add('opacity-50', 'grayscale');
+            }
+            
+            // Highlight changed fields (only for modified)
+            if (changeType === 'modified' && change.fields) {
+                Object.keys(change.fields).forEach(fieldName => {
+                    let selector = '';
+                    
+                    if (fieldName === 'customer') selector = '.input-customer';
+                    else if (fieldName === 'vendor') selector = 'input[name*="[vendor]"]';
+                    else if (fieldName === 'link') selector = 'input[name*="[link]"]';
+                    else if (fieldName === 'description') selector = '.input-desc';
+                    else if (fieldName === 'quantity') selector = '.input-qty';
+                    else if (fieldName === 'estimated_price') selector = '.input-price-display';
+                    else if (fieldName === 'purchase_reason') selector = '.input-reason';
+                    else if (fieldName === 'specs') {
+                        // Highlight all spec fields
+                        card.querySelectorAll('input[name*="[specs]"]').forEach(inp => {
+                            inp.closest('div')?.classList.add('field-changed');
+                        });
+                        return;
+                    }
+                    
+                    if (selector) {
+                        const field = card.querySelector(selector);
+                        if (field) {
+                            field.closest('div')?.classList.add('field-changed');
+                        }
+                    }
+                });
+            }
+            
+            // For removed items, add visual fade + strikethrough
+            if (changeType === 'removed') {
+                card.style.opacity = '0.6';
+                card.querySelector('.item-title')?.classList.add('line-through');
+            }
+        }
+        
+        // ───────────────────────────────────────────────────
+        // Disable Item Card (read-only mode)
+        // ───────────────────────────────────────────────────
+        function disableItemCard(card) {
+            card.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.style.cursor = 'not-allowed';
+                el.style.backgroundColor = '#f8fafc';
+            });
+            
+            const removeBtn = card.querySelector('.btn-remove-item');
+            if (removeBtn) removeBtn.style.display = 'none';
+        }
+        
+        // ───────────────────────────────────────────────────
+        // Initialize with correct default version
+        // Business Rule BR-003: Default = Versi Management (jika ada revisi)
+        // Admin dan role lain: default ke management version untuk langsung lihat hasil
+        // ───────────────────────────────────────────────────
+        const defaultVersion = managementItems.length > 0 ? 'management' : 'original';
+        renderVersion(defaultVersion);
+
+        // Update active button state sesuai default
+        if (defaultVersion === 'management') {
+            document.querySelectorAll('.version-toggle-btn').forEach(b => {
+                b.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
+                b.classList.add('text-slate-600', 'hover:text-slate-800');
+            });
+            const mgmtBtn = document.getElementById('btn-version-management');
+            if (mgmtBtn) {
+                mgmtBtn.classList.remove('text-slate-600', 'hover:text-slate-800');
+                mgmtBtn.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════
+    // ENHANCEMENT: Show Comparison Tooltip
+    // ═══════════════════════════════════════
+    function showFieldComparison(fieldEl, oldValue, newValue) {
+        // Optional: Create tooltip showing old vs new value
+        const tooltip = document.createElement('div');
+        tooltip.className = 'absolute -top-16 left-0 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 min-w-max';
+        tooltip.innerHTML = `
+            <div class="font-bold mb-1">Perubahan:</div>
+            <div class="text-red-300"><s>${oldValue || '(kosong)'}</s></div>
+            <div class="text-emerald-300">→ ${newValue || '(kosong)'}</div>
+        `;
+        
+        fieldEl.style.position = 'relative';
+        fieldEl.appendChild(tooltip);
+        
+        // Auto remove after 3s
+        setTimeout(() => tooltip.remove(), 3000);
+    }
+
     document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
         const totalAmount = parseInt(formTotalInput.value) || 0;
         if(totalAmount <= 0) {
@@ -918,5 +1548,33 @@ document.addEventListener('DOMContentLoaded', function () {
     // Re-render to show correct calculation with distributed values
     renderDistribution();
 });
+    // ═══════════════════════════════════════
+    // READ-ONLY MODE: Disable all form inputs
+    // (Triggered when isReadOnly = true via Blade)
+    // ═══════════════════════════════════════
+    @if($isReadOnly ?? false)
+    (function enforceReadOnly() {
+        const form = document.getElementById('pengajuan-form');
+        if (!form) return;
+
+        // Disable all form controls
+        form.querySelectorAll('input, select, textarea, button[type="button"]').forEach(el => {
+            if (el.id === 'btn-version-original' || el.id === 'btn-version-management') return; // Keep version toggle
+            el.disabled = true;
+            el.style.cursor = 'not-allowed';
+            el.style.pointerEvents = 'none';
+        });
+
+        // Also block form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }, true);
+
+        // Hide action buttons
+        const addItemBtn = document.getElementById('btn-add-item');
+        if (addItemBtn) addItemBtn.style.display = 'none';
+    })();
+    @endif
 </script>
 @endpush

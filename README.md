@@ -26,22 +26,21 @@
 
 | Fitur | Deskripsi |
 |---|---|
-| **Rembush (Reimbursement)** | Flow otomatis: Upload nota → 3-Layer Security (Duplikat, Tanggal, AI) → Auto-fill data → Submit. |
-| **Pengajuan Pembelian** | Pengajuan barang/jasa tanpa OCR. Mendukung upload foto pendukung dan alokasi cabang manual. |
-| **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API |
-| **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete, ≥ Rp 1.000.000 perlu approval Owner |
-| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending |
-| **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi |
-| **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR |
-| **Activity Log** | Pencatatan semua aktivitas pengguna (create, approve, reject, dll.) |
-| **Manajemen User** | CRUD pengguna dengan 4 role berbeda dan hak akses hierarkis |
-| **Search & Filter** | Pencarian dan filter transaksi berdasarkan status, tipe, cabang, bulan, tahun |
-| **Dual Payment Verification** | Transfer: Diverifikasi AI (Gemini) untuk nominal match. Cash: Konfirmasi manual oleh Teknisi via Telegram. |
-| **Bypass AI Control** | Fitur Override (untuk memulihkan auto-reject) dan Force Approve (untuk memulihkan flagged nominal). |
+| **Rembush (Reimbursement)** | Flow otomatis: Upload nota → 4-Layer Security (Duplikat, Tanggal, AI, Payment Verification) → Auto-fill data → Submit. |
+| **Pengajuan Pembelian** | Sistem **Dual-Version** (Teknisi vs Management). Mendukung perbandingan versi, snapshot items, dan alokasi cabang manual. |
+| **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API dengan parameter confidence. |
+| **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete (jika disetujui Admin), ≥ Rp 1.000.000 perlu approval Owner. |
+| **Dual-Version System** | Melacak perubahan data antara input asli Teknisi dan hasil revisi Management untuk audit trail yang transparan. |
+| **Edit Protection** | Proteksi otomatis: Transaksi dengan status `completed` tidak dapat diedit oleh peran apapun (termasuk Owner). |
+| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending. |
+| **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi (Equal, Percentage, atau Manual). |
+| **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR. |
+| **Bypass AI Control** | Fitur **Override** (untuk memulihkan auto-reject) dan **Force Approve** (untuk memulihkan flagged nominal). |
 | **Telegram Bot Sync** | Notifikasi real-time, konfirmasi pembayaran cash, dan alert selisih nominal langsung ke Telegram. |
-| **Real-time Monitoring** | Integrasi Laravel Reverb untuk update status OCR dan dashboard tanpa refresh. |
 | **Activity Log & Audit** | Audit trail lengkap untuk setiap aksi dan laporan kebocoran dana bulanan via PaymentDiscrepancyAudit. |
-| **Responsive UI** | Antarmuka *mobile-first* dengan tombol aksi *inline*, *truncation* tag CSS cerdas, dan modal rincian transaksi komprehensif. |
+| **Responsive UI** | Antarmuka *mobile-first* dengan modal rincian transaksi komprehensif dan toggle perbandingan versi. |
+| **API Documentation** | Dokumentasi API interaktif dan otomatis menggunakan **Scramble** (OpenAPI/Swagger). |
+
 
 
 ---
@@ -50,6 +49,8 @@
 
 ### Backend
 - **PHP 8.4** + **Laravel 12**
+- **Scramble** — Automated API documentation (OpenAPI 3.1)
+
 - **MySQL 8.0** — Database utama
 - **Redis 7.2** — Cache, session, queue, rate limiter, ID generator
 - **Laravel Horizon** — Monitoring & manajemen queue worker
@@ -83,10 +84,11 @@ graph TD
     subgraph n8n_Logic [Security & AI Extraction]
         D1[Layer 1: Duplicate Detection] --> D2[Layer 2: Date Logic Check]
         D2 --> D3[Layer 3: Gemini AI Extraction]
+        D3 --> D4[Layer 4: Payment Verification]
     end
     
     D --> n8n_Logic
-    D3 -->|Callback| E[Laravel API /ai/auto-fill]
+    D4 -->|Callback| E[Laravel API /ai/auto-fill]
     E -->|Broadcast| F[Laravel Reverb WS]
     F -->|Real-time UI| A
     E -->|Notify| G[Telegram / Push Notif]
@@ -98,29 +100,29 @@ graph TD
 
 ### 1. Rembush (OCR Flow)
 1. **Upload**: User upload foto nota.
-2. **Security Check**: Sistem mengecek duplikasi (L1) dan validitas tanggal (L2).
-3. **AI Extraction**: Gemini mengekstrak Vendor, Item, dan Nominal (L3).
-4. **Fulfillment**: User melengkapi kategori dan alokasi cabang.
-5. **Approval**: Admin/Atasan menyetujui. Jika ≥ 1 Jt, lanjut ke Owner.
-6. **Payment**: Admin upload bukti bayar.
-7. **Verification**: 
-   - **Transfer**: AI mengecek nominal bukti vs nominal transaksi.
-   - **Cash**: Teknisi konfirmasi terima uang via Telegram.
+2. **Security Check (L1 & L2)**: Sistem mengecek duplikasi hash file dan validitas tanggal (maks 2 hari).
+3. **AI Extraction (L3)**: Gemini mengekstrak Vendor, Item, dan Nominal. User melengkapi kategori & alokasi cabang.
+4. **Approval**: Admin/Atasan menyetujui. Jika nominal ≥ 1 Jt, memerlukan approval Owner.
+5. **Payment**: Admin upload bukti bayar (Transfer/Cash).
+6. **Verification (L4)**: 
+   - **Transfer**: AI mengecek nominal struk vs transaksi. Jika selisih, status menjadi `flagged`.
+   - **Cash**: Teknisi konfirmasi terima uang via Telegram Bot.
 
-### 2. Pengajuan (Manual Flow)
-1. **Input**: User input detail pengajuan (Vendor, Specs, Est. Price).
-2. **Approval**: Sama dengan flow Rembush.
-3. **Payment & Finish**: Admin bayar dan transaksi selesai.
+### 2. Pengajuan (Dual-Version Flow)
+1. **Input**: Teknisi input detail pengajuan. Sistem menyimpan **snapshot original**.
+2. **Management Review**: Owner/Atasan dapat merevisi item/nominal. Sistem menandai `is_edited_by_management = true`.
+3. **Transparency**: Semua user dapat melihat perbandingan antara "Versi Pengaju" dan "Versi Management" melalui toggle di modal detail.
+4. **Finalization**: Setelah disetujui dan dibayar, status berubah menjadi `completed` dan **pengeditan dikunci total** untuk semua role.
 
 ---
 
 ## 🛡️ OCR & Security Layers
 
 Sistem menerapkan **4-Layer Verification** untuk menjamin validitas keuangan:
-1. **Layer 1 (Duplicate)**: Pengecekan MD5 hash file nota di Redis/DB.
-2. **Layer 2 (Date Logic)**: Nota berumur > 2 hari kalender otomatis berstatus `auto-reject`.
-3. **Layer 3 (AI Extraction)**: Gemini Pro mengekstrak data dengan parameter `confidence`.
-4. **Layer 4 (Payment Audit)**: Verifikasi nominal pada struk transfer. Jika selisih, status menjadi `flagged`.
+1. **Layer 1 (Duplicate)**: Pengecekan MD5 hash file nota di Redis/DB untuk mencegah nota ganda.
+2. **Layer 2 (Date Logic)**: Nota berumur > 2 hari kalender otomatis berstatus `auto-reject` (dapat di-*override* oleh Admin/Owner).
+3. **Layer 3 (AI Extraction)**: Gemini Pro mengekstrak data dengan parameter `confidence`. Status `low-confidence` memerlukan review manual.
+4. **Layer 4 (Payment Audit)**: Verifikasi nominal pada struk transfer. Jika tidak cocok, transaksi di-*flag* dan memerlukan *Force Approve* dengan alasan tertulis.
 
 ---
 
@@ -212,8 +214,10 @@ php artisan db:seed
 | Layanan | URL |
 |---|---|
 | Aplikasi | http://localhost:8000 |
+| API Documentation | http://localhost:8000/docs/api |
 | phpMyAdmin | http://localhost:8080 |
 | Horizon Dashboard | http://localhost:8000/horizon |
+
 
 ---
 
@@ -330,19 +334,17 @@ Admin-Payment/
 
 Terdapat 4 peran pengguna dengan hak akses hierarkis:
 
-| Role | Dashboard | Input Transaksi | Approve / Reject | Kelola User | Kelola Cabang |
+| Role | Dashboard | Input Transaksi | Edit Pengajuan | Approval | Kelola Cabang |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Teknisi** | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Atasan** | ✅ | ❌ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Owner** | ✅ | ✅ | ✅ (Semua nominal) | ✅ (Semua role) | ✅ |
+| **Admin** | ✅ | ✅ | ✅ (Read-only) | ✅ (< 1 Jt) | ✅ |
+| **Atasan** | ✅ | ❌ | ✅ (Full Edit) | ✅ (< 1 Jt) | ✅ |
+| **Owner** | ✅ | ✅ | ✅ (Full Edit) | ✅ (Semua) | ✅ |
 
-### Detail Akses
+### Detail Akses Khusus
 
-- **Teknisi**: Hanya bisa membuat transaksi (Rembush/Pengajuan) dan melihat riwayat transaksinya sendiri. Diarahkan langsung ke halaman input setelah login.
-- **Admin**: Akses penuh ke dashboard, approve/reject transaksi, mengelola user (hanya Teknisi), dan mengelola cabang.
-- **Atasan**: Sama seperti Admin, tetapi tidak bisa input transaksi.
-- **Owner**: Akses penuh ke semua fitur. Satu-satunya role yang bisa approve transaksi ≥ Rp 1.000.000 dan mengelola semua role.
+- **Admin Read-Only**: Admin dapat mengakses halaman edit Pengajuan untuk melihat perbandingan versi (comparison mode) tanpa bisa mengubah data.
+- **Edit Protection**: Jika status transaksi adalah `completed`, tombol edit akan disembunyikan untuk SEMUA role guna menjaga integritas audit.
 
 ---
 
@@ -444,7 +446,26 @@ Alur pengajuan tanpa OCR:
 
 ---
 
+## 🌐 API Documentation (Scramble)
+
+Proyek ini menggunakan **Scramble** untuk menghasilkan dokumentasi API secara otomatis. Dokumentasi ini mengikuti standar **OpenAPI 3.1** dan dapat diakses melalui antarmuka interaktif.
+
+- **Interactive UI**: [http://localhost:8000/docs/api](http://localhost:8000/docs/api)
+- **OpenAPI Spec (JSON)**: [http://localhost:8000/docs/api.json](http://localhost:8000/docs/api.json)
+
+> [!TIP]
+> Dokumentasi ini diperbarui secara otomatis setiap ada perubahan pada route atau controller. Pastikan untuk menambahkan type-hinting pada method controller untuk hasil dokumentasi yang lebih akurat.
+
+### 🔄 Primary vs Legacy Endpoints
+Dalam dokumentasi API, Anda akan menemukan beberapa endpoint yang ditandai sebagai **Primary** atau **Legacy**:
+- **Primary**: Endpoint standar terbaru yang direkomendasikan untuk semua integrasi baru. Memiliki penamaan yang benar dan konsisten.
+- **Legacy**: Endpoint lama yang dipertahankan untuk **backward compatibility**. Endpoint ini mungkin memiliki typo yang sudah diperbaiki di versi primary (misal: `/ai/auto-fil`) atau struktur URL lama. Keduanya menjalankan logic yang sama di backend.
+
+
+---
+
 ## 🌐 API Endpoints
+
 
 ### Web Routes (`routes/web.php`)
 
@@ -599,9 +620,13 @@ Sistem menggunakan Redis untuk menghasilkan ID sequential yang atomic dan aman d
 
 ## 🎨 Dokumentasi Lanjutan
 
-- ⚙️ **[Back-End Documentation](backend_documentation_v1.0.md)**: Arsitektur, Skema DB, dan Security.
-- 🎨 **[Front-End Documentation](frontend_documentation_v1.0.md)**: UI/UX, Component, dan Real-time WS.
-- 📡 **[API Documentation](api_documentation_v4.5.md)**: Webhook n8n, Telegram, dan Endpoint Flow.
+- 🗺️ **[Visual Flowcharts](FLOWCHARTS.md)**: Diagram Mermaid lengkap untuk semua alur sistem.
+- 📋 **[Pengajuan Specification](PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md)**: Detail teknis sistem Dual-Version dan proteksi edit.
+- 💰 **[Rembush Flow Detail](Flow%20Rembush.md)**: Penjelasan naratif alur reimbursement dan integrasi AI.
+- ⚙️ **[Back-End Documentation](backend_documentation_v1.0.md)**: Arsitektur mendalam dan skema DB.
+- 📡 **[API Documentation Detail](api_documentation_v4.5.md)**: Webhook n8n, Telegram, dan Endpoint Flow.
+- 🚀 **[API Interactive Docs](http://localhost:8000/docs/api)**: Dokumentasi API real-time via Scramble.
+
 
 ## 📝 Lisensi
 

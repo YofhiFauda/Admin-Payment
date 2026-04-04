@@ -88,28 +88,51 @@ graph TD
 ---
 
 ## 3. Pengajuan Flowchart (Purchase Request)
-Detailed flow for pre-purchase requests where items are requested before being bought.
+Detailed flow for purchase requests featuring the Dual-Version System and role-based edit protections.
 
 ```mermaid
 graph TD
-    Start[Teknisi Input Request] --> Input[Item Name, Qty, Estimated Price]
-    Input --> Calc[Total = Qty * Estimated Price]
-    Calc --> Branch[Allocate to Branch/Branches]
-    Branch --> Submit[Submit Request]
+    %% Roles
+    subgraph Roles
+        T[Teknisi]
+        A[Admin]
+        M[Management: Owner/Atasan]
+    end
+
+    %% Initiation
+    Start((Start)) -->|Submit Request| T_Store[Teknisi Submits Pengajuan]
+    T_Store -->|Status: Pending| Pending{Status: Pending}
+    T_Store -->|Freeze Snapshot| Snapshot[Store items_snapshot<br/>Original Version]
+
+    %% Interaction & Revision Logic
+    Pending -->|View Detail| T_View[Teknisi: View Own Detail]
+    Pending -->|View Detail| A_View[Admin: View Detail Modal]
+    Pending -->|Edit Page| A_Edit[Admin: Read-Only Access]
+    A_Edit -->|Comparison| A_Comp[View Original vs Management Version]
+
+    Pending -->|View Detail| M_View[Management: View Detail Modal]
+    Pending -->|Edit Page| M_Edit[Management: Full Edit Access]
     
-    Submit --> Review{Admin/Atasan Review}
-    Review -- Reject --> End_Reject[Status: Rejected]
-    Review -- Approve --> High_Value{Total >= 1,000,000?}
+    M_Edit -->|Update Items| M_Update{Is First Edit?}
+    M_Update -->|Yes| M_Mark[Set is_edited_by_management = true<br/>Save Management Version]
+    M_Update -->|No| M_Inc[Increment revision_count]
+    M_Mark --> Pending
+    M_Inc --> Pending
+
+    %% Detail Modal Capabilities (All Roles)
+    T_View & A_View & M_View --> Toggle[Toggle Version Button]
+    Toggle -->|Switch| ViewOrig[View Versi Pengaju<br/>Yellow Indicators on Edited Fields]
+    Toggle -->|Switch| ViewMgmt[View Versi Management<br/>Current/Edited Data]
+
+    %% Approval Workflow
+    Pending -->|Approve| M_Appr{Reviewer Role?}
+    M_Appr -->|Atasan/Owner| WaitPay[Status: Waiting Payment]
     
-    High_Value -- Yes --> Owner[Owner Approval]
-    High_Value -- No --> Ready[Status: Approved / Waiting for Purchase]
-    
-    Owner -- Approve --> Ready
-    Owner -- Reject --> End_Reject
-    
-    Ready --> Purchase[Teknisi Buys Item]
-    Purchase --> Upload[Upload Final Nota]
-    Upload --> Rembush_Flow[Convert to Rembush Flow for Payment]
+    Pending -->|Reject| Rej[Status: Rejected]
+
+    %% Finalization
+    WaitPay -->|Confirm Payment| Comp[Status: Completed<br/>FINAL STATE]
+    Comp -->|Edit Protection| Locked[Edit Page & Buttons Disabled<br/>ALL ROLES]
 ```
 
 ---

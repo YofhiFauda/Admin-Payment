@@ -205,6 +205,263 @@ class OcrNotaController extends Controller
     }
 
     /**
+     * POST /api/v1/payment/pengajuan/upload
+     * 
+     * Upload invoice and payment details for approved Pengajuan.
+     * Supports multi sumber dana (multiple source branches) with
+     * automatic inter-branch debt calculation.
+     */
+    public function uploadPengajuanInvoice(Request $request)
+    {
+        // ═══════════════════════════════════════════════════════════
+        // PREPARE / SANITIZE INPUTS BEFORE VALIDATION
+        // Remove formatting dots from nominal inputs sent from frontend
+        // ═══════════════════════════════════════════════════════════
+        $input = $request->all();
+        $fieldsToUnformat = ['diskon_pengiriman', 'ongkir', 'biaya_layanan_1', 'biaya_layanan_2', 'voucher_diskon'];
+        foreach ($fieldsToUnformat as $field) {
+            if (!empty($input[$field])) {
+                $input[$field] = (int) preg_replace('/\D/', '', (string) $input[$field]);
+            }
+        }
+        if (isset($input['sumber_dana']) && is_array($input['sumber_dana'])) {
+            foreach ($input['sumber_dana'] as $key => $sd) {
+                if (isset($sd['amount']) && $sd['amount'] !== '') {
+                    $input['sumber_dana'][$key]['amount'] = (int) preg_replace('/\D/', '', (string) $sd['amount']);
+                }
+            }
+        }
+        $request->replace($input);
+
+        $validator = Validator::make($request->all(), [
+            'invoice_file'       => 'required|file|image|max:2048',
+            'transaksi_id'       => 'required|string',
+            'diskon_pengiriman'  => 'nullable|numeric|min:0',
+            'ongkir'             => 'nullable|numeric|min:0',
+            'biaya_layanan_1'    => 'nullable|numeric|min:0',
+            'biaya_layanan_2'    => 'nullable|numeric|min:0',
+            'voucher_diskon'     => 'nullable|numeric|min:0',
+            'sumber_dana'        => 'required|array|min:1',
+            'sumber_dana.*.branch_id' => 'required|integer|exists:branches,id',
+            'sumber_dana.*.amount'    => 'required|numeric|min:0',
+            'catatan'            => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $transaction = Transaction::with('branches')->findOrFail($request->transaksi_id);
+
+        if (!$transaction->isPengajuan()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukan merupakan transaksi Pengajuan.',
+            ], 400);
+        }
+
+        if ($transaction->status !== 'waiting_payment') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status transaksi tidak valid untuk upload invoice: ' . $transaction->status_label,
+            ], 400);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  Validate: Total sumber dana harus = total transaksi (Final)
+        // ═══════════════════════════════════════════════════════════
+        $sumberDanaList = collect($request->sumber_dana);
+        $totalDana = (int) $sumberDanaList->sum('amount');
+        
+        // Calculate Final Amount: base + ongkir + fees - discounts
+        $baseAmount = (int) $transaction->amount;
+        $ongkir     = (int) ($request->ongkir ?? 0);
+        $layanan1   = (int) ($request->biaya_layanan_1 ?? 0);
+        $layanan2   = (int) ($request->biaya_layanan_2 ?? 0);
+        $diskonOngkir = (int) ($request->diskon_pengiriman ?? 0);
+        $voucher      = (int) ($request->voucher_diskon ?? 0);
+
+        $totalTransaksi = $baseAmount + $ongkir + $layanan1 + $layanan2 - $diskonOngkir - $voucher;
+
+        if (abs($totalDana - $totalTransaksi) > 1) {
+            return response()->json([
+                'success' => false,
+                'message' => "Total sumber dana (Rp " . number_format($totalDana, 0, ',', '.') . ") harus sama dengan total tagihan akhir (Rp " . number_format($totalTransaksi, 0, ',', '.') . "). Pastikan rincian biaya & diskon sudah benar.",
+            ], 422);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  Validate: Sumber dana harus dari cabang yang ada di pembagian
+        // ═══════════════════════════════════════════════════════════
+        $transactionBranchIds = $transaction->branches->pluck('id')->toArray();
+        foreach ($sumberDanaList as $sd) {
+            if (!in_array($sd['branch_id'], $transactionBranchIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sumber dana harus dari cabang yang ada dalam pembagian biaya pengajuan.',
+                ], 422);
+            }
+        }
+
+        // Store the file
+        $path = $request->file('invoice_file')->store('invoices', 'public');
+
+        // Build sumber_dana_data JSON
+        $sumberDanaData = $sumberDanaList->map(fn($sd) => [
+            'branch_id' => (int) $sd['branch_id'],
+            'amount'    => (int) $sd['amount'],
+        ])->values()->toArray();
+
+        // Use first sumber dana as primary (backward compat with sumber_dana_branch_id)
+        $primarySumberDanaId = $sumberDanaData[0]['branch_id'] ?? null;
+
+        // Update transaction amount
+        $transaction->update([
+            'invoice_file_path'     => $path,
+            'amount'                => $totalTransaksi, 
+            'diskon_pengiriman'     => $request->diskon_pengiriman ?? 0,
+            'ongkir'                => $request->ongkir ?? 0,
+            'biaya_layanan_1'       => $request->biaya_layanan_1 ?? 0,
+            'biaya_layanan_2'       => $request->biaya_layanan_2 ?? 0,
+            'voucher_diskon'        => $request->voucher_diskon ?? 0,
+            'sumber_dana_branch_id' => $primarySumberDanaId,
+            'sumber_dana_data'      => $sumberDanaData,
+            'status'                => 'completed',
+            'description'           => ($transaction->description ? $transaction->description . ' | ' : '') . $request->catatan,
+        ]);
+
+        // ═══════════════════════════════════════════════════════════
+        //  Update Branch Allocations to reflect shared adjustments
+        // ═══════════════════════════════════════════════════════════
+        foreach ($transaction->branches as $branch) {
+            $newAlloc = (int) round(($totalTransaksi * $branch->pivot->allocation_percent) / 100);
+            $transaction->branches()->updateExistingPivot($branch->id, [
+                'allocation_amount' => $newAlloc
+            ]);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  💰 DEBT CALCULATION — Hitung hutang antar cabang
+        // ═══════════════════════════════════════════════════════════
+        $this->calculateAndCreateDebts($transaction, $sumberDanaData);
+
+        // Broadcast update
+        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+
+        // Log Activity
+        $sumberNames = \App\Models\Branch::whereIn('id', $sumberDanaList->pluck('branch_id'))->pluck('name')->join(', ');
+        \App\Models\ActivityLog::create([
+            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
+            'action'         => 'upload_invoice',
+            'transaction_id' => $transaction->id,
+            'target_id'      => $transaction->invoice_number,
+            'description'    => "Mengunggah Invoice untuk Pengajuan " . $transaction->invoice_number . " (Selesai). Sumber Dana: " . $sumberNames,
+        ]);
+
+        // Send Notification to Submitter
+        try {
+            if ($transaction->submitter) {
+                $this->telegram->notifyForceApprovedToTechnician($transaction);
+            }
+        } catch (\Exception $e) {
+            Log::error('[PENGAJUAN] Failed to send telegram completion notification', [
+                'transaction_id' => $transaction->id,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success'       => true,
+            'message'       => 'Invoice berhasil diunggah dan status transaksi diperbarui menjadi Selesai.',
+            'transaksi_id'  => $transaction->id,
+            'status'        => 'completed',
+            'transaction'   => $transaction->fresh()->toSearchArray(),
+        ], 200);
+    }
+
+    /**
+     * ═══════════════════════════════════════════════════════════════
+     *  Calculate and create inter-branch debt records
+     * 
+     *  Logika:
+     *  1. Setiap cabang punya allocation_amount dari pembagian biaya
+     *  2. Sumber dana memasukkan jumlah yang dibayarkan (paid_amount)
+     *  3. Jika paid_amount > allocation → cabang ini kreditor (excess)
+     *  4. Jika paid_amount < allocation → cabang ini debtor (deficit)
+     *  5. Cabang bukan sumber dana → full debtor (allocation penuh)
+     *  6. Hutang didistribusikan ke kreditor proporsional berdasarkan excess
+     * ═══════════════════════════════════════════════════════════════
+     */
+    private function calculateAndCreateDebts(Transaction $transaction, array $sumberDanaData): void
+    {
+        // Delete existing debts for this transaction (in case of re-upload)
+        \App\Models\BranchDebt::where('transaction_id', $transaction->id)->delete();
+
+        $branches = $transaction->branches;
+        if ($branches->isEmpty()) return;
+
+        // Map sumber dana: branch_id => paid_amount
+        $paidMap = collect($sumberDanaData)->keyBy('branch_id')->map(fn($sd) => (int) $sd['amount']);
+
+        // Calculate each branch's excess or deficit
+        $creditors = []; // branch_id => excess_amount
+        $debtors = [];   // branch_id => debt_amount
+
+        foreach ($branches as $branch) {
+            // Always recalculate allocation based on final amount and percentage
+            // This ensures adjustments (ongkir, etc.) are shared among all branches
+            $allocation = (int) round(($transaction->amount * $branch->pivot->allocation_percent) / 100);
+
+            $paid = $paidMap->get($branch->id, 0); // 0 jika bukan sumber dana
+
+            if ($paid > $allocation) {
+                // Cabang ini kreditor (membayar lebih dari alokasinya)
+                $creditors[$branch->id] = $paid - $allocation;
+            } elseif ($paid < $allocation) {
+                // Cabang ini debtor (membayar kurang dari alokasinya atau tidak membayar)
+                $debtors[$branch->id] = $allocation - $paid;
+            }
+            // Jika paid == allocation → tidak ada hutang untuk cabang ini
+        }
+
+        // Jika tidak ada kreditor atau debtor, selesai
+        if (empty($creditors) || empty($debtors)) return;
+
+        // Total excess dari semua kreditor
+        $totalExcess = array_sum($creditors);
+
+        // Create debt records: distribute each debtor's debt proportionally to creditors
+        foreach ($debtors as $debtorId => $debtAmount) {
+            foreach ($creditors as $creditorId => $creditorExcess) {
+                // Proporsi hutang ke kreditor ini = (excess kreditor / total excess) * debt amount
+                $proportion = $creditorExcess / $totalExcess;
+                $debtToCreditor = (int) round($debtAmount * $proportion);
+
+                if ($debtToCreditor > 0) {
+                    \App\Models\BranchDebt::create([
+                        'transaction_id'    => $transaction->id,
+                        'debtor_branch_id'  => $debtorId,
+                        'creditor_branch_id'=> $creditorId,
+                        'amount'            => $debtToCreditor,
+                        'status'            => 'pending',
+                    ]);
+                }
+            }
+        }
+
+        Log::info('[DEBT] Branch debts calculated', [
+            'transaction_id' => $transaction->id,
+            'creditors'      => $creditors,
+            'debtors'        => $debtors,
+            'total_excess'   => $totalExcess,
+        ]);
+    }
+
+    /**
      * POST /api/v1/payment/cash/upload
      * 
      * 🔔 TELEGRAM POINT #1: Kirim notifikasi CASH dengan tombol ke teknisi

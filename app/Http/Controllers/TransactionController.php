@@ -166,7 +166,7 @@ class TransactionController extends Controller
 
     public function detailJson($id)
     {
-        $t = Transaction::with(['submitter', 'reviewer', 'branches'])->findOrFail($id);
+        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch'])->findOrFail($id);
 
         return response()->json([
             'id'              => $t->id,
@@ -208,6 +208,19 @@ class TransactionController extends Controller
                     'name'    => $b->name,
                     'percent' => $b->pivot->allocation_percent,
                     'amount'  => 'Rp ' . number_format($allocAmount, 0, ',', '.'),
+                    'amount_raw' => $allocAmount,
+                ];
+            }),
+            'branches_raw'    => $t->branches->map(function($b) use ($t) {
+                $allocAmount = $b->pivot->allocation_amount;
+                if (!$allocAmount || $allocAmount <= 0) {
+                    $allocAmount = round(($t->effective_amount * $b->pivot->allocation_percent) / 100);
+                }
+                return [
+                    'id'               => $b->id,
+                    'name'             => $b->name,
+                    'allocation_amount'=> $allocAmount,
+                    'allocation_percent'=> $b->pivot->allocation_percent,
                 ];
             }),
             'effective_amount' => $t->effective_amount,
@@ -216,6 +229,37 @@ class TransactionController extends Controller
             'user_role'       => Auth::user()->role,
             'can_manage'      => Auth::user()->canManageStatus(),
             'is_owner'        => Auth::user()->isOwner(),
+            // ✅ Versioning fields untuk Detail Modal
+            'is_edited_by_management' => (bool) $t->is_edited_by_management,
+            'revision_count'  => $t->revision_count ?? 0,
+            'edited_at'       => $t->edited_at ? $t->edited_at->format('d M Y, H:i') : null,
+            'editor_name'     => $t->editor ? $t->editor->name : null,
+            'items_snapshot'  => $t->items_snapshot, // Original version (frozen)
+            // Invoice fields
+            'invoice_file_path'      => $t->invoice_file_path,
+            'invoice_file_url'       => $t->invoice_file_path ? asset('storage/' . $t->invoice_file_path) : null,
+            'diskon_pengiriman'      => $t->diskon_pengiriman,
+            'ongkir'                 => $t->ongkir,
+            'biaya_layanan_1'        => $t->biaya_layanan_1,
+            'biaya_layanan_2'        => $t->biaya_layanan_2,
+            'voucher_diskon'         => $t->voucher_diskon,
+            'sumber_dana_branch_id'  => $t->sumber_dana_branch_id,
+            'sumber_dana_branch_name'=> $t->sumberDanaBranch ? $t->sumberDanaBranch->name : null,
+            // ✅ Multi Sumber Dana & Hutang
+            'sumber_dana_data'       => $t->sumber_dana_data,
+            'branch_debts'           => $t->branchDebts->map(function($debt) {
+                return [
+                    'id'                  => $debt->id,
+                    'debtor_branch_id'    => $debt->debtor_branch_id,
+                    'debtor_branch_name'  => $debt->debtorBranch->name,
+                    'creditor_branch_id'  => $debt->creditor_branch_id,
+                    'creditor_branch_name'=> $debt->creditorBranch->name,
+                    'amount'              => $debt->amount,
+                    'formatted_amount'    => $debt->formatted_amount,
+                    'status'              => $debt->status,
+                    'paid_at'             => $debt->paid_at ? $debt->paid_at->format('d M Y H:i') : null,
+                ];
+            }),
         ]);
     }
 
@@ -238,25 +282,59 @@ class TransactionController extends Controller
 
     public function edit($id)
     {
-        $transaction = Transaction::with('branches')->findOrFail($id);
+        $transaction = Transaction::with(['branches', 'editor'])->findOrFail($id);
         $branches = Branch::all();
-        
+        $user = Auth::user();
+
+        // ✅ Proteksi: Status 'completed' (Selesai)
+        $isCompleted = ($transaction->status === 'completed');
+
         // ✅ Calculate item count based on transaction type
         if ($transaction->isPengajuan()) {
-            $itemCount = 1; // Pengajuan = single item
+            $itemCount = is_array($transaction->items) ? count($transaction->items) : 1;
         } else {
             $itemCount = $transaction->items ? count($transaction->items) : 0;
         }
-        
+
+        // ✅ Role-Based Access: Admin = read-only, Teknisi = diblokir, Management = full edit (unless completed)
         if ($transaction->isPengajuan()) {
-            return view('transactions.edit-pengajuan', compact('transaction', 'branches', 'itemCount'));
+            if ($user->isTeknisi()) {
+                // Teknisi tidak bisa akses edit page pengajuan sama sekali
+                return redirect()->route('transactions.index')
+                    ->with('error', 'Anda tidak memiliki akses untuk mengedit Pengajuan.');
+            }
+
+            // Admin selalu read-only. Atasan & Owner read-only JIKA status selesai
+            $isReadOnly = $user->isAdmin() || $isCompleted;
+
+            return view('transactions.edit-pengajuan', compact(
+                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted'
+            ));
         }
-        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount'));
+
+        // Rembush — semua management role bisa edit
+        $isReadOnly = false;
+        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount', 'isReadOnly'));
     }
 
     public function update(Request $request, $id)
     {
         $transaction = Transaction::findOrFail($id);
+        $user = Auth::user();
+
+        // ✅ Guard: Status 'completed' (Selesai) — semua role diblokir
+        if ($transaction->status === 'completed') {
+            return response()->json(['error' => 'Transaksi yang sudah Selesai tidak dapat diubah.'], 403);
+        }
+
+        // ✅ Guard: Pengajuan — hanya Owner dan Atasan yang bisa update
+        if ($transaction->isPengajuan()) {
+            $isManagement = $user->isOwner() || $user->isAtasan();
+            if (!$isManagement) {
+                return redirect()->route('transactions.index')
+                    ->with('error', 'Anda tidak memiliki akses untuk mengubah Pengajuan.');
+            }
+        }
 
         // Validation depends on type
         if ($transaction->isPengajuan()) {
@@ -314,6 +392,37 @@ class TransactionController extends Controller
 
         DB::beginTransaction();
         try {
+            // ───────────────────────────────────────────────────────
+            // ✅ VERSIONING LOGIC: Freeze snapshot saat edit pertama
+            // ───────────────────────────────────────────────────────
+            if ($transaction->isPengajuan()) {
+                $user = Auth::user();
+                $isManagement = $user->isOwner() || $user->role === 'atasan';
+                
+                if ($isManagement) {
+                    // Jika ini edit pertama kali oleh management
+                    if (!$transaction->is_edited_by_management) {
+                        // Freeze snapshot data asli (versi pengaju)
+                        $transaction->items_snapshot = $transaction->items;
+                        
+                        Log::info('[VERSIONING] First management edit - snapshot frozen', [
+                            'transaction_id' => $transaction->id,
+                            'invoice_number' => $transaction->invoice_number,
+                            'edited_by' => $user->id,
+                            'snapshot_items_count' => count($transaction->items_snapshot ?? []),
+                        ]);
+                    }
+                    
+                    // Mark sebagai diedit oleh management
+                    $transaction->is_edited_by_management = true;
+                    $transaction->edited_by = $user->id;
+                    $transaction->edited_at = now();
+                    $transaction->revision_count = ($transaction->revision_count ?? 0) + 1;
+                    
+                    // Atau gunakan helper method:
+                    // $transaction->markAsEditedByManagement($user->id);
+                }
+            }
             if ($transaction->isPengajuan()) {
                 $items = $request->items;
                 $firstItem = $items[0] ?? [];
@@ -365,21 +474,28 @@ class TransactionController extends Controller
             DB::commit();
 
             // Log activity
-            $log = ActivityLog::create([
-                'user_id'        => Auth::id(),
-                'action'         => 'edit',
-                'transaction_id' => $transaction->id,
-                'target_id'      => $transaction->invoice_number,
-                'description'    => "Mengedit data Nota " . $transaction->invoice_number,
-            ]);
+            // Log activity
+                $log = ActivityLog::create([
+                    'user_id'        => Auth::id(),
+                    'action'         => 'edit',
+                    'transaction_id' => $transaction->id,
+                    'target_id'      => $transaction->invoice_number,
+                    'description'    => "Mengedit data Pengajuan " . $transaction->invoice_number . 
+                                    ($transaction->is_edited_by_management ? " (Revisi ke-{$transaction->revision_count})" : ""),
+                ]);
             broadcast(new \App\Events\ActivityLogged($log));
             broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
             return redirect()->route('transactions.index')
-                ->with('success', "Transaksi {$transaction->invoice_number} berhasil diperbarui.");
+                ->with('success', "Pengajuan {$transaction->invoice_number} berhasil diperbarui." . 
+                                ($transaction->is_edited_by_management ? " (Revisi Management)" : ""));
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui transaksi: ' . $e->getMessage()]);
+            Log::error('[VERSIONING] Update failed', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $transaction->id,
+            ]);
+            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui pengajuan: ' . $e->getMessage()]);
         }
     }
 
@@ -416,36 +532,20 @@ class TransactionController extends Controller
 
             // ─── Approval Logic ───────────────────────────
             if ($transaction->isPengajuan()) {
-                // PENGAJUAN LOGIC
-                // - < 1jt  → Admin/Owner approve → completed
-                // - >= 1jt → Admin approve → approved (menunggu Owner) → Owner approve → completed
+                // PENGAJUAN LOGIC (Revised)
+                // - Only Atasan/Owner can approve. Admin is excluded.
+                // - Status moves to 'waiting_payment' after approval.
+                
                 if ($newStatus === 'approved') {
-                    if ($oldStatus === 'pending') {
-                        if ($transaction->amount < 1000000) {
-                            $newStatus = 'completed';
-                        } else {
-                            if ($user->isOwner()) {
-                                $newStatus = 'completed';
-                            } else {
-                                $newStatus = 'approved';
-                            }
-                        }
-                    } elseif ($oldStatus === 'approved') {
-                        if ($user->isOwner()) {
-                            $newStatus = 'completed';
-                        }
+                    if ($user->isAdmin()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Admin tidak berwenang menyetujui Pengajuan. Hanya Atasan dan Owner yang dapat menyetujui.',
+                        ], 403);
                     }
 
-                    // Send Telegram notification when completed
-                    if ($newStatus === 'completed') {
-                        try {
-                            $this->telegram->notifyForceApprovedToTechnician($transaction);
-                        } catch (\Exception $e) {
-                            Log::error('[TELEGRAM] Failed to send completion notification', [
-                                'transaction_id' => $transaction->id,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
+                    if ($oldStatus === 'pending') {
+                        $newStatus = 'waiting_payment';
                     }
                 }
             } else {
@@ -645,6 +745,58 @@ class TransactionController extends Controller
             ]);
 
             return back()->withErrors(['error' => 'Gagal menghapus transaksi']);
+        }
+    }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  BRANCH DEBT SETTLEMENT
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    public function settleBranchDebt(Request $request, $id)
+    {
+        try {
+            $debt = \App\Models\BranchDebt::with(['debtorBranch', 'creditorBranch', 'transaction'])->findOrFail($id);
+
+            if ($debt->isPaid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hutang ini sudah lunas.',
+                ], 400);
+            }
+
+            $debt->markAsPaid($request->notes);
+
+            // Log activity
+            ActivityLog::create([
+                'user_id'        => Auth::id(),
+                'action'         => 'settle_debt',
+                'transaction_id' => $debt->transaction_id,
+                'target_id'      => $debt->transaction->invoice_number ?? '-',
+                'description'    => "Melunaskan hutang cabang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount}" . ($request->notes ? " (Catatan: {$request->notes})" : ''),
+            ]);
+
+            Log::info('[DEBT] Branch debt settled', [
+                'debt_id'        => $debt->id,
+                'transaction_id' => $debt->transaction_id,
+                'debtor'         => $debt->debtorBranch->name,
+                'creditor'       => $debt->creditorBranch->name,
+                'amount'         => $debt->amount,
+                'settled_by'     => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan.",
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[DEBT] Settlement failed', [
+                'debt_id' => $id,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal melunaskan hutang: ' . $e->getMessage(),
+            ], 500);
         }
     }
 
