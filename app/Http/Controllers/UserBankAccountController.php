@@ -35,7 +35,7 @@ class UserBankAccountController extends Controller
         $request->validate([
             'user_id'        => 'required|exists:users,id',
             'bank_name'      => 'required|string|max:255',
-            'account_number' => 'required|string|max:255',
+            'account_number' => 'required|numeric|digits_between:5,30',
             'account_name'   => 'required|string|max:255',
         ]);
 
@@ -86,7 +86,7 @@ class UserBankAccountController extends Controller
 
         $request->validate([
             'bank_name'      => 'required|string|max:255',
-            'account_number' => 'required|string|max:255',
+            'account_number' => 'required|numeric|digits_between:5,30',
             'account_name'   => 'required|string|max:255',
         ]);
 

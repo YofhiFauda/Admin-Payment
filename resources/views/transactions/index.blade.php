@@ -557,6 +557,8 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1.5">Nomor Rekening <span class="text-red-500">*</span></label>
                                 <input type="text" name="rekening_nomor" id="transfer_nomor" placeholder="Contoh: 0987654321" required
+                                    inputmode="numeric"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                     class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300">
                             </div>
                             <div>

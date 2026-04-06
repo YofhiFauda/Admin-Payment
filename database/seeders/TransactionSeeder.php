@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Transaction;
+use App\Models\TransactionCategory;
 use App\Models\User;
 use App\Models\Branch;
 use Carbon\Carbon;
@@ -29,8 +30,18 @@ class TransactionSeeder extends Seeder
         }
 
         $vendors = ['Toko Komputer Abadi', 'Mitra Elektrik', 'Global Tech', 'Bhinneka', 'Cahaya Utama'];
-        $categoriesRembush = array_keys(Transaction::CATEGORIES);
-        $reasonsPengajuan = array_keys(Transaction::PURCHASE_REASONS);
+        
+        // Fetch dynamic categories
+        $categoriesRembush = TransactionCategory::forRembush()->pluck('name')->toArray();
+        $reasonsPengajuan = TransactionCategory::forPengajuan()->pluck('name')->toArray();
+
+        // Fallback for demo/seeder if table is empty
+        if (empty($categoriesRembush)) {
+            $categoriesRembush = ['Beban Operasional', 'Beban Gaji', 'Beban Listrik'];
+        }
+        if (empty($reasonsPengajuan)) {
+            $reasonsPengajuan = ['Persediaan', 'Peralatan', 'Perawatan'];
+        }
 
         // ─── 1. SEED 10 REMBUSH (AI_STATUS = COMPLETED) ───────────────────
         for ($i = 1; $i <= 100; $i++) {
@@ -90,7 +101,7 @@ class TransactionSeeder extends Seeder
                 ],
                 'quantity' => $qty,
                 'estimated_price' => $estimatedPrice,
-                'purchase_reason' => $reasonsPengajuan[array_rand($reasonsPengajuan)],
+                'category' => $reasonsPengajuan[array_rand($reasonsPengajuan)],
                 'date' => Carbon::now(),
                 'file_path' => null, // Pengajuan tidak wajib punya file gambar di awal
                 'status' => 'pending', // Siap di view/approve admin

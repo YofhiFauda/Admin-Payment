@@ -90,7 +90,7 @@
                                 @if($transaction->isRembush() && $transaction->category)
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs text-slate-500">Kategori</span>
-                                        <span class="text-xs font-semibold text-slate-700">{{ \App\Models\Transaction::CATEGORIES[$transaction->category] ?? $transaction->category }}</span>
+                                        <span class="text-xs font-semibold text-slate-700">{{ $transaction->category_label }}</span>
                                     </div>
                                 @endif
 
@@ -109,10 +109,10 @@
                                         <span class="text-xs text-slate-500">Estimasi Harga</span>
                                         <span class="text-xs font-semibold text-slate-700">Rp {{ number_format($transaction->estimated_price ?? 0, 0, ',', '.') }}</span>
                                     </div>
-                                    @if($transaction->purchase_reason)
+                                    @if($transaction->category)
                                         <div class="flex justify-between items-center">
                                             <span class="text-xs text-slate-500">Alasan</span>
-                                            <span class="text-xs font-semibold text-slate-700">{{ \App\Models\Transaction::PURCHASE_REASONS[$transaction->purchase_reason] ?? $transaction->purchase_reason }}</span>
+                                            <span class="text-xs font-semibold text-slate-700">{{ $transaction->category_label }}</span>
                                         </div>
                                     @endif
                                 @endif

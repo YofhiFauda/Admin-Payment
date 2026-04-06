@@ -395,6 +395,10 @@ class TransactionController extends Controller
                 'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+                // Bank details for transfer_penjual
+                'bank_name'      => 'nullable|string|max:255',
+                'account_name'   => 'nullable|string|max:255',
+                'account_number' => 'nullable|numeric|digits_between:5,30',
             ]);
         }
 
@@ -434,11 +438,9 @@ class TransactionController extends Controller
                     $transaction->edited_by = $user->id;
                     $transaction->edited_at = now();
                     $transaction->revision_count = ($transaction->revision_count ?? 0) + 1;
-                    
-                    // Atau gunakan helper method:
-                    // $transaction->markAsEditedByManagement($user->id);
                 }
             }
+
             if ($transaction->isPengajuan()) {
                 $items = array_map(function ($item) {
                     return [
@@ -471,11 +473,21 @@ class TransactionController extends Controller
                     'items'           => $items,
                 ]);
             } else {
+                $specs = null;
+                if ($request->payment_method === 'transfer_penjual') {
+                    $specs = [
+                        'bank_name' => strtoupper($request->bank_name),
+                        'account_name' => strtoupper($request->account_name),
+                        'account_number' => $request->account_number,
+                    ];
+                }
+
                 $transaction->update([
                     'customer'       => $request->customer,
                     'category'       => $request->category,
                     'description'    => $request->description,
                     'payment_method' => $request->payment_method,
+                    'specs'          => $specs,
                     'amount'         => $request->amount,
                     'items'          => $request->items,
                     'date'           => $request->date ?? $transaction->date,

@@ -35,7 +35,7 @@ class BranchBankAccountController extends Controller
         $request->validate([
             'branch_id'      => 'required|exists:branches,id',
             'bank_name'      => 'required|string|max:255',
-            'account_number' => 'required|string|max:255',
+            'account_number' => 'required|numeric|digits_between:5,30',
             'account_name'   => 'required|string|max:255',
         ]);
 
@@ -76,7 +76,7 @@ class BranchBankAccountController extends Controller
 
         $request->validate([
             'bank_name'      => 'required|string|max:255',
-            'account_number' => 'required|string|max:255',
+            'account_number' => 'required|numeric|digits_between:5,30',
             'account_name'   => 'required|string|max:255',
         ]);
 

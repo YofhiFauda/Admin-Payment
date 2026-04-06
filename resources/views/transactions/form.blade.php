@@ -199,6 +199,8 @@
                             <div>
                                 <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span class="text-red-500">*</span></label>
                                 <input type="text" name="account_number" id="account_number" placeholder="Nomor rekening / No HP" value="{{ old('account_number') }}"
+                                    inputmode="numeric"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                     class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
                             </div>
                         </div>

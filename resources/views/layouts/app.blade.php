@@ -640,6 +640,8 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
                             <input type="text" id="account_number" required placeholder="Nomor rekening/HP"
+                                inputmode="numeric"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                 class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
                         </div>
                     </div>

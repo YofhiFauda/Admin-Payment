@@ -712,7 +712,7 @@ class OcrNotaController extends Controller
             'rekening_tujuan'  => 'nullable|string',
             'nama_bank_tujuan' => 'nullable|string',
             'rekening_bank'    => 'nullable|string',
-            'rekening_nomor'   => 'nullable|string',
+            'rekening_nomor'   => 'nullable|numeric|digits_between:5,30',
             'rekening_nama'    => 'nullable|string',
         ]);
 

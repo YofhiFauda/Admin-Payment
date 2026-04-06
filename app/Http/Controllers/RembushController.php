@@ -249,7 +249,7 @@ class RembushController extends Controller
             // Bank details for transfer_penjual
             'bank_name'      => 'nullable|string|max:255',
             'account_name'   => 'nullable|string|max:255',
-            'account_number' => 'nullable|string|max:255',
+            'account_number' => 'nullable|numeric|digits_between:5,30',
         ]);
 
         // Validasi branch allocation
