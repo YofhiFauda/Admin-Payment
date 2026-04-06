@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" style="overflow-x: hidden;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,8 +20,8 @@
         /* Page Transition Animations */
         .page-enter { opacity: 0; animation: pageFadeIn 0.3s ease-out forwards; }
         @keyframes pageFadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; margin-top: 8px; }
+            to { opacity: 1; margin-top: 0; }
         }
     </style>
     
@@ -259,27 +259,40 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #cbd5e1;
         }
+
+        /* Modal & Keyboard Stability Improvements */
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal { animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes cardStagger {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stagger-item { animation: cardStagger 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     </style>
 </head>
 
-<body class="font-sans bg-gradient-to-br from-slate-50 to-slate-100 antialiased">
+<body class="font-sans bg-gradient-to-br from-slate-50 to-slate-100 antialiased min-h-screen flex flex-col overflow-x-hidden w-full max-w-full" style="max-width: 100%; width: 100%;">
 
 @if(Auth::user()->role === 'teknisi')
     {{-- ===================== LAYOUT TEKNISI: TOP NAVBAR ===================== --}}
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 
                 {{-- 1. Brand / Logo --}}
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
                         <i data-lucide="receipt" class="w-4 h-4 text-white"></i>
                     </div>
-                    <span class="font-bold text-xl text-slate-800 tracking-tight">FinanceOps</span>
+                    <span class="font-bold text-lg sm:text-xl text-slate-800 tracking-tight hidden xs:block">FinanceOps</span>
                 </div>
 
                 {{-- 2. Menu & Profile Area --}}
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1 sm:gap-4">
                     
                     {{-- === MENU NAVIGASI === --}}
                     
@@ -304,42 +317,44 @@
                     </div>
 
                     {{-- B. Tampilan Mobile/Smartphone (Hanya Icon) --}}
-                    <div class="flex sm:hidden items-center gap-2 mr-1">
+                    <div class="flex sm:hidden items-center gap-0.5 mr-0">
                         <a href="{{ route('transactions.create') }}"
-                            class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
+                            class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
                             {{ request()->routeIs('transactions.create') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
-                            <i data-lucide="file-up" class="w-5 h-5"></i>
+                            <i data-lucide="file-up" class="w-4.5 h-4.5"></i>
                             @if(request()->routeIs('transactions.create'))
-                                <span class="absolute bottom-1.5 w-1 h-1 bg-indigo-600 rounded-full"></span>
+                                <span class="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></span>
                             @endif
                         </a>
 
                         <a href="{{ route('transactions.index') }}"
-                            class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
+                            class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
                             {{ request()->routeIs('transactions.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
-                            <i data-lucide="clock" class="w-5 h-5"></i>
+                            <i data-lucide="clock" class="w-4.5 h-4.5"></i>
                              @if(request()->routeIs('transactions.index'))
-                                <span class="absolute bottom-1.5 w-1 h-1 bg-indigo-600 rounded-full"></span>
+                                <span class="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></span>
                             @endif
                         </a>
 
                         <a href="{{ route('notifications.index') }}" 
-                            class="flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-colors relative
+                            class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
                             {{ request()->routeIs('notifications.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
-                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <i data-lucide="bell" class="w-4.5 h-4.5"></i>
                             <span id="notif-count-mobile" class="notif-badge-mobile badge-hidden">0</span>
                         </a>
                     </div>
 
                     {{-- 3. Profile Dropdown dengan Card Style --}}
                     <div class="relative">
-                        <button id="profileBtn" class="flex items-center gap-2 p-1 pr-2 rounded-full hover:bg-slate-100 transition-all outline-none border border-transparent hover:border-slate-200">
+                        <button id="profileBtn" 
+                                onclick="window.toggleProfileDropdown(event)"
+                                class="flex items-center gap-1.5 p-0.5 pr-1 rounded-full hover:bg-slate-100 transition-all outline-none border border-transparent hover:border-slate-200 cursor-pointer pointer-events-auto">
                             <div class="hidden sm:block text-right">
                                 <p class="text-sm font-bold text-slate-800 leading-tight">{{ Auth::user()->name }}</p>
                                 <p class="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Teknisi</p>
                             </div>
                             
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-inner text-sm border-2 border-white">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-inner text-xs border-2 border-white">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         </button>
@@ -399,7 +414,7 @@
 
     {{-- Konten Halaman --}}
     {{-- <main class="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-1 page-enter"> --}}
-    <main class="w-full mx-auto px-1 sm:px-2 py-1 page-enter">
+    <main class="w-full mx-auto px-1 sm:px-2 py-1 page-enter overflow-x-hidden">
         @yield('content')
     </main>
 
@@ -586,76 +601,85 @@
 @endif
 
 {{-- ===================== BANK ACCOUNTS MODAL (Shared for Technicians) ===================== --}}
-<div id="bankAccountsModal" class="fixed inset-0 z-[60] hidden">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeBankAccountsModal()"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl pointer-events-auto transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90vh]" id="bankAccountsModalContent">
+<div id="bankAccountsModal" class="fixed inset-0 z-[60] hidden overflow-hidden">
+    {{-- Overlay with improved glassmorphism --}}
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity duration-300" onclick="closeBankAccountsModal()"></div>
+    
+    {{-- Modal Content: Centered on PC, Bottom sheet feel on Mobile --}}
+    <div class="absolute inset-x-0 bottom-0 sm:inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+        <div class="bg-white w-full sm:max-w-xl rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl pointer-events-auto transform transition-all duration-300 scale-95 opacity-0 flex flex-col max-h-[90dvh] sm:max-h-[85vh] overflow-hidden" id="bankAccountsModalContent">
+            
+            {{-- Pull Bar for Mobile (Visual only) --}}
+            <div class="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+                <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+            </div>
+
             {{-- Header --}}
-            <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                        <i data-lucide="credit-card" class="w-6 h-6"></i>
+            <div class="px-5 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                        <i data-lucide="credit-card" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
                     <div>
-                        <h3 class="text-xl font-black text-slate-800 leading-tight">Daftar Rekening</h3>
-                        <p class="text-sm font-medium text-slate-500">Kelola rekening bank atau e-wallet Anda</p>
+                        <h3 class="text-lg sm:text-xl font-black text-slate-800 leading-tight">Daftar Rekening</h3>
+                        <p class="text-[11px] sm:text-sm font-medium text-slate-500">Kelola rekening bank atau e-wallet</p>
                     </div>
                 </div>
-                <button onclick="closeBankAccountsModal()" class="w-10 h-10 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
-                    <i data-lucide="x" class="w-6 h-6"></i>
+                <button onclick="closeBankAccountsModal()" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                    <i data-lucide="x" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                 </button>
             </div>
 
             {{-- List Section --}}
-            <div class="flex-1 overflow-y-auto px-8 py-6" id="bankAccountsListContainer">
-                <div id="bankAccountsLoading" class="flex flex-col items-center justify-center py-12">
-                    <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                    <p class="mt-4 text-sm font-bold text-slate-400">Memuat data...</p>
+            <div class="flex-1 overflow-y-auto px-5 py-4 sm:px-8 sm:py-6 custom-scrollbar" id="bankAccountsListContainer">
+                <div id="bankAccountsLoading" class="flex flex-col items-center justify-center py-10">
+                    <div class="w-8 h-8 border-3 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="mt-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Memuat data...</p>
                 </div>
-                <div id="bankAccountsList" class="space-y-4 hidden">
+                <div id="bankAccountsList" class="space-y-3 sm:space-y-4 hidden">
                     {{-- Dynamically populated --}}
                 </div>
-                <div id="bankAccountsEmpty" class="hidden flex flex-col items-center justify-center py-12 text-center">
-                    <div class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
-                        <i data-lucide="wallet" class="w-8 h-8"></i>
+                <div id="bankAccountsEmpty" class="hidden flex flex-col items-center justify-center py-10 text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-4">
+                        <i data-lucide="wallet" class="w-7 h-7"></i>
                     </div>
-                    <p class="text-slate-500 font-bold">Belum ada rekening</p>
-                    <p class="text-slate-400 text-xs mt-1">Tambahkan rekening untuk mempermudah transaksi</p>
+                    <p class="text-slate-500 font-bold text-sm">Belum ada rekening</p>
+                    <p class="text-slate-400 text-[10px] mt-1">Tambahkan rekening untuk mempermudah transaksi</p>
                 </div>
             </div>
 
-            {{-- Form Section (Hidden by default) --}}
-            <div id="bankAccountFormContainer" class="hidden px-8 py-6 border-t border-slate-100 bg-slate-50/50">
-                <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4" id="formTitle">Tambah Rekening Baru</h4>
-                <form id="bankAccountForm" onsubmit="saveBankAccount(event)" class="space-y-4">
+            {{-- Form Section --}}
+            <div id="bankAccountFormContainer" class="hidden px-5 py-5 sm:px-8 sm:py-7 border-t border-slate-100 bg-slate-50/50">
+                <h4 class="text-[11px] sm:text-sm font-black text-slate-800 uppercase tracking-wider mb-4" id="formTitle">Tambah Rekening Baru</h4>
+                <form id="bankAccountForm" onsubmit="saveBankAccount(event)" class="space-y-3 sm:space-y-4">
                     <input type="hidden" id="bank_account_id">
                     <input type="hidden" id="target_user_id">
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
                             <input type="text" id="bank_name" required placeholder="Contoh: BCA, MANDIRI, DANA" 
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                                class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300 uppercase">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
                             <input type="text" id="account_number" required placeholder="Nomor rekening/HP"
                                 inputmode="numeric"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
+                                class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
                         <input type="text" id="account_name" required placeholder="Nama pemilik rekening"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                            class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300 uppercase">
                     </div>
 
                     <div class="flex items-center gap-3 pt-2">
-                        <button type="button" onclick="hideBankAccountForm()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-white transition-all">
+                        <button type="button" onclick="hideBankAccountForm()" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-white transition-all">
                             Batal
                         </button>
-                        <button type="submit" id="saveAccountBtn" class="flex-[2] px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                        <button type="submit" id="saveAccountBtn" class="flex-[2] px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
                             <span>Simpan Rekening</span>
                         </button>
@@ -663,13 +687,16 @@
                 </form>
             </div>
 
-            {{-- Footer (Action Buttons) --}}
-            <div class="px-8 py-6 border-t border-slate-100 flex items-center justify-between shrink-0" id="modalFooter">
-                <button type="button" onclick="showBankAccountForm()" class="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl transition-all flex items-center gap-2">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
+            {{-- Footer Section --}}
+            <div class="px-5 py-4 sm:px-8 sm:py-6 border-t border-slate-100 flex items-center justify-between shrink-0 mb-safe" id="modalFooter">
+                <button type="button" onclick="showBankAccountForm()" class="px-5 py-3 sm:px-6 sm:py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 shadow-xl transition-all flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4 text-slate-400"></i>
                     <span>Tambah Rekening</span>
                 </button>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">FinanceOps Secure Storage</p>
+                <div class="text-right hidden xs:block">
+                    <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">FinanceOps</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pay Securely</p>
+                </div>
             </div>
         </div>
     </div>
@@ -718,6 +745,27 @@
 <script>
 
     
+    // Global Scroll Lock Helper (Consolidated)
+    window.toggleBodyScroll = function(disable) {
+        if (disable) {
+            const scrollY = window.scrollY;
+            document.body.dataset.scrollY = scrollY;
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.width = '100%';
+        } else {
+            const scrollY = document.body.dataset.scrollY || '0';
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, parseInt(scrollY));
+        }
+    };
+
     // ─────────────────────────────────────────────────────────
     // NOTIFICATION BADGE COUNTER
     // ─────────────────────────────────────────────────────────
@@ -781,14 +829,18 @@
         }
         lucide.createIcons();
 
-        // Profile dropdown
-        const profileBtn = document.getElementById('profileBtn');
-        const dropdown = document.getElementById('profileDropdown');
-        if (profileBtn && dropdown) {
-            profileBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
+        // ── PROFILE DROPDOWN LOGIC ──
+        window.toggleProfileDropdown = function(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('profileDropdown');
+            if (dropdown) {
                 dropdown.classList.toggle('hidden');
-            });
+            }
+        };
+
+        const dropdown = document.getElementById('profileDropdown');
+        if (dropdown) {
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
             document.addEventListener('click', () => dropdown.classList.add('hidden'));
         }
 
@@ -816,7 +868,9 @@
     function openBankAccountsModal(userId) {
         document.getElementById('target_user_id').value = userId;
         bankAccountsModal.classList.remove('hidden');
+        window.toggleBodyScroll(true);
         setTimeout(() => {
+            bankAccountsContent.classList.add('animate-modal');
             bankAccountsContent.classList.remove('scale-95', 'opacity-0');
             bankAccountsContent.classList.add('scale-100', 'opacity-100');
         }, 10);
@@ -824,8 +878,10 @@
     }
 
     function closeBankAccountsModal() {
+        bankAccountsContent.classList.remove('animate-modal');
         bankAccountsContent.classList.add('scale-95', 'opacity-0');
         bankAccountsContent.classList.remove('scale-100', 'opacity-100');
+        window.toggleBodyScroll(false);
         setTimeout(() => {
             bankAccountsModal.classList.add('hidden');
             hideBankAccountForm();
@@ -853,26 +909,27 @@
                 }
 
                 list.classList.remove('hidden');
-                accounts.forEach(acc => {
+                accounts.forEach((acc, index) => {
                     const card = `
-                        <div class="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center transition-colors">
-                                    <i data-lucide="landmark" class="w-6 h-6"></i>
+                        <div class="stagger-item group bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex items-center justify-between cursor-pointer active:scale-[0.98]" 
+                             style="animation-delay: ${index * 0.05}s"
+                             onclick='showBankAccountForm(${JSON.stringify(acc)})'>
+                            <div class="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center transition-colors shrink-0">
+                                    <i data-lucide="landmark" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                                 </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-[10px] font-black bg-slate-800 text-white px-1.5 py-0.5 rounded uppercase tracking-widest">${acc.bank_name}</span>
-                                        <h4 class="text-sm font-black text-slate-800 tracking-tight">${acc.account_number}</h4>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <span class="text-[9px] font-black bg-slate-800 text-white px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">${acc.bank_name}</span>
+                                        <h4 class="text-sm font-black text-slate-800 tracking-tight truncate">${acc.account_number}</h4>
                                     </div>
-                                    <p class="text-xs font-bold text-slate-400 mt-1 uppercase">${acc.account_name}</p>
+                                    <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase truncate">${acc.account_name}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2 scale-90 sm:scale-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick='showBankAccountForm(${JSON.stringify(acc)})' class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all">
-                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
-                                </button>
-                                <button onclick="deleteBankAccount(${acc.id})" class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all">
+                            <div class="flex items-center gap-1 sm:gap-2 shrink-0 ml-2">
+                                <button onclick="event.stopPropagation(); deleteBankAccount(${acc.id})" 
+                                        class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all active:scale-90"
+                                        title="Hapus Rekening">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -1047,21 +1104,21 @@
                 if (!container) {
                     container = document.createElement('div');
                     container.id = 'toast-container-stack';
-                    container.className = 'fixed top-24 right-4 md:right-8 z-[60] flex flex-col gap-3 pointer-events-none items-end w-full max-w-sm';
+                    container.className = 'fixed top-24 right-0 sm:right-4 md:right-8 z-[60] flex flex-col gap-2 sm:gap-3 pointer-events-none items-center sm:items-end w-full sm:max-w-sm px-4 sm:px-0';
                     document.body.appendChild(container);
                 }
 
                 const html = `
-                    <div id="${toastId}" class="realtime-toast-item pointer-events-auto flex items-start w-full p-4 space-x-4 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                        <div class="inline-flex items-center justify-center flex-shrink-0 w-12 h-12 rounded-xl ${colorClasses}">
-                            <i data-lucide="${iconName || 'bell'}" class="w-6 h-6"></i>
+                    <div id="${toastId}" class="realtime-toast-item pointer-events-auto flex items-start w-full sm:w-auto sm:min-w-[320px] p-3 sm:p-4 space-x-3 sm:space-x-4 bg-white rounded-xl sm:rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                        <div class="inline-flex items-center justify-center flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl ${colorClasses}">
+                            <i data-lucide="${iconName || 'bell'}" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">
-                            <h3 class="text-sm font-extrabold text-slate-800 mb-1 leading-tight">${title}</h3>
-                            <p class="text-[13px] text-slate-500 font-medium leading-snug">${message}</p>
+                            <h3 class="text-xs sm:text-sm font-extrabold text-slate-800 mb-0.5 sm:mb-1 leading-tight">${title}</h3>
+                            <p class="text-[11px] sm:text-[13px] text-slate-500 font-medium leading-snug">${message}</p>
                         </div>
-                        <button type="button" class="flex-shrink-0 ms-auto -mx-1.5 -my-1.5 bg-white text-slate-400 hover:text-slate-900 rounded-xl p-1.5 hover:bg-slate-50 inline-flex items-center justify-center h-8 w-8 transition-colors" onclick="const el = document.getElementById('${toastId}'); if(el){ el.style.opacity='0'; el.style.transform='translateX(100%)'; setTimeout(()=>el.remove(), 500); }">
-                            <i data-lucide="x" class="w-4 h-4"></i>
+                        <button type="button" class="flex-shrink-0 ms-auto -mx-1 -my-1 sm:-mx-1.5 sm:-my-1.5 bg-white text-slate-400 hover:text-slate-900 rounded-lg sm:rounded-xl p-1 sm:p-1.5 hover:bg-slate-50 inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 transition-colors" onclick="const el = document.getElementById('${toastId}'); if(el){ el.style.opacity='0'; el.style.transform='translateX(100%)'; setTimeout(()=>el.remove(), 500); }">
+                            <i data-lucide="x" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                         </button>
                     </div>
                 `;
@@ -1161,9 +1218,13 @@
                     if (typeof window.handleRealtimeTransactionUpdate === 'function') {
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
-                });        }
+                });
+
+
+        }
     });
 </script>
+@stack('modals')
 @stack('scripts')
 </body>
 </html>

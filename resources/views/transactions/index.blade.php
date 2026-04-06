@@ -182,13 +182,14 @@
         </div>{{-- end #search-results-container --}}
     </div>
 
+@push('modals')
     {{-- VIEW DETAIL MODAL --}}
     <div id="view-modal"
-         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-md p-4 opacity-0 transition-all duration-300"
+         class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-md p-0 sm:p-4 opacity-0 transition-all duration-300"
          role="dialog"
          aria-modal="true"
          aria-labelledby="view-modal-title">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300"
+        <div class="bg-white rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all duration-300 overscroll-contain"
              id="view-modal-content">
 
             <div id="view-loading" class="p-12 text-center w-full flex flex-col items-center justify-center min-h-[50vh]">
@@ -196,10 +197,10 @@
                 <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>
             </div>
 
-            <div id="view-body" class="hidden flex flex-col flex-auto min-h-0 w-full">
+            <div id="view-body" class="flex-col flex-auto min-h-0 w-full" style="display: none;">
                 <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-white z-10 shrink-0">
                     <div>
-                        <h3 class="text-lg font-extrabold text-slate-900" id="view-modal-title">Detail Transaksi</h3>
+                        <h3 class="text-lg font-extrabold text-slate-900" id="view-modal-title">Detail Pengajuan</h3>
                         <p class="text-xs text-slate-400 font-medium mt-0.5" id="v-invoice"></p>
                     </div>
                     <button onclick="closeViewModal()"
@@ -208,7 +209,7 @@
                     </button>
                 </div>
 
-                <div class="p-6 space-y-6 overflow-y-auto grow min-h-0">
+                <div class="p-6 space-y-6 overflow-y-auto grow min-h-0 overscroll-contain">
                     <div class="flex items-center gap-2 flex-wrap" id="v-badges"></div>
                     
                     {{-- ✅ Revisi Banner (Pengajuan yang direvisi Management) --}}
@@ -308,38 +309,47 @@
             </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- ✅ IMAGE VIEWER MODAL (Fullscreen Zoom) --}}
     <div id="image-viewer"
-         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-[60] p-6"
+         class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[9999] p-4 sm:p-10 overscroll-contain"
          role="dialog" 
          aria-modal="true" 
          aria-labelledby="viewer-title">
 
-        {{-- Card --}}
-        <div class="relative max-w-4xl w-full" id="viewer-card">
+        {{-- Container margin sisi 4 --}}
+        <div class="w-full h-full max-w-4xl bg-white rounded-2xl flex flex-col p-4 sm:p-8 shadow-2xl relative overflow-hidden" id="viewer-card">
 
-            {{-- Tombol X — pojok kanan atas, di luar foto --}}
-            <button id="close-viewer"
-                    type="button"
-                    class="absolute -top-4 -right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
-                    aria-label="Tutup preview">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            {{-- Header & Close Button --}}
+            <div class="flex justify-between items-center shrink-0 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW FOTO</h3>
+                    <p id="viewer-title" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Klik di luar gambar ruang ini atau X untuk menutup</p>
+                </div>
+                <button id="close-viewer"
+                        type="button"
+                        onclick="closeImageViewer()"
+                        class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all active:scale-95"
+                        aria-label="Tutup preview">
+                    <i data-lucide="x" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                </button>
+            </div>
 
-            {{-- Gambar --}}
-            <img id="viewer-image"
-                 src=""
-                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
-                 alt="Preview foto referensi" />
-
-            {{-- Hint --}}
-            <p id="viewer-title" class="text-center text-white/60 text-xs mt-4 font-medium tracking-wide select-none">
-                Klik di luar gambar atau tekan ESC untuk menutup
-            </p>
+            {{-- Gambar Wrapper dengan Background Grid/Dots ala Preview Image --}}
+            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
+                <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <img id="viewer-image"
+                     src=""
+                     class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
+                     alt="Preview foto referensi" />
+            </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- REJECT MODAL --}}
     <div id="reject-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
@@ -379,7 +389,9 @@
             </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- OVERRIDE MODAL --}}
     <div id="override-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
@@ -417,7 +429,9 @@
             </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- FORCE APPROVE MODAL --}}
     <div id="force-approve-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
@@ -455,7 +469,9 @@
             </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- PAYMENT UPLOAD MODAL --}}
     <div id="payment-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300 overflow-y-auto pt-10 pb-10">
@@ -504,8 +520,6 @@
                          {{-- Div Container untuk Pengajuan (Cards Grid) --}}
                          <div id="p-items-div-container" class="hidden flex-col"></div>
                     </div>
-
-
 
                     <div id="p-branches-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider mt-4">Pembagian Cabang</label>
@@ -690,9 +704,12 @@
             </div>
         </div>
     </div>
+@endpush
 
+@push('modals')
     {{-- Toast Container --}}
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+@endpush
 
 @endsection
 
@@ -792,7 +809,8 @@
         // Set aria-hidden AFTER showing (important for timing)
         requestAnimationFrame(() => {
             imageViewer.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
+            if (window.toggleBodyScroll) window.toggleBodyScroll(true);
+            else document.body.style.overflow = 'hidden';
             
             // Reinit icons for close button
             if (typeof lucide !== 'undefined') {
@@ -815,7 +833,8 @@
         // Hide modal
         imageViewer.classList.add('hidden');
         imageViewer.classList.remove('flex');
-        document.body.style.overflow = '';
+        if (window.toggleBodyScroll) window.toggleBodyScroll(false);
+        else document.body.style.overflow = '';
         
         // Set aria-hidden AFTER hiding
         imageViewer.setAttribute('aria-hidden', 'true');
@@ -2062,14 +2081,17 @@
         loading.innerHTML = `
             <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
             <p class="text-sm text-slate-400 font-medium">Memuat detail...</p>`;
+        loading.style.display = 'flex';
         loading.classList.remove('hidden');
-        body.classList.add('hidden');
+        body.style.display = 'none';
 
-        // Show modal first
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        // Show modal first using style.display to avoid Tailwind hidden/flex conflict
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden', 'opacity-0');
+        if (window.toggleBodyScroll) window.toggleBodyScroll(true);
+        else { document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; }
         
-        // Then set aria-hidden and animate
+        // Then animate
         requestAnimationFrame(() => {
             modal.setAttribute('aria-hidden', 'false');
             modal.classList.remove('opacity-0');
@@ -2084,13 +2106,18 @@
             })
             .then(d => {
                 renderViewModal(d);
+                loading.style.display = 'none';
                 loading.classList.add('hidden');
-                body.classList.remove('hidden');
+                body.style.display = 'flex';
+                body.style.flexDirection = 'column';
                 
                 // ✅ ATTACH CLICK EVENT TO IMAGE
                 const imgWrapper = document.getElementById('v-image-wrapper');
                 if (imgWrapper) {
-                    imgWrapper.addEventListener('click', function() {
+                    // Remove previous listeners by cloning
+                    const newWrapper = imgWrapper.cloneNode(true);
+                    imgWrapper.parentNode.replaceChild(newWrapper, imgWrapper);
+                    newWrapper.addEventListener('click', function() {
                         const img = document.getElementById('v-image');
                         if (img && img.src) {
                             openImageViewer(img.src);
@@ -2109,6 +2136,7 @@
             .catch(err => {
                 console.error(err);
                 loading.innerHTML = '<p class="text-red-500 text-sm font-bold">Gagal memuat data. Coba lagi.</p>';
+                loading.style.display = 'flex';
             });
     }
 
@@ -2121,16 +2149,20 @@
             document.activeElement.blur();
         }
         
+        // Unlock scroll immediately (before animation finishes)
+        if (window.toggleBodyScroll) window.toggleBodyScroll(false);
+        else { document.documentElement.style.overflow = ''; document.body.style.overflow = ''; }
+        
         // Animate close
         modal.classList.add('opacity-0');
         modalBox.classList.remove('scale-100');
         modalBox.classList.add('scale-95');
         
-        // After animation, hide and set aria-hidden
+        // After animation, hide
         setTimeout(() => {
+            modal.style.display = 'none';
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
         }, 300);
     }
 

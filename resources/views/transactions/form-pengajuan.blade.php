@@ -187,37 +187,43 @@
     {{-- Toast Container --}}
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
 
+@push('modals')
     {{-- ══════════════════════════════════════════════════ --}}
     {{-- IMAGE VIEWER MODAL                                --}}
     {{-- hidden → flex saat dibuka via JS                 --}}
     {{-- ══════════════════════════════════════════════════ --}}
     <div id="image-viewer"
-         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
+         class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[9999] p-4 sm:p-10 overscroll-contain"
          role="dialog" aria-modal="true" aria-label="Preview foto referensi">
 
-        {{-- Card --}}
-        <div class="relative max-w-3xl w-full" id="viewer-card">
+        {{-- Container margin sisi 4 --}}
+        <div class="w-full h-full max-w-4xl bg-white rounded-2xl flex flex-col p-4 sm:p-8 shadow-2xl relative overflow-hidden" id="viewer-card">
 
-            {{-- Tombol X — pojok kanan atas, di luar foto --}}
-            <button id="close-viewer"
-                    type="button"
-                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
-                    aria-label="Tutup preview">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            {{-- Header & Close Button --}}
+            <div class="flex justify-between items-center shrink-0 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW FOTO</h3>
+                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider" id="viewer-title">Klik di luar gambar ruang ini atau X untuk menutup</p>
+                </div>
+                <button id="close-viewer"
+                        type="button"
+                        class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all active:scale-95"
+                        aria-label="Tutup preview">
+                    <i data-lucide="x" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                </button>
+            </div>
 
-            {{-- Gambar --}}
-            <img id="viewer-image"
-                 src=""
-                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
-                 alt="Preview foto referensi" />
-
-            {{-- Hint --}}
-            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
-                Klik di luar gambar atau tekan ESC untuk menutup
-            </p>
+            {{-- Gambar Wrapper dengan Background Grid/Dots --}}
+            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
+                <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <img id="viewer-image"
+                     src=""
+                     class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
+                     alt="Preview foto referensi" />
+            </div>
         </div>
     </div>
+@endpush
 
     {{-- ITEM TEMPLATE FOR JS --}}
     <template id="item-template">
@@ -816,12 +822,12 @@
                 }
 
                 const rowHtml = `
-                    <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
-                        <div class="font-medium text-slate-700 flex items-center gap-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white rounded-xl border border-slate-200 px-4 py-3 gap-3">
+                        <div class="font-bold sm:font-medium text-slate-700 flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
                             ${branch.name}
                         </div>
-                        <div>${inputHtml}</div>
+                        <div class="flex justify-end">${inputHtml}</div>
                     </div>
                 `;
                 distributionList.insertAdjacentHTML('beforeend', rowHtml);

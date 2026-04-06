@@ -1,8 +1,18 @@
 {{-- transactions/loading.blade.php --}}
 @extends('layouts.app')
 @section('page-title', 'Memproses Nota')
+
+{{-- Lock scroll immediately (before DOMContentLoaded) to prevent background scroll --}}
+<script>
+    // Immediate scroll lock - runs before layout paint
+    (function() {
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+    })();
+</script>
+
 @section('content')
-<div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+<div class="fixed inset-0 z-[100] bg-slate-50 overflow-hidden flex flex-col items-center justify-center p-4">
     
     {{-- Atmospheric blobs --}}
     <div class="fixed inset-0 overflow-hidden pointer-events-none">
@@ -180,8 +190,16 @@
         }
     }
 
+    window.addEventListener('beforeunload', function() {
+        if (window.toggleBodyScroll) window.toggleBodyScroll(false);
+        else document.body.style.overflow = '';
+    });
+
     // Start when page loads
     document.addEventListener('DOMContentLoaded', function() {
+        if (window.toggleBodyScroll) window.toggleBodyScroll(true);
+        else document.body.style.overflow = 'hidden';
+
         if (uploadId) {
             lucide.createIcons();
             initEcho();

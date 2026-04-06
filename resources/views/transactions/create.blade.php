@@ -960,6 +960,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── LOADING ────────────────────────────────────────────
     function showLoading(title, subtitle) {
+        if (window.toggleBodyScroll) window.toggleBodyScroll(true);
         loadingTitle.textContent = title;
         loadingSub.textContent   = subtitle;
         loadingOverlay.classList.add('show');

@@ -223,23 +223,29 @@
                     </div>
 
                     <div class="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs md:text-sm whitespace-nowrap" id="items-table">
-                                <thead class="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase bg-slate-50 border-b border-slate-100 tracking-wider">
+                        {{-- Desktop Table View --}}
+                        <div class="hidden md:block overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap" id="items-table">
+                                <thead class="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 border-b border-slate-100 tracking-wider">
                                     <tr>
-                                        <th class="p-3 md:p-4 w-10 text-center">No</th>
-                                        <th class="p-3 md:p-4 min-w-[120px]">Nama Barang</th>
-                                        <th class="p-3 md:p-4 w-20">Qty</th>
-                                        <th class="p-3 md:p-4 w-24">Satuan</th>
-                                        <th class="p-3 md:p-4 w-32">Harga Satuan</th>
-                                        <th class="p-3 md:p-4 w-32">Total</th>
-                                        <th class="p-3 md:p-4 min-w-[120px]">Deskripsi</th>
-                                        <th class="p-3 md:p-4 w-10 text-center"></th>
+                                        <th class="p-4 w-10 text-center">No</th>
+                                        <th class="p-4 min-w-[120px]">Nama Barang</th>
+                                        <th class="p-4 w-20">Qty</th>
+                                        <th class="p-4 w-24">Satuan</th>
+                                        <th class="p-4 w-32 text-right">Harga Satuan</th>
+                                        <th class="p-4 w-32 text-right">Total</th>
+                                        <th class="p-4 min-w-[120px]">Deskripsi</th>
+                                        <th class="p-4 w-10 text-center"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100" id="items-tbody">
                                 </tbody>
                             </table>
+                        </div>
+
+                        {{-- Mobile Cards View --}}
+                        <div class="md:hidden divide-y divide-slate-100 bg-white" id="items-cards">
+                            <!-- Cards will be rendered here -->
                         </div>
                         
                         {{-- Baris Total --}}
@@ -335,43 +341,51 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                         </svg>
-                    </button>
-                </div>
-            </form>
-        </div>{{-- END: Form Container Card --}}
-    </div>{{-- END: Max-width Container --}}
-    
-   {{-- ══════════════════════════════════════════════════ --}}
+  @push('modals')
+    {{-- ══════════════════════════════════════════════════ --}}
     {{-- IMAGE VIEWER MODAL                                --}}
     {{-- hidden → flex saat dibuka via JS                 --}}
     {{-- ══════════════════════════════════════════════════ --}}
     <div id="image-viewer"
-         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
+         class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[9999] p-4 sm:p-10 overscroll-contain"
          role="dialog" 
          aria-modal="true" 
          aria-labelledby="viewer-title">
 
-        {{-- Card --}}
-        <div class="relative max-w-3xl w-full" id="viewer-card">
+        {{-- Container margin sisi 4 --}}
+        <div class="w-full h-full max-w-4xl bg-white rounded-2xl flex flex-col p-4 sm:p-8 shadow-2xl relative overflow-hidden" id="viewer-card">
 
-            {{-- Tombol X — pojok kanan atas, di luar foto --}}
-            <button id="close-viewer"
-                    type="button"
-                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all"
-                    aria-label="Tutup preview">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            {{-- Header & Close Button --}}
+            <div class="flex justify-between items-center shrink-0 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW FOTO</h3>
+                    <p id="viewer-title" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Klik di luar gambar ruang ini atau X untuk menutup</p>
+                </div>
+                <button id="close-viewer"
+                        type="button"
+                        class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all active:scale-95"
+                        aria-label="Tutup preview">
+                    <i data-lucide="x" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                </button>
+            </div>
 
-            {{-- Gambar --}}
-            <img id="viewer-image"
-                 src=""
-                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
-                 alt="Preview foto referensi" />
-
-            {{-- Hint --}}
-            <p id="viewer-title" class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
-                Klik di luar gambar atau tekan ESC untuk menutup
-            </p>
+            {{-- Gambar Wrapper dengan Background Grid/Dots --}}
+            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
+                <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <img id="viewer-image"
+                     src=""
+                     class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
+                     alt="Preview foto referensi" />
+            </div>
+        </div>
+    </div>
+@endpush     {{-- Gambar Wrapper --}}
+            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-xl overflow-hidden">
+                <img id="viewer-image"
+                     src=""
+                     class="max-w-full max-h-full object-contain"
+                     alt="Preview foto referensi" />
+            </div>
         </div>
     </div>
 
@@ -483,6 +497,7 @@
         const aiStatus  = aiData.status ?? '';
 
         const itemsTbody            = document.getElementById('items-tbody');
+        const itemsCards            = document.getElementById('items-cards');
         const addItemBtn            = document.getElementById('add-item-btn');
         const displayTotalItems     = document.getElementById('display-total-items');
         const formTotalAmount       = document.getElementById('form-total-amount');
@@ -598,56 +613,121 @@
         // ─────────────────────────────────────────────
         function renderItems() {
             itemsTbody.innerHTML = '';
+            if (itemsCards) itemsCards.innerHTML = '';
             totalAmount = 0;
 
             items.forEach((item, i) => {
                 const rowTotal = (item.qty || 0) * (item.price || 0);
                 totalAmount += rowTotal;
 
+                // Desktop Row
                 const tr = document.createElement('tr');
                 tr.className = 'text-slate-600 text-xs hover:bg-slate-50/50 transition-colors';
                 tr.dataset.idx = i;
                 tr.innerHTML = `
-                    <td class="p-3 md:p-4 text-center text-slate-400 font-medium">${i + 1}</td>
-                    <td class="p-2 md:p-3">
+                    <td class="p-4 text-center text-slate-400 font-medium">${i + 1}</td>
+                    <td class="p-3">
                         <input type="text" name="items[${i}][name]" value="${esc(item.name)}"
                             placeholder="Nama item..."
-                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                            class="item-field w-full bg-transparent border-0 border-b border-slate-100
                                 focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
                             data-field="name">
                     </td>
-                    <td class="p-2 md:p-3">
+                    <td class="p-3">
                         <input type="number" name="items[${i}][qty]" value="${item.qty}" min="1"
-                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                            class="item-field w-full bg-transparent border-0 border-b border-slate-100
                                 focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors"
                             data-field="qty">
                     </td>
-                    <td class="p-2 md:p-3">
+                    <td class="p-3">
                         <input type="text" name="items[${i}][unit]" value="${esc(item.unit)}"
-                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                            class="item-field w-full bg-transparent border-0 border-b border-slate-100
                                 focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
                             data-field="unit">
                     </td>
-                    <td class="p-2 md:p-3">
+                    <td class="p-3">
                         <input type="text" value="${formatRupiah(item.price)}"
-                            class="item-price-display w-full bg-transparent border-0 border-b border-transparent
-                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors">
+                            class="item-price-display w-full bg-transparent border-0 border-b border-slate-100
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-right">
                         <input type="hidden" name="items[${i}][price]" value="${item.price}" class="item-price-hidden">
                     </td>
-                    <td class="p-3 md:p-4 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
-                    <td class="p-2 md:p-3">
+                    <td class="p-4 font-bold text-slate-800 text-right">${formatRupiah(rowTotal)}</td>
+                    <td class="p-3">
                         <input type="text" name="items[${i}][desc]" value="${esc(item.desc)}"
                             placeholder="Catatan..."
-                            class="item-field w-full bg-transparent border-0 border-b border-transparent
+                            class="item-field w-full bg-transparent border-0 border-b border-slate-100
                                 focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-slate-400"
                             data-field="desc">
                     </td>
-                    <td class="p-3 md:p-4 text-center">
+                    <td class="p-4 text-center">
                         <button type="button" class="item-delete text-slate-300 hover:text-red-500 transition-colors">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </td>`;
                 itemsTbody.appendChild(tr);
+
+                // Mobile Card
+                if (itemsCards) {
+                    const card = document.createElement('div');
+                    card.className = 'p-4 space-y-4 relative bg-white';
+                    card.dataset.idx = i;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">${i + 1}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Baris #${i+1}</span>
+                            </div>
+                            <button type="button" class="item-delete p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Barang / Jasa</label>
+                                <input type="text" value="${esc(item.name)}"
+                                    placeholder="Masukkan nama barang..."
+                                    class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-emerald-400 transition-all"
+                                    data-field="name">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Qty</label>
+                                    <input type="number" value="${item.qty}" min="1"
+                                        class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-emerald-400 transition-all"
+                                        data-field="qty">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Satuan</label>
+                                    <input type="text" value="${esc(item.unit)}"
+                                        class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-400 outline-none focus:border-emerald-400 transition-all"
+                                        data-field="unit">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Harga Satuan</label>
+                                <input type="text" value="${formatRupiah(item.price)}"
+                                    class="item-price-display w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-emerald-600 outline-none focus:border-emerald-400 transition-all">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Catatan</label>
+                                <input type="text" value="${esc(item.desc)}"
+                                    placeholder="Tambahkan catatan jika ada..."
+                                    class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs font-medium text-slate-400 outline-none focus:border-emerald-400 transition-all"
+                                    data-field="desc">
+                            </div>
+
+                            <div class="pt-2 flex justify-between items-center border-t border-slate-50 border-dashed">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Subtotal</span>
+                                <span class="text-sm font-black text-slate-800">${formatRupiah(rowTotal)}</span>
+                            </div>
+                        </div>
+                    `;
+                    itemsCards.appendChild(card);
+                }
             });
 
             displayTotalItems.textContent = formatRupiah(totalAmount);
@@ -661,10 +741,10 @@
         // ─────────────────────────────────────────────
         // ITEMS — event delegation
         // ─────────────────────────────────────────────
-        itemsTbody.addEventListener('input', function (e) {
-            const tr = e.target.closest('tr[data-idx]');
-            if (!tr) return;
-            const idx = parseInt(tr.dataset.idx);
+        function handleItemInput(e) {
+            const container = e.target.closest('[data-idx]');
+            if (!container) return;
+            const idx = parseInt(container.dataset.idx);
 
             if (e.target.classList.contains('item-field')) {
                 items[idx][e.target.dataset.field] = e.target.value;
@@ -673,27 +753,38 @@
             if (e.target.classList.contains('item-price-display')) {
                 const raw = parseNumber(e.target.value);
                 items[idx].price = raw;
-                tr.querySelector('.item-price-hidden').value = raw;
+                // Update hidden price if in table row
+                const row = itemsTbody.querySelector(`tr[data-idx="${idx}"]`);
+                if (row) row.querySelector('.item-price-hidden').value = raw;
             }
-        });
+        }
 
-        itemsTbody.addEventListener('blur', function (e) {
+        itemsTbody.addEventListener('input', handleItemInput);
+        if (itemsCards) itemsCards.addEventListener('input', handleItemInput);
+
+        function handleItemBlur(e) {
             if (e.target.classList.contains('item-price-display')) {
-                const tr = e.target.closest('tr[data-idx]');
-                if (!tr) return;
-                items[parseInt(tr.dataset.idx)].price = parseNumber(e.target.value);
+                const container = e.target.closest('[data-idx]');
+                if (!container) return;
+                items[parseInt(container.dataset.idx)].price = parseNumber(e.target.value);
                 renderItems();
             }
-        }, true);
+        }
 
-        itemsTbody.addEventListener('click', function (e) {
+        itemsTbody.addEventListener('blur', handleItemBlur, true);
+        if (itemsCards) itemsCards.addEventListener('blur', handleItemBlur, true);
+
+        function handleItemClick(e) {
             const btn = e.target.closest('.item-delete');
             if (!btn) return;
-            const tr = btn.closest('tr[data-idx]');
-            if (!tr) return;
-            items.splice(parseInt(tr.dataset.idx), 1);
+            const container = btn.closest('[data-idx]');
+            if (!container) return;
+            items.splice(parseInt(container.dataset.idx), 1);
             renderItems();
-        });
+        }
+
+        itemsTbody.addEventListener('click', handleItemClick);
+        if (itemsCards) itemsCards.addEventListener('click', handleItemClick);
 
         addItemBtn.addEventListener('click', () => {
             items.push({ name: '', qty: 1, unit: 'pcs', price: 0, desc: '' });
