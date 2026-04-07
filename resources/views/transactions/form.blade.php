@@ -86,18 +86,15 @@
                         </div>
 
                         {{-- Tips Jika Ada Foto --}}
-                        <div class="mt-4 bg-blue-50 border border-blue-100/50 rounded-xl p-3 md:p-4 flex gap-3 items-start">
-                            <div class="bg-blue-100 p-1.5 md:p-2 rounded-lg text-blue-500 shrink-0">
-                                <i data-lucide="info" class="w-4 h-4 md:w-5 md:h-5"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-[9px] md:text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-1">Foto Referensi</h4>
-                                <p class="text-[11px] md:text-xs text-blue-600 leading-relaxed">
-                                    Foto ini akan disertakan dalam pengajuan sebagai referensi barang/jasa yang ingin dibeli. 
-                                    Foto membantu admin memahami spesifikasi dengan lebih baik.
-                                </p>
-                            </div>
+                    <div class="mt-4 bg-orange-50 border border-orange-100/50 rounded-xl p-3 md:p-4 flex gap-3 md:gap-4 items-start">
+                        <div class="bg-orange-100 p-1.5 md:p-2 rounded-lg text-orange-500 shrink-0">
+                            <i data-lucide="shield-alert" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </div>
+                        <div>
+                            <h4 class="text-[9px] md:text-[10px] font-bold text-orange-800 uppercase tracking-wider mb-1">Tips Penting</h4>
+                            <p class="text-[11px] md:text-xs text-orange-600 leading-relaxed">Segera foto nota setelah transaksi. Nota yang lecek atau tinta pudar berisiko tinggi ditolak oleh sistem verifikasi admin.</p>
+                        </div>
+                    </div>
                     @else
                         {{-- ═══ EMPTY STATE (No Photo) ═══ --}}
                         <div class="border-2 border-dashed border-slate-200 rounded-2xl p-8 md:p-12 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400">
@@ -120,17 +117,6 @@
                             </div>
                         </div>
                     @endif
-
-                    {{-- Alert Tips --}}
-                    <div class="mt-4 bg-orange-50 border border-orange-100/50 rounded-xl p-3 md:p-4 flex gap-3 md:gap-4 items-start">
-                        <div class="bg-orange-100 p-1.5 md:p-2 rounded-lg text-orange-500 shrink-0">
-                            <i data-lucide="shield-alert" class="w-4 h-4 md:w-5 md:h-5"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-[9px] md:text-[10px] font-bold text-orange-800 uppercase tracking-wider mb-1">Tips Penting</h4>
-                            <p class="text-[11px] md:text-xs text-orange-600 leading-relaxed">Segera foto nota setelah transaksi. Nota yang lecek atau tinta pudar berisiko tinggi ditolak oleh sistem verifikasi admin.</p>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- 2. MAIN INFO FIELDS --}}
@@ -380,14 +366,6 @@
         </div>
     </div>
 @endpush     {{-- Gambar Wrapper --}}
-            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-xl overflow-hidden">
-                <img id="viewer-image"
-                     src=""
-                     class="max-w-full max-h-full object-contain"
-                     alt="Preview foto referensi" />
-            </div>
-        </div>
-    </div>
 
     <script>
         lucide.createIcons();

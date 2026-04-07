@@ -94,59 +94,58 @@
                     <div class="absolute left-0 top-0 bottom-0 w-1.5 {{ $theme['bg'] }}"></div>
                 @endif
                 
-                <div class="flex flex-col sm:flex-row gap-4 md:gap-5 items-start">
+                <div class="flex flex-row gap-3 md:gap-5 items-start">
                     
                     <!-- Icon -->
-                    <div class="flex-shrink-0 z-10 pt-1">
-                        <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center {{ $theme['light'] }} {{ $theme['text'] }} {{ !$isRead ? 'shadow-inner' : '' }} transition-transform group-hover:scale-110 duration-300">
-                            <i data-lucide="{{ $icon }}" class="w-6 h-6 md:w-7 md:h-7 {{ !$isRead ? 'drop-shadow-sm' : '' }}"></i>
+                    <div class="flex-shrink-0 z-10 pt-0.5">
+                        <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center {{ $theme['light'] }} {{ $theme['text'] }} {{ !$isRead ? 'shadow-inner' : '' }} transition-transform group-hover:scale-105 duration-300">
+                            <i data-lucide="{{ $icon }}" class="w-5 h-5 md:w-7 md:h-7 {{ !$isRead ? 'drop-shadow-sm' : '' }}"></i>
                         </div>
                     </div>
 
                     <!-- Content -->
-                    <div class="flex-grow z-10 min-w-0 w-full">
-                        <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
-                            <div class="flex flex-wrap items-center gap-2 max-w-full">
-                                <h3 class="font-bold text-slate-800 text-base md:text-lg truncate md:whitespace-normal group-hover:text-blue-600 transition-colors break-words">{{ $data['title'] ?? 'Notifikasi' }}</h3>
+                    <div class="flex-grow z-10 min-w-0">
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                                <h3 class="font-bold text-slate-800 text-sm md:text-lg group-hover:text-blue-600 transition-colors break-words line-clamp-1 md:line-clamp-none">{{ $data['title'] ?? 'Notifikasi' }}</h3>
                                 @if(!$isRead)
-                                    <span class="px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[10px] font-black uppercase tracking-wider shadow-sm animate-pulse-slow whitespace-nowrap hidden sm:inline-block">Baru</span>
-                                    <span class="sm:hidden w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                    <span class="px-1.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[9px] font-black uppercase tracking-wider shadow-sm animate-pulse-slow whitespace-nowrap hidden sm:inline-block">Baru</span>
                                 @endif
                             </div>
                             
-                            <div class="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-slate-400 whitespace-nowrap shrink-0 mt-1 md:mt-0">
-                                <i data-lucide="clock" class="w-3.5 h-3.5"></i>
-                                <span>{{ $notif->created_at->diffForHumans() }}</span>
+                            <div class="flex items-center gap-1 text-[9px] md:text-xs font-bold text-slate-400 whitespace-nowrap shrink-0 pt-0.5">
+                                <i data-lucide="clock" class="w-3 h-3"></i>
+                                <span>{{ $notif->created_at->diffForHumans(null, true, true) }}</span>
                             </div>
                         </div>
                         
-                        <p class="text-slate-600 text-sm leading-relaxed mb-4 line-clamp-3 md:line-clamp-none pr-0 md:pr-12 break-words">{{ $data['message'] ?? '' }}</p>
+                        <p class="text-slate-600 text-[13px] md:text-sm leading-relaxed mb-2.5 line-clamp-2 md:line-clamp-none pr-0 md:pr-12 break-words">{{ $data['message'] ?? '' }}</p>
                         
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-auto">
-                            <div class="flex items-center gap-2">
+                        <div class="flex flex-row items-center justify-between gap-2 mt-auto">
+                            <div class="flex items-center gap-2 min-w-0">
                                 @if(isset($data['invoice_number']))
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-wider">
-                                        <i data-lucide="hash" class="w-3.5 h-3.5 text-slate-400"></i>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 border border-slate-100 rounded-md text-[9px] md:text-xs font-bold uppercase tracking-wider truncate">
+                                        <i data-lucide="hash" class="w-3 h-3 text-slate-400"></i>
                                         {{ $data['invoice_number'] }}
                                     </span>
                                 @endif
                             </div>
 
                             <!-- Actions -->
-                            <div class="flex items-center gap-2 justify-end transition-all duration-300 sm:opacity-0 sm:-translate-x-4 sm:group-hover:opacity-100 sm:group-hover:translate-x-0 relative z-20">
+                            <div class="flex items-center gap-1.5 justify-end transition-all duration-300 sm:opacity-0 sm:-translate-x-4 sm:group-hover:opacity-100 sm:group-hover:translate-x-0 relative z-20 shrink-0">
                                 @if(!$isRead)
                                     <form action="{{ route('notifications.read', $notif->id) }}" method="POST" onclick="event.stopPropagation();">
                                         @csrf
-                                        <button type="submit" class="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 rounded-xl md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Tandai Dibaca">
-                                            <i data-lucide="check" class="w-4 h-4 text-sm"></i>
+                                        <button type="submit" class="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 rounded-lg md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Tandai Dibaca">
+                                            <i data-lucide="check" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
                                         </button>
                                     </form>
                                 @endif
 
                                 <form action="{{ route('notifications.destroy', $notif->id) }}" method="POST" onsubmit="return confirm('Hapus notifikasi ini secara permanen?')" onclick="event.stopPropagation();">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-xl md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Hapus Permanen">
-                                        <i data-lucide="trash-2" class="w-4 h-4 text-sm"></i>
+                                    <button type="submit" class="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-lg md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Hapus Permanen">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
                                     </button>
                                 </form>
                             </div>
