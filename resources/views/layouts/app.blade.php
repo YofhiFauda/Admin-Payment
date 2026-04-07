@@ -360,51 +360,54 @@
                         </button>
 
                         {{-- DROPDOWN PROFILE CARD --}}
-                        <div id="profileDropdown" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 py-4 px-4 origin-top-right z-50">
+                        <div id="profileDropdown" class="hidden absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden origin-top-right z-50">
                             
-                            {{-- Profile Card Component --}}
-                            <div class="profile-card cursor-pointer hover:bg-slate-50 transition-colors rounded-xl p-2 -mx-2" 
-                                 onclick="openBankAccountsModal({{ Auth::id() }})">
-                                {{-- Avatar --}}
+                            {{-- Header: Avatar + Name + Email --}}
+                            <div class="px-4 py-4 flex items-center gap-3 border-b border-slate-100">
                                 @if(Auth::user()->avatar)
-                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
-                                         alt="{{ Auth::user()->name }}" 
-                                         class="profile-avatar">
+                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
+                                        class="w-12 h-12 rounded-full object-cover border-2 border-white shadow">
                                 @else
-                                    <div class="profile-avatar bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </div>
                                 @endif
-                                
-                                {{-- Info --}}
-                                <div class="profile-info">
-                                    <h4 class="profile-name group-hover:text-indigo-600 transition-colors">{{ Auth::user()->name }}</h4>
-                                    <p class="profile-email">{{ Auth::user()->email }}</p>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-bold text-slate-800 text-[15px] leading-tight truncate">{{ Auth::user()->name }}</p>
+                                    <p class="text-xs text-slate-500 truncate mt-0.5">{{ Auth::user()->email }}</p>
                                 </div>
                             </div>
-                            
-                            {{-- Manage Bank Accounts Button (Modern Style) --}}
-                            <div class="mt-3 pt-3 border-t border-slate-100">
-                                <button type="button" onclick="openBankAccountsModal({{ Auth::id() }})" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group">
-                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                                        <i data-lucide="credit-card" class="w-4 h-4"></i>
-                                    </div>
-                                    <div class="flex-1 text-left">
-                                        <p class="leading-none mb-1">Rekening Saya</p>
-                                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Kelola Bank & E-Wallet</p>
-                                    </div>
-                                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover:text-indigo-400 transition-colors"></i>
+
+                            {{-- Menu Items --}}
+                            <div class="py-2">
+                                <a href=""
+                                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                                    <i data-lucide="user" class="w-[18px] h-[18px] text-slate-500"></i>
+                                    <span>Profil Saya</span>
+                                </a>
+                                <button type="button" onclick="openBankAccountsModal({{ Auth::id() }})"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                                    <i data-lucide="credit-card" class="w-[18px] h-[18px] text-slate-500"></i>
+                                    <span>Rekening Saya</span>
                                 </button>
+                                <a href=""
+                                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                                    <i data-lucide="settings" class="w-[18px] h-[18px] text-slate-500"></i>
+                                    <span>Pengaturan</span>
+                                </a>
                             </div>
-                            
-                            {{-- Logout Button dengan Gradient Outline --}}
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="logout-btn">
-                                    <i data-lucide="log-out"></i>
-                                    <span>Logout</span>
-                                </button>
-                            </form>
+
+                            {{-- Logout --}}
+                            <div class="border-t border-slate-100 py-2">
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors">
+                                        <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+                                        <span>Keluar (Logout)</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -531,33 +534,72 @@
                 @endif
             </nav>
 
-            <div class="p-4 md:p-6">
-                {{-- Profile Card untuk Sidebar --}}
-                <div class="profile-card mb-3">
+            <div class="p-4 md:p-6 relative">
+                {{-- Dropdown menu (muncul di ATAS card) --}}
+                <div id="sidebarProfileDropdown"
+                    class="hidden absolute left-4 right-4 md:left-6 md:right-6 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[60]"
+                    style="bottom: 80%; margin-bottom: 8px; top: auto;">
+                    
+                    {{-- Header --}}
+                    <div class="px-4 py-4 flex items-center gap-3 border-b border-slate-100">
+                        @if(Auth::user()->avatar)
+                            <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
+                                class="w-9 h-9 rounded-full object-cover border-2 border-white shadow">
+                        @else
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                                {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                            </div>
+                        @endif
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold text-slate-800 text-sm leading-tight truncate">{{ Auth::user()->name }}</p>
+                            <p class="text-xs text-slate-500 truncate mt-0.5">{{ Auth::user()->email }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Menu --}}
+                    <div class="py-2">
+                        <a href=""
+                        class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                            <i data-lucide="user" class="w-[18px] h-[18px] text-slate-500"></i>
+                            <span>Profil Saya</span>
+                        </a>
+                        <a href=""
+                        class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                            <i data-lucide="settings" class="w-[18px] h-[18px] text-slate-500"></i>
+                            <span>Pengaturan</span>
+                        </a>
+                    </div>
+
+                    {{-- Logout --}}
+                    <div class="border-t border-slate-100 py-2">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit"
+                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors">
+                                <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+                                <span>Keluar (Logout)</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {{-- Profile Card Trigger Button --}}
+                <button type="button" id="sidebarProfileBtn" onclick="toggleSidebarProfile(event)"
+                        class="w-full flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all">
                     @if(Auth::user()->avatar)
-                        <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
-                             alt="{{ Auth::user()->name }}" 
-                             class="profile-avatar">
+                        <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
+                            class="w-9 h-9 rounded-full object-cover shrink-0">
                     @else
-                        <div class="profile-avatar bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
                     @endif
-                    
-                    <div class="profile-info">
-                        <h4 class="profile-name">{{ Auth::user()->name }}</h4>
-                        <p class="profile-email">{{ ucfirst(Auth::user()->role) }}</p>
+                    <div class="flex-1 min-w-0 text-left">
+                        <p class="font-bold text-slate-800 text-sm leading-tight truncate">{{ Auth::user()->name }}</p>
+                        <p class="text-xs text-slate-500 truncate mt-0.5">{{ ucfirst(Auth::user()->role) }}</p>
                     </div>
-                </div>
-                
-                {{-- Logout Button untuk Sidebar --}}
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="logout-btn">
-                        <i data-lucide="log-out"></i>
-                        <span>Logout</span>
-                    </button>
-                </form>
+                    <i data-lucide="chevron-up" id="sidebarProfileChevron" class="w-4 h-4 text-slate-400 transition-transform shrink-0"></i>
+                </button>
             </div>
         </aside>
 
@@ -837,11 +879,31 @@
                 dropdown.classList.toggle('hidden');
             }
         };
+        
 
         const dropdown = document.getElementById('profileDropdown');
         if (dropdown) {
             dropdown.addEventListener('click', (e) => e.stopPropagation());
             document.addEventListener('click', () => dropdown.classList.add('hidden'));
+        }
+
+        // ── SIDEBAR PROFILE DROPDOWN (Admin/Atasan/Owner) ──
+        window.toggleSidebarProfile = function(e) {
+            if (e) e.stopPropagation();
+            const dd = document.getElementById('sidebarProfileDropdown');
+            const chev = document.getElementById('sidebarProfileChevron');
+            if (dd) {
+                dd.classList.toggle('hidden');
+                if (chev) chev.classList.toggle('rotate-180');
+            }
+        };
+        const sidebarDD = document.getElementById('sidebarProfileDropdown');
+        if (sidebarDD) {
+            sidebarDD.addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', () => {
+                sidebarDD.classList.add('hidden');
+                document.getElementById('sidebarProfileChevron')?.classList.remove('rotate-180');
+            });
         }
 
         // Auto-dismiss initial flash notification
