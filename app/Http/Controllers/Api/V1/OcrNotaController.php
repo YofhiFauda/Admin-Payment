@@ -331,6 +331,8 @@ class OcrNotaController extends Controller
             'sumber_dana_branch_id' => $primarySumberDanaId,
             'sumber_dana_data'      => $sumberDanaData,
             'status'                => 'completed',
+            'paid_by'               => auth()->id(),
+            'paid_at'               => now(),
             'description'           => ($transaction->description ? $transaction->description . ' | ' : '') . $request->catatan,
         ]);
 
@@ -512,6 +514,8 @@ class OcrNotaController extends Controller
         $transaction->update([
             'foto_penyerahan' => $path,
             'status'          => 'pending_technician',
+            'paid_by'         => auth()->id(),
+            'paid_at'         => now(),
             'description'     => $request->catatan,
         ]);
 
@@ -786,6 +790,8 @@ class OcrNotaController extends Controller
             'bukti_transfer' => $path,
             'status'         => 'Sedang Diverifikasi AI',
             'expected_total' => $expectedTotal,
+            'paid_by'        => auth()->id(),
+            'paid_at'        => now(),
         ]);
 
         \App\Models\ActivityLog::create([

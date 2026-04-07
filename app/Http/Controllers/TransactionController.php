@@ -169,7 +169,7 @@ class TransactionController extends Controller
 
     public function detailJson($id)
     {
-        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator'])->findOrFail($id);
+        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator', 'payer'])->findOrFail($id);
 
         $paymentAt = null;
         if ($t->konfirmasi_at) {
@@ -271,12 +271,14 @@ class TransactionController extends Controller
                 ];
             }),
             // ✅ Payment History (Riwayat Pembayaran) fields
-            'payment_at'         => $paymentAt,
-            'paid_by_name'       => $t->reviewer ? $t->reviewer->name : 'Finance',
+            'payment_at'         => $t->paid_at ? $t->paid_at->format('d M Y H:i') : $paymentAt,
+            'paid_by_name'       => $t->payer ? $t->payer->name : ($t->reviewer ? $t->reviewer->name : 'Finance'),
             'recipient_name'     => $t->submitter ? $t->submitter->name : '-',
-            'payment_proof_url'  => ($t->bukti_transfer ?? $t->foto_penyerahan) ? asset('storage/' . ($t->bukti_transfer ?? $t->foto_penyerahan)) : null,
-            'payment_type'       => $t->bukti_transfer ? 'Transfer' : ($t->foto_penyerahan ? 'Tunai' : null),
-            'is_paid'            => (bool)($t->status === 'completed' || $t->status === 'approved' || $t->bukti_transfer || $t->foto_penyerahan),
+            'konfirmasi_by_name' => $t->konfirmator ? $t->konfirmator->name : null,
+            'konfirmasi_at'      => $t->konfirmasi_at ? $t->konfirmasi_at->format('d M Y H:i') : null,
+            'payment_proof_url'  => ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path) ? asset('storage/' . ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path)) : null,
+            'payment_type'       => $t->bukti_transfer ? 'Transfer' : ($t->foto_penyerahan ? 'Tunai' : ($t->invoice_file_path ? 'Invoice' : null)),
+            'is_paid'            => (bool)($t->status === 'completed' || $t->status === 'approved' || $t->bukti_transfer || $t->foto_penyerahan || $t->invoice_file_path),
         ]);
     }
 

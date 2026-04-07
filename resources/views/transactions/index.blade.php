@@ -301,35 +301,63 @@
                             <h4 class="text-sm font-black text-slate-800 uppercase tracking-tight">Riwayat Pembayaran</h4>
                         </div>
 
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Metode</p>
-                                    <p id="v-payment-method" class="text-xs font-bold text-slate-700 uppercase"></p>
+                        <div class="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                            <!-- Step 1: Penyerahan Dana -->
+                            <div class="relative pl-8">
+                                <div class="absolute left-0 top-0 w-6 h-6 bg-teal-100 rounded-full border-4 border-white flex items-center justify-center text-teal-600 shadow-sm">
+                                    <i data-lucide="hand-coins" class="w-2.5 h-2.5"></i>
                                 </div>
-                                <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tanggal Bayar</p>
-                                    <p id="v-payment-at" class="text-xs font-bold text-slate-700"></p>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 1: Penyerahan Dana</span>
+                                    <p class="text-xs text-slate-600 leading-relaxed">
+                                        Dana <span id="v-payment-method-badge" class="font-bold text-teal-600"></span> 
+                                        diserahkan oleh <strong id="v-paid-by" class="text-slate-800"></strong> 
+                                        kepada <strong id="v-recipient" class="text-slate-800"></strong>
+                                    </p>
+                                    <div class="mt-2 flex items-center gap-3">
+                                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                                            <span id="v-payment-at"></span>
+                                        </div>
+                                        <button type="button" id="btn-view-payment-proof" class="flex items-center gap-1.5 text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-1 rounded-lg border border-teal-100 hover:bg-teal-100 transition-all">
+                                            <i data-lucide="image" class="w-3 h-3"></i>
+                                            LIHAT BUKTI
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Oleh (Finance)</p>
-                                    <p id="v-paid-by" class="text-xs font-bold text-slate-700"></p>
+                            <!-- Step 2: Konfirmasi Penerimaan (Hanya untuk Cash) -->
+                            <div id="v-receipt-step" class="relative pl-8 hidden">
+                                <div class="absolute left-0 top-0 w-6 h-6 bg-indigo-100 rounded-full border-4 border-white flex items-center justify-center text-indigo-600 shadow-sm">
+                                    <i data-lucide="user-check" class="w-2.5 h-2.5"></i>
                                 </div>
-                                <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Penerima</p>
-                                    <p id="v-recipient" class="text-xs font-bold text-slate-700"></p>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 2: Konfirmasi Penerimaan</span>
+                                    <p class="text-xs text-slate-600 leading-relaxed">
+                                        Diterima & dikonfirmasi oleh 
+                                        <strong id="v-confirmed-by" class="text-slate-800"></strong>
+                                    </p>
+                                    <div class="mt-2">
+                                        <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
+                                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                                            <span id="v-confirmed-at"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div id="v-payment-proof-wrap" class="hidden">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bukti Transaksi</p>
-                                <button type="button" id="btn-view-payment-proof" class="w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-                                    <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                                    Lihat Bukti Transfer/Penyerahan
-                                </button>
+                            <!-- Step 2: Konfirmasi AI (Untuk Transfer) -->
+                            <div id="v-verified-step" class="relative pl-8 hidden">
+                                <div class="absolute left-0 top-0 w-6 h-6 bg-blue-100 rounded-full border-4 border-white flex items-center justify-center text-blue-600 shadow-sm">
+                                    <i data-lucide="bot" class="w-2.5 h-2.5"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 2: Verifikasi Sistem</span>
+                                    <p class="text-xs text-slate-600 leading-relaxed font-bold italic">
+                                        Otomatis diverifikasi & divalidasi oleh AI
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2314,12 +2342,17 @@
                 window._modalVersionData = {
                     original: d.items_snapshot || [],
                     management: d.items || [],
+                    d: d
                 };
                 window._modalCurrentVersion = 'management'; // Default to management if edited
             } else {
                 revisBannerContainer.innerHTML = '';
                 revisBannerContainer.classList.add('hidden');
-                window._modalVersionData = null;
+                window._modalVersionData = {
+                    original: d.items_snapshot || [],
+                    management: d.items || [],
+                    d: d
+                };
                 window._modalCurrentVersion = 'original';
             }
             // Re-init lucide
@@ -2588,6 +2621,9 @@
             btnReset.classList.add('hidden');
             actionsWrap.classList.add('hidden');
         }
+
+        // Trigger initial version & history render
+        toggleVersionInModal(window._modalCurrentVersion);
     }
 
     // ─── Version Toggle in Detail Modal ────────────────────────────
@@ -2652,32 +2688,42 @@
 
         // ✅ Riwayat Pembayaran (Payment History)
         const payHistWrap = document.getElementById('v-payment-history-wrap');
-        if (d.type === 'rembush' && d.is_paid) {
-            if (payHistWrap) {
-                payHistWrap.classList.remove('hidden');
-                document.getElementById('v-payment-method').textContent = d.payment_type || d.payment_method_label || '-';
-                document.getElementById('v-payment-at').textContent = d.payment_at || '-';
-                document.getElementById('v-paid-by').textContent = d.paid_by_name || '-';
-                document.getElementById('v-recipient').textContent = d.recipient_name || '-';
-                
-                const proofWrap = document.getElementById('v-payment-proof-wrap');
-                if (d.payment_proof_url) {
-                    proofWrap.classList.remove('hidden');
-                    const btnProof = document.getElementById('btn-view-payment-proof');
-                    if (btnProof) {
-                        btnProof.onclick = () => {
-                            if (typeof openImageViewer === 'function') {
-                                openImageViewer(d.payment_proof_url);
-                            }
-                        };
-                    }
-                } else {
-                    proofWrap.classList.add('hidden');
-                }
-                
-                // Re-init lucide icons for the new section
-                if (typeof lucide !== 'undefined') lucide.createIcons({ root: payHistWrap });
+        const receiptStep = document.getElementById('v-receipt-step');
+        const verifiedStep = document.getElementById('v-verified-step');
+
+        if (window._modalVersionData?.d?.is_paid) {
+            const hist = window._modalVersionData.d;
+            payHistWrap.classList.remove('hidden');
+            document.getElementById('v-payment-method-badge').textContent = hist.payment_type || 'Pembayaran';
+            document.getElementById('v-payment-at').textContent = hist.payment_at || '-';
+            document.getElementById('v-paid-by').textContent = hist.paid_by_name || '-';
+            document.getElementById('v-recipient').textContent = hist.recipient_name || '-';
+
+            // Show/Hide Steps based on method
+            if (hist.payment_type === 'Tunai') {
+                receiptStep.classList.remove('hidden');
+                verifiedStep.classList.add('hidden');
+                document.getElementById('v-confirmed-by').textContent = hist.konfirmasi_by_name || 'Menunggu Konfirmasi...';
+                document.getElementById('v-confirmed-at').textContent = hist.konfirmasi_at || '-';
+            } else if (hist.payment_type === 'Transfer') {
+                receiptStep.classList.add('hidden');
+                verifiedStep.classList.remove('hidden');
+            } else {
+                receiptStep.classList.add('hidden');
+                verifiedStep.classList.add('hidden');
             }
+
+            // Proof display
+            const btnProof = document.getElementById('btn-view-payment-proof');
+            if (hist.payment_proof_url) {
+                btnProof.classList.remove('hidden');
+                btnProof.onclick = () => openImageViewer(hist.payment_proof_url, 'Bukti Pembayaran');
+            } else {
+                btnProof.classList.add('hidden');
+            }
+            
+            // Re-init lucide icons for the new section
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: payHistWrap });
         } else {
             if (payHistWrap) payHistWrap.classList.add('hidden');
         }

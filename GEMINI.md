@@ -12,6 +12,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
     - **Allocation:** Single transactions can be split across multiple branches with specific percentage/amount allocation.
     - **Branch Debt:** Automatic tracking of inter-branch borrowing when one branch pays for another's needs (`BranchDebt` model).
     - **Filtering:** Real-time client-side multi-branch filtering via `SearchEngine`.
+- **Payment History:** Detailed tracking of payment events (transfer/cash), payment proofs, and multi-step verification (Step 1: Payer → Recipient, Step 2: Confirmation/AI Verification).
 - **Financial Modules:**
     - **Other Expenditures:** Prefix `PL-` (Payable, Receivable, Prive).
     - **Salary Records:** Prefix `GP-` (Automated calculation of base pay, bonuses, and deductions).

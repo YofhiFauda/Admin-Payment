@@ -151,6 +151,8 @@ class Transaction extends Model
         'edited_by',
         'edited_at',
         'revision_count',
+        'paid_by',
+        'paid_at',
     ];
 
     protected function casts(): array
@@ -171,6 +173,7 @@ class Transaction extends Model
             'is_edited_by_management' => 'boolean',
             'edited_at' => 'datetime',
             'revision_count' => 'integer',
+            'paid_at' => 'datetime',
             // ✅ Multi Sumber Dana
             'sumber_dana_data' => 'array',
         ];
@@ -242,6 +245,11 @@ class Transaction extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function payer()
+    {
+        return $this->belongsTo(User::class, 'paid_by');
     }
 
     public function konfirmator()
