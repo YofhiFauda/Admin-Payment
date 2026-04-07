@@ -291,6 +291,48 @@
                         <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
                         <span>Direview oleh <strong id="v-reviewer" class="text-slate-600"></strong> pada <span id="v-reviewed-at"></span></span>
                     </div>
+
+                    <!-- Riwayat Pembayaran (Payment History) -->
+                    <div id="v-payment-history-wrap" class="hidden mt-6 pt-6 border-t-2 border-dashed border-slate-100 bg-slate-50/50 -mx-6 px-6 pb-6 rounded-b-3xl">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="p-1.5 bg-teal-100 rounded-lg text-teal-600">
+                                <i data-lucide="receipt-text" class="w-4 h-4"></i>
+                            </div>
+                            <h4 class="text-sm font-black text-slate-800 uppercase tracking-tight">Riwayat Pembayaran</h4>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Metode</p>
+                                    <p id="v-payment-method" class="text-xs font-bold text-slate-700 uppercase"></p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tanggal Bayar</p>
+                                    <p id="v-payment-at" class="text-xs font-bold text-slate-700"></p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Oleh (Finance)</p>
+                                    <p id="v-paid-by" class="text-xs font-bold text-slate-700"></p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Penerima</p>
+                                    <p id="v-recipient" class="text-xs font-bold text-slate-700"></p>
+                                </div>
+                            </div>
+
+                            <div id="v-payment-proof-wrap" class="hidden">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bukti Transaksi</p>
+                                <button type="button" id="btn-view-payment-proof" class="w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+                                    <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                                    Lihat Bukti Transfer/Penyerahan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div id="v-actions" class="hidden pt-2 border-t border-slate-100">
                         <button id="v-btn-reset"
                             onclick="submitApproval('pending')"
@@ -2600,6 +2642,38 @@
             }
         } else {
             if (itemsWrap) itemsWrap.classList.add('hidden');
+        }
+
+        // ✅ Riwayat Pembayaran (Payment History)
+        const payHistWrap = document.getElementById('v-payment-history-wrap');
+        if (d.type === 'rembush' && d.is_paid) {
+            if (payHistWrap) {
+                payHistWrap.classList.remove('hidden');
+                document.getElementById('v-payment-method').textContent = d.payment_type || d.payment_method_label || '-';
+                document.getElementById('v-payment-at').textContent = d.payment_at || '-';
+                document.getElementById('v-paid-by').textContent = d.paid_by_name || '-';
+                document.getElementById('v-recipient').textContent = d.recipient_name || '-';
+                
+                const proofWrap = document.getElementById('v-payment-proof-wrap');
+                if (d.payment_proof_url) {
+                    proofWrap.classList.remove('hidden');
+                    const btnProof = document.getElementById('btn-view-payment-proof');
+                    if (btnProof) {
+                        btnProof.onclick = () => {
+                            if (typeof openImageViewer === 'function') {
+                                openImageViewer(d.payment_proof_url);
+                            }
+                        };
+                    }
+                } else {
+                    proofWrap.classList.add('hidden');
+                }
+                
+                // Re-init lucide icons for the new section
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: payHistWrap });
+            }
+        } else {
+            if (payHistWrap) payHistWrap.classList.add('hidden');
         }
     }
 

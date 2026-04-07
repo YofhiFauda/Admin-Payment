@@ -169,7 +169,14 @@ class TransactionController extends Controller
 
     public function detailJson($id)
     {
-        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch'])->findOrFail($id);
+        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator'])->findOrFail($id);
+
+        $paymentAt = null;
+        if ($t->konfirmasi_at) {
+            $paymentAt = $t->konfirmasi_at->format('d M Y H:i');
+        } elseif ($t->isCompleted() && $t->status === 'completed') {
+            $paymentAt = $t->updated_at->format('d M Y H:i');
+        }
 
         return response()->json([
             'id'              => $t->id,
@@ -263,6 +270,13 @@ class TransactionController extends Controller
                     'paid_at'             => $debt->paid_at ? $debt->paid_at->format('d M Y H:i') : null,
                 ];
             }),
+            // ✅ Payment History (Riwayat Pembayaran) fields
+            'payment_at'         => $paymentAt,
+            'paid_by_name'       => $t->reviewer ? $t->reviewer->name : 'Finance',
+            'recipient_name'     => $t->submitter ? $t->submitter->name : '-',
+            'payment_proof_url'  => ($t->bukti_transfer ?? $t->foto_penyerahan) ? asset('storage/' . ($t->bukti_transfer ?? $t->foto_penyerahan)) : null,
+            'payment_type'       => $t->bukti_transfer ? 'Transfer' : ($t->foto_penyerahan ? 'Tunai' : null),
+            'is_paid'            => (bool)($t->status === 'completed' || $t->status === 'approved' || $t->bukti_transfer || $t->foto_penyerahan),
         ]);
     }
 

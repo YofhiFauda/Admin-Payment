@@ -3,7 +3,7 @@
 @section('page-title', 'Edit Reimbursement')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12">
+    <div class="max-w-8xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12">
 
         {{-- Form Container --}}
         <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10">
@@ -29,8 +29,14 @@
                 @if($transaction->file_path)
                 <div class="mb-8 md:mb-10">
                     <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Foto Nota</label>
-                    <div class="border-2 border-slate-200 rounded-2xl p-2 bg-slate-50/50 flex justify-center relative overflow-hidden group">
-                        <img src="{{ route('transactions.image', $transaction->id) }}" class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm relative z-10" />
+                    <div id="ref-photo-wrapper" tabindex="0" class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors group" title="Klik untuk memperbesar">
+                        <img src="{{ route('transactions.image', $transaction->id) }}" class="max-h-48 md:max-h-64 object-contain rounded-xl shadow-sm relative z-10" alt="Foto Nota" />
+                        
+                        {{-- Preview Badge --}}
+                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                            <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Preview Foto</span>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -243,6 +249,38 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- IMAGE VIEWER MODAL                                --}}
+    {{-- hidden → flex saat dibuka via JS                 --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-[9999] p-6"
+         role="dialog" aria-modal="true" aria-label="Preview foto nota">
+
+        {{-- Card --}}
+        <div class="relative max-w-3xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto nota" />
+
+            {{-- Hint --}}
+            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
         </div>
     </div>
 
@@ -689,6 +727,46 @@
 
         paymentMethodSelect.addEventListener('change', toggleBankDetails);
         toggleBankDetails(); // Initial call
+
+        // ─────────────────────────────────────────────
+        // IMAGE VIEWER MODAL
+        // ─────────────────────────────────────────────
+        const imageViewer  = document.getElementById('image-viewer');
+        const viewerImage  = document.getElementById('viewer-image');
+        const closeViewer  = document.getElementById('close-viewer');
+        const refWrapper   = document.getElementById('ref-photo-wrapper');
+
+        function openViewer(src) {
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewerFn() {
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            setTimeout(() => { viewerImage.src = ''; }, 200);
+        }
+
+        if (refWrapper) {
+            refWrapper.addEventListener('click', function () {
+                const img = this.querySelector('img');
+                if (img) openViewer(img.src);
+            });
+            // Handle keyboard enter/space to open preview
+            refWrapper.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const img = this.querySelector('img');
+                    if (img) openViewer(img.src);
+                }
+            });
+        }
+        if (closeViewer) { closeViewer.addEventListener('click', function(e) { e.stopPropagation(); closeViewerFn(); }); }
+        if (imageViewer) { imageViewer.addEventListener('click', function(e) { if (e.target === imageViewer) closeViewerFn(); }); }
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); });
 
         // ─────────────────────────────────────────────
         // INIT

@@ -428,14 +428,14 @@
             text-slate-700 flex flex-col shrink-0 z-50 
             transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
-            <div class="p-6 flex items-center gap-3 border-b border-slate-100">
+            <div class="p-4 flex items-center gap-3 border-b border-slate-100">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
                 <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 custom-scrollbar">
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 scrollbar-hide">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"
@@ -591,7 +591,7 @@
             @endif
 
             {{-- <div class="flex-1 overflow-y-auto lg:p-6"> --}}
-            <div class="flex-1 overflow-y-auto">
+            <div class="flex-1 overflow-y-auto scrollbar-hide">
                 <div class="max-w-8xl mx-auto">
                     @yield('content')
                 </div>
@@ -658,12 +658,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                         <div>
                             <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
-                            <input type="text" id="bank_name" required placeholder="Contoh: BCA, MANDIRI, DANA" 
+                            <input type="text" id="modal_bank_name" name="modal_bank_name" required placeholder="Contoh: BCA, MANDIRI, DANA" 
                                 class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300 uppercase">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
-                            <input type="text" id="account_number" required placeholder="Nomor rekening/HP"
+                            <input type="text" id="modal_account_number" name="modal_account_number" required placeholder="Nomor rekening/HP"
                                 inputmode="numeric"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                 class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300">
@@ -671,7 +671,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
-                        <input type="text" id="account_name" required placeholder="Nama pemilik rekening"
+                        <input type="text" id="modal_account_name" name="modal_account_name" required placeholder="Nama pemilik rekening"
                             class="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 text-sm sm:text-base placeholder:text-slate-300 uppercase">
                     </div>
 
@@ -949,9 +949,9 @@
         const submitBtnText = document.querySelector('#saveAccountBtn span');
 
         document.getElementById('bank_account_id').value = data ? data.id : '';
-        document.getElementById('bank_name').value = data ? data.bank_name : '';
-        document.getElementById('account_number').value = data ? data.account_number : '';
-        document.getElementById('account_name').value = data ? data.account_name : '';
+        document.getElementById('modal_bank_name').value = data ? data.bank_name : '';
+        document.getElementById('modal_account_number').value = data ? data.account_number : '';
+        document.getElementById('modal_account_name').value = data ? data.account_name : '';
 
         title.textContent = data ? 'Edit Rekening' : 'Tambah Rekening Baru';
         submitBtnText.textContent = data ? 'Update Rekening' : 'Simpan Rekening';
@@ -988,9 +988,9 @@
             },
             body: JSON.stringify({
                 user_id: userId,
-                bank_name: document.getElementById('bank_name').value,
-                account_number: document.getElementById('account_number').value,
-                account_name: document.getElementById('account_name').value
+                bank_name: document.getElementById('modal_bank_name').value,
+                account_number: document.getElementById('modal_account_number').value,
+                account_name: document.getElementById('modal_account_name').value
             })
         })
         .then(r => r.json())
