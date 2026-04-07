@@ -13,13 +13,13 @@
     {{-- Form Card --}}
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <i data-lucide="user-plus" class="w-5 h-5 text-white"></i>
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="user-plus" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
-                    <h3 class="text-lg font-black text-slate-900">Daftarkan Pengguna Baru</h3>
-                    <p class="text-xs text-slate-500 font-medium">Isi data untuk mendaftarkan pengguna baru</p>
+                    <h3 class="text-xl font-black text-slate-900 leading-tight">Daftarkan Pengguna Baru</h3>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">Lengkapi data akun untuk akses sistem</p>
                 </div>
             </div>
         </div>
