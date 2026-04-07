@@ -2086,8 +2086,8 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Alasan Pembelian</label>
-                                <div class="${fieldClass('purchase_reason')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800">
-                                    ${purchaseReasons[item.purchase_reason] || item.purchase_reason || '-'}
+                                <div class="${fieldClass('category')} border rounded-lg px-3 py-2 text-xs font-medium text-slate-800">
+                                    ${item.category || purchaseReasons[item.purchase_reason] || item.purchase_reason || '-'}
                                 </div>
                             </div>
                             <div>
@@ -2348,12 +2348,18 @@
             addField('Keterangan',        d.description, true);
             addField('Total Nominal',     d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
         } else {
+            // Untuk pengajuan, selalu tampilkan alasan utama di header jika items tidak ada atau single.
+            // Jika multi-item, alasan tiap item ada di card-nya masing-masing.
+            // Namun agar konsisten dengan permintaan user, kita tampilkan alasan utama/kategori di header.
             if (!d.items || d.items.length === 0) {
                 addField('Nama Barang/Jasa',      d.customer, true);
                 addField('Vendor',                d.vendor);
                 addField('Alasan Pembelian',      d.purchase_reason_label);
                 addField('Jumlah',                d.quantity);
                 addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            } else {
+                // Untuk multi-item, kita tetap tampilkan Alasan Pembelian utama di header agar tidak "kosong"
+                addField('Alasan Pembelian Utama', d.purchase_reason_label);
             }
             
             // Note: Keterangan Global & Total Estimasi mapped later to v-summary-wrap
@@ -2893,6 +2899,9 @@
                 addField('Alasan Pembelian',      d.purchase_reason_label);
                 addField('Jumlah',                d.quantity);
                 addField('Estimasi Harga Satuan', d.estimated_price ? 'Rp ' + Number(d.estimated_price).toLocaleString('id-ID') : null);
+            } else {
+                // Selalu tampilkan alasan utama di header untuk Pengajuan
+                addField('Alasan Pembelian Utama', d.purchase_reason_label);
             }
         }
 
