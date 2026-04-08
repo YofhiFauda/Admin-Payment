@@ -762,17 +762,17 @@ class PriceAnomalyPolicy
 
 ### Permission Matrix
 
-| Action | Teknisi | Admin | Manager | Owner |
-|--------|---------|-------|---------|-------|
-| View Price Index | ❌ | ✅ | ✅ | ✅ |
-| Create Price Index | ❌ | ❌ | ✅ | ✅ |
-| Update Price Index | ❌ | ❌ | ✅ | ✅ |
-| Delete Price Index | ❌ | ❌ | ❌ | ✅ |
-| Manual Override | ❌ | ❌ | ❌ | ✅ |
-| View Anomalies | ❌ | ✅ | ✅ | ✅ |
-| Review Anomalies | ❌ | ❌ | ✅ | ✅ |
-| Approve Anomalies | ❌ | ❌ | ❌ | ✅ |
-| Receive Notifications | ❌ | ❌ | ❌ | ✅ |
+| Action | Teknisi | Admin | Atasan | Owner |
+| :--- | :---: | :---: | :---: | :---: |
+| **View Price Index** | ❌ | ✅ | ✅ | ✅ |
+| **Create Price Index** | ❌ | ❌ | ✅ | ✅ |
+| **Update Price Index** | ❌ | ❌ | ✅ | ✅ |
+| **Delete Price Index** | ❌ | ❌ | ❌ | ✅ |
+| **Manual Override** | ❌ | ❌ | ❌ | ✅ |
+| **View Anomalies** | ❌ | ✅ | ✅ | ✅ |
+| **Review Anomalies** | ❌ | ❌ | ✅ | ✅ |
+| **Approve Anomalies** | ❌ | ❌ | ❌ | ✅ |
+| **Receive Notifications** | ❌ | ❌ | ❌ | ✅ |
 
 ### Audit Trail
 

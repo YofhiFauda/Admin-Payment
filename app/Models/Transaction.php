@@ -368,21 +368,29 @@ class Transaction extends Model
      */
     public function getCategoryLabelAttribute(): string
     {
-        if (!$this->category) {
+        $category = $this->category;
+
+        // Fallback for Pengajuan: pick from first item if main category is null
+        // This handles transactions created before the controller fix.
+        if (!$category && $this->isPengajuan() && is_array($this->items) && isset($this->items[0]['category'])) {
+            $category = $this->items[0]['category'];
+        }
+
+        if (!$category) {
             return '-';
         }
 
         // If it looks like a label already (contains space or capital), return as-is
-        if (str_contains($this->category, ' ') || preg_match('/[A-Z]/', $this->category)) {
-            return $this->category;
+        if (str_contains($category, ' ') || preg_match('/[A-Z]/', $category)) {
+            return $category;
         }
 
         // Legacy snake_case key → resolve from map
         if ($this->type === 'pengajuan') {
-            return self::LEGACY_PURCHASE_REASON_MAP[$this->category] ?? $this->category;
+            return self::LEGACY_PURCHASE_REASON_MAP[$category] ?? $category;
         }
 
-        return self::LEGACY_CATEGORY_MAP[$this->category] ?? $this->category;
+        return self::LEGACY_CATEGORY_MAP[$category] ?? $category;
     }
 
     /**

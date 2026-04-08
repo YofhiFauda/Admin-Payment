@@ -1,195 +1,213 @@
 @extends('layouts.app')
 
 @section('content')
-    {{-- Container dengan background dekoratif --}}
-    <div class="min-h-screen flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        
-        {{-- Background Blobs (Animasi halus) --}}
-        <div class="absolute top-0 left-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2 animate-blob"></div>
-        <div class="absolute top-0 right-0 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 translate-x-1/2 -translate-y-1/2 animate-blob animation-delay-2000"></div>
-        <div class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+@php
+    \Carbon\Carbon::setLocale('id');
+@endphp
 
-        <div class="max-w-md w-full relative z-10">
-            
-            {{-- Main Card --}}
-            <div class="bg-white/70 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-                
-                {{-- Gradient Top Border --}}
-                <div class="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-
-                <div class="p-8 flex flex-col items-center text-center">
-                    
-                    {{-- Success Icon with Glow --}}
-                    <div class="relative mb-6 group">
-                        <div class="absolute -inset-1 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                        <div class="relative w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
-                            <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-500"></i>
-                        </div>
-                    </div>
-
-                    <h2 class="text-2xl font-extrabold text-slate-800 mb-1 tracking-tight">Nota Berhasil Dikirim!</h2>
-                    <p class="text-slate-500 text-sm mb-8 font-medium">
-                        ID Transaksi: <span class="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs border border-slate-200">{{ $transaction->invoice_number }}</span>
-                    </p>
-
-                    {{-- Status Card (Floating Style) --}}
-                    <div class="w-full bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100 p-5 mb-6 shadow-sm relative overflow-hidden">
-                        {{-- Subtle pattern overlay --}}
-                        <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-slate-100 rounded-full opacity-50 blur-2xl"></div>
-                        
-                        <div class="relative z-10">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-left">Status Pengajuan Anda</p>
-                            
-                            <div class="text-left bg-white/60 p-3 rounded-lg border border-slate-50 backdrop-blur-sm">
-                                <p id="status-description" class="text-slate-500 text-xs leading-relaxed">
-                                    Nota Anda sedang dalam tahap peninjauan oleh tim finance. Kami akan menghubungi Anda segera setelah proses selesai.
-                                </p>
-                                <p class="text-slate-400 text-xs mt-2 font-medium">
-                                    Terima kasih, <span class="text-slate-600">{{ Auth::user()->name }}</span>.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Detail Section --}}
-                    <div class="w-full text-left mb-8">
-                        <div class="flex items-center justify-between mb-4 px-1">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail Transaksi</p>
-                            <div class="h-px bg-slate-200 flex-grow ml-4"></div>
-                        </div>
-
-                        <div class="space-y-4">
-                            {{-- Type Badge Row --}}
-                            <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                <span class="text-xs font-medium text-slate-500">Jenis Transaksi</span>
-                                @if($transaction->type === 'pengajuan')
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-100">
-                                        <i data-lucide="file-plus" class="w-3 h-3"></i> Pengajuan
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Rembush
-                                    </span>
-                                @endif
-                            </div>
-
-                            {{-- Key Metrics Grid --}}
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-1">
-                                    <span class="text-[10px] text-slate-400 uppercase font-bold">{{ $transaction->isPengajuan() ? 'Nama Barang' : 'Vendor' }}</span>
-                                    <p class="text-sm font-bold text-slate-800 truncate" title="{{ $transaction->customer }}">{{ $transaction->customer }}</p>
-                                </div>
-                                <div class="space-y-1 text-right">
-                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Total Nominal</span>
-                                    <p class="text-sm font-bold text-blue-600">Rp {{ number_format($transaction->amount ?? 0, 0, ',', '.') }}</p>
-                                </div>
-                            </div>
-
-                            {{-- Dynamic Fields Container --}}
-                            <div class="bg-slate-50/80 rounded-xl p-4 border border-slate-100 space-y-3">
-                                @if($transaction->isRembush() && $transaction->category)
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs text-slate-500">Kategori</span>
-                                        <span class="text-xs font-semibold text-slate-700">{{ $transaction->category_label }}</span>
-                                    </div>
-                                @endif
-
-                                @if($transaction->isPengajuan())
-                                    @if($transaction->vendor)
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs text-slate-500">Vendor</span>
-                                            <span class="text-xs font-semibold text-slate-700">{{ $transaction->vendor }}</span>
-                                        </div>
-                                    @endif
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs text-slate-500">Jumlah</span>
-                                        <span class="text-xs font-semibold text-slate-700">{{ $transaction->quantity ?? 1 }} {{ $transaction->unit ?? 'pcs' }}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs text-slate-500">Estimasi Harga</span>
-                                        <span class="text-xs font-semibold text-slate-700">Rp {{ number_format($transaction->estimated_price ?? 0, 0, ',', '.') }}</span>
-                                    </div>
-                                    @if($transaction->category)
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs text-slate-500">Alasan</span>
-                                            <span class="text-xs font-semibold text-slate-700">{{ $transaction->category_label }}</span>
-                                        </div>
-                                    @endif
-                                @endif
-
-                                <div class="flex justify-between items-center pt-2 border-t border-slate-200/60 mt-2">
-                                    <span class="text-xs text-slate-500">Tanggal</span>
-                                    <span class="text-xs font-semibold text-slate-700">{{ $transaction->date ? $transaction->date->format('d M Y') : '-' }}</span>
-                                </div>
-
-                                @if($transaction->description)
-                                    <div class="pt-2">
-                                        <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Keterangan</span>
-                                        <p class="text-xs text-slate-600 bg-white p-2 rounded border border-slate-100 leading-relaxed">{{ $transaction->description }}</p>
-                                    </div>
-                                @endif
-                            </div>
-
-                            @if($transaction->branches->count() > 0)
-                                <div class="pt-2">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Distribusi Cabang</p>
-                                    <div class="space-y-2">
-                                        @foreach($transaction->branches as $branch)
-                                            <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                                                <span class="text-xs text-slate-600 font-medium">{{ $branch->name }}</span>
-                                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{{ $branch->pivot->allocation_percent }}%</span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    {{-- Action Button --}}
-                    <a href="{{ route('transactions.create') }}"
-                        class="group w-full relative overflow-hidden bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20 text-sm active:scale-[0.98]">
-                        <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                        <i data-lucide="plus" class="w-4 h-4 transition-transform group-hover:rotate-90"></i> 
-                        Input Nota Lagi
-                    </a>
-                </div>
-            </div>
-            
-            {{-- Footer Text --}}
-            <p class="text-center text-slate-400 text-xs mt-6 font-medium">
-                &copy; {{ date('Y') }} Finance System. Secure & Encrypted.
-            </p>
-        </div>
-    </div>
-@endsection
-
-@push('styles')
 <style>
-    /* Custom Animation for Shimmer Effect */
-    @keyframes shimmer {
+    @keyframes scaleIn {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.1);
+        }
         100% {
-            transform: translateX(100%);
+            transform: scale(1);
+            opacity: 1;
         }
     }
-    /* Blob Animation */
-    @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0px, 0px) scale(1); }
+
+    @keyframes checkmark {
+        0% {
+            stroke-dashoffset: 100;
+        }
+        100% {
+            stroke-dashoffset: 0;
+        }
     }
-    .animate-blob {
-        animation: blob 7s infinite;
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
-    .animation-delay-2000 {
-        animation-delay: 2s;
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
     }
-    .animation-delay-4000 {
-        animation-delay: 4s;
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .success-icon {
+        animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .checkmark-path {
+        stroke-dasharray: 100;
+        stroke-dashoffset: 100;
+        animation: checkmark 0.6s 0.3s ease-out forwards;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.8s ease-out forwards;
+    }
+
+    .slide-in-right {
+        animation: slideInRight 0.5s ease-out forwards;
+    }
+
+    .detail-item {
+        opacity: 0;
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    .detail-item:nth-child(1) { animation-delay: 0.6s; }
+    .detail-item:nth-child(2) { animation-delay: 0.65s; }
+    .detail-item:nth-child(3) { animation-delay: 0.7s; }
+    .detail-item:nth-child(4) { animation-delay: 0.75s; }
+    .detail-item:nth-child(5) { animation-delay: 0.8s; }
+    .detail-item:nth-child(6) { animation-delay: 0.85s; }
+    .detail-item:nth-child(7) { animation-delay: 0.9s; }
+    .detail-item:nth-child(8) { animation-delay: 0.95s; }
+    .detail-item:nth-child(9) { animation-delay: 1s; }
+
+    .button-1 {
+        opacity: 0;
+        animation: fadeInUp 0.6s 1.1s ease-out forwards;
+    }
+
+    .button-2 {
+        opacity: 0;
+        animation: fadeInUp 0.6s 1.2s ease-out forwards;
     }
 </style>
-@endpush
 
-@push('scripts')
-@endpush
+<div class="min-h-[80vh] flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl overflow-hidden p-8 flex flex-col items-center">
+        
+        <!-- Success Icon with Animation -->
+        <div class="w-24 h-24 mb-6 flex items-center justify-center success-icon">
+            <div class="w-20 h-20 bg-[#10b981] rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path class="checkmark-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Title with Animation -->
+        <h1 class="text-2xl font-extrabold text-[#1e293b] mb-3 fade-in-up" style="animation-delay: 0.3s; opacity: 0;">
+            {{ $transaction->isPengajuan() ? 'Pengajuan' : 'Reimbursement' }} Berhasil!
+        </h1>
+        
+        <!-- Description with Animation -->
+        <p class="text-slate-500 text-sm text-center mb-8 px-4 leading-relaxed fade-in-up" style="animation-delay: 0.4s; opacity: 0;">
+            @if($transaction->isPengajuan())
+                Terima kasih, dokumen pengajuan dana Anda telah kami terima dan akan segera diproses.
+            @else
+                Bukti nota/struk reimbursement Anda telah berhasil disubmit. Kami akan melakukan verifikasi secepatnya.
+            @endif
+        </p>
+
+        <!-- Transaction Details Box with Animation -->
+        <div class="w-full bg-[#f8fafc] rounded-3xl p-6 mb-6 fade-in-up" style="animation-delay: 0.5s; opacity: 0;">
+            <div class="space-y-3">
+                <!-- Invoice Ref -->
+                <div class="detail-item">
+                    <div class="flex justify-between items-center py-2.5">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">NO. INVOICE / REF</span>
+                        <span class="text-sm font-bold text-[#1e293b]">{{ $transaction->invoice_number }}</span>
+                    </div>
+                </div>
+                <div class="detail-item border-b border-slate-200"></div>
+
+                <!-- Jenis Transaksi -->
+                <div class="detail-item">
+                    <div class="flex justify-between items-center py-2.5">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">JENIS TRANSAKSI</span>
+                        @if($transaction->isPengajuan())
+                            <span class="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg transition-all hover:bg-blue-100">Pengajuan</span>
+                        @else
+                            <span class="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg transition-all hover:bg-purple-100">Reimbursement</span>
+                        @endif
+                    </div>
+                </div>
+                <div class="detail-item border-b border-slate-200"></div>
+
+                <!-- Kategori -->
+                <div class="detail-item">
+                    <div class="flex justify-between items-center py-2.5">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">KATEGORI</span>
+                        <span class="text-sm font-semibold text-[#1e293b]">{{ $transaction->category_label }}</span>
+                    </div>
+                </div>
+                <div class="detail-item border-b border-slate-200"></div>
+
+                <!-- Tanggal -->
+                <div class="detail-item">
+                    <div class="flex justify-between items-center py-2.5">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">TANGGAL</span>
+                        <span class="text-sm font-semibold text-[#1e293b]">{{ $transaction->date ? $transaction->date->isoFormat('DD MMMM Y') : '-' }}</span>
+                    </div>
+                </div>
+                <div class="detail-item border-b border-slate-200"></div>
+
+                <!-- Total Nominal -->
+                <div class="detail-item">
+                    <div class="flex justify-between items-center py-2.5">
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">TOTAL NOMINAL</span>
+                        <span class="text-lg font-extrabold text-[#10b981]">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons with Animation -->
+        <div class="w-full space-y-3">
+            <a href="{{ route('transactions.index') }}" 
+               class="button-1 w-full h-14 bg-[#10b981] hover:bg-[#059669] text-white rounded-2xl font-bold transition-all duration-300 flex items-center justify-center shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98]">
+                Lihat Status Transaksi
+            </a>
+            <a href="{{ route('transactions.create') }}" 
+               class="button-2 w-full h-14 bg-white hover:bg-slate-50 text-[#1e293b] border-2 border-slate-200 rounded-2xl font-bold transition-all duration-300 flex items-center justify-center hover:border-slate-300 hover:scale-[1.02] active:scale-[0.98]">
+                Kembali ke Beranda
+            </a>
+        </div>
+
+    </div>
+</div>
+@endsection

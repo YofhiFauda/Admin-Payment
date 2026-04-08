@@ -151,6 +151,7 @@ class PengajuanController extends Controller
                 'customer'        => $items[0]['customer'] ?? 'Multiple Items',
                 'vendor'          => $items[0]['vendor'] ?? null,
                 'link'            => $items[0]['link'] ?? null,
+                'category'        => $items[0]['category'] ?? null,
                 'description'     => $request->global_notes,
                 'amount'          => $totalAmount,
                 'items'           => $items,
