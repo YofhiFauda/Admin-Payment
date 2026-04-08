@@ -35,7 +35,7 @@ class TransactionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
+        $query = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches'])->latest();
 
         // Teknisi hanya melihat transaksi sendiri
         if (Auth::user()->isTeknisi()) {
@@ -169,13 +169,22 @@ class TransactionController extends Controller
 
     public function detailJson($id)
     {
-        $t = Transaction::with(['submitter', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator', 'payer'])->findOrFail($id);
+        $t = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator', 'payer'])->findOrFail($id);
 
-        $paymentAt = null;
-        if ($t->konfirmasi_at) {
-            $paymentAt = $t->konfirmasi_at->format('d M Y H:i');
-        } elseif ($t->isCompleted() && $t->status === 'completed') {
+        $paymentAt = ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->format('d M Y H:i') : null;
+        if (!$paymentAt && $t->isCompleted() && $t->status === 'completed') {
             $paymentAt = $t->updated_at->format('d M Y H:i');
+        }
+
+        $submitterData = null;
+        if ($t->submitter) {
+            $primaryAccount = $t->submitter->bankAccounts->first();
+            $submitterData = [
+                'name'           => $t->submitter->name,
+                'rekening_bank'  => $primaryAccount ? $primaryAccount->bank_name : ($t->submitter->rekening_bank ?? '-'),
+                'rekening_nama'  => $primaryAccount ? $primaryAccount->account_name : ($t->submitter->rekening_nama ?? '-'),
+                'rekening_nomor' => $primaryAccount ? $primaryAccount->account_number : ($t->submitter->rekening_nomor ?? '-'),
+            ];
         }
 
         return response()->json([
@@ -192,6 +201,9 @@ class TransactionController extends Controller
             'payment_method_label' => $t->payment_method ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method) : null,
             'amount'          => $t->amount,
             'formatted_amount'=> $t->formatted_amount,
+            'expected_total'  => $t->expected_total,
+            'actual_total'    => $t->actual_total,
+            'selisih'         => $t->selisih,
             'items'           => $t->normalized_items,
             'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
             'status'          => $t->status,
@@ -205,7 +217,7 @@ class TransactionController extends Controller
             'upload_id'       => $t->upload_id,
             'file_path'       => $t->file_path,
             'image_url'       => $t->file_path ? route('transactions.image', $t->id) : null,
-            'submitter'       => $t->submitter ? ['name' => $t->submitter->name] : null,
+            'submitter'       => $submitterData,
             'reviewer'        => $t->reviewer ? ['name' => $t->reviewer->name] : null,
             'reviewed_at'     => $t->reviewed_at ? $t->reviewed_at->format('d M Y H:i') : null,
             'rejection_reason'=> $t->rejection_reason,
@@ -271,11 +283,14 @@ class TransactionController extends Controller
                 ];
             }),
             // ✅ Payment History (Riwayat Pembayaran) fields
-            'payment_at'         => $t->paid_at ? $t->paid_at->format('d M Y H:i') : $paymentAt,
+            'payment_at'         => ($t->paid_at instanceof \Carbon\Carbon) ? $t->paid_at->format('d M Y H:i') : null,
             'paid_by_name'       => $t->payer ? $t->payer->name : ($t->reviewer ? $t->reviewer->name : 'Finance'),
+            'paid_by_role'       => $t->payer ? ucfirst($t->payer->role) : ($t->reviewer ? ucfirst($t->reviewer->role) : 'Admin'),
             'recipient_name'     => $t->submitter ? $t->submitter->name : '-',
+            'recipient_role'     => $t->submitter ? ucfirst($t->submitter->role) : 'Teknisi',
             'konfirmasi_by_name' => $t->konfirmator ? $t->konfirmator->name : null,
-            'konfirmasi_at'      => $t->konfirmasi_at ? $t->konfirmasi_at->format('d M Y H:i') : null,
+            'konfirmasi_by_role' => ($t->konfirmator && $t->konfirmator->role) ? ucfirst($t->konfirmator->role) : 'Teknisi',
+            'konfirmasi_at'      => ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->format('d M Y H:i') : null,
             'payment_proof_url'  => ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path) ? asset('storage/' . ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path)) : null,
             'payment_type'       => $t->bukti_transfer ? 'Transfer' : ($t->foto_penyerahan ? 'Tunai' : ($t->invoice_file_path ? 'Invoice' : null)),
             'is_paid'            => (bool)($t->status === 'completed' || $t->status === 'approved' || $t->bukti_transfer || $t->foto_penyerahan || $t->invoice_file_path),
@@ -881,7 +896,7 @@ class TransactionController extends Controller
 
     public function getAllForSearch(Request $request)
     {
-        $query = Transaction::with(['submitter', 'reviewer', 'branches'])->latest();
+        $query = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches'])->latest();
 
         // Teknisi hanya melihat transaksi sendiri
         if (Auth::user()->isTeknisi()) {

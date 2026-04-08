@@ -293,70 +293,86 @@
                     </div>
 
                     <!-- Riwayat Pembayaran (Payment History) -->
-                    <div id="v-payment-history-wrap" class="hidden mt-6 pt-6 border-t-2 border-dashed border-slate-100 bg-slate-50/50 -mx-6 px-6 pb-6 rounded-b-3xl">
-                        <div class="flex items-center gap-2 mb-4">
-                            <div class="p-1.5 bg-teal-100 rounded-lg text-teal-600">
-                                <i data-lucide="receipt-text" class="w-4 h-4"></i>
-                            </div>
-                            <h4 class="text-sm font-black text-slate-800 uppercase tracking-tight">Riwayat Pembayaran</h4>
-                        </div>
+                    <div id="v-payment-history-wrap" class="hidden mt-6 pt-6 border-t border-slate-100 bg-white">
+                        <h4 class="text-lg font-black text-slate-800 mb-6">Riwayat Pembayaran</h4>
 
-                        <div class="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                            <!-- Step 1: Penyerahan Dana -->
-                            <div class="relative pl-8">
-                                <div class="absolute left-0 top-0 w-6 h-6 bg-teal-100 rounded-full border-4 border-white flex items-center justify-center text-teal-600 shadow-sm">
-                                    <i data-lucide="hand-coins" class="w-2.5 h-2.5"></i>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 1: Penyerahan Dana</span>
-                                    <p class="text-xs text-slate-600 leading-relaxed">
-                                        Dana <span id="v-payment-method-badge" class="font-bold text-teal-600"></span> 
-                                        diserahkan oleh <strong id="v-paid-by" class="text-slate-800"></strong> 
-                                        kepada <strong id="v-recipient" class="text-slate-800"></strong>
-                                    </p>
-                                    <div class="mt-2 flex items-center gap-3">
-                                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
-                                            <i data-lucide="calendar" class="w-3 h-3"></i>
-                                            <span id="v-payment-at"></span>
+                        <!-- Main Card Container -->
+                        <div class="bg-slate-100 border border-slate-100 rounded-3xl shadow-sm p-5 sm:p-6">
+                            <div class="space-y-10 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+                                
+                                <!-- Step 1: Penyerahan / Upload -->
+                                <div class="relative pl-8">
+                                    <div class="absolute left-0 top-1.5 w-3.5 h-3.5 bg-blue-600 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(37,99,235,0.2)]"></div>
+                                    
+                                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                                        <div class="space-y-1.5">
+                                            <h5 id="v-pay-step1-title" class="text-xs font-black text-slate-800 uppercase tracking-widest">BUKTI TRANSFER DIUNGGAH</h5>
+                                            
+                                            <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-500 rounded-full w-fit border border-slate-100">
+                                                <i data-lucide="calendar" class="w-3 h-3"></i>
+                                                <span id="v-pay-step1-at" class="text-[10px] font-black uppercase tracking-tight"></span>
+                                            </div>
+                                            
+                                            <p class="text-xs text-slate-400 font-medium">
+                                                Oleh: <span id="v-pay-step1-by" class="font-bold text-slate-600"></span> 
+                                                <span class="mx-1 opacity-50">•</span> 
+                                                Role: <span id="v-pay-step1-role" class="font-bold text-slate-600"></span>
+                                            </p>
                                         </div>
-                                        <button type="button" id="btn-view-payment-proof" class="flex items-center gap-1.5 text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-1 rounded-lg border border-teal-100 hover:bg-teal-100 transition-all">
-                                            <i data-lucide="image" class="w-3 h-3"></i>
-                                            LIHAT BUKTI
-                                        </button>
+
+                                        <!-- Action Button Step 1 -->
+                                        <div id="v-pay-step1-action-wrap"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Penerimaan -->
+                                <div class="relative pl-8" id="v-pay-step2-wrap">
+                                    <div class="absolute left-0 top-1.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(16,185,129,0.2)]"></div>
+                                    
+                                    <div class="space-y-1.5">
+                                        <h5 class="text-xs font-black text-slate-800 uppercase tracking-widest">PEMBAYARAN DITERIMA</h5>
+                                        
+                                        <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-500 rounded-full w-fit border border-slate-100">
+                                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                                            <span id="v-pay-step2-at" class="text-[10px] font-black uppercase tracking-tight"></span>
+                                        </div>
+                                        
+                                        <p class="text-xs text-slate-400 font-medium">
+                                            Oleh: <span id="v-pay-step2-by" class="font-bold text-slate-600"></span> 
+                                            <span class="mx-1 opacity-50">•</span> 
+                                            Role: <span id="v-pay-step2-role" class="font-bold text-slate-600"></span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Step 2: Konfirmasi Penerimaan (Hanya untuk Cash) -->
-                            <div id="v-receipt-step" class="relative pl-8 hidden">
-                                <div class="absolute left-0 top-0 w-6 h-6 bg-indigo-100 rounded-full border-4 border-white flex items-center justify-center text-indigo-600 shadow-sm">
-                                    <i data-lucide="user-check" class="w-2.5 h-2.5"></i>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 2: Konfirmasi Penerimaan</span>
-                                    <p class="text-xs text-slate-600 leading-relaxed">
-                                        Diterima & dikonfirmasi oleh 
-                                        <strong id="v-confirmed-by" class="text-slate-800"></strong>
-                                    </p>
-                                    <div class="mt-2">
-                                        <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
-                                            <i data-lucide="calendar" class="w-3 h-3"></i>
-                                            <span id="v-confirmed-at"></span>
+                            <!-- Black Summary Box -->
+                            <div class="mt-8 bg-[#0F172A] rounded-2xl p-6 text-white relative overflow-hidden group shadow-xl">
+                                <!-- Subtle Grid Background -->
+                                <div class="absolute inset-0  pointer-events-none" style="background-image: radial-gradient(#000000 1px, #000000  1px); background-size: 20px 20px;"></div>
+                                
+                                <div class="relative z-10 space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="space-y-1">
+                                            <span class="block text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">TOTAL DIBAYARKAN</span>
+                                            <div id="v-pay-summary-amount" class="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tighter"></div>
+                                            <div id="v-pay-summary-discrepancy" class="text-[10px] font-bold mt-1 px-2 py-0.5 rounded-lg hidden uppercase tracking-wider"></div>
+                                        </div>
+                                        <div id="v-pay-method-wrap" class="space-y-1 md:text-right hidden">
+                                            <span class="block text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">METODE PENCAIRAN</span>
+                                            <div id="v-pay-summary-method" class="text-lg font-black text-white tracking-tight uppercase"></div>
+                                            <div id="v-pay-summary-account" class="text-[10px] font-bold text-slate-400 mt-1 leading-relaxed"></div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <!-- Step 2: Konfirmasi AI (Untuk Transfer) -->
-                            <div id="v-verified-step" class="relative pl-8 hidden">
-                                <div class="absolute left-0 top-0 w-6 h-6 bg-blue-100 rounded-full border-4 border-white flex items-center justify-center text-blue-600 shadow-sm">
-                                    <i data-lucide="bot" class="w-2.5 h-2.5"></i>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Step 2: Verifikasi Sistem</span>
-                                    <p class="text-xs text-slate-600 leading-relaxed font-bold italic">
-                                        Otomatis diverifikasi & divalidasi oleh AI
-                                    </p>
+                                    <div class="pt-6 border-t border-slate-800 flex items-center gap-2">
+                                        <div class="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+                                        </div>
+                                        <p class="text-[10px] font-bold text-slate-400 tracking-wide">
+                                            Otomatis diverifikasi & divalidasi oleh <span class="text-white">AI</span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2688,41 +2704,130 @@
 
         // ✅ Riwayat Pembayaran (Payment History)
         const payHistWrap = document.getElementById('v-payment-history-wrap');
-        const receiptStep = document.getElementById('v-receipt-step');
-        const verifiedStep = document.getElementById('v-verified-step');
-
-        if (window._modalVersionData?.d?.is_paid) {
+        
+        if (window._modalVersionData?.d?.is_paid && window._modalVersionData?.d?.type === 'rembush') {
             const hist = window._modalVersionData.d;
             payHistWrap.classList.remove('hidden');
-            document.getElementById('v-payment-method-badge').textContent = hist.payment_type || 'Pembayaran';
-            document.getElementById('v-payment-at').textContent = hist.payment_at || '-';
-            document.getElementById('v-paid-by').textContent = hist.paid_by_name || '-';
-            document.getElementById('v-recipient').textContent = hist.recipient_name || '-';
 
-            // Show/Hide Steps based on method
-            if (hist.payment_type === 'Tunai') {
-                receiptStep.classList.remove('hidden');
-                verifiedStep.classList.add('hidden');
-                document.getElementById('v-confirmed-by').textContent = hist.konfirmasi_by_name || 'Menunggu Konfirmasi...';
-                document.getElementById('v-confirmed-at').textContent = hist.konfirmasi_at || '-';
-            } else if (hist.payment_type === 'Transfer') {
-                receiptStep.classList.add('hidden');
-                verifiedStep.classList.remove('hidden');
+            // Set Step 1 Info
+            const step1Title = document.getElementById('v-pay-step1-title');
+            if (hist.payment_type === 'Transfer') {
+                step1Title.textContent = 'BUKTI TRANSFER DIUNGGAH';
+            } else if (hist.payment_type === 'Tunai') {
+                step1Title.textContent = 'PEMBAYARAN TUNAI DISERAHKAN';
             } else {
-                receiptStep.classList.add('hidden');
-                verifiedStep.classList.add('hidden');
+                step1Title.textContent = 'PEMBAYARAN DIPROSES';
             }
 
-            // Proof display
-            const btnProof = document.getElementById('btn-view-payment-proof');
-            if (hist.payment_proof_url) {
-                btnProof.classList.remove('hidden');
-                btnProof.onclick = () => openImageViewer(hist.payment_proof_url, 'Bukti Pembayaran');
+            document.getElementById('v-pay-step1-at').textContent = hist.payment_at || '-';
+            document.getElementById('v-pay-step1-by').textContent = hist.paid_by_name || 'System';
+            document.getElementById('v-pay-step1-role').textContent = hist.paid_by_role || 'Admin';
+
+            // Action Button Step 1 (Lihat Bukti or Selesai Badge)
+            const actionWrap1 = document.getElementById('v-pay-step1-action-wrap');
+            if (hist.payment_type === 'Transfer' && hist.payment_proof_url) {
+                actionWrap1.innerHTML = `
+                    <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Pembayaran')" 
+                        class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        LIHAT BUKTI
+                    </button>
+                `;
+            } else if (hist.payment_type === 'Tunai' && hist.payment_proof_url) {
+                actionWrap1.innerHTML = `
+                    <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Penyerahan')" 
+                        class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        LIHAT BUKTI
+                    </button>
+                `;
+            } else if (hist.payment_type === 'Tunai') {
+                actionWrap1.innerHTML = `
+                    <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-100 uppercase tracking-widest">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-slate-400"></i>
+                        Selesai
+                    </div>
+                `;
             } else {
-                btnProof.classList.add('hidden');
+                actionWrap1.innerHTML = '';
             }
-            
-            // Re-init lucide icons for the new section
+
+            // Set Step 2 Info (Penerimaan)
+            const step2Wrap = document.getElementById('v-pay-step2-wrap');
+            if (hist.status === 'completed' || hist.konfirmasi_at) {
+                step2Wrap.classList.remove('hidden');
+                document.getElementById('v-pay-step2-at').textContent = hist.konfirmasi_at || hist.payment_at || '-';
+                document.getElementById('v-pay-step2-by').textContent = hist.konfirmasi_by_name || hist.recipient_name || '-';
+                document.getElementById('v-pay-step2-role').textContent = hist.konfirmasi_by_role || hist.recipient_role || 'Teknisi';
+            } else {
+                step2Wrap.classList.add('hidden');
+            }
+
+            // Summary Box
+            const summaryMethod = document.getElementById('v-pay-summary-method');
+            const summaryAccount = document.getElementById('v-pay-summary-account');
+            const methodWrap = document.getElementById('v-pay-method-wrap');
+
+            if (hist.payment_method && methodWrap) {
+                methodWrap.classList.remove('hidden');
+                
+                let methodLabel = hist.payment_method_label || hist.payment_method;
+                let accountInfo = '';
+
+                if (hist.payment_method === 'transfer_teknisi') {
+                    methodLabel = 'Transfer ke Teknisi';
+                    if (hist.submitter) {
+                        const bank = hist.submitter.rekening_bank || '-';
+                        const name = hist.submitter.rekening_nama || '-';
+                        const number = hist.submitter.rekening_nomor || '-';
+                        accountInfo = `${bank} • ${name}<br>${number}`;
+                    }
+                } else if (hist.payment_method === 'transfer_penjual') {
+                    methodLabel = 'Transfer ke Penjual';
+                    if (hist.specs) {
+                        const bank = hist.specs.bank_name || '-';
+                        const name = hist.specs.account_name || '-';
+                        const number = hist.specs.account_number || '-';
+                        accountInfo = `${bank} • ${name}<br>${number}`;
+                    }
+                } else if (hist.payment_method === 'cash') {
+                    methodLabel = 'Tunai (Cash)';
+                }
+
+                if (summaryMethod) summaryMethod.innerHTML = methodLabel;
+                if (summaryAccount) summaryAccount.innerHTML = accountInfo || (hist.payment_type || '-');
+            } else if (methodWrap) {
+                methodWrap.classList.add('hidden');
+            }
+
+            const summaryAmount = document.getElementById('v-pay-summary-amount');
+            const summaryDiscrepancy = document.getElementById('v-pay-summary-discrepancy');
+
+            // Set main amount (use actual_total if exists, else fallback to amount)
+            const finalAmount = hist.actual_total || hist.amount || 0;
+            summaryAmount.textContent = 'Rp ' + Number(finalAmount).toLocaleString('id-ID');
+
+            // Set Discrepancy (Selisih)
+            if (summaryDiscrepancy) {
+                const selisih = Number(hist.selisih || 0);
+                if (selisih !== 0) {
+                    summaryDiscrepancy.classList.remove('hidden');
+                    const absSelisih = Math.abs(selisih).toLocaleString('id-ID');
+                    if (selisih > 0) {
+                        // Surplus (Hemat/Saved) - Green
+                        summaryDiscrepancy.innerHTML = `<i data-lucide="trending-down" class="w-2.5 h-2.5 inline mr-1"></i>Hemat Rp ${absSelisih}`;
+                        summaryDiscrepancy.className = "text-[10px] font-bold mt-1 px-2 py-0.5 rounded-lg uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                    } else {
+                        // Deficit (Overspent) - Red
+                        summaryDiscrepancy.innerHTML = `<i data-lucide="trending-up" class="w-2.5 h-2.5 inline mr-1"></i>Lebih Rp ${absSelisih}`;
+                        summaryDiscrepancy.className = "text-[10px] font-bold mt-1 px-2 py-0.5 rounded-lg uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                    }
+                } else {
+                    summaryDiscrepancy.classList.add('hidden');
+                }
+            }
+
+            // Re-init lucide icons
             if (typeof lucide !== 'undefined') lucide.createIcons({ root: payHistWrap });
         } else {
             if (payHistWrap) payHistWrap.classList.add('hidden');

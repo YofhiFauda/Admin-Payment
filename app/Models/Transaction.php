@@ -174,6 +174,7 @@ class Transaction extends Model
             'edited_at' => 'datetime',
             'revision_count' => 'integer',
             'paid_at' => 'datetime',
+            'konfirmasi_at' => 'datetime',
             // ✅ Multi Sumber Dana
             'sumber_dana_data' => 'array',
         ];
@@ -437,9 +438,9 @@ class Transaction extends Model
             'submitter' => $this->submitted_by ? [
                 'id' => $this->submitter->id,
                 'name' => $this->submitter->name,
-                'rekening_bank' => $this->submitter->rekening_bank,
-                'rekening_nomor' => $this->submitter->rekening_nomor,
-                'rekening_nama' => $this->submitter->rekening_nama,
+                'rekening_bank'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->bank_name : ($this->submitter->rekening_bank ?? '-'),
+                'rekening_nomor' => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_number : ($this->submitter->rekening_nomor ?? '-'),
+                'rekening_nama'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_name : ($this->submitter->rekening_nama ?? '-'),
             ] : null,
             'branches' => $this->branches->map(function($b) {
                 return $b->name;

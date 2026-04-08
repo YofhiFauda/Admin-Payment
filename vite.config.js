@@ -11,7 +11,8 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
-        host: '127.0.0.1',
+        host: '0.0.0.0', // Allow any host
+        cors: true,      // Enable CORS
         hmr: {
             host: '127.0.0.1',
         },
