@@ -452,10 +452,7 @@ HTML;
             $accountNumber = $latestBank->account_number;
             $rekening = "{$bankName} - {$accountNumber}";
         } else {
-            // Fallback ke kolom legacy pada tabel User jika bank account belum ada (backward compatibility)
-            $rekeningBank  = $teknisi->rekening_bank ?? '';
-            $rekeningNomor = $teknisi->rekening_nomor ?? '';
-            $rekening      = "{$rekeningBank} - {$rekeningNomor}";
+            $rekening = "-";
         }
 
         if (trim($rekening) === "-") {

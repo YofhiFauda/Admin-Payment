@@ -24,76 +24,6 @@ class Transaction extends Model
         'transfer_penjual' => 'Transfer ke Penjual',
     ];
 
-    /**
-     * Old purchase_reason key → label map for backward compatibility.
-     * Used by the Accessor to normalize old JSON items that still have 'purchase_reason' key.
-     */
-    private const LEGACY_PURCHASE_REASON_MAP = [
-        'persediaan'          => 'Persediaan',
-        'peralatan'           => 'Peralatan',
-        'perlengkapan'        => 'Perlengkapan',
-        'cadangan'            => 'Cadangan',
-        'kebutuhan_rutin'     => 'Kebutuhan Rutin',
-        'perawatan'           => 'Perawatan',
-        'ekspansi'            => 'Ekspansi',
-        'perbaikan'           => 'Mengganti Barang Rusak/Perbaikan',
-        'upgrade'             => 'Upgrade',
-        'inventaris'          => 'Inventaris',
-        'marketing'           => 'Marketing',
-        'perizinan'           => 'Perizinan',
-        'kelengkapan_teknisi' => 'Kelengkapan Teknisi/Penunjang Teknisi',
-        'linsensi'            => 'Lisensi',
-        'optimalisasi_sistem' => 'Optimalisasi Sistem',
-        'vendor'              => 'Vendor',
-        'efisien_kerja'       => 'Meningkatkan Efisien Kerja (AI)',
-        'lainnya'             => 'Lainnya',
-    ];
-
-    /**
-     * Old rembush category key → label map for backward compatibility.
-     */
-    private const LEGACY_CATEGORY_MAP = [
-        'biaya_marketing'                    => 'Biaya Marketing',
-        'beban_entertain'                    => 'Beban Entertain',
-        'beban_komisi'                       => 'Beban Komisi',
-        'beban_bensin_parkir_tol_kendaraan'  => 'Beban Bensin, Parkir, Tol Kendaraan',
-        'beban_gaji_upah_honorar'            => 'Beban Gaji, Upah & Honorar',
-        'beban_pertemuan'                    => 'Beban Pertemuan',
-        'beban_konsumsi'                     => 'Beban Konsumsi',
-        'beban_listrik'                      => 'Beban Listrik',
-        'beban_perlengkapan_kantor'          => 'Beban Perlengkapan Kantor',
-        'beban_perawatan_dan_perbaikan'      => 'Beban Perawatan dan Perbaikan',
-        'beban_repeter'                      => 'Beban Repeter',
-        'beban_lain_lain'                    => 'Beban Lain-lain',
-        'beban_ai'                           => 'Beban AI',
-        'beban_administrasi_bank'            => 'Beban Administrasi Bank',
-        'beban_ekspedisi_pos_materai'        => 'Beban Ekspedisi, Pos & Materai',
-        'beban_sewa'                         => 'Beban Sewa',
-        'beban_tagihan_bpjs_ketenagakerjaan' => 'Beban Tagihan BPJS Ketenagakerjaan',
-        'beban_pembayaran_bpjs_kesehatan'    => 'Beban Pembayaran BPJS Kesehatan',
-        'beban_seragam_karyawan'             => 'Beban Seragam Karyawan',
-        'beban_promosi_iklan'                => 'Beban Promosi/Iklan',
-        'beban_kebersihan_dan_keamanan'      => 'Beban Kebersihan dan Keamanan',
-        'beban_konsultan'                    => 'Beban Konsultan',
-        'pph_final'                          => 'PPH Final',
-        'pph_21'                             => 'PPH 21',
-        'beban_sumbangan_amal'               => 'Beban Sumbangan / Amal',
-        'beban_telekomunikasi'               => 'Beban Telekomunikasi',
-        'pembelian_internet'                 => 'Pembelian Internet',
-        'peralatan'                          => 'Peralatan',
-        'persediaan'                         => 'Persediaan',
-        'piutang_usaha'                      => 'Piutang Usaha',
-        'piutang_karyawan'                   => 'Piutang Karyawan',
-        'prive'                              => 'Prive',
-        'diskon_penjualan'                   => 'Diskon Penjualan',
-        'kendaraan'                          => 'Kendaraan',
-        'retur_penjualan'                    => 'Retur Penjualan',
-        'utang_usaha'                        => 'Utang Usaha',
-        'perlengkapan'                       => 'Perlengkapan',
-        'beban_operasional_lainnya'          => 'Beban Operasional Lainnya',
-        'beban_vendor'                       => 'Beban Vendor',
-        'bagi_hasil'                         => 'Bagi Hasil',
-    ];
 
     protected $fillable = [
         'type',
@@ -138,6 +68,8 @@ class Transaction extends Model
         'field_confidence',
         // Invoice Payment fields
         'invoice_file_path',
+        'tax_amount',
+        'discount_amount',
         'diskon_pengiriman',
         'ongkir',
         'biaya_layanan_1',
@@ -237,9 +169,6 @@ class Transaction extends Model
                         'id'              => null,
                         'name'            => '[Akun Dihapus]',
                         'telegram_chat_id'=> null,
-                        'rekening_bank'   => null,
-                        'rekening_nomor'  => null,
-                        'rekening_nama'   => null,
                     ]);
     }
 
@@ -376,21 +305,7 @@ class Transaction extends Model
             $category = $this->items[0]['category'];
         }
 
-        if (!$category) {
-            return '-';
-        }
-
-        // If it looks like a label already (contains space or capital), return as-is
-        if (str_contains($category, ' ') || preg_match('/[A-Z]/', $category)) {
-            return $category;
-        }
-
-        // Legacy snake_case key → resolve from map
-        if ($this->type === 'pengajuan') {
-            return self::LEGACY_PURCHASE_REASON_MAP[$category] ?? $category;
-        }
-
-        return self::LEGACY_CATEGORY_MAP[$category] ?? $category;
+        return TransactionCategory::resolveLabel($category, $this->type);
     }
 
     /**
@@ -409,8 +324,7 @@ class Transaction extends Model
         return array_map(function (array $item) {
             // Normalize: if item has 'purchase_reason' key (old format), convert to 'category'
             if (isset($item['purchase_reason']) && !isset($item['category'])) {
-                $key = $item['purchase_reason'];
-                $item['category'] = self::LEGACY_PURCHASE_REASON_MAP[$key] ?? $key;
+                $item['category'] = TransactionCategory::resolveLabel($item['purchase_reason'], $this->type);
                 unset($item['purchase_reason']);
             }
             return $item;
@@ -446,9 +360,9 @@ class Transaction extends Model
             'submitter' => $this->submitted_by ? [
                 'id' => $this->submitter->id,
                 'name' => $this->submitter->name,
-                'rekening_bank'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->bank_name : ($this->submitter->rekening_bank ?? '-'),
-                'rekening_nomor' => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_number : ($this->submitter->rekening_nomor ?? '-'),
-                'rekening_nama'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_name : ($this->submitter->rekening_nama ?? '-'),
+                'rekening_bank'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->bank_name : '-',
+                'rekening_nomor' => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_number : '-',
+                'rekening_nama'  => $this->submitter->relationLoaded('bankAccounts') && $this->submitter->bankAccounts->first() ? $this->submitter->bankAccounts->first()->account_name : '-',
             ] : null,
             'branches' => $this->branches->map(function($b) {
                 return $b->name;

@@ -85,7 +85,21 @@ class TransactionController extends Controller
         // Category filter
         if ($category = $request->input('category')) {
             if ($category !== 'all') {
-                $query->where('category', $category);
+                $query->where(function ($q) use ($category) {
+                    $q->where('category', $category);
+                    
+                    // Also match legacy code if this is a known category name
+                    $cat = TransactionCategory::where('name', $category)->first();
+                    if ($cat && $cat->code) {
+                        $q->orWhere('category', $cat->code);
+                    }
+                    
+                    // Backward compatibility for old Pengajuan column
+                    $q->orWhere('purchase_reason', $category);
+                    if ($cat && $cat->code) {
+                        $q->orWhere('purchase_reason', $cat->code);
+                    }
+                });
             }
         }
 
@@ -181,9 +195,9 @@ class TransactionController extends Controller
             $primaryAccount = $t->submitter->bankAccounts->first();
             $submitterData = [
                 'name'           => $t->submitter->name,
-                'rekening_bank'  => $primaryAccount ? $primaryAccount->bank_name : ($t->submitter->rekening_bank ?? '-'),
-                'rekening_nama'  => $primaryAccount ? $primaryAccount->account_name : ($t->submitter->rekening_nama ?? '-'),
-                'rekening_nomor' => $primaryAccount ? $primaryAccount->account_number : ($t->submitter->rekening_nomor ?? '-'),
+                'rekening_bank'  => $primaryAccount ? $primaryAccount->bank_name : '-',
+                'rekening_nomor' => $primaryAccount ? $primaryAccount->account_number : '-',
+                'rekening_nama'  => $primaryAccount ? $primaryAccount->account_name : '-',
             ];
         }
 
@@ -923,6 +937,13 @@ class TransactionController extends Controller
                 $query->where(function($q) use ($category) {
                     $q->where('category', $category)
                       ->orWhere('purchase_reason', $category);
+                    
+                    // Also match legacy code if this is a known category name
+                    $cat = \App\Models\TransactionCategory::where('name', $category)->first();
+                    if ($cat && $cat->code) {
+                        $q->orWhere('category', $cat->code)
+                          ->orWhere('purchase_reason', $cat->code);
+                    }
                 });
             }
         }

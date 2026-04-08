@@ -17,7 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['teknisi', 'admin', 'atasan', 'owner'])->default('teknisi');
+            $table->enum('role', ['teknisi', 'admin', 'atasan', 'owner'])->default('teknisi')->index();
+            
+            // Notifications
+            $table->string('telegram_chat_id')->nullable()->index();
+
             $table->rememberToken();
             $table->timestamps();
         });

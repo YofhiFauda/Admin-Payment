@@ -11,6 +11,7 @@ class TransactionCategory extends Model
     protected $fillable = [
         'name',
         'type',
+        'code',
         'sort_order',
         'is_active',
     ];
@@ -37,6 +38,28 @@ class TransactionCategory extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Resolve a category label from a code or name.
+     */
+    public static function resolveLabel(?string $category, string $type): string
+    {
+        if (!$category) {
+            return '-';
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember("transaction_category_label:{$category}:{$type}", 3600, function() use ($category, $type) {
+            // Match by code (legacy keys) or name (labels)
+            $cat = self::where('type', $type)
+                ->where(function($q) use ($category) {
+                    $q->where('code', $category)
+                      ->orWhere('name', $category);
+                })
+                ->first();
+            
+            return $cat ? $cat->name : $category;
+        });
     }
 
     // ─── Type Constants ────────────────────────────────

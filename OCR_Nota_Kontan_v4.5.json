@@ -61,7 +61,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -240,7 +240,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -509,7 +509,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -547,7 +547,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -684,7 +684,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://colleagues-liberal-author-retain.trycloudflare.com/api/pembayaran/update-status",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/pembayaran/update-status",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -831,7 +831,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://colleagues-liberal-author-retain.trycloudflare.com/api/v1/payment/cash/konfirmasi",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/v1/payment/cash/konfirmasi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1156,7 +1156,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://colleagues-liberal-author-retain.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1190,7 +1190,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://colleagues-liberal-author-retain.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1224,7 +1224,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://colleagues-liberal-author-retain.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/pembayaran/update-status?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1650,7 +1650,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1716,7 +1716,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://albums-meaningful-limiting-refinance.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
+        "url": "=https://property-hist-taxation-capture.trycloudflare.com/api/ai/auto-fill?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1749,7 +1749,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://albums-meaningful-limiting-refinance.trycloudflare.com/api/payment/verify",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/payment/verify",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1782,7 +1782,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://albums-meaningful-limiting-refinance.trycloudflare.com/api/v1/payment/cash/konfirmasi",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/v1/payment/cash/konfirmasi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1815,7 +1815,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://albums-meaningful-limiting-refinance.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1848,7 +1848,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://albums-meaningful-limiting-refinance.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1881,7 +1881,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://albums-meaningful-limiting-refinance.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
+        "url": "https://property-hist-taxation-capture.trycloudflare.com/api/payment/verify?upload_id={{ $json.upload_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
