@@ -491,8 +491,8 @@ class OcrNotaController extends Controller
             ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
             ->firstOrFail();
 
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi
-        if (!$transaction->submitter || !$transaction->submitter->telegram_chat_id) {
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Gudang/Internal)
+        if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
             return response()->json([
                 'success' => false,
                 'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan akun Telegram. Pembayaran CASH tidak dapat diproses sampai teknisi mendaftar via bot.',
@@ -511,9 +511,11 @@ class OcrNotaController extends Controller
             ? $request->file($fileInput)->store('payments/cash', 'public') 
             : null;
 
+        $isGudang = $transaction->type === 'gudang';
+
         $transaction->update([
             'foto_penyerahan' => $path,
-            'status'          => 'pending_technician',
+            'status'          => $isGudang ? 'completed' : 'pending_technician',
             'paid_by'         => auth()->id(),
             'paid_at'         => now(),
             'description'     => $request->catatan,
@@ -544,21 +546,22 @@ class OcrNotaController extends Controller
 
         // ═══════════════════════════════════════════════════════════
         //  🔔 TELEGRAM #1: KIRIM NOTIFIKASI CASH KE TEKNISI
-        //  Teknisi akan dapat pesan di Telegram dengan tombol:
-        //  [✅ Terima] [❌ Laporkan Masalah]
+        //  (Lewati untuk Gudang/Internal)
         // ═══════════════════════════════════════════════════════════
-        try {
-            $this->telegram->notifyPaymentCash($transaction);
-            
-            Log::channel('ai_autofill')->info('✅ [TELEGRAM] Cash notification sent', [
-                'transaction_id' => $transaction->id,
-                'teknisi_id'     => $transaction->submitter?->id,
-            ]);
-        } catch (\Exception $e) {
-            Log::channel('ai_autofill')->error('❌ [TELEGRAM] Failed to send cash notification', [
-                'transaction_id' => $transaction->id,
-                'error'          => $e->getMessage(),
-            ]);
+        if ($transaction->type !== 'gudang') {
+            try {
+                $this->telegram->notifyPaymentCash($transaction);
+                
+                Log::channel('ai_autofill')->info('✅ [TELEGRAM] Cash notification sent', [
+                    'transaction_id' => $transaction->id,
+                    'teknisi_id'     => $transaction->submitter?->id,
+                ]);
+            } catch (\Exception $e) {
+                Log::channel('ai_autofill')->error('❌ [TELEGRAM] Failed to send cash notification', [
+                    'transaction_id' => $transaction->id,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
         }
 
         // // n8n webhook (optional - jika masih ada workflow lama)
@@ -603,12 +606,12 @@ class OcrNotaController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
+            'message'       => $isGudang ? 'Bukti penyerahan diterima. Transaksi Selesai.' : 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
             'upload_id'     => $transaction->upload_id,
             'transaksi_id'  => $transaction->id,
             'pembayaran_id' => $transaction->id,
-            'status'        => 'pending_technician',
-            'status_label'  => 'Menunggu Konfirmasi Teknisi',
+            'status'        => $isGudang ? 'completed' : 'pending_technician',
+            'status_label'  => $isGudang ? 'Selesai' : 'Menunggu Konfirmasi Teknisi',
         ], 202);
     }
 
@@ -732,8 +735,8 @@ class OcrNotaController extends Controller
             ->with('submitter')
             ->firstOrFail();
 
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Wajib untuk notifikasi pembayaran lunas)
-        if (!$transaction->submitter || !$transaction->submitter->telegram_chat_id) {
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Gudang/Internal)
+        if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
             return response()->json([
                 'success' => false,
                 'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan Telegram. Bukti transfer tidak dapat diproses sampai teknisi mendaftar via bot.',
@@ -786,9 +789,11 @@ class OcrNotaController extends Controller
 
         $expectedTotal = $request->expected_nominal + ($request->kode_unik ?? 0) + ($request->biaya_admin ?? 0);
 
+        $isGudang = $transaction->type === 'gudang';
+
         $transaction->update([
             'bukti_transfer' => $path,
-            'status'         => 'Sedang Diverifikasi AI',
+            'status'         => $isGudang ? 'completed' : 'Sedang Diverifikasi AI',
             'expected_total' => $expectedTotal,
             'paid_by'        => auth()->id(),
             'paid_at'        => now(),
@@ -811,75 +816,73 @@ class OcrNotaController extends Controller
         ]);
 
         // ═══════════════════════════════════════════════════════════
-        //  🔔 TELEGRAM #3: n8n OCR bukti transfer → callback Laravel
-        //  PaymentVerificationController akan handle:
-        //  - IF MATCH → notifyPaymentComplete() ke teknisi
-        //  - IF FLAGGED → notifyFlaggedTransaction() ke SEMUA owner
+        //  🔔 TELEGRAM #3: n8n OCR bukti transfer (Lewati untuk Gudang)
         // ═══════════════════════════════════════════════════════════
+        if (!$isGudang) {
+            $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
+            if ($n8nUrl) {
+                try {
+                    /** @var \Illuminate\Filesystem\FilesystemAdapter $storage */
+                    $storage  = Storage::disk('public');
+                    $fileContents = $storage->get($path);
+                    $fileName     = basename($path);
+                    $mimeType     = $storage->mimeType($path) ?: 'image/jpeg';
 
-        $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
-        if ($n8nUrl) {
-            try {
-                /** @var \Illuminate\Filesystem\FilesystemAdapter $storage */
-                $storage  = Storage::disk('public');
-                $fileContents = $storage->get($path);
-                $fileName     = basename($path);
-                $mimeType     = $storage->mimeType($path) ?: 'image/jpeg';
+                    // ⚠️ PENTING: N8N webhook mengharapkan binary file (multipart/form-data),
+                    // bukan JSON body. Gunakan Http::attach() agar gambar terkirim sebagai binary
+                    // sehingga N8N bisa membacanya via $input.first().binary.
+                    $response = Http::timeout(60)
+                        ->attach('data', $fileContents, $fileName, ['Content-Type' => $mimeType])
+                        ->post("{$n8nUrl}/webhook/payment/transfer/upload", [
+                            'upload_id'        => $request->upload_id,
+                            'transaksi_id'     => $transaction->id,
+                            'expected_nominal' => $request->expected_nominal,
+                            'kode_unik'        => $request->kode_unik ?? 0,
+                            'biaya_admin'      => $request->biaya_admin ?? 0,
+                            'rekening_tujuan'  => $request->rekening_tujuan,
+                            'nama_bank_tujuan' => $request->nama_bank_tujuan,
+                            'secret'           => config('services.n8n.secret'),
+                            'callback_url'     => url('/api/payment/verify'),
+                        ]);
 
-                // ⚠️ PENTING: N8N webhook mengharapkan binary file (multipart/form-data),
-                // bukan JSON body. Gunakan Http::attach() agar gambar terkirim sebagai binary
-                // sehingga N8N bisa membacanya via $input.first().binary.
-                $response = Http::timeout(60)
-                    ->attach('data', $fileContents, $fileName, ['Content-Type' => $mimeType])
-                    ->post("{$n8nUrl}/webhook/payment/transfer/upload", [
-                        'upload_id'        => $request->upload_id,
-                        'transaksi_id'     => $transaction->id,
-                        'expected_nominal' => $request->expected_nominal,
-                        'kode_unik'        => $request->kode_unik ?? 0,
-                        'biaya_admin'      => $request->biaya_admin ?? 0,
-                        'rekening_tujuan'  => $request->rekening_tujuan,
-                        'nama_bank_tujuan' => $request->nama_bank_tujuan,
-                        'secret'           => config('services.n8n.secret'),
-                        'callback_url'     => url('/api/payment/verify'),
+                    if ($response->successful()) {
+                        Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [
+                            'step'            => 'transfer_n8n_trigger',
+                            'upload_id'       => $request->upload_id,
+                            'webhook_url'     => "{$n8nUrl}/webhook/payment/transfer/upload",
+                            'response_status' => $response->status(),
+                            'file_sent'       => $fileName,
+                        ]);
+                    } else {
+                        Log::channel('ai_autofill')->warning('⚠️ [UPLOAD TRANSFER] N8N WEBHOOK FAILED', [
+                            'step'            => 'transfer_n8n_error',
+                            'upload_id'       => $request->upload_id,
+                            'response_status' => $response->status(),
+                            'response_body'   => $response->body(),
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] N8N WEBHOOK EXCEPTION', [
+                        'step'      => 'transfer_n8n_exception',
+                        'upload_id' => $request->upload_id,
+                        'error'     => $e->getMessage(),
                     ]);
 
-                if ($response->successful()) {
-                    Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [
-                        'step'            => 'transfer_n8n_trigger',
-                        'upload_id'       => $request->upload_id,
-                        'webhook_url'     => "{$n8nUrl}/webhook/payment/transfer/upload",
-                        'response_status' => $response->status(),
-                        'file_sent'       => $fileName,
-                    ]);
-                } else {
-                    Log::channel('ai_autofill')->warning('⚠️ [UPLOAD TRANSFER] N8N WEBHOOK FAILED', [
-                        'step'            => 'transfer_n8n_error',
-                        'upload_id'       => $request->upload_id,
-                        'response_status' => $response->status(),
-                        'response_body'   => $response->body(),
+                    $transaction->update([
+                        'status' => 'flagged',
                     ]);
                 }
-            } catch (\Exception $e) {
-                Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] N8N WEBHOOK EXCEPTION', [
-                    'step'      => 'transfer_n8n_exception',
-                    'upload_id' => $request->upload_id,
-                    'error'     => $e->getMessage(),
-                ]);
-
-                $transaction->update([
-                    'status' => 'flagged',
-                ]);
             }
         }
 
         return response()->json([
             'success'        => true,
-            'message'        => 'Bukti transfer diterima. AI sedang memverifikasi nominal.',
+            'message'        => $isGudang ? 'Bukti transfer diterima. Transaksi Selesai.' : 'Bukti transfer diterima. AI sedang memverifikasi nominal.',
             'upload_id'      => $transaction->upload_id,
             'transaksi_id'   => $transaction->id,
             'pembayaran_id'  => $transaction->id,
             'expected_total' => $expectedTotal,
-            'status'         => 'Sedang Diverifikasi AI',
+            'status'         => $isGudang ? 'completed' : 'Sedang Diverifikasi AI',
             'detail'         => [
                 'nominal'     => (float) $request->expected_nominal,
                 'kode_unik'   => (float) ($request->kode_unik ?? 0),

@@ -118,11 +118,14 @@ class DashboardController extends Controller
             ];
         }
 
-        // 2c. Rembush vs Pengajuan (bulan ini, all statuses)
+        // 2c. Perbandingan Tipe Transaksi (bulan ini, all statuses)
         $rembushTotal = (clone $thisMonth())->where('type', 'rembush')
             ->whereIn('status', ['approved', 'completed'])->get()
             ->sum(fn($t) => $t->effective_amount);
         $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')
+            ->whereIn('status', ['approved', 'completed'])->get()
+            ->sum(fn($t) => $t->effective_amount);
+        $gudangTotal = (clone $thisMonth())->where('type', 'gudang')
             ->whereIn('status', ['approved', 'completed'])->get()
             ->sum(fn($t) => $t->effective_amount);
 
@@ -274,6 +277,7 @@ class DashboardController extends Controller
             'trendDatasets',
             'rembushTotal',
             'pengajuanTotal',
+            'gudangTotal',
             'byBranch',
             // Tables
             'pendingTransactions',

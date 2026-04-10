@@ -58,6 +58,16 @@ class TransactionCategory extends Model
                 })
                 ->first();
             
+            // Fallback for Gudang: if not found under 'gudang' type, try 'rembush'
+            if (!$cat && $type === self::TYPE_GUDANG) {
+                $cat = self::where('type', self::TYPE_REMBUSH)
+                    ->where(function($q) use ($category) {
+                        $q->where('code', $category)
+                          ->orWhere('name', $category);
+                    })
+                    ->first();
+            }
+            
             return $cat ? $cat->name : $category;
         });
     }
@@ -65,4 +75,5 @@ class TransactionCategory extends Model
     // ─── Type Constants ────────────────────────────────
     const TYPE_REMBUSH   = 'rembush';
     const TYPE_PENGAJUAN = 'pengajuan';
+    const TYPE_GUDANG    = 'gudang';
 }

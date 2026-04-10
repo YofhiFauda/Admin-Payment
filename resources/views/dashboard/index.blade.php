@@ -172,15 +172,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const rvpCtx = document.getElementById('chartRvP');
     const rembushVal = {{ $rembushTotal }};
     const pengajuanVal = {{ $pengajuanTotal }};
+    const gudangVal = {{ $gudangTotal }};
 
-    if (rvpCtx && (rembushVal + pengajuanVal) > 0) {
+    if (rvpCtx && (rembushVal + pengajuanVal + gudangVal) > 0) {
         new Chart(rvpCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Rembush', 'Pengajuan'],
+                labels: ['Rembush', 'Pengajuan', 'Gudang'],
                 datasets: [{
-                    data: [rembushVal, pengajuanVal],
-                    backgroundColor: ['#6366f1', '#ec4899'],
+                    data: [rembushVal, pengajuanVal, gudangVal],
+                    backgroundColor: ['#6366f1', '#ec4899', '#f59e0b'],
                     borderWidth: 2,
                     borderColor: '#fff',
                     hoverOffset: 6
@@ -767,7 +768,7 @@ async function loadAllHutangAmounts() {
                     <i data-lucide="donut" class="w-4 h-4 text-pink-600"></i>
                 </div>
             </div>
-            @if($rembushTotal + $pengajuanTotal > 0)
+            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
                 <div class="flex flex-col sm:flex-row items-center gap-6">
                     <div class="relative w-full sm:w-auto" style="height:220px; min-width:220px;">
                         <canvas id="chartRvP"></canvas>
@@ -780,9 +781,9 @@ async function loadAllHutangAmounts() {
                                 <p class="text-xs font-semibold text-slate-500">Rembush</p>
                                 <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($rembushTotal) }}</p>
                             </div>
-                            @if($rembushTotal + $pengajuanTotal > 0)
+                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
                             <span class="text-xs font-bold text-indigo-600">
-                                {{ round($rembushTotal / ($rembushTotal + $pengajuanTotal) * 100, 1) }}%
+                                {{ round($rembushTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
                             </span>
                             @endif
                         </div>
@@ -793,9 +794,22 @@ async function loadAllHutangAmounts() {
                                 <p class="text-xs font-semibold text-slate-500">Pengajuan</p>
                                 <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($pengajuanTotal) }}</p>
                             </div>
-                            @if($rembushTotal + $pengajuanTotal > 0)
+                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
                             <span class="text-xs font-bold text-pink-600">
-                                {{ round($pengajuanTotal / ($rembushTotal + $pengajuanTotal) * 100, 1) }}%
+                                {{ round($pengajuanTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
+                            </span>
+                            @endif
+                        </div>
+                        {{-- Gudang --}}
+                        <div class="flex items-center gap-3 p-3 rounded-xl bg-amber-50">
+                            <span class="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0"></span>
+                            <div class="flex-1">
+                                <p class="text-xs font-semibold text-slate-500">Gudang</p>
+                                <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($gudangTotal) }}</p>
+                            </div>
+                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
+                            <span class="text-xs font-bold text-amber-600">
+                                {{ round($gudangTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
                             </span>
                             @endif
                         </div>

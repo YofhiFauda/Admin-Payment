@@ -14,6 +14,7 @@ use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\Api\V1\OcrNotaController;
 use App\Http\Controllers\OtherExpenditureController;
 use App\Http\Controllers\SalaryController;
+use App\Http\Controllers\GudangController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -92,6 +93,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/pengajuan/form', [PengajuanController::class, 'showForm'])->name('pengajuan.form');
         Route::post('/pengajuan/upload', [PengajuanController::class, 'uploadPhoto'])->name('pengajuan.upload');
         Route::post('/pengajuan/store', [PengajuanController::class, 'store'])->name('pengajuan.store');
+
+        // Gudang flow: loading → form → store (no OCR)
+        Route::get('/gudang/loading', [GudangController::class, 'loading'])->name('gudang.loading');
+        Route::get('/gudang/form', [GudangController::class, 'create'])->name('gudang.form');
+        Route::post('/gudang/store', [GudangController::class, 'store'])->name('gudang.store');
     });
 
     // ── Status Management, Edit & Delete (admin, atasan, owner) ──

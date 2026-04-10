@@ -28,6 +28,7 @@
 |---|---|
 | **Rembush (Reimbursement)** | Flow otomatis: Upload nota → 4-Layer Security (Duplikat, Tanggal, AI, Payment Verification) → Auto-fill data → Submit. |
 | **Pengajuan Pembelian** | Sistem **Dual-Version** (Teknisi vs Management). Mendukung perbandingan versi, snapshot items, dan alokasi cabang manual. |
+| **Gudang (Warehouse)** | Modul internal untuk pencatatan belanja gudang. Alur cepat: Tanpa OCR/Telegram, status langsung `completed` setelah bukti upload. |
 | **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API dengan parameter confidence. |
 | **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete (jika disetujui Admin), ≥ Rp 1.000.000 perlu approval Owner. |
 | **Dual-Version System** | Melacak perubahan data antara input asli Teknisi dan hasil revisi Management untuk audit trail yang transparan. |
@@ -115,6 +116,12 @@ graph TD
 2. **Management Review**: Owner/Atasan dapat merevisi item/nominal. Sistem menandai `is_edited_by_management = true`.
 3. **Transparency**: Semua user dapat melihat perbandingan antara "Versi Pengaju" dan "Versi Management" melalui toggle di modal detail.
 4. **Finalization**: Setelah disetujui dan dibayar, status berubah menjadi `completed` dan **pengeditan dikunci total** untuk semua role.
+
+### 3. Gudang (Internal Flow)
+1. **Input**: Staff internal (Admin/Owner) input belanja gudang.
+2. **Review Management**: Persetujuan oleh Management. Status menjadi `pending` -> `waiting_payment`.
+3. **Payment**: Upload bukti bayar (Tanpa OCR).
+4. **Finalization**: Status langsung menjadi `completed` tanpa perlu konfirmasi Telegram teknisi.
 
 ---
 
@@ -284,6 +291,7 @@ Admin-Payment/
 │   │   │   ├── AuthController.php             # Login / Logout
 │   │   │   ├── BranchController.php           # CRUD Cabang
 │   │   │   ├── DashboardController.php        # Dashboard & analytics
+│   │   │   ├── GudangController.php           # Alur belanja gudang (internal)
 │   │   │   ├── NotificationController.php     # Notifikasi
 │   │   │   ├── PengajuanController.php        # Alur pengajuan
 │   │   │   ├── RembushController.php          # Alur rembush + OCR
@@ -318,7 +326,7 @@ Admin-Payment/
 │       ├── dashboard/                         # Dashboard & analytics
 │       ├── layouts/                           # Layout utama
 │       ├── notifications/                     # Halaman notifikasi
-│       ├── transactions/                      # Halaman transaksi (8 views)
+│       ├── transactions/                      # Halaman transaksi (8 views + gudang-form)
 │       └── users/                             # Manajemen pengguna
 ├── routes/
 │   ├── api.php                                # API routes (OCR callback)
@@ -340,7 +348,7 @@ Terdapat 4 peran pengguna dengan hak akses hierarkis:
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Teknisi** | ❌ | ✅ | ❌ | ❌ | ❌ |
 | **Admin** | ✅ | ✅ | ✅ (Read-only) | ✅ (< 1 Jt) | ✅ |
-| **Atasan** | ✅ | ❌ | ✅ (Full Edit) | ✅ (< 1 Jt) | ✅ |
+| **Atasan** | ✅ | ✅ (Gudang/PR) | ✅ (Full Edit) | ✅ (< 1 Jt) | ✅ |
 | **Owner** | ✅ | ✅ | ✅ (Full Edit) | ✅ (Semua) | ✅ |
 
 ### Detail Akses Khusus
@@ -499,6 +507,8 @@ Dalam dokumentasi API, Anda akan menemukan beberapa endpoint yang ditandai sebag
 | `GET` | `/pengajuan/form` | `PengajuanController@showForm` | Teknisi, Admin, Owner |
 | `POST` | `/pengajuan/upload` | `PengajuanController@uploadPhoto` | Teknisi, Admin, Owner |
 | `POST` | `/pengajuan/store` | `PengajuanController@store` | Teknisi, Admin, Owner |
+| `GET` | `/gudang/form` | `GudangController@showForm` | Admin, Owner |
+| `POST` | `/gudang/store` | `GudangController@store` | Admin, Owner |
 | `GET` | `/transactions/{id}/edit` | `TransactionController@edit` | Admin, Atasan, Owner |
 | `PUT` | `/transactions/{id}` | `TransactionController@update` | Admin, Atasan, Owner |
 | `PATCH` | `/transactions/{id}/status` | `TransactionController@updateStatus` | Admin, Atasan, Owner |
@@ -579,7 +589,7 @@ users
 └── created_at, updated_at
 
 transactions
-├── id, type (rembush/pengajuan)
+├── id, type (rembush/pengajuan/gudang)
 ├── invoice_number, upload_id, trace_id
 ├── customer, category, description
 ├── amount, payment_method, items (JSON)

@@ -3,7 +3,7 @@
 This file provides essential technical context for Gemini CLI when working on the **WHUSNET Admin Payment** project.
 
 ## 🎯 Project Overview
-An internal financial management system for **WHUSNET** to manage reimbursements (Rembush), purchase requests (Pengajuan), miscellaneous expenditures, and salaries. It features automated **OCR data extraction** (Gemini AI), multi-level approval workflows, and real-time monitoring.
+An internal financial management system for **WHUSNET** to manage reimbursements (Rembush), purchase requests (Pengajuan), Warehouse purchases (Gudang), miscellaneous expenditures, and salaries. It features automated **OCR data extraction** (Gemini AI), multi-level approval workflows, and real-time monitoring.
 
 ### Key Capabilities:
 - **OCR Workflow:** Uses n8n + Google Gemini Pro for 3-layer security (Duplicate detection, Date logic, AI extraction). Supports complex invoices with shipping, service fees, and discounts.
@@ -13,6 +13,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
     - **Branch Debt:** Automatic tracking of inter-branch borrowing when one branch pays for another's needs (`BranchDebt` model).
     - **Filtering:** Real-time client-side multi-branch filtering via `SearchEngine`.
 - **Payment History:** Detailed tracking of payment events (transfer/cash), payment proofs, and multi-step verification (Step 1: Payer → Recipient, Step 2: Confirmation/AI Verification).
+- **Gudang Module:** Internal warehouse purchase recording. Optimized for speed: Bypasses mandatory Telegram registration for submitters and skips AI verification (OCR) for payment proofs.
 - **Financial Modules:**
     - **Other Expenditures:** Prefix `PL-` (Payable, Receivable, Prive).
     - **Salary Records:** Prefix `GP-` (Automated calculation of base pay, bonuses, and deductions).
@@ -44,8 +45,9 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 ### Directory Highlights
 - `app/Services/`: `IdGeneratorService` (Redis-based atomic IDs), OCR processing.
 - `app/Models/`: 
-    - `Transaction`: Core logic for Rembush/Pengajuan & Versioning.
+    - `Transaction`: Core logic for Rembush/Pengajuan/Gudang & Versioning.
     - `BranchDebt`: Tracks inter-unit financial obligations.
+    - `GudangController`: Handles internal warehouse expenditure flow.
     - `OtherExpenditure` & `SalaryRecord`: Extended financial modules.
 - `resources/js/`: Contains `SearchEngine` logic for real-time list filtering.
 - `routes/api.php`: Webhook endpoints (n8n, Telegram) protected by `n8n.secret`.
@@ -61,6 +63,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 2. **Layer 2:** Date validation (Auto-reject old notas).
 3. **Layer 3:** AI Extraction (Gemini via n8n).
 4. **Layer 4:** Payment verification (Nominal comparison for transfers).
+*Note: Gudang transactions bypass Layer 3 and mandatory Telegram checks for operational speed.*
 
 ---
 

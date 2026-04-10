@@ -453,6 +453,12 @@
                     <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
                 </a>
 
+                <a href="{{ route('gudang.loading') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('gudang.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="package" class="w-4 h-4"></i> Input Gudang
+                </a>
+
                 {{-- ▼ Input Pengeluaran Lain (dropdown) - admin, atasan, owner --}}
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 @php

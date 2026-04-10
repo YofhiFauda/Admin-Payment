@@ -633,6 +633,12 @@ class TransactionController extends Controller
                         $newStatus = 'waiting_payment';
                     }
                 }
+            } elseif ($transaction->isGudang()) {
+                // GUDANG LOGIC
+                // Approval moves to 'waiting_payment' (Pembelanjaan Belum di bayar)
+                if ($newStatus === 'approved') {
+                    $newStatus = 'waiting_payment';
+                }
             } else {
                 // REMBUSH LOGIC
                 // Admin/Atasan approving a pending transaction → 'waiting_payment'

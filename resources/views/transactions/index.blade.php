@@ -84,6 +84,11 @@
                     {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
                     <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Pengajuan
                 </a>
+                <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
+                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
+                    {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
+                    <i data-lucide="package" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Gudang
+                </a>
             </div>
         </div>
 
@@ -1239,7 +1244,7 @@
 
         function updateStats() {
             // Update status tab counts
-            const statuses = ['all', 'pending', 'approved', 'completed', 'rejected'];
+            const statuses = ['all', 'pending', 'approved', 'completed', 'rejected', 'waiting_payment', 'flagged', 'auto-reject'];
             statuses.forEach(status => {
                 const count = status === 'all' 
                     ? filteredTransactions.length 
@@ -1297,11 +1302,11 @@
                 'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
             };
             const statusLabel = {
-                pending:   'Pending',
+                pending:   t.type === 'gudang' ? 'Review Management' : 'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
-                waiting_payment: 'Menunggu Pembayaran',
+                waiting_payment: t.type === 'gudang' ? 'Pembelanjaan Belum di bayar' : 'Menunggu Pembayaran',
                 flagged:   'Flagged (Selisih)',
                 'auto-reject': 'Auto Reject (AI)',
                 'Menunggu Konfirmasi Teknisi': 'Menunggu Konfirmasi',
@@ -1324,7 +1329,7 @@
                             </div>
                             <div>
                                 <div class="font-bold text-gray-900">${t.submitter_name || '-'}</div>
-                                ${!t.submitter_has_telegram ? `
+                                ${!t.submitter_has_telegram && t.type !== 'gudang' ? `
                                     <div class="flex items-center gap-1 mt-0.5">
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
                                             <i data-lucide="bell-off" class="w-2.5 h-2.5 mr-0.5"></i> Telegram Belum Terdaftar
@@ -1343,7 +1348,10 @@
                     <td class="px-5 py-4">
                         ${t.type === 'pengajuan' 
                             ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100"><i data-lucide="shopping-bag" class="w-3 h-3"></i> Pengajuan</span>'
-                            : '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100"><i data-lucide="receipt" class="w-3 h-3"></i> Rembush</span>'}
+                            : (t.type === 'gudang'
+                                ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-600 border-amber-100"><i data-lucide="package" class="w-3 h-3"></i> Gudang</span>'
+                                : '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100"><i data-lucide="receipt" class="w-3 h-3"></i> Rembush</span>'
+                            )}
                     </td>
                     <td class="px-5 py-4 text-gray-700 font-medium text-xs">
                         ${t.category_label}
@@ -1433,11 +1441,11 @@
                 'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
             };
             const mStatusLabel = {
-                pending:   'Pending',
+                pending:   t.type === 'gudang' ? 'Review' : 'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
-                waiting_payment: 'Menunggu Bayar',
+                waiting_payment: t.type === 'gudang' ? 'Belum Bayar' : 'Menunggu Bayar',
                 flagged:   'Flagged',
                 'auto-reject': 'Auto Reject',
                 'Menunggu Konfirmasi Teknisi': 'Konfirmasi',
@@ -1508,7 +1516,10 @@
                     <div class="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mb-2 pl-10 sm:pl-11">
                         ${t.type === 'pengajuan'
                             ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-teal-600"><i data-lucide="shopping-bag" class="w-2 h-2"></i> Pengajuan</span>'
-                            : '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-600"><i data-lucide="receipt" class="w-2 h-2"></i> Rembush</span>'}
+                            : (t.type === 'gudang'
+                                ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-600"><i data-lucide="package" class="w-2 h-2"></i> Gudang</span>'
+                                : '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-600"><i data-lucide="receipt" class="w-2 h-2"></i> Rembush</span>'
+                            )}
                         <span class="text-slate-300">/</span>
                         <span class="font-medium truncate">${t.category_label}</span>
                         <span class="text-slate-300">/</span>
@@ -2292,21 +2303,34 @@
     function renderViewModal(d) {
         currentTransactionId = d.id;
 
-        document.getElementById('view-modal-title').textContent = d.type === 'pengajuan' ? 'Detail Pengajuan' : 'Detail Reimbursement';
+        const statusColors = {
+            pending:         'bg-amber-50 text-amber-600 border-amber-200',
+            approved:        'bg-blue-50 text-blue-600 border-blue-200',
+            completed:       'bg-green-50 text-green-600 border-green-200',
+            rejected:        'bg-red-50 text-red-600 border-red-200',
+            waiting_payment: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+        };
+        
+        let modalTitle = 'Detail Reimbursement';
+        if (d.type === 'pengajuan') modalTitle = 'Detail Pengajuan';
+        if (d.type === 'gudang') modalTitle = 'Detail Belanja Gudang';
+
+        document.getElementById('view-modal-title').textContent = modalTitle;
         document.getElementById('v-invoice').textContent = d.invoice_number + ' • ' + d.created_at;
 
-        const statusColors = {
-            pending:   'bg-amber-50 text-amber-600 border-amber-200',
-            approved:  'bg-blue-50 text-blue-600 border-blue-200',
-            completed: 'bg-green-50 text-green-600 border-green-200',
-            rejected:  'bg-red-50 text-red-600 border-red-200',
-        };
-        const typeBg      = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100';
-        const statusText  = d.status === 'approved' ? 'Menunggu Approve Owner' : d.status_label;
-        const typeIcon    = d.type === 'pengajuan' ? 'shopping-bag' : 'receipt';
+        let typeBg = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+        let typeIcon = 'receipt';
+
+        if (d.type === 'pengajuan') {
+            typeBg = 'bg-teal-50 text-teal-600 border-teal-100';
+            typeIcon = 'shopping-bag';
+        } else if (d.type === 'gudang') {
+            typeBg = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+            typeIcon = 'package';
+        }
 
         document.getElementById('v-badges').innerHTML = `
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${statusText}</span>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${d.status_label}</span>
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
                 <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
             </span>`;
@@ -2387,16 +2411,57 @@
                 </div>`;
         };
 
-        addField('Pengaju', d.submitter?.name || '-');
-
         if (d.type === 'rembush') {
+            addField('Pengaju', d.submitter?.name || '-');
             addField('Nama Vendor',       d.customer);
             addField('Tanggal Transaksi', d.date);
             addField('Kategori',          d.category_label);
             addField('Metode Pencairan',  d.payment_method_label);
             addField('Keterangan',        d.description, true);
             addField('Total Nominal',     d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
+        } else if (d.type === 'gudang') {
+            addField('Pembeli',           d.submitter?.name || '-');
+            addField('Toko / Vendor',     d.vendor || '-');
+            addField('Tanggal Belanja',   d.date);
+            addField('Kategori',          d.category_label);
+            addField('Metode Bayar',      d.payment_method_label);
+            addField('Keterangan',        d.description, true);
+
+            // Gudang Payment Details (for completed ones)
+            if (d.status === 'completed' && d.invoice_file_url) {
+                let sumberDanaHtml = '';
+                if (d.sumber_dana_data && d.sumber_dana_data.length > 0) {
+                    const branchesLookup = {};
+                    d.branches_raw.forEach(b => branchesLookup[b.id] = b.name);
+                    
+                    sumberDanaHtml = `
+                    <div class="sm:col-span-2 mb-3">
+                        <label class="block text-[9px] font-bold text-teal-600/60 uppercase mb-2 font-black tracking-widest">Sumber Dana Pembayaran</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            ${d.sumber_dana_data.map(sd => `
+                                <div class="bg-teal-50 border border-teal-100 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
+                                    <span class="text-[10px] font-black text-slate-700 uppercase tracking-tight">${branchesLookup[sd.branch_id] || 'Cabang ' + sd.branch_id}</span>
+                                    <span class="text-[11px] font-black text-teal-600">Rp ${Number(sd.amount).toLocaleString('id-ID')}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                fieldsHtml += `
+                    <div class="sm:col-span-2 mt-4 pt-6 border-t border-slate-100">
+                        <label class="block text-[11px] font-black text-emerald-500 uppercase mb-4 tracking-[0.2em]">Detail Pembayaran Gudang</label>
+                        ${sumberDanaHtml}
+                        <div class="mt-4 flex flex-col gap-2">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Bukti Transfer / Cash</label>
+                            <a href="${d.invoice_file_url}" target="_blank" class="inline-flex items-center gap-2.5 px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm active:scale-95 w-fit">
+                                <i data-lucide="image" class="w-4 h-4"></i> Lihat Bukti Bayar
+                            </a>
+                        </div>
+                    </div>`;
+            }
         } else {
+            addField('Pengaju', d.submitter?.name || '-');
             // Untuk pengajuan, selalu tampilkan alasan utama di header jika items tidak ada atau single.
             // Jika multi-item, alasan tiap item ada di card-nya masing-masing.
             // Namun agar konsisten dengan permintaan user, kita tampilkan alasan utama/kategori di header.
@@ -2516,7 +2581,7 @@
         const summaryTotalWrap = document.getElementById('v-summary-total-wrap');
         const summaryTotal = document.getElementById('v-summary-total');
 
-        if (d.type === 'pengajuan') {
+        if (d.type === 'pengajuan' || d.type === 'gudang') {
             summaryWrap.classList.remove('hidden');
 
             if (d.items && d.items.length > 0) {
@@ -2525,15 +2590,23 @@
                     summaryDescWrap.classList.remove('hidden');
                     summaryDescWrap.classList.add('md:col-span-2');
                     summaryTotalWrap.className = 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    if (d.type === 'gudang') {
+                        summaryTotalWrap.className = 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    }
                     summaryDesc.textContent = d.description;
                 } else {
                     summaryDescWrap.classList.add('hidden');
                     summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    if (d.type === 'gudang') {
+                        summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    }
                 }
             } else {
-                // If single item pengajuan (no items array), description isn't used as Keterangan Global based on previous logic
                 summaryDescWrap.classList.add('hidden');
                 summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm text-center items-center';
+                if (d.type === 'gudang') {
+                    summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm text-center items-center';
+                }
             }
             
             summaryTotal.textContent = d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : '-';
@@ -3043,6 +3116,13 @@
             addField('Kategori',          d.category_label);
             addField('Metode Pencairan',  d.payment_method_label);
             addField('Keterangan',        d.description, true);
+        } else if (d.type === 'gudang') {
+            addField('Pembeli',           d.submitter?.name || '-');
+            addField('Toko / Vendor',     d.vendor || '-');
+            addField('Tanggal Belanja',   d.date);
+            addField('Kategori',          d.category_label);
+            addField('Metode Bayar',      d.payment_method_label);
+            addField('Keterangan',        d.description, true);
         } else {
             if (!d.items || d.items.length === 0) {
                 addField('Nama Barang/Jasa',      d.customer, true);
@@ -3425,10 +3505,11 @@
         submitBtnText.textContent = 'Upload & Simpan';
 
         const isPengajuan = transaction.type === 'pengajuan';
+        const isGudang    = transaction.type === 'gudang';
 
         // Check Telegram Registration (Only block for Cash/Transfer that requires tech confirmation)
-        // For Pengajuan Invoice, we don't block because it's processed by management/vendor
-        if (!hasTelegram && !isPengajuan) {
+        // For Pengajuan Invoice and Gudang, we don't block because it's processed by internal/vendor
+        if (!hasTelegram && !isPengajuan && !isGudang) {
             submitBtn.disabled = true;
             submitBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
             submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');

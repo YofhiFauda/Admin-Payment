@@ -14,6 +14,7 @@ graph TD
     
     Type -- Rembush --> OCR_Process[Background OCR Processing]
     Type -- Pengajuan --> Admin_Check[Admin/Atasan Review]
+    Type -- Gudang --> Admin_Check
     
     OCR_Process --> OCR_Result{OCR Result?}
     OCR_Result -- Success/Low Conf --> Admin_Check
@@ -31,10 +32,13 @@ graph TD
     Pay_Method -- Cash --> Cash_Flow[Admin Upload Handover Photo]
     Pay_Method -- Transfer --> Transfer_Flow[Admin Upload Transfer Proof]
     
-    Cash_Flow --> Teknisi_Confirm{Teknisi Confirm?}
-    Teknisi_Confirm -- Yes --> End_Success((Completed))
+    Cash_Flow --> Is_Gudang_Cash{Is Gudang?}
+    Is_Gudang_Cash -- Yes --> End_Success
+    Is_Gudang_Cash -- No --> Teknisi_Confirm{Teknisi Confirm?}
     
-    Transfer_Flow --> Transfer_OCR[AI Transfer Verification]
+    Transfer_Flow --> Is_Gudang_Trf{Is Gudang?}
+    Is_Gudang_Trf -- Yes --> End_Success
+    Is_Gudang_Trf -- No --> Transfer_OCR[AI Transfer Verification]
     Transfer_OCR -- Match --> End_Success
     Transfer_OCR -- Mismatch --> Flagged[Flagged - Manual Review]
     
@@ -199,5 +203,31 @@ flowchart TD
         
         Compare -- Match +/- 1000 --> Match[Callback: MATCH - Selesai]
         Compare -- Mismatch --> Flagged[Callback: MISMATCH - Flagged]
+    end
+```
+
+---
+
+## 6. Gudang Flowchart (Internal Warehouse)
+Simplified flow for internal warehouse expenditures that bypasses external verification requirements.
+
+```mermaid
+graph TD
+    subgraph Submission
+        A[Staff Internal: Admin/Owner] -->|Input| B[Isi Form Belanja Gudang]
+        B -->|Submit| C[Status: Pending]
+    end
+
+    subgraph Approval
+        C -->|Management Review| D{Management Decision}
+        D -- Reject --> E[Status: Rejected]
+        D -- Approve --> F[Status: Waiting Payment]
+    end
+
+    subgraph Payment
+        F -->|Select Method| G{Cash / Transfer}
+        G -->|Upload Proof| H[Process Proof Upload]
+        H -->|Internal Staff Workflow| I[Bypass OCR / Telegram]
+        I -->|Status Update| J[Status: Completed]
     end
 ```
