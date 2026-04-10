@@ -63,10 +63,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ── Dashboard ────────────────────────────────────────────────
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
-    Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
-    Route::get('/dashboard/branch-hutang', [DashboardController::class, 'branchHutangData'])->name('dashboard.branchHutangData');
+    Route::middleware('role:admin,atasan,owner')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
+        Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
+        Route::get('/dashboard/branch-hutang', [DashboardController::class, 'branchHutangData'])->name('dashboard.branchHutangData');
+    });
 
     // ── Shared Transaction Routes (all roles) ──────────────
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');

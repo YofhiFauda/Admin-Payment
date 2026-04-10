@@ -212,9 +212,14 @@ class RembushController extends Controller
  
         $branches = Branch::all();
         $rembushCategories = TransactionCategory::forRembush()->get();
+        
+        $technicians = collect();
+        if (!Auth::user()->isTeknisi()) {
+            $technicians = \App\Models\User::where('role', 'teknisi')->with('bankAccounts')->get();
+        }
 
         return view('transactions.form', compact(
-            'branches', 'base64', 'mime', 'uploadId', 'aiData', 'rembushCategories'
+            'branches', 'base64', 'mime', 'uploadId', 'aiData', 'rembushCategories', 'technicians'
         ));
     }
 
@@ -250,9 +255,12 @@ class RembushController extends Controller
             'bank_name'      => 'nullable|string|max:255',
             'account_name'   => 'nullable|string|max:255',
             'account_number' => 'nullable|numeric|digits_between:5,30',
+            // On behalf of technician (Management only)
+            'technician_id'  => 'nullable|exists:users,id',
+            'technician_bank_account_id' => 'nullable|exists:user_bank_accounts,id',
         ]);
 
-        // Validasi branch allocation
+        // Validasi alokasi cabang
         if ($request->branches && count($request->branches) > 0) {
             $branchIds = collect($request->branches)->pluck('branch_id');
             if ($branchIds->count() !== $branchIds->unique()->count()) {
@@ -260,11 +268,11 @@ class RembushController extends Controller
             }
             $totalPercent = collect($request->branches)->sum('allocation_percent');
             if (abs($totalPercent - 100) > 1) {
-                return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
+                return back()->withErrors(['branches' => 'Total alokasi alokasi harus 100%.'])->withInput();
             }
         }
 
-        // Validate transfer_penjual fields
+        // Validasi transfer_penjual
         if ($request->payment_method === 'transfer_penjual') {
             if (!$request->bank_name || !$request->account_name || !$request->account_number) {
                  return back()->withErrors(['bank_details' => 'Nama Bank, Nama Rekening, dan Nomor Rekening wajib diisi untuk Transfer ke Penjual.'])->withInput();
@@ -278,11 +286,21 @@ class RembushController extends Controller
                 'account_name' => strtoupper($request->account_name),
                 'account_number' => $request->account_number,
             ];
+        } elseif ($request->payment_method === 'transfer_teknisi' && $request->technician_bank_account_id) {
+            // Jika management input atas nama teknisi dan memilih rekening teknisi
+            $bankAcc = \App\Models\UserBankAccount::find($request->technician_bank_account_id);
+            if ($bankAcc) {
+                $specs = [
+                    'bank_name'      => strtoupper($bankAcc->bank_name),
+                    'account_name'   => strtoupper($bankAcc->account_name),
+                    'account_number' => $bankAcc->account_number,
+                    'bank_account_id' => $bankAcc->id,
+                ];
+            }
         }
 
         $uploadId       = session('upload_id') ?? IdGeneratorService::buildUploadId(IdGeneratorService::nextSequence());
         $uploadFilePath = session('upload_file_path');
-        // Derive invoice number from the SAME sequence used for upload_id
         $seq            = session('upload_seq') ?? IdGeneratorService::nextSequence();
         $invoiceNumber  = IdGeneratorService::buildInvoiceNumber($seq);
 
@@ -291,16 +309,10 @@ class RembushController extends Controller
             'step' => '4_store_start',
             'upload_id' => $uploadId,
             'user_id' => Auth::id(),
-            'request_data' => [
-                'customer' => $request->customer,
-                'category' => $request->category,
-                'amount' => $request->amount,
-                'items_count' => is_array($request->items) ? count($request->items) : 0,
-                'branches_count' => is_array($request->branches) ? count($request->branches) : 0,
-            ],
+            'technician_id' => $request->technician_id,
         ]);
 
-                DB::beginTransaction();
+        DB::beginTransaction();
         try {
             $permanentPath = str_replace('temp-uploads/', '', $uploadFilePath);
 
@@ -308,15 +320,14 @@ class RembushController extends Controller
                 $fileContent = Storage::disk('public')->get($uploadFilePath);
                 Storage::disk('public')->put($permanentPath, $fileContent);
                 Storage::disk('public')->delete($uploadFilePath);
-
-                Log::channel('ocr')->info('📁 [OCR FLOW] FILE MOVED TO PERMANENT', [
-                    'step'      => '4_file_move',
-                    'upload_id' => $uploadId,
-                    'from_path' => $uploadFilePath,
-                    'to_path'   => $permanentPath,
-                ]);
             } else {
                 $permanentPath = $uploadFilePath;
+            }
+
+            // Determine submitter (on behalf of technician if provided)
+            $submittedBy = Auth::id();
+            if (Auth::user()->role !== 'teknisi' && $request->technician_id) {
+                $submittedBy = $request->technician_id;
             }
 
             $transaction = Transaction::create([
@@ -335,7 +346,7 @@ class RembushController extends Controller
                 'ai_status'      => $permanentPath ? 'queued' : 'skipped',
                 'upload_id'      => $uploadId,
                 'trace_id'       => Transaction::generateTraceId(),
-                'submitted_by'   => Auth::id(),
+                'submitted_by'   => $submittedBy,
             ]);
 
             Log::channel('ocr')->info('🆕 [OCR FLOW] TRANSACTION CREATED', [

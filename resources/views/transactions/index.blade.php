@@ -3530,8 +3530,19 @@
                                     const opt = document.createElement('option');
                                     opt.value = JSON.stringify(acc);
                                     opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
+                                    
+                                    // Auto-select if matches specs (pre-selected by management)
+                                    if (specs && specs.bank_account_id == acc.id) {
+                                        opt.selected = true;
+                                    }
+                                    
                                     select.appendChild(opt);
                                 });
+
+                                // If an account was auto-selected, trigger the autofill display
+                                if (select.value) {
+                                    autoFillBankAccount(select);
+                                }
                             }
                         });
                 } else {

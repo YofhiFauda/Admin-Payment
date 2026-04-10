@@ -85,7 +85,7 @@
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                                 <div>
-                                    <span class="block text-sm font-black text-slate-800">{{ $user->name }}</span>
+                                    <span class="block text-sm font-bold text-slate-800">{{ $user->name }}</span>
                                     @if($user->id === auth()->id())
                                         <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Anda</span>
                                     @endif
@@ -102,7 +102,7 @@
                                     'teknisi' => 'bg-slate-50 text-slate-700 border-slate-200',
                                 ];
                             @endphp
-                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
                                 {{ $user->role }}
                             </span>
                         </td>

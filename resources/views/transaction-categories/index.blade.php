@@ -198,7 +198,7 @@
 
 {{-- ══ ADD / EDIT MODAL (Glassmorphism Overhaul) ══ --}}
 <div id="category-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-xl hidden items-center justify-center z-50 p-4 transition-all duration-300" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="bg-white rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-md p-8 relative transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+    <div class="bg-white rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-lg p-8 relative transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
         {{-- Close Button --}}
         <button type="button" onclick="closeModal()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all group">
             <i data-lucide="x" class="w-5 h-5 transition-transform group-hover:rotate-90"></i>
@@ -249,10 +249,6 @@
                     <i data-lucide="arrow-right" class="w-4 h-4 transition-transform group-hover:translate-x-1"></i>
                 </button>
             </div>
-        </div>
-
-        <div class="mt-8 pt-6 border-t border-slate-50 flex items-center justify-center">
-            <p class="text-[9px] font-bold text-slate-300 uppercase tracking-[0.3em]">financeops secure internal systems</p>
         </div>
     </div>
 </div>

@@ -255,7 +255,7 @@
                     </label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                         <div class="md:col-span-2">
-                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa</label><span class="text-red-500">*</span></label>
                             <input type="text" name="items[__INDEX__][customer]" required
                                 class="input-customer w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
                                 placeholder="Contoh: Router Mikrotik">
@@ -266,11 +266,13 @@
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
                                 placeholder="Contoh: Toko Komputer Jaya">
                         </div>
+
+                        {{-- Link Barang/Referensi (WAJIB) --}}
                         <div class="md:col-span-2">
-                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi</label>
+                            <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi <span class="text-red-500">*</span></label>
                             <input type="url" name="items[__INDEX__][link]"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                placeholder="https://tokopedia.link/...">
+                                placeholder="https://tokopedia.link/..." required>
                         </div>
                     </div>
                 </div>
@@ -291,7 +293,7 @@
                     
                     {{-- Alasan Pembelian --}}
                     <div>
-                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian / Kategori *</label>
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Alasan Pembelian / Kategori</label><span class="text-red-500">*</span>
                         <div class="relative">
                             <select name="items[__INDEX__][category]" required class="input-reason w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all appearance-none">
                                 <option value="">— Pilih alasan —</option>
@@ -926,6 +928,23 @@
 
             summarySubmit.disabled = !isValid;
         }
+
+        // FIX: Expand collapsed items if they have validation errors to prevent "invalid form control not focusable"
+        document.getElementById('pengajuan-form').addEventListener('invalid', function(e) {
+            const invalidField = e.target;
+            const itemBody = invalidField.closest('.item-body');
+            
+            if (itemBody && itemBody.classList.contains('hidden')) {
+                itemBody.classList.remove('hidden');
+                const card = itemBody.closest('.item-card');
+                if (card) {
+                    const icon = card.querySelector('.icon-collapse');
+                    if (icon) icon.classList.remove('rotate-180');
+                    
+                    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                }
+            }
+        }, true);
 
         document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
             const totalAmount = parseInt(formTotalInput.value) || 0;

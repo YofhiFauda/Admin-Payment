@@ -201,7 +201,7 @@
             <h3 class="!mb-0">Tambah Cabang Baru</h3>
         </div>
         <label class="form-label" for="add-name">Nama Cabang</label>
-        <input type="text" id="add-name" class="form-input" placeholder="Contoh: Cabang Jakarta Timur" autocomplete="off" maxlength="100">
+        <input type="text" id="add-name" class="form-input" placeholder="CONTOH: OLT JETIS" autocomplete="off" maxlength="100" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
         <p class="error-msg" id="add-error"></p>
         <div class="flex gap-3 mt-5">
             <button class="btn-cancel" onclick="closeAddModal()">Batal</button>
@@ -223,7 +223,7 @@
         </div>
         <input type="hidden" id="edit-id">
         <label class="form-label" for="edit-name">Nama Cabang</label>
-        <input type="text" id="edit-name" class="form-input" placeholder="Nama cabang baru" autocomplete="off" maxlength="100">
+        <input type="text" id="edit-name" class="form-input" placeholder="Nama cabang baru" autocomplete="off" maxlength="100" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
         <p class="error-msg" id="edit-error"></p>
         <div class="flex gap-3 mt-5">
             <button class="btn-cancel" onclick="closeEditModal()">Batal</button>
@@ -346,12 +346,6 @@
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     <span>Tambah Rekening</span>
                 </button>
-                <div class="ml-auto flex flex-col justify-end">
-                  <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">FinanceOps Secure Storage</p>
-                  @if(Auth::user()->role !== 'owner')
-                  <p class="text-[10px] font-bold text-rose-400 uppercase tracking-widest text-right mt-1">Read-Only Mode</p>
-                  @endif
-                </div>
             </div>
         </div>
     </div>

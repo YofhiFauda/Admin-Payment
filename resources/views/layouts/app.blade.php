@@ -438,7 +438,7 @@
                 <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 scrollbar-hide">
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 scrollbar-hide text-sm">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"

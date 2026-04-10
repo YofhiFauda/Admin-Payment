@@ -1341,10 +1341,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const warnaInput = card.querySelector('input[name*="[specs][warna]"]');
             if (warnaInput) warnaInput.value = specs.warna || '';
             
-            // Purchase reason
+            // Purchase reason / Category
             const reasonSelect = card.querySelector('.input-reason');
-            if (reasonSelect && data.purchase_reason) {
-                reasonSelect.value = data.purchase_reason;
+            const catValue = data.category || data.purchase_reason;
+            if (reasonSelect && catValue) {
+                reasonSelect.value = catValue;
             }
             
             // Description
@@ -1443,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     else if (fieldName === 'description') selector = '.input-desc';
                     else if (fieldName === 'quantity') selector = '.input-qty';
                     else if (fieldName === 'estimated_price') selector = '.input-price-display';
-                    else if (fieldName === 'purchase_reason') selector = '.input-reason';
+                    else if (fieldName === 'purchase_reason' || fieldName === 'category') selector = '.input-reason';
                     else if (fieldName === 'specs') {
                         // Highlight all spec fields
                         card.querySelectorAll('input[name*="[specs]"]').forEach(inp => {
@@ -1523,6 +1524,23 @@ document.addEventListener('DOMContentLoaded', function () {
         // Auto remove after 3s
         setTimeout(() => tooltip.remove(), 3000);
     }
+
+    // FIX: Expand collapsed items if they have validation errors to prevent "invalid form control not focusable"
+    document.getElementById('pengajuan-form').addEventListener('invalid', function(e) {
+        const invalidField = e.target;
+        const itemBody = invalidField.closest('.item-body');
+        
+        if (itemBody && itemBody.classList.contains('hidden')) {
+            itemBody.classList.remove('hidden');
+            const card = itemBody.closest('.item-card');
+            if (card) {
+                const icon = card.querySelector('.icon-collapse');
+                if (icon) icon.classList.remove('rotate-180');
+                
+                setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+            }
+        }
+    }, true);
 
     document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
         const totalAmount = parseInt(formTotalInput.value) || 0;

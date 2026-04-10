@@ -15,6 +15,12 @@ class DashboardController extends Controller
     public function index()
     {
         $user    = Auth::user();
+
+        // Check if user is technician, they cannot access dashboard
+        if ($user->isTeknisi()) {
+            return redirect()->route('transactions.create');
+        }
+
         $isAdmin = $user->canManageStatus(); // admin, atasan, owner
         $userId  = $user->id;
 

@@ -11,6 +11,9 @@ class CheckRole
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         if (!$request->user() || !in_array($request->user()->role, $roles)) {
+            if ($request->user() && $request->user()->isTeknisi()) {
+                return redirect()->route('transactions.create');
+            }
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 

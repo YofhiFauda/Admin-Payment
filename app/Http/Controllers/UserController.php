@@ -122,7 +122,7 @@ class UserController extends Controller
             'role.in'            => 'Role tidak valid.',
         ]);
 
-        $user->name  = $validated['name'];
+        $user->name  = ucwords(strtolower(trim($validated['name'])));
         $user->email = $validated['email'];
         $user->role  = $validated['role'];
 
