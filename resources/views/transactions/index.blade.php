@@ -800,6 +800,50 @@
 @push('modals')
     {{-- Toast Container --}}
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    {{-- BRANCH DEBT SETTLEMENT MODAL --}}
+    <div id="branch-debt-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-4">
+                    <div class="p-2 bg-red-100 rounded-xl">
+                        <i data-lucide="receipt" class="w-5 h-5 text-red-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Upload Bukti Pembayaran Hutang</h3>
+                        <p class="text-[11px] text-slate-500 font-medium mt-0.5">Antar Cabang</p>
+                    </div>
+                </div>
+                <form id="branch-debt-form" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-2">
+                            Unggah Foto Bukti Transfer/Cash <span class="text-red-500">*</span>
+                        </label>
+                        <input type="file" name="payment_proof" id="branch_debt_file_input" required accept=".jpg,.jpeg,.png,.pdf"
+                            class="w-full border border-red-200 rounded-xl p-2 text-sm outline-none focus:ring-2 focus:ring-red-100 focus:border-red-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 transition-all cursor-pointer bg-white">
+                        <p class="mt-1 text-[11px] text-slate-400 font-medium">Format: JPG, PNG, PDF. Max 2MB.</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">Catatan (Opsional)</label>
+                        <textarea name="notes" id="branch_debt_notes" rows="2" placeholder="Catatan pelunasan..."
+                            class="w-full border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-100 focus:border-red-300 resize-none"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeBranchDebtModal()"
+                            class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all border border-slate-200">
+                            Batal
+                        </button>
+                        <button type="submit" id="btnSubmitBranchDebt"
+                            class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 relative flex items-center justify-center">
+                            <span id="btnSubmitBranchDebtText">Upload & Simpan</span>
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin absolute hidden" id="btnSubmitBranchDebtLoader"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endpush
 
 @endsection
@@ -2268,35 +2312,78 @@
     });
 
     function settleBranchDebt(debtId) {
-        if (!confirm('Apakah hutang ini sudah dilunaskan antar cabang?')) return;
-        
-        const catatan = prompt('Catatan pelunasan (Opsional):');
-        if (catatan === null) return; // User cancelled prompt
+        currentDebtId = debtId;
+        const modal = document.getElementById('branch-debt-modal');
+        if (modal) {
+            document.getElementById('branch_debt_file_input').value = '';
+            document.getElementById('branch_debt_notes').value = '';
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            document.body.style.overflow = 'hidden';
+            if (lucide) lucide.createIcons({ root: modal });
+        }
+    }
 
-        fetch('/branch-debts/' + debtId + '/settle', {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ notes: catatan })
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                showToast(res.message, 'success');
-                // Refresh modal content to show updated status
-                if (currentTransactionId) {
-                    openViewModal(currentTransactionId);
+    function closeBranchDebtModal() {
+        const modal = document.getElementById('branch-debt-modal');
+        if (modal) {
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+    }
+
+    // Branch debt form submit
+    const branchDebtForm = document.getElementById('branch-debt-form');
+    if (branchDebtForm) {
+        branchDebtForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!currentDebtId) return;
+
+            const btn = document.getElementById('btnSubmitBranchDebt');
+            const loader = document.getElementById('btnSubmitBranchDebtLoader');
+            const text = document.getElementById('btnSubmitBranchDebtText');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-80', 'cursor-not-allowed');
+            loader.classList.remove('hidden');
+            text.textContent = 'Memproses...';
+
+            const formData = new FormData(this);
+            formData.append('_method', 'PATCH');
+            
+            fetch('/branch-debts/' + currentDebtId + '/settle', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    closeBranchDebtModal();
+                    if (currentTransactionId) {
+                        openViewModal(currentTransactionId);
+                    }
+                } else {
+                    showToast(res.message, 'error');
                 }
-            } else {
-                showToast(res.message, 'error');
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            showToast('Terjadi kesalahan jaringan.', 'error');
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('Terjadi kesalahan jaringan.', 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                loader.classList.add('hidden');
+                text.textContent = 'Upload & Simpan';
+            });
         });
     }
 
@@ -2508,25 +2595,42 @@
                     `;
                 }
 
-                // Build Branch Debts HTML
+                // Build Branch Debts HTML (Hanya Perspektif Hutang)
                 let debtsHtml = '';
                 if (d.branch_debts && d.branch_debts.length > 0) {
                     debtsHtml = `
                     <div class="sm:col-span-2 mb-3">
-                        <label class="block text-[9px] font-bold text-red-500 uppercase mb-2">Hutang Tersisa Antar Cabang</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="flex items-center gap-2 mb-3">
+                            <label class="block text-[10px] font-bold text-red-500 uppercase tracking-widest">Hutang Tersisa Antar Cabang</label>
+                            <div class="flex-1 h-px bg-red-100"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             ${d.branch_debts.map(debt => `
-                                <div class="bg-red-50 border border-red-100 rounded-lg p-3 ${debt.status === 'paid' ? 'opacity-50' : ''}">
-                                    <div class="flex justify-between items-start mb-1">
-                                        <div class="text-[11px]"><span class="font-bold text-red-600">${debt.debtor_branch_name}</span> berhutang ke <span class="font-bold text-slate-700">${debt.creditor_branch_name}</span></div>
-                                        <div class="text-xs font-bold ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-600'}">Rp ${Number(debt.amount).toLocaleString('id-ID')}</div>
+                                <div class="relative bg-red-50 border border-red-100 rounded-xl p-3 ${debt.status === 'paid' ? 'opacity-60' : ''}">
+                                    <div class="flex justify-between items-start pt-1">
+                                        <div class="text-[11px] leading-relaxed">
+                                            <span class="font-black text-red-600">${debt.debtor_branch_name}</span> 
+                                            <span class="text-slate-500">berhutang kepada</span> 
+                                            <span class="font-bold text-slate-700">${debt.creditor_branch_name}</span>
+                                        </div>
+                                        <div class="text-xs font-black text-red-600 whitespace-nowrap ml-2">Rp ${Number(debt.amount).toLocaleString('id-ID')}</div>
                                     </div>
-                                    <div class="text-[10px] font-bold ${debt.status === 'paid' ? 'text-emerald-500' : 'text-red-400'} uppercase tracking-wider flex justify-between items-center mt-2">
-                                        <span>Status: ${debt.status === 'paid' ? 'Lunas' : 'Belum Lunas'}</span>
-                                        ${(debt.status === 'pending' && d.can_manage) ? `
-                                        <button type="button" onclick="settleBranchDebt(${debt.id})" class="bg-red-100/50 border border-red-200 hover:bg-red-200 hover:border-red-300 text-red-700 px-2 py-1 rounded transition-colors active:scale-95">Mark as Lunas</button>
-                                        ` : ''}
+                                    <div class="flex items-center justify-between mt-3 pt-2 border-t border-red-100/50">
+                                        <span class="text-[9px] font-bold ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-400'} uppercase">
+                                            Status: ${debt.status === 'paid' ? 'Lunas' : 'Belum Lunas'}
+                                        </span>
                                     </div>
+
+                                    ${debt.status === 'paid' && debt.payment_proof ? `
+                                        <div class="mt-3 bg-white/50 rounded-lg p-2 border border-red-100/30">
+                                            <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Bukti Transfer</label>
+                                            <a href="/storage/${debt.payment_proof}" target="_blank" class="inline-flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] hover:underline">
+                                                <i data-lucide="image" class="w-3 h-3"></i> Lihat Bukti
+                                            </a>
+                                            ${debt.notes ? `<p class="text-[9px] text-slate-500 mt-0.5 italic">"${debt.notes}"</p>` : ''}
+                                        </div>
+                                    ` : ''}
                                 </div>
                             `).join('')}
                         </div>

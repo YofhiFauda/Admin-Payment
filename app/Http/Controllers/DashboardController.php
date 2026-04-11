@@ -431,10 +431,7 @@ class DashboardController extends Controller
             ->get();
 
         $data = $transactions->map(function ($t) use ($branchName) {
-            // Find the specific branch to get its allocated amount from pivot
             $branch = $t->branches->firstWhere('name', $branchName);
-            
-            // Logika robust: jika allocation_amount <= 0, hitung manual dari persen sebagai fallback
             if ($branch) {
                 $allocatedAmount = ($branch->pivot->allocation_amount > 0)
                     ? $branch->pivot->allocation_amount
@@ -457,21 +454,42 @@ class DashboardController extends Controller
             ];
         });
 
-        // ✅ Inject Hutang Antar Cabang (Pengajuan Debts)
+        $totalHutang = $data->sum('amount');
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_hutang'    => $totalHutang,
+            'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: returns Hutang Usaha (Inter-Branch Debts where this branch is Debtor)
+     */
+    public function branchInterBranchDebtData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_hutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
         $branchDebts = \App\Models\BranchDebt::with(['transaction', 'creditorBranch'])
             ->whereHas('debtorBranch', function($q) use ($branchName) {
                 $q->where('name', $branchName);
             })
             ->where('status', 'pending')
+            ->latest()
             ->get();
 
-        $debtData = $branchDebts->map(function ($debt) {
+        $data = $branchDebts->map(function ($debt) {
             return [
                 'id'               => $debt->id,
                 'type_label'       => 'Hutang ke Cab. ' . $debt->creditorBranch->name,
                 'invoice_number'   => $debt->transaction->invoice_number ?? '-',
-                'submitter_name'   => 'Antar Cabang', // Or transaction submitter
-                'status'           => 'waiting_payment', // mapping UX style
+                'submitter_name'   => 'Antar Cabang',
+                'status'           => 'waiting_payment',
                 'amount'           => $debt->amount,
                 'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
                 'created_at'       => $debt->created_at->format('d M Y'),
@@ -480,14 +498,56 @@ class DashboardController extends Controller
             ];
         });
 
-        $finalData = $data->concat($debtData)->sortByDesc('created_at')->values();
-
-        $totalHutang = $finalData->sum('amount');
+        $totalHutang = $data->sum('amount');
 
         return response()->json([
-            'transactions'    => $finalData,
+            'transactions'    => $data,
             'total_hutang'    => $totalHutang,
             'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: returns Piutang Usaha (Inter-Branch receivables where this branch is Creditor)
+     */
+    public function branchInterBranchReceivableData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_piutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
+        $receivables = \App\Models\BranchDebt::with(['transaction', 'debtorBranch'])
+            ->whereHas('creditorBranch', function($q) use ($branchName) {
+                $q->where('name', $branchName);
+            })
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        $data = $receivables->map(function ($debt) {
+            return [
+                'id'               => $debt->id,
+                'type_label'       => 'Piutang di Cab. ' . $debt->debtorBranch->name,
+                'invoice_number'   => $debt->transaction->invoice_number ?? '-',
+                'submitter_name'   => 'Antar Cabang',
+                'status'           => 'waiting_payment', // Still unpaid
+                'amount'           => $debt->amount,
+                'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
+                'created_at'       => $debt->created_at->format('d M Y'),
+                'category'         => 'Pengajuan Multi-Source',
+                'is_inter_branch'  => true,
+            ];
+        });
+
+        $totalPiutang = $data->sum('amount');
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_piutang'   => $totalPiutang,
+            'formatted_total' => 'Rp ' . number_format($totalPiutang, 0, ',', '.'),
         ]);
     }
 }

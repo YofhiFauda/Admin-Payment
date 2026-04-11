@@ -536,10 +536,118 @@ function getStatusBadge(status) {
     return map[status] || { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: status };
 }
 
-// Load hutang amounts for all visible branch cards (for the badge)
+// ═══════════════════════════════════════════════════════
+// HUTANG USAHA MODAL (INTER-BRANCH)
+// ═══════════════════════════════════════════════════════
+const hutangUsahaModal   = document.getElementById('hutang-usaha-modal');
+const hutangUsahaLoading = document.getElementById('hutang-usaha-loading');
+const hutangUsahaBody    = document.getElementById('hutang-usaha-body');
+const hutangUsahaTbody   = document.getElementById('hutang-usaha-tbody');
+const hutangUsahaEmpty   = document.getElementById('hutang-usaha-empty');
+const hutangUsahaTotal   = document.getElementById('hutang-usaha-total-label');
+
+function openHutangUsahaModal(branchName) {
+    if (!hutangUsahaModal) return;
+    document.getElementById('hutang-usaha-modal-title').textContent = 'Hutang Usaha — ' + branchName;
+    hutangUsahaLoading.classList.remove('hidden');
+    hutangUsahaBody.classList.add('hidden');
+    hutangUsahaModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (window.lucide) lucide.createIcons({ root: hutangUsahaModal });
+
+    fetch('{{ route("dashboard.branchInterBranchDebtData") }}?branch_name=' + encodeURIComponent(branchName), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        hutangUsahaLoading.classList.add('hidden');
+        hutangUsahaBody.classList.remove('hidden');
+        if (data.transactions.length === 0) {
+            hutangUsahaTbody.innerHTML = '';
+            hutangUsahaEmpty.classList.remove('hidden');
+            hutangUsahaTotal.textContent = 'Rp 0';
+        } else {
+            hutangUsahaEmpty.classList.add('hidden');
+            hutangUsahaTbody.innerHTML = data.transactions.map(t => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-5 py-3">
+                        <span class="text-xs font-bold text-slate-800">${t.invoice_number}</span>
+                        <span class="block text-[10px] text-slate-400">${t.created_at}</span>
+                    </td>
+                    <td class="px-3 py-3">
+                        <span class="text-xs text-slate-600 font-medium">${t.type_label}</span>
+                    </td>
+                    <td class="px-3 py-3 text-right text-xs font-bold text-red-600">${t.formatted_amount}</td>
+                    <td class="px-5 py-3 text-center">
+                        <span class="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">Belum Lunas</span>
+                    </td>
+                </tr>
+            `).join('');
+            hutangUsahaTotal.textContent = data.formatted_total;
+        }
+    });
+}
+
+function closeHutangUsahaModal() { hutangUsahaModal.classList.add('hidden'); document.body.style.overflow = ''; }
+
+// ═══════════════════════════════════════════════════════
+// PIUTANG USAHA MODAL (INTER-BRANCH)
+// ═══════════════════════════════════════════════════════
+const piutangUsahaModal   = document.getElementById('piutang-usaha-modal');
+const piutangUsahaLoading = document.getElementById('piutang-usaha-loading');
+const piutangUsahaBody    = document.getElementById('piutang-usaha-body');
+const piutangUsahaTbody   = document.getElementById('piutang-usaha-tbody');
+const piutangUsahaEmpty   = document.getElementById('piutang-usaha-empty');
+const piutangUsahaTotal   = document.getElementById('piutang-usaha-total-label');
+
+function openPiutangUsahaModal(branchName) {
+    if (!piutangUsahaModal) return;
+    document.getElementById('piutang-usaha-modal-title').textContent = 'Piutang Usaha — ' + branchName;
+    piutangUsahaLoading.classList.remove('hidden');
+    piutangUsahaBody.classList.add('hidden');
+    piutangUsahaModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (window.lucide) lucide.createIcons({ root: piutangUsahaModal });
+
+    fetch('{{ route("dashboard.branchInterBranchReceivableData") }}?branch_name=' + encodeURIComponent(branchName), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        piutangUsahaLoading.classList.add('hidden');
+        piutangUsahaBody.classList.remove('hidden');
+        if (data.transactions.length === 0) {
+            piutangUsahaTbody.innerHTML = '';
+            piutangUsahaEmpty.classList.remove('hidden');
+            piutangUsahaTotal.textContent = 'Rp 0';
+        } else {
+            piutangUsahaEmpty.classList.add('hidden');
+            piutangUsahaTbody.innerHTML = data.transactions.map(t => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-5 py-3">
+                        <span class="text-xs font-bold text-slate-800">${t.invoice_number}</span>
+                        <span class="block text-[10px] text-slate-400">${t.created_at}</span>
+                    </td>
+                    <td class="px-3 py-3">
+                        <span class="text-xs text-slate-600 font-medium">${t.type_label}</span>
+                    </td>
+                    <td class="px-3 py-3 text-right text-xs font-bold text-emerald-600">${t.formatted_amount}</td>
+                    <td class="px-5 py-3 text-center">
+                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">Belum Cair</span>
+                    </td>
+                </tr>
+            `).join('');
+            piutangUsahaTotal.textContent = data.formatted_total;
+        }
+    });
+}
+
+function closePiutangUsahaModal() { piutangUsahaModal.classList.add('hidden'); document.body.style.overflow = ''; }
+
+// Load all amounts for all visible branch cards (badges)
 async function loadAllHutangAmounts() {
-    const buttons = document.querySelectorAll('.hutang-btn[data-branch]');
-    buttons.forEach(async (btn) => {
+    // 1. Rembush Hutang
+    document.querySelectorAll('.hutang-btn[data-branch]').forEach(async (btn) => {
         const branchName = btn.dataset.branch;
         const amountEl = btn.querySelector('.hutang-amount');
         if (!amountEl) return;
@@ -553,11 +661,46 @@ async function loadAllHutangAmounts() {
             } else {
                 amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Lunas</span>`;
                 btn.classList.remove('border-orange-300');
-                btn.classList.add('border-slate-200', 'opacity-60');
             }
-        } catch (e) {
-            amountEl.innerHTML = `<span class="text-slate-300 text-[10px]">—</span>`;
-        }
+        } catch (e) {}
+    });
+
+    // 2. Hutang Usaha (Inter-branch)
+    document.querySelectorAll('.hutang-usaha-btn[data-branch]').forEach(async (btn) => {
+        const branchName = btn.dataset.branch;
+        const amountEl = btn.querySelector('.hutang-usaha-amount');
+        if (!amountEl) return;
+        try {
+            const url = '{{ route("dashboard.branchInterBranchDebtData") }}?branch_name=' + encodeURIComponent(branchName);
+            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (data.total_hutang > 0) {
+                amountEl.innerHTML = `<span class="font-black text-red-600">${data.formatted_total}</span>`;
+                btn.classList.add('border-red-300');
+            } else {
+                amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Lunas</span>`;
+                btn.classList.remove('border-red-300');
+            }
+        } catch (e) {}
+    });
+
+    // 3. Piutang Usaha (Inter-branch)
+    document.querySelectorAll('.piutang-usaha-btn[data-branch]').forEach(async (btn) => {
+        const branchName = btn.dataset.branch;
+        const amountEl = btn.querySelector('.piutang-usaha-amount');
+        if (!amountEl) return;
+        try {
+            const url = '{{ route("dashboard.branchInterBranchReceivableData") }}?branch_name=' + encodeURIComponent(branchName);
+            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (data.total_piutang > 0) {
+                amountEl.innerHTML = `<span class="font-black text-emerald-600">${data.formatted_total}</span>`;
+                btn.classList.add('border-emerald-300');
+            } else {
+                amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Cair</span>`;
+                btn.classList.remove('border-emerald-300');
+            }
+        } catch (e) {}
     });
 }
 </script>
@@ -1095,6 +1238,115 @@ async function loadAllHutangAmounts() {
                         class="px-5 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors">
                         Tutup
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- HUTANG USAHA (ANTAR CABANG) MODAL                                 --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    <div id="hutang-usaha-modal"
+         class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+         role="dialog" aria-modal="true" aria-labelledby="hutang-usaha-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                    <i data-lucide="credit-card" class="w-4.5 h-4.5 text-red-500"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-extrabold text-slate-900" id="hutang-usaha-modal-title">Hutang Usaha</h3>
+                    <p class="text-xs text-slate-400 font-medium" id="hutang-usaha-modal-subtitle">Hutang antar cabang (liabilitas)</p>
+                </div>
+                <button onclick="closeHutangUsahaModal()" class="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="hutang-usaha-loading" class="flex-1 p-6 space-y-3">
+                <div class="animate-pulse space-y-3">
+                    <div class="h-4 bg-slate-100 rounded w-full"></div>
+                    <div class="h-4 bg-slate-100 rounded w-full"></div>
+                    <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+                </div>
+            </div>
+            <div id="hutang-usaha-body" class="hidden flex flex-col flex-1 min-h-0">
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white z-10">
+                            <tr class="border-b border-slate-100 bg-slate-50/80">
+                                <th class="text-left px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Invoice</th>
+                                <th class="text-left px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Keterangan</th>
+                                <th class="text-right px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nominal</th>
+                                <th class="text-center px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hutang-usaha-tbody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                    <div id="hutang-usaha-empty" class="hidden py-16 text-center opacity-40">
+                        <i data-lucide="check-circle-2" class="w-12 h-12 text-emerald-400 mx-auto mb-3"></i>
+                        <p class="font-bold text-slate-700">Tidak ada hutang usaha</p>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Hutang Usaha</p>
+                        <p class="text-lg font-black text-red-600" id="hutang-usaha-total-label">Rp 0</p>
+                    </div>
+                    <button onclick="closeHutangUsahaModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold uppercase hover:bg-slate-700">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- PIUTANG USAHA (ANTAR CABANG) MODAL                                --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    <div id="piutang-usaha-modal"
+         class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+         role="dialog" aria-modal="true" aria-labelledby="piutang-usaha-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <i data-lucide="wallet" class="w-4.5 h-4.5 text-emerald-500"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-extrabold text-slate-900" id="piutang-usaha-modal-title">Piutang Usaha</h3>
+                    <p class="text-xs text-slate-400 font-medium" id="piutang-usaha-modal-subtitle">Piutang antar cabang (aset)</p>
+                </div>
+                <button onclick="closePiutangUsahaModal()" class="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="piutang-usaha-loading" class="flex-1 p-6 space-y-3">
+                <div class="animate-pulse space-y-3">
+                    <div class="h-4 bg-slate-100 rounded w-full"></div>
+                    <div class="h-4 bg-slate-100 rounded w-full"></div>
+                </div>
+            </div>
+            <div id="piutang-usaha-body" class="hidden flex flex-col flex-1 min-h-0">
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white z-10">
+                            <tr class="border-b border-slate-100 bg-slate-50/80">
+                                <th class="text-left px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Invoice</th>
+                                <th class="text-left px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Keterangan</th>
+                                <th class="text-right px-3 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nominal</th>
+                                <th class="text-center px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="piutang-usaha-tbody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                    <div id="piutang-usaha-empty" class="hidden py-16 text-center opacity-40">
+                        <i data-lucide="check-circle-2" class="w-12 h-12 text-emerald-400 mx-auto mb-3"></i>
+                        <p class="font-bold text-slate-700">Tidak ada piutang usaha</p>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Piutang Usaha</p>
+                        <p class="text-lg font-black text-emerald-600" id="piutang-usaha-total-label">Rp 0</p>
+                    </div>
+                    <button onclick="closePiutangUsahaModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold uppercase hover:bg-slate-700">Tutup</button>
                 </div>
             </div>
         </div>

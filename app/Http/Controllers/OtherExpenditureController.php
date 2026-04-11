@@ -30,18 +30,74 @@ class OtherExpenditureController extends Controller
     }
 
     // ─── INDEX ─────────────────────────────────────────────────────────
-    public function index(string $jenis)
+    public function index(string $jenis, Request $request)
     {
         $this->checkAccess($jenis);
 
         $config = self::JENIS_CONFIG[$jenis] ?? abort(404);
-        $items  = OtherExpenditure::with(['submitter', 'branch', 'dariBranch'])
-            ->where('jenis', $jenis)
-            ->orderByDesc('tanggal')
-            ->orderByDesc('created_at')
-            ->paginate(20);
+        
+        $query = OtherExpenditure::with(['submitter', 'branch', 'dariBranch'])
+            ->where('jenis', $jenis);
 
-        return view('pengeluaran-lain.index', compact('jenis', 'config', 'items'));
+        // Filter: Search (Invoice Number)
+        if ($search = $request->input('search')) {
+            $query->where('invoice_number', 'like', "%{$search}%");
+        }
+
+        // Filter: Branch
+        if ($branchId = $request->input('branch_id')) {
+            $query->where(function($q) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhere('dari_cabang_id', $branchId);
+            });
+        }
+
+        $items = $query->orderByDesc('tanggal')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+        
+        $items->appends($request->all());
+
+        $branchDebts = null;
+        if (in_array($jenis, ['bayar_hutang', 'piutang_usaha'])) {
+            $debtStatus = $request->input('debt_status');
+            $debtSearch = $request->input('debt_search');
+            $debtBranchId = $request->input('debt_branch_id');
+
+            $debtQuery = \App\Models\BranchDebt::with(['transaction', 'debtorBranch', 'creditorBranch.bankAccounts', 'paidBy', 'bankAccount'])
+                ->orderByRaw("FIELD(status, 'pending', 'paid')")
+                ->orderByDesc('created_at');
+
+            if (in_array($debtStatus, ['pending', 'paid'])) {
+                $debtQuery->where('status', $debtStatus);
+            }
+
+            // Filter: Search for BranchDebt (related transaction invoice number)
+            if ($debtSearch) {
+                $debtQuery->whereHas('transaction', function($q) use ($debtSearch) {
+                    $q->where('invoice_number', 'like', "%{$debtSearch}%");
+                });
+            }
+
+            // Filter: Branch for BranchDebt
+            if ($debtBranchId) {
+                if ($jenis === 'bayar_hutang') {
+                    // Di halaman Bayar Hutang, fokus pada siapa yang berhutang
+                    $debtQuery->where('debtor_branch_id', $debtBranchId);
+                } else {
+                    // Di halaman Piutang Usaha, fokus pada siapa yang menerima piutang
+                    $debtQuery->where('creditor_branch_id', $debtBranchId);
+                }
+            }
+
+            $branchDebts = $debtQuery->paginate(20, ['*'], 'branch_debts');
+            $branchDebts->appends($request->all());
+        }
+
+        $branches = Branch::orderBy('name')->get();
+
+        $folder = str_replace('_', '-', $jenis);
+        return view("pengeluaran-lain.{$folder}.index", compact('jenis', 'config', 'items', 'branchDebts', 'branches'));
     }
 
     // ─── CREATE ────────────────────────────────────────────────────────
@@ -52,7 +108,8 @@ class OtherExpenditureController extends Controller
         $config   = self::JENIS_CONFIG[$jenis] ?? abort(404);
         $branches = Branch::orderBy('name')->get();
 
-        return view('pengeluaran-lain.create', compact('jenis', 'config', 'branches'));
+        $folder = str_replace('_', '-', $jenis);
+        return view("pengeluaran-lain.{$folder}.create", compact('jenis', 'config', 'branches'));
     }
 
     // ─── STORE ─────────────────────────────────────────────────────────

@@ -38,6 +38,46 @@
     {{-- Card Footer: Hutang Rembush + Grand Total --}}
     <div class="px-5 pt-3 pb-1 border-t border-orange-100 bg-orange-50/40 mt-auto">
         <button
+            onclick="openHutangUsahaModal('{{ addslashes($branch->name) }}')"
+            class="hutang-usaha-btn w-full flex items-center justify-between rounded-xl px-3 py-2 mb-2 border border-red-200 bg-white hover:bg-red-50 transition-all group"
+            data-branch="{{ $branch->name }}"
+            title="Lihat Hutang Usaha (Antar Cabang)"
+        >
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-red-100 flex items-center justify-center shrink-0 group-hover:bg-red-200 transition-colors">
+                    <i data-lucide="credit-card" class="w-3.5 h-3.5 text-red-500"></i>
+                </div>
+                <span class="text-[11px] font-bold text-red-700 uppercase tracking-wide">Hutang Usaha</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="hutang-usaha-amount text-xs font-black text-red-600" data-branch="{{ $branch->name }}">
+                    <span class="inline-block w-3 h-3 rounded-full bg-red-200 animate-pulse"></span>
+                </span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-red-400 group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+        </button>
+
+        <button
+            onclick="openPiutangUsahaModal('{{ addslashes($branch->name) }}')"
+            class="piutang-usaha-btn w-full flex items-center justify-between rounded-xl px-3 py-2 mb-2 border border-emerald-200 bg-white hover:bg-emerald-50 transition-all group"
+            data-branch="{{ $branch->name }}"
+            title="Lihat Piutang Usaha (Antar Cabang)"
+        >
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 transition-colors">
+                    <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-500"></i>
+                </div>
+                <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">Piutang Usaha</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="piutang-usaha-amount text-xs font-black text-emerald-600" data-branch="{{ $branch->name }}">
+                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-200 animate-pulse"></span>
+                </span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-emerald-400 group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+        </button>
+
+        <button
             onclick="openHutangModal('{{ addslashes($branch->name) }}')"
             class="hutang-btn w-full flex items-center justify-between rounded-xl px-3 py-2 mb-3 border border-orange-200 bg-white hover:bg-orange-50 transition-all group"
             data-branch="{{ $branch->name }}"

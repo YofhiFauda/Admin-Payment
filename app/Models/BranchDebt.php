@@ -13,8 +13,11 @@ class BranchDebt extends Model
         'creditor_branch_id',
         'amount',
         'status',
+        'payment_proof',
         'paid_at',
         'notes',
+        'paid_by_id',
+        'bank_account_id',
     ];
 
     protected $casts = [
@@ -41,6 +44,16 @@ class BranchDebt extends Model
         return $this->belongsTo(Branch::class, 'creditor_branch_id');
     }
 
+    public function paidBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by_id');
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BranchBankAccount::class, 'bank_account_id');
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  SCOPES
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,12 +72,15 @@ class BranchDebt extends Model
     //  HELPERS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    public function markAsPaid(?string $notes = null): void
+    public function markAsPaid(?string $notes = null, ?string $payment_proof = null, ?int $paidBy = null, ?int $bankAccountId = null): void
     {
         $this->update([
-            'status'  => 'paid',
-            'paid_at' => now(),
-            'notes'   => $notes ?? $this->notes,
+            'status'          => 'paid',
+            'paid_at'         => now(),
+            'notes'           => $notes ?? $this->notes,
+            'payment_proof'   => $payment_proof ?? $this->payment_proof,
+            'paid_by_id'      => $paidBy ?? auth()->id(),
+            'bank_account_id' => $bankAccountId,
         ]);
     }
 

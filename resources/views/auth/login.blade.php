@@ -182,7 +182,14 @@
 
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
-                loginForm.addEventListener('submit', function() {
+                let isSubmitting = false;
+                loginForm.addEventListener('submit', function(e) {
+                    if (isSubmitting) {
+                        e.preventDefault();
+                        return;
+                    }
+                    isSubmitting = true;
+
                     const btn = document.getElementById('submitBtn');
                     const text = document.getElementById('btnText');
                     const loader = document.getElementById('btnLoader');

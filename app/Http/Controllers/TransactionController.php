@@ -633,6 +633,18 @@ class TransactionController extends Controller
                         $newStatus = 'waiting_payment';
                     }
                 }
+                
+                // Status akan tetap Waiting Payment jika suatu transaksi pengajuan masih belum lunas 
+                // (belum ada invoice ATAU masih ada hutang antar cabang yang belum bayar)
+                if ($newStatus === 'completed') {
+                    $hasPendingDebts = \App\Models\BranchDebt::where('transaction_id', $transaction->id)
+                        ->where('status', 'pending')
+                        ->exists();
+
+                    if (empty($transaction->invoice_file_path) || $hasPendingDebts) {
+                        $newStatus = 'waiting_payment';
+                    }
+                }
             } elseif ($transaction->isGudang()) {
                 // GUDANG LOGIC
                 // Approval moves to 'waiting_payment' (Pembelanjaan Belum di bayar)
@@ -854,16 +866,36 @@ class TransactionController extends Controller
                 ], 400);
             }
 
-            $debt->markAsPaid($request->notes);
+            $request->validate([
+                'payment_proof'   => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'notes'           => 'nullable|string',
+                'bank_account_id' => 'required|exists:branch_bank_accounts,id',
+            ], [
+                'payment_proof.required' => 'Bukti transfer wajib diunggah.',
+                'bank_account_id.required' => 'Rekening tujuan wajib dipilih.',
+            ]);
+
+            DB::beginTransaction();
+
+            $path = null;
+            if ($request->hasFile('payment_proof')) {
+                $file = $request->file('payment_proof');
+                $filename = 'debt_' . $debt->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('payment_proofs/debts', $filename, 'public');
+            }
+
+            $debt->markAsPaid($request->notes, $path, auth()->id(), $request->bank_account_id);
 
             // Log activity
             ActivityLog::create([
-                'user_id'        => Auth::id(),
+                'user_id'        => auth()->id(),
                 'action'         => 'settle_debt',
                 'transaction_id' => $debt->transaction_id,
                 'target_id'      => $debt->transaction->invoice_number ?? '-',
-                'description'    => "Melunaskan hutang cabang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount}" . ($request->notes ? " (Catatan: {$request->notes})" : ''),
+                'description'    => "Melunaskan hutang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
             ]);
+
+            DB::commit();
 
             Log::info('[DEBT] Branch debt settled', [
                 'debt_id'        => $debt->id,
@@ -878,7 +910,14 @@ class TransactionController extends Controller
                 'success' => true,
                 'message' => "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan.",
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->validator->errors()->first(),
+                'errors'  => $e->validator->errors()
+            ], 422);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('[DEBT] Settlement failed', [
                 'debt_id' => $id,
                 'error'   => $e->getMessage(),

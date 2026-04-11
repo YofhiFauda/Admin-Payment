@@ -69,6 +69,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
         Route::get('/dashboard/pending-list-data', [DashboardController::class, 'pendingListData'])->name('dashboard.pendingListData');
         Route::get('/dashboard/branch-hutang', [DashboardController::class, 'branchHutangData'])->name('dashboard.branchHutangData');
+        Route::get('/dashboard/branch-inter-debt', [DashboardController::class, 'branchInterBranchDebtData'])->name('dashboard.branchInterBranchDebtData');
+        Route::get('/dashboard/branch-inter-receivable', [DashboardController::class, 'branchInterBranchReceivableData'])->name('dashboard.branchInterBranchReceivableData');
     });
 
     // ── Shared Transaction Routes (all roles) ──────────────
