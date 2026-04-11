@@ -11,11 +11,12 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 - **Multi-Branch Strategy:** 
     - **Allocation:** Single transactions can be split across multiple branches with specific percentage/amount allocation.
     - **Branch Debt:** Automatic tracking of inter-branch borrowing when one branch pays for another's needs (`BranchDebt` model).
-    - **Filtering:** Real-time client-side multi-branch filtering via `SearchEngine`.
+    - **BranchDebt Settlement:** Support for settling inter-branch debts with payment proof (transfer/cash) and notes.
+    - **Dashboard Tracking:** New AJAX-powered dashboard widgets for real-time monitoring of "Hutang Antar Cabang" (Inter-branch Debt) and "Piutang Antar Cabang" (Inter-branch Receivable).
 - **Payment History:** Detailed tracking of payment events (transfer/cash), payment proofs, and multi-step verification (Step 1: Payer → Recipient, Step 2: Confirmation/AI Verification).
 - **Gudang Module:** Internal warehouse purchase recording. Optimized for speed: Bypasses mandatory Telegram registration for submitters and skips AI verification (OCR) for payment proofs.
 - **Financial Modules:**
-    - **Other Expenditures:** Prefix `PL-` (Payable, Receivable, Prive).
+    - **Other Expenditures:** Prefix `PL-` (Payable, Receivable, Prive). Now supports real-time multi-branch filtering, invoice search, and direct management of inter-branch debts.
     - **Salary Records:** Prefix `GP-` (Automated calculation of base pay, bonuses, and deductions).
 - **Real-time Engine:** Laravel Reverb (WebSockets) for instant UI updates.
 - **Infrastructure:** Docker (9 services: App, Nginx, DB, Redis, Horizon, Reverb, Scheduler, Node, phpMyAdmin).

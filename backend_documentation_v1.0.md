@@ -78,7 +78,40 @@ Sistem ini dirancang sebagai mesin pemrosesan nota otomatis dengan alur kerja as
 
 ---
 
-## 5. Integrasi Telegram Service
+## 5. Branch Financial Management (Inter-Branch Debt)
+
+Sistem ini menangani hutang antar cabang secara otomatis saat satu cabang membiayai kebutuhan cabang lain.
+
+### 5.1 Branch Debt Model
+- **Logic**: Jika transaksi Pengajuan/Gudang dialokasikan ke cabang B namun dibayar oleh dana cabang A, maka tercipta record `BranchDebt`.
+- **Settlement**: 
+  - Admin/Owner dapat melunasi hutang antar cabang via Dashboard.
+  - **Wajib**: Mengupload bukti pembayaran (Struk/Screenshot transfer).
+  - **Opsional**: Menambahkan catatan (notes).
+  - Status berubah dari `pending` ke `paid`.
+
+### 5.2 Dashboard Tracking (AJAX)
+Dashboard menggunakan endpoint berikut untuk menampilkan data keuangan cabang secara dinamis:
+- `/dashboard/branch-inter-debt`: Mengambil daftar hutang yang belum dibayar oleh cabang tersebut ke cabang lain.
+- `/dashboard/branch-inter-receivable`: Mengambil daftar piutang yang belum diterima cabang tersebut dari cabang lain.
+
+---
+
+## 6. Other Expenditure (PL- Module)
+
+Modul Pengeluaran Lain (`OtherExpenditure`) telah ditingkatkan dengan fitur pencarian dan filter:
+
+### 6.1 Filter & Search Logic
+- **Invoice Search**: Pencarian parsial berdasarkan nomor invoice.
+- **Branch Filter**: Filter berdasarkan cabang utama (`branch_id`) atau cabang sumber dana (`dari_cabang_id`).
+- **Debt/Receivable Tab**: Integrasi langsung dengan tabel `BranchDebt` untuk memudahkan pembayaran hutang usaha atau pencairan piutang usaha langsung dari modul PL.
+
+### 6.2 Sub-Modul Prive
+- Menangani pengambilan dana pribadi (owner) dengan alur submit bukti transfer (opsional) dan pencatatan cabang sumber dana.
+
+---
+
+## 7. Integrasi Telegram Service
 
 `TelegramBotService` menangani semua komunikasi outbound:
 - **Interactive Buttons**: Menggunakan `inline_keyboard` untuk konfirmasi cash.
@@ -87,7 +120,7 @@ Sistem ini dirancang sebagai mesin pemrosesan nota otomatis dengan alur kerja as
 
 ---
 
-## 6. Maintenance & Monitoring
+## 8. Maintenance & Monitoring
 - **Laravel Horizon**: Pantau antrean OCR. Jika macet, cek konektivitas n8n atau rate limit Gemini.
 - **Redis Cache**: Digunakan untuk menyimpan status sementara OCR sebelum user melakukan submit form.
 - **Atomic IDs**: `IdGeneratorService` menjamin tidak ada duplikasi nomor invoice meskipun banyak user upload secara bersamaan.

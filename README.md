@@ -33,8 +33,10 @@
 | **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete (jika disetujui Admin), ≥ Rp 1.000.000 perlu approval Owner. |
 | **Dual-Version System** | Melacak perubahan data antara input asli Teknisi dan hasil revisi Management untuk audit trail yang transparan. |
 | **Edit Protection** | Proteksi otomatis: Transaksi dengan status `completed` tidak dapat diedit oleh peran apapun (termasuk Owner). |
-| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang (dilengkapi fitur *Hutang Rembush* interaktif), dan daftar transaksi pending. |
+| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang, dan monitoring real-time **Hutang & Piutang Antar Cabang** via AJAX widgets. |
 | **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi (Equal, Percentage, atau Manual). |
+| **Hutang Antar Cabang** | Pelunasan hutang antar-unit dengan fitur upload bukti transfer dan catatan pelunasan otomatis. |
+| **Prive (Withdrawal)** | Pencatatan pengambilan dana pribadi owner dengan tracking sumber dana cabang dan bukti transfer. |
 | **Kelola Kategori** | Sistem manajemen kategori dinamis untuk Rembush & Pengajuan dengan antarmuka **Glass Admin** modern. |
 | **Rekening Cabang** | Manajemen rekening bank/e-wallet untuk tiap cabang dengan kontrol akses ketat (Owner full-access, Atasan & Admin read-only). |
 | **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR. |

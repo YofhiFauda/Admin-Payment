@@ -30,6 +30,7 @@ Sistem OCR Nota Kontan menggabungkan Laravel sebagai backend API dan n8n sebagai
 - **rejected**: Ditolak manual oleh Admin/Owner.
 - **Menunggu Konfirmasi Teknisi**: Menunggu teknisi klik tombol di Telegram.
 - **Sedang Diverifikasi AI**: Proses verifikasi struk transfer oleh Gemini.
+- **paid**: Status khusus untuk pelunasan `BranchDebt` antar cabang.
 
 ---
 
@@ -66,6 +67,13 @@ Digunakan oleh n8n workflow:
 - **`POST /transactions/{id}/override`**: Menghidupkan kembali `auto-reject`.
 - **`POST /transactions/{id}/force-approve`**: Menyetujui transaksi `flagged`.
 - **`GET /api/admin/ocr-status`**: Statistik antrian Redis & Rate Limit Gemini.
+- **`PATCH /branch-debts/{id}/settle`**: Melunasi hutang antar cabang. Payload: `payment_proof` (file) & `notes` (string).
+
+### 3.5 Dashboard AJAX Endpoints (Internal)
+Digunakan oleh dashboard untuk monitoring real-time:
+- **`GET /dashboard/branch-inter-debt?branch_name=XXX`**: Daftar hutang cabang tersebut ke cabang lain.
+- **`GET /dashboard/branch-inter-receivable?branch_name=XXX`**: Daftar piutang cabang tersebut dari cabang lain.
+- **`GET /dashboard/branch-hutang?branch_name=XXX`**: Ringkasan hutang eksternal (suplier).
 
 ---
 
