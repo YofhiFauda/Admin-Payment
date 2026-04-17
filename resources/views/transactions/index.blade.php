@@ -801,9 +801,6 @@
 @endpush
 
 @push('modals')
-    {{-- Toast Container --}}
-    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
     {{-- BRANCH DEBT SETTLEMENT MODAL --}}
     <div id="branch-debt-modal"
          class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center opacity-0 transition-all duration-300">
@@ -1539,14 +1536,10 @@ async function loadServerSideData() {
                             ${canManage ? `
                                 ${buildEditButton(t, 'desktop')}
                                 ${(!isAdmin) ? `
-                                    <form action="/transactions/${t.id}" method="POST" onsubmit="return confirm('Apakah anda yakin ingin menghapus transaksi ${t.invoice_number}?')">
-                                        <input type="hidden" name="_token" value="${csrfToken}">
-                                        <input type="hidden" name="_method" value="DELETE">
-                                        <button type="submit" title="Hapus"
+                                    <button type="button" onclick="confirmDeleteTransaction(${t.id}, '${t.invoice_number}')" title="Hapus"
                                             class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all outline-none">
                                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
                                 ` : ''}
                             ` : ''}
                         </div>
@@ -1660,16 +1653,10 @@ async function loadServerSideData() {
                             <i data-lucide="eye" class="w-3 h-3"></i> Lihat
                         </button>
                         ${buildEditButton(t, 'mobile')}
-                        ${(!isAdmin) ? `
-                            <form action="/transactions/${t.id}" method="POST" class="inline" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit"
+                        <button type="button" onclick="confirmDeleteTransaction(${t.id}, '${t.invoice_number}')"
                                     class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
                                     <i data-lucide="trash-2" class="w-3 h-3"></i>
                                 </button>
-                            </form>
-                        ` : ''}
                     </div>
                 </div>`;
         }
@@ -1899,6 +1886,16 @@ function generateInlineActions(t) {
             }
         }
 
+        function deleteTransaction(id) {
+            if (mode === 'client') {
+                allTransactions = allTransactions.filter(t => t.id != id);
+                const query = document.getElementById('instant-search').value.trim();
+                search(query, false);
+            } else {
+                loadServerSideData();
+            }
+        }
+
         // Public API
         return {
             init: loadData,
@@ -1909,6 +1906,7 @@ function generateInlineActions(t) {
             getFiltered: () => filteredTransactions,
             addTransaction: addTransaction,
             updateTransaction: updateTransaction,
+            deleteTransaction: deleteTransaction,
             getMode: () => mode
         };
     })();
@@ -2142,30 +2140,6 @@ function generateInlineActions(t) {
         // --- Initial Load ---
         SearchEngine.init();
     });
-
-    // Toast function
-    function showToast(message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-
-        let bgColors = 'bg-white border text-slate-800', accentClasses = 'bg-blue-500';
-        if (type === 'success') { bgColors = 'bg-emerald-50 border-emerald-200 text-emerald-800'; accentClasses = 'bg-emerald-500'; }
-        else if (type === 'error') { bgColors = 'bg-red-50 border-red-200 text-red-800'; accentClasses = 'bg-red-500'; }
-
-        const toast = document.createElement('div');
-        toast.className = `relative flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transform transition-all duration-300 translate-x-[120%] opacity-0 overflow-hidden ${bgColors}`;
-        toast.innerHTML = `<div class="absolute left-0 top-0 bottom-0 w-1 ${accentClasses}"></div>${message}`;
-
-        container.appendChild(toast);
-        requestAnimationFrame(() => { toast.classList.remove('translate-x-[120%]', 'opacity-0'); toast.classList.add('translate-x-0', 'opacity-100'); });
-        if (typeof lucide !== 'undefined') lucide.createIcons({ root: toast });
-
-        setTimeout(() => {
-            toast.classList.remove('translate-x-0', 'opacity-100');
-            toast.classList.add('translate-x-[120%]', 'opacity-0');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
 
     // ── DELETE TRANSACTION ─────────────────────────────────
     window.deleteTransaction = async function(id) {
@@ -4268,6 +4242,38 @@ function generateInlineActions(t) {
         }
     };
 
-
+    window.confirmDeleteTransaction = function(id, invoiceNumber) {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Hapus Transaksi?',
+            message: `Anda yakin ingin menghapus transaksi <strong class="text-slate-800">${invoiceNumber}</strong>? Tindakan ini tidak dapat dibatalkan.`,
+            action: `/transactions/${id}`,
+            method: 'DELETE',
+            submitText: 'Ya, Hapus',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/transactions/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        showToast(result.message, 'success');
+                        // Remove from SearchEngine instantly
+                        if (typeof SearchEngine !== 'undefined') {
+                            SearchEngine.deleteTransaction(id);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus transaksi');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            }
+        });
+    }
 </script>
 @endpush

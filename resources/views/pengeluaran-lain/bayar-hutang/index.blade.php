@@ -80,7 +80,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-xs">
                         @foreach($items as $item)
-                        <tr class="hover:bg-slate-51 transition-colors">
+                        <tr class="hover:bg-slate-51 transition-colors" id="record-row-{{ $item->id }}">
                             <td class="px-5 py-4">
                                 <span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span>
                             </td>
@@ -114,12 +114,11 @@
                                     </button>
                                     @endif
                                     @if($item->status === 'pending')
-                                    <form method="POST" action="{{ route('pengeluaran-lain.record.destroy', $item->id) }}" onsubmit="return confirm('Hapus record ini?')" class="inline">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all" title="Hapus">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" 
+                                            onclick="confirmDeleteRecord({{ $item->id }}, '{{ $item->invoice_number }}')"
+                                            class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all" title="Hapus">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
                                     @endif
                                 </div>
                             </td>
@@ -411,40 +410,6 @@
 <script>
     let currentDebtId = null;
 
-    function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `fixed top-4 right-4 z-[110] px-6 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all duration-300 transform -translate-y-20 opacity-0 flex items-center gap-3`;
-        
-        const colors = {
-            success: 'bg-emerald-600',
-            error: 'bg-rose-600',
-            warning: 'bg-amber-600',
-            info: 'bg-slate-800'
-        };
-        
-        const icons = {
-            success: 'check-circle',
-            error: 'alert-circle',
-            warning: 'alert-triangle',
-            info: 'info'
-        };
-        
-        toast.classList.add(colors[type] || colors.info);
-        toast.innerHTML = `<i data-lucide="${icons[type] || icons.info}" class="w-5 h-5"></i><span>${message}</span>`;
-        
-        document.body.appendChild(toast);
-        if(window.lucide) lucide.createIcons({ root: toast });
-        
-        setTimeout(() => {
-            toast.classList.remove('-translate-y-20', 'opacity-0');
-        }, 100);
-        
-        setTimeout(() => {
-            toast.classList.add('-translate-y-20', 'opacity-0');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-
     function openSettleModal(id, bankAccounts, branchName, senderBankAccounts, senderBranchName) { 
         currentDebtId = id; 
         document.getElementById('settle-branch-name').textContent = branchName;
@@ -702,5 +667,43 @@
             text.textContent = 'Konfirmasi Bayar';
         });
     };
+
+    function confirmDeleteRecord(id, invoice) {
+        openConfirmModal('deleteRecordModal', {
+            title: 'Hapus Record?',
+            message: `Anda yakin ingin menghapus record <strong class="text-slate-800">${invoice}</strong>? Tindakan ini tidak dapat dibatalkan.`,
+            action: `/pengeluaran-lain/record/${id}`,
+            method: 'DELETE',
+            submitText: 'Ya, Hapus',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/pengeluaran-lain/record/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{csrf_token()}}',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        showToast(result.message, 'success');
+                        const row = document.getElementById(`record-row-${id}`);
+                        if (row) {
+                            row.style.opacity = '0';
+                            row.style.transform = 'translateX(-10px)';
+                            row.style.transition = 'all 0.3s ease';
+                            setTimeout(() => row.remove(), 300);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus record');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            }
+        });
+    }
 </script>
+
+<x-confirm-modal id="deleteRecordModal" />
 @endsection

@@ -264,6 +264,13 @@ HTML;
         $invoiceNumber = $salary->invoice_number;
         $salary->delete();
 
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Data gaji {$invoiceNumber} berhasil dihapus."
+            ]);
+        }
+
         return redirect()
             ->route('pengeluaran-lain.gaji.index')
             ->with('notification', "🗑️ Data gaji {$invoiceNumber} berhasil dihapus.");

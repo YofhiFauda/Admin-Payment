@@ -539,59 +539,69 @@ function useSystemValues() {
 
 async function resetToAuto() {
     if (!currentEditId) return;
-    if (!confirm('Kembalikan status ke Auto? Harga akan dihitung ulang dari history transaksi.')) return;
-
-    const btn = document.getElementById('resetToAutoBtn');
-    btn.disabled = true;
-    btn.textContent = 'Memproses...';
-
-    try {
-        const res = await fetch(`/price-index/${currentEditId}/reset-auto`, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-        });
-        const json = await res.json();
-        if (res.ok && json.success) {
-            location.reload();
-        } else {
-            alert(json.error || 'Gagal reset.');
+    
+    openConfirmModal('globalConfirmModal', {
+        title: 'Reset ke Auto?',
+        message: 'Kembalikan status ke <strong>Auto</strong>? Harga akan dihitung ulang secara otomatis dari history transaksi.',
+        action: `/price-index/${currentEditId}/reset-auto`,
+        method: 'POST',
+        submitText: 'Ya, Reset',
+        submitColor: 'bg-amber-500 hover:bg-amber-600',
+        icon: 'refresh-cw',
+        iconColor: 'text-amber-500',
+        iconBg: 'bg-amber-50',
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`/price-index/${currentEditId}/reset-auto`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showToast(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(result.error || 'Gagal reset auto');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         }
-    } catch (e) {
-        alert('Terjadi kesalahan koneksi.');
-    }
-    btn.disabled = false;
-    btn.textContent = '🔄 Reset ke Auto';
+    });
 }
 
 // ─── Delete ─────────────────────────────────────────────────────
-async function deleteIndex(id, name) {
-    if (!confirm(`Yakin ingin menghapus Price Index "${name}"?`)) return;
-
-    try {
-        const res = await fetch(`/price-index/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-        });
-        const json = await res.json();
-        if (res.ok && json.success) {
-            const row = document.getElementById(`pi-row-${id}`);
-            if (row) row.remove();
-        } else {
-            alert(json.error || 'Gagal menghapus.');
-        }
-    } catch (e) {
-        alert('Terjadi kesalahan koneksi.');
-    }
-}
-
-// Tutup modal saat klik overlay
-document.querySelectorAll('[id$="Modal"]').forEach(el => {
-    el.addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.add('hidden');
-            this.classList.remove('flex');
+function deleteIndex(id, name) {
+    openConfirmModal('globalConfirmModal', {
+        title: 'Hapus Price Index?',
+        message: `Yakin ingin menghapus Price Index <strong class="text-slate-800">"${name}"</strong>?`,
+        action: `/price-index/${id}`,
+        method: 'DELETE',
+        submitText: 'Ya, Hapus',
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`/price-index/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showToast(result.message, 'success');
+                    const row = document.getElementById(`pi-row-${id}`);
+                    if (row) {
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(-20px)';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                } else {
+                    throw new Error(result.error || 'Gagal menghapus');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         }
     });
-});
+}
 </script>
+
 @endpush

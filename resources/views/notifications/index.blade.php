@@ -31,13 +31,12 @@
             @endif
 
             @if($stats['total'] > 0)
-            <form action="{{ route('notifications.destroyAll') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SEMUA notifikasi? Tindakan ini tidak dapat dibatalkan.')">
-                @csrf @method('DELETE')
-                <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-rose-600 rounded-xl font-bold text-sm border border-rose-100 shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-300/50 hover:-translate-y-0.5 transition-all duration-200" title="Hapus semua notifikasi">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    Hapus Semua
-                </button>
-            </form>
+            <button type="button" 
+                    onclick="confirmDestroyAll()"
+                    class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-rose-600 rounded-xl font-bold text-sm border border-rose-100 shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-300/50 hover:-translate-y-0.5 transition-all duration-200" title="Hapus semua notifikasi">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                Hapus Semua
+            </button>
             @endif
         </div>
     </div>
@@ -87,7 +86,7 @@
                 $delayClass = 'delay-'.(min(($index % 10) * 100 + 200, 1000));
             @endphp
             
-            <div class="group anim-slide-up {{ $delayClass }} block bg-white/80 backdrop-blur-md rounded-2xl border {{ $isRead ? 'border-slate-100 hover:border-slate-200 hover:shadow-sm' : $theme['border'].' shadow-md hover:shadow-lg' }} p-4 md:p-5 transition-all duration-300 {{ $isRead ? 'opacity-80 hover:opacity-100' : 'hover:-translate-y-1' }} cursor-pointer relative overflow-hidden" onclick="visitUrl('{{ $data['url'] ?? '' }}', '{{ $notif->id }}')">
+            <div id="notif-{{ $notif->id }}" class="group anim-slide-up {{ $delayClass }} block bg-white/80 backdrop-blur-md rounded-2xl border {{ $isRead ? 'border-slate-100 hover:border-slate-200 hover:shadow-sm' : $theme['border'].' shadow-md hover:shadow-lg' }} p-4 md:p-5 transition-all duration-300 {{ $isRead ? 'opacity-80 hover:opacity-100' : 'hover:-translate-y-1' }} cursor-pointer relative overflow-hidden" onclick="visitUrl('{{ $data['url'] ?? '' }}', '{{ $notif->id }}')">
                 
                 {{-- Decorative side band for unread --}}
                 @if(!$isRead)
@@ -142,12 +141,11 @@
                                     </form>
                                 @endif
 
-                                <form action="{{ route('notifications.destroy', $notif->id) }}" method="POST" onsubmit="return confirm('Hapus notifikasi ini secara permanen?')" onclick="event.stopPropagation();">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-lg md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Hapus Permanen">
-                                        <i data-lucide="trash-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
-                                    </button>
-                                </form>
+                                <button type="button" 
+                                        onclick="event.stopPropagation(); confirmDestroy('{{ $notif->id }}')"
+                                        class="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-lg md:rounded-2xl shadow-sm transition-all hover:scale-105" title="Hapus Permanen">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -223,6 +221,66 @@
 
 @push('scripts')
 <script>
+    function confirmDestroyAll() {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Hapus SEMUA Notifikasi?',
+            message: 'Apakah Anda yakin ingin menghapus <strong>SEMUA</strong> notifikasi? Tindakan ini tidak dapat dibatalkan.',
+            action: "{{ route('notifications.destroyAll') }}",
+            method: 'DELETE',
+            submitText: 'Ya, Hapus Semua',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch("{{ route('notifications.destroyAll') }}", {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        showToast(result.message, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus semua notifikasi');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            }
+        });
+    }
+
+    function confirmDestroy(id) {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Hapus Notifikasi?',
+            message: 'Hapus notifikasi ini secara permanen?',
+            action: `/notifications/${id}`,
+            method: 'DELETE',
+            submitText: 'Ya, Hapus',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/notifications/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        showToast(result.message, 'success');
+                        const el = document.getElementById(`notif-${id}`);
+                        if (el) {
+                            el.style.opacity = '0';
+                            el.style.transform = 'translateY(10px)';
+                            el.style.transition = 'all 0.3s ease';
+                            setTimeout(() => el.remove(), 300);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus notifikasi');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            }
+        });
+    }
+
     // ─────────────────────────────────────────────────────────
     // REALTIME ECHO HANDLER (NOTIFICATIONS)
     // ─────────────────────────────────────────────────────────

@@ -36,9 +36,6 @@
         </div>
     </div>
 
-    {{-- Toast Container --}}
-    <div id="toast-container" class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
-
     {{-- Main Grid --}}
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
@@ -293,38 +290,6 @@ function filterCategories(type, query) {
     }
 }
 
-/* ── Toast (Overhauled for Premium Look) ── */
-function showToast(msg, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const styles = {
-        success: { bg: 'bg-white', border: 'border-emerald-100', text: 'text-slate-800', icon: 'check-circle', iconColor: 'text-emerald-500' },
-        error:   { bg: 'bg-white', border: 'border-red-100', text: 'text-slate-800', icon: 'alert-circle', iconColor: 'text-red-500' },
-        info:    { bg: 'bg-white', border: 'border-blue-100', text: 'text-slate-800', icon: 'info', iconColor: 'text-blue-500' },
-    };
-    const s = styles[type] || styles.success;
-    
-    const el = document.createElement('div');
-    el.className = `relative flex items-center gap-4 px-6 py-4 rounded-[2rem] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] border ${s.border} pointer-events-auto transform translate-x-[120%] opacity-0 transition-all duration-500 ease-out animate-in ${s.bg}`;
-    el.innerHTML = `
-        <div class="w-8 h-8 rounded-full ${s.iconColor} bg-white flex items-center justify-center shrink-0">
-            <i data-lucide="${s.icon}" class="w-5 h-5"></i>
-        </div>
-        <span class="flex-1 font-black text-sm tracking-tight ${s.text}">${msg}</span>
-    `;
-    
-    container.appendChild(el);
-    lucide.createIcons({ root: el });
-    
-    requestAnimationFrame(() => { 
-        el.classList.remove('translate-x-[120%]', 'opacity-0'); 
-    });
-    
-    setTimeout(() => {
-        el.classList.add('translate-x-[120%]', 'opacity-0');
-        setTimeout(() => el.remove(), 600);
-    }, 4500);
-}
-
 /* ── Modal (Smooth Transitions) ── */
 function openAddModal(type) {
     document.getElementById('modal-title').textContent = 'Tambah Kategori';
@@ -480,42 +445,39 @@ async function toggleActive(id, btn) {
 }
 
 /* ── Delete ── */
-async function deleteCategory(id, name) {
-    // Standard confirm for simplicity, but could be a custom modern modal too
-    if (!confirm(`Hapus kategori "${name}"?\n\nRiwayat transaksi dengan kategori ini akan tetap tersimpan namun kategori ini tidak dapat dipilih lagi di masa depan.`)) return;
-
-    // Visual feedback for item being deleted
-    const item = document.querySelector(`.category-item[data-id="${id}"]`);
-    if (item) {
-        item.style.transform = 'translateX(-20px)';
-        item.style.opacity = '0';
-    }
-
-    try {
-        const res = await fetch(`/transaction-categories/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast(data.message, 'success');
-            setTimeout(() => item?.remove(), 400);
-        } else {
-            showToast(data.message || 'Gagal menghapus.', 'error');
-            if (item) {
-                item.style.transform = '';
-                item.style.opacity = '';
+function deleteCategory(id, name) {
+    openConfirmModal('globalConfirmModal', {
+        title: 'Hapus Kategori?',
+        message: `Hapus kategori <strong class="text-slate-800">"${name}"</strong>?<br><br><span class="text-[11px] font-medium text-slate-400 leading-relaxed uppercase tracking-widest">Riwayat transaksi akan tetap aman, namun kategori ini tidak dapat dipilih lagi.</span>`,
+        action: `/transaction-categories/${id}`,
+        method: 'DELETE',
+        submitText: 'Ya, Hapus',
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`/transaction-categories/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showToast(result.message, 'success');
+                    const item = document.querySelector(`.category-item[data-id="${id}"]`);
+                    if (item) {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(-20px)';
+                        setTimeout(() => item.remove(), 300);
+                    }
+                } else {
+                    throw new Error(result.message || 'Gagal menghapus kategori');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
             }
         }
-    } catch(e) {
-        showToast('Gagal terhubung ke server.', 'error');
-        if (item) {
-            item.style.transform = '';
-            item.style.opacity = '';
-        }
-    }
+    });
 }
 </script>
+
 @endpush
 
 @endsection

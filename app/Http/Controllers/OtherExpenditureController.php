@@ -205,6 +205,13 @@ class OtherExpenditureController extends Controller
         $jenisRoute    = str_replace('_', '-', $jenis);
         $record->delete();
 
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Record {$invoiceNumber} berhasil dihapus."
+            ]);
+        }
+
         return redirect()
             ->route("pengeluaran-lain.{$jenisRoute}.index")
             ->with('notification', "🗑️ Record {$invoiceNumber} berhasil dihapus.");

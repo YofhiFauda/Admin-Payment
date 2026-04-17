@@ -45,10 +45,7 @@
     }
     .btn-cancel:hover { background: #e2e8f0; }
     .error-msg { font-size: .8rem; color: #ef4444; margin-top: 4px; display: none; }
-</style>
-
-{{-- Toast container --}}
-<div id="toast-container" class="fixed top-5 right-5 z-[99999] flex flex-col gap-2" style="pointer-events:none;"></div>
+</div>
 
 <div class="p-4 md:p-6">
 
@@ -386,19 +383,6 @@
 <script>
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-// ─── Toast ─────────────────────────────────────────────
-function showToast(msg, type = 'success') {
-    const tc = document.getElementById('toast-container');
-    const el = document.createElement('div');
-    el.style.cssText = 'pointer-events:auto; min-width:260px; padding:12px 18px; border-radius:12px; font-weight:600; font-size:.875rem; display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,.15); animation:slideIn .3s ease;';
-    el.style.background = type === 'success' ? '#f0fdf4' : '#fef2f2';
-    el.style.color       = type === 'success' ? '#166534'  : '#991b1b';
-    el.style.border      = type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca';
-    el.innerHTML = (type === 'success' ? '✓ ' : '✗ ') + msg;
-    tc.appendChild(el);
-    setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .4s'; setTimeout(()=>el.remove(),400); }, 3000);
-}
-
 // ─── Add Modal ─────────────────────────────────────────
 function openAddModal() {
     document.getElementById('add-name').value = '';
@@ -485,39 +469,36 @@ async function submitEdit() {
 
 // ─── Delete Modal ──────────────────────────────────────
 function openDeleteModal(id, name) {
-    document.getElementById('delete-id').value = id;
-    document.getElementById('delete-name-display').textContent = name;
-    document.getElementById('modal-delete').style.display = 'flex';
-}
-function closeDeleteModal() { document.getElementById('modal-delete').style.display = 'none'; }
-
-async function submitDelete() {
-    const id  = document.getElementById('delete-id').value;
-    const btn = document.getElementById('btn-delete-submit');
-    btn.disabled = true; btn.textContent = 'Menghapus...';
-
-    try {
-        const res = await fetch(`/branches/${id}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With':'XMLHttpRequest' }
-        });
-        const data = await res.json();
-        if (data.success) {
-            closeDeleteModal();
-            const row = document.getElementById(`branch-row-${id}`);
-            if (row) { row.style.opacity='0'; row.style.transition='opacity .3s'; setTimeout(()=>row.remove(),300); }
-            showToast(data.message);
-        } else {
-            closeDeleteModal();
-            showToast(data.message, 'error');
+    openConfirmModal('globalConfirmModal', {
+        title: 'Hapus Cabang?',
+        message: `Anda yakin ingin menghapus cabang <strong class="text-slate-900">${name}</strong>?<br><br><span class="p-2.5 rounded-xl bg-rose-50 border border-rose-100 text-[10px] text-rose-700 font-bold block uppercase tracking-wider">⚠️ Tindakan ini tidak dapat dibatalkan.</span>`,
+        submitText: 'Ya, Hapus Cabang',
+        onConfirm: async () => {
+            try {
+                const res = await fetch(`/branches/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With':'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const row = document.getElementById(`branch-row-${id}`);
+                    if (row) { 
+                        row.style.opacity='0'; 
+                        row.style.transform='translateX(-10px)';
+                        row.style.transition='all .3s ease'; 
+                        setTimeout(()=>row.remove(),300); 
+                    }
+                    showToast(data.message);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch(e) {
+                showToast('Terjadi kesalahan.', 'error');
+            }
         }
-    } catch(e) {
-        closeDeleteModal();
-        showToast('Terjadi kesalahan.', 'error');
-    } finally {
-        btn.disabled = false; btn.textContent = 'Ya, Hapus Cabang';
-    }
+    });
 }
+
 
 // ─── Keyboard Shortcut (Enter to submit) ───────────────
 document.getElementById('add-name').addEventListener('keydown', e => { if(e.key==='Enter') submitAdd(); });

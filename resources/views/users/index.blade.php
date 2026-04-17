@@ -77,7 +77,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-50">
                     @forelse($users as $index => $user)
-                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                    <tr class="hover:bg-slate-50/50 transition-colors group" id="user-row-{{ $user->id }}">
                         <td class="px-6 py-4 text-sm text-slate-400 font-bold tracking-tight">{{ $users->firstItem() + $index }}</td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
@@ -158,7 +158,7 @@
         {{-- Mobile Card List --}}
         <div class="md:hidden divide-y divide-slate-100">
             @forelse($users as $user)
-            <div class="p-4 active:bg-slate-50 transition-colors">
+            <div class="p-4 active:bg-slate-50 transition-colors" id="user-card-{{ $user->id }}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-base font-black flex-shrink-0">
@@ -228,55 +228,55 @@
 </div>
 
 
-{{-- Delete Confirmation Modal --}}
-<div id="deleteModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeDeleteModal()"></div>
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 relative z-10 animate-fade-in-up">
-            <div class="flex flex-col items-center text-center">
-                <div class="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
-                    <i data-lucide="alert-triangle" class="w-6 h-6 text-red-500"></i>
-                </div>
-                <h3 class="text-lg font-black text-slate-900 mb-2">Hapus Pengguna?</h3>
-                <p class="text-sm text-slate-500 font-medium mb-6">
-                    Anda yakin ingin menghapus <strong id="deleteUserName" class="text-slate-800"></strong>? Tindakan ini tidak dapat dibatalkan.
-                </p>
-                <div class="flex gap-3 w-full">
-                    <button onclick="closeDeleteModal()"
-                            class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-                        Batal
-                    </button>
-                    <form id="deleteForm" method="POST" class="flex-1">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit"
-                                class="w-full px-4 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors">
-                            Ya, Hapus
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @push('scripts')
 <script>
     function confirmDelete(userId, userName) {
-        document.getElementById('deleteUserName').textContent = userName;
-        document.getElementById('deleteForm').action = `/users/${userId}`;
-        document.getElementById('deleteModal').classList.remove('hidden');
+        openConfirmModal('globalConfirmModal', {
+            message: `Anda yakin ingin menghapus <strong class="text-slate-800">${userName}</strong>? Tindakan ini tidak dapat dibatalkan.`,
+            action: `/users/${userId}`,
+            method: 'DELETE',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        showToast(result.message, 'success');
+                        // Instant remove from UI
+                        const row = document.getElementById(`user-row-${userId}`);
+                        const card = document.getElementById(`user-card-${userId}`);
+                        if (row) {
+                            row.style.opacity = '0';
+                            row.style.transform = 'translateX(-20px)';
+                            row.style.transition = 'all 0.3s ease';
+                            setTimeout(() => row.remove(), 300);
+                        }
+                        if (card) {
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.95)';
+                            card.style.transition = 'all 0.3s ease';
+                            setTimeout(() => card.remove(), 300);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus pengguna');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                    throw err; // Re-throw to keep modal open if we want, or just let it close
+                }
+            }
+        });
     }
 
     function closeDeleteModal() {
-        document.getElementById('deleteModal').classList.add('hidden');
+        closeConfirmModal('globalConfirmModal');
     }
-
-    // Close modal on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeDeleteModal();
-    });
 </script>
 @endpush

@@ -1179,7 +1179,7 @@
                 if (!container) {
                     container = document.createElement('div');
                     container.id = 'toast-container-stack';
-                    container.className = 'fixed top-24 right-0 sm:right-4 md:right-8 z-[60] flex flex-col gap-2 sm:gap-3 pointer-events-none items-center sm:items-end w-full sm:max-w-sm px-4 sm:px-0';
+                    container.className = 'fixed top-24 right-0 sm:right-4 md:right-8 z-[110] flex flex-col gap-2 sm:gap-3 pointer-events-none items-center sm:items-end w-full sm:max-w-sm px-4 sm:px-0';
                     document.body.appendChild(container);
                 }
 
@@ -1219,6 +1219,25 @@
                         setTimeout(() => { if(document.getElementById(toastId)) el.remove() }, 500);
                     }
                 }, 6000);
+            };
+
+            // Global wrapper for easier usage
+            window.showToast = (message, type = 'success') => {
+                let colorClasses = 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30';
+                let iconName = 'check-circle';
+                let title = 'Berhasil';
+
+                if (type === 'error') {
+                    colorClasses = 'bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-red-500/30';
+                    iconName = 'alert-circle';
+                    title = 'Gagal';
+                } else if (type === 'info') {
+                    colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30';
+                    iconName = 'info';
+                    title = 'Informasi';
+                }
+
+                showRealtimeToast(title, message, colorClasses, iconName);
             };
 
             // ── Listener untuk NOTIFIKASI SYSTEM (Real-time Toasts & Database Sync) ──
@@ -1325,6 +1344,7 @@
     });
 </script>
 @stack('modals')
+<x-confirm-modal id="globalConfirmModal" />
 @stack('scripts')
 </body>
 </html>

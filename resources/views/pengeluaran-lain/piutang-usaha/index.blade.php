@@ -74,7 +74,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-xs">
                         @foreach($items as $item)
-                        <tr class="hover:bg-slate-50 transition-colors">
+                        <tr class="hover:bg-slate-50 transition-colors" id="record-row-{{ $item->id }}">
                             <td class="px-5 py-4"><span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span></td>
                             <td class="px-5 py-4 font-semibold">
                                 {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}
@@ -100,7 +100,11 @@
                                     </button>
                                     @endif
                                     @if($item->status === 'pending')
-                                    <form method="POST" action="{{ route('pengeluaran-lain.record.destroy', $item->id) }}" onsubmit="return confirm('Hapus?')">@csrf @method('DELETE')<button type="submit" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button></form>
+                                    <button type="button" 
+                                            onclick="confirmDeleteRecord({{ $item->id }}, '{{ $item->invoice_number }}')"
+                                            class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all" title="Hapus">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
                                     @endif
                                 </div>
                             </td>
@@ -389,6 +393,42 @@
         const modal = document.getElementById('view-proof-modal');
         const box = document.getElementById('view-proof-modal-box');
         if (modal) { modal.classList.add('opacity-0'); box.classList.remove('scale-100'); box.classList.add('scale-95'); setTimeout(() => modal.classList.add('hidden'), 300); }
+    }
+
+    function confirmDeleteRecord(id, invoice) {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Hapus Record?',
+            message: `Anda yakin ingin menghapus record <strong class="text-slate-800">${invoice}</strong>? Tindakan ini tidak dapat dibatalkan.`,
+            action: `/pengeluaran-lain/record/${id}`,
+            method: 'DELETE',
+            submitText: 'Ya, Hapus',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/pengeluaran-lain/record/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{csrf_token()}}',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        showToast(result.message, 'success');
+                        const row = document.getElementById(`record-row-${id}`);
+                        if (row) {
+                            row.style.opacity = '0';
+                            row.style.transform = 'translateX(-10px)';
+                            row.style.transition = 'all 0.3s ease';
+                            setTimeout(() => row.remove(), 300);
+                        }
+                    } else {
+                        throw new Error(result.message || 'Gagal menghapus record');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            }
+        });
     }
 </script>
 @endsection

@@ -155,6 +155,13 @@ class UserController extends Controller
         $name = $user->name;
         $user->delete();
 
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Pengguna {$name} berhasil dihapus."
+            ]);
+        }
+
         return redirect()->route('users.index')
             ->with('notification', "Pengguna {$name} berhasil dihapus.");
     }

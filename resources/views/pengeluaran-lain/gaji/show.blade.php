@@ -193,40 +193,114 @@
 
             {{-- Approve (atasan/owner, hanya jika draft) --}}
             @if($salary->isDraft() && in_array(Auth::user()->role, ['atasan', 'owner']))
-            <form method="POST" action="{{ route('pengeluaran-lain.gaji.approve', $salary->id) }}"
-                onsubmit="return confirm('Setujui gaji {{ $salary->employee->name ?? '' }} periode {{ $salary->periode }}?')">
-                @csrf
-                <button type="submit"
-                    class="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-                    <i data-lucide="check-circle" class="w-4 h-4"></i> Setujui Gaji
-                </button>
-            </form>
+            <button type="button"
+                onclick="confirmApproveSalary()"
+                class="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+                <i data-lucide="check-circle" class="w-4 h-4"></i> Setujui Gaji
+            </button>
             @endif
 
             {{-- Pay (admin/atasan/owner, hanya jika approved) --}}
             @if($salary->isApproved())
-            <form method="POST" action="{{ route('pengeluaran-lain.gaji.pay', $salary->id) }}"
-                onsubmit="return confirm('Tandai gaji ini sudah dibayar? Notifikasi akan dikirim ke karyawan via Telegram.')">
-                @csrf
-                <button type="submit"
-                    class="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all shadow-lg shadow-green-600/20">
-                    <i data-lucide="banknote" class="w-4 h-4"></i> Tandai Sudah Dibayar
-                </button>
-            </form>
+            <button type="button"
+                onclick="confirmPaySalary()"
+                class="flex items-center gap-2 px-5 py-3 rounded-xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-all shadow-lg shadow-green-600/20">
+                <i data-lucide="banknote" class="w-4 h-4"></i> Tandai Sudah Dibayar
+            </button>
             @endif
 
             {{-- Delete (hanya jika draft) --}}
             @if($salary->isEditable())
-            <form method="POST" action="{{ route('pengeluaran-lain.gaji.destroy', $salary->id) }}"
-                onsubmit="return confirm('Hapus data gaji ini?')">
-                @csrf @method('DELETE')
-                <button type="submit"
-                    class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-rose-200 text-rose-600 font-bold text-sm hover:bg-rose-50 transition-all shadow-sm">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus
-                </button>
-            </form>
+            <button type="button"
+                onclick="confirmDeleteSalary()"
+                class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-rose-200 text-rose-600 font-bold text-sm hover:bg-rose-50 transition-all shadow-sm">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus
+            </button>
             @endif
         </div>
     </div>
 </div>
+
+<script>
+    function confirmApproveSalary() {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Setujui Gaji?',
+            message: 'Apakah Anda yakin ingin menyetujui gaji <strong class="text-slate-800">{{ $salary->employee->name ?? "" }}</strong> periode <strong class="text-slate-800">{{ $salary->periode }}</strong>?',
+            action: "{{ route('pengeluaran-lain.gaji.approve', $salary->id) }}",
+            method: 'POST',
+            submitText: 'Ya, Setujui',
+            submitColor: 'bg-blue-600 hover:bg-blue-700',
+            icon: 'check-circle',
+            iconColor: 'text-blue-600',
+            iconBg: 'bg-blue-50',
+            onConfirm: async () => {
+                const response = await fetch("{{ route('pengeluaran-lain.gaji.approve', $salary->id) }}", {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message || 'Gaji disetujui', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(result.message || 'Gagal menyetujui gaji', 'error');
+                }
+            }
+        });
+    }
+
+    function confirmPaySalary() {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Tandai Sudah Bayar?',
+            message: 'Apakah Anda yakin ingin menandai gaji ini sebagai <strong>Sudah Dibayar</strong>? Notifikasi akan dikirim ke karyawan via Telegram.',
+            action: "{{ route('pengeluaran-lain.gaji.pay', $salary->id) }}",
+            method: 'POST',
+            submitText: 'Ya, Sudah Bayar',
+            submitColor: 'bg-green-600 hover:bg-green-700',
+            icon: 'banknote',
+            iconColor: 'text-green-600',
+            iconBg: 'bg-green-50',
+            onConfirm: async () => {
+                const response = await fetch("{{ route('pengeluaran-lain.gaji.pay', $salary->id) }}", {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message || 'Gaji dibayar', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(result.message || 'Gagal memproses pembayaran', 'error');
+                }
+            }
+        });
+    }
+
+    function confirmDeleteSalary() {
+        openConfirmModal('globalConfirmModal', {
+            title: 'Hapus Data Gaji?',
+            message: 'Apakah Anda yakin ingin menghapus data gaji ini secara permanen? Tindakan ini tidak dapat dibatalkan.',
+            action: "{{ route('pengeluaran-lain.gaji.destroy', $salary->id) }}",
+            method: 'DELETE',
+            submitText: 'Ya, Hapus',
+            submitColor: 'bg-red-500 hover:bg-red-600',
+            icon: 'trash-2',
+            iconColor: 'text-red-500',
+            iconBg: 'bg-red-50',
+            onConfirm: async () => {
+                const response = await fetch("{{ route('pengeluaran-lain.gaji.destroy', $salary->id) }}", {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message || 'Gaji dihapus', 'success');
+                    setTimeout(() => location.href = "{{ route('pengeluaran-lain.gaji.index') }}", 1000);
+                } else {
+                    showToast(result.message || 'Gagal menghapus gaji', 'error');
+                }
+            }
+        });
+    }
+</script>
 @endsection
