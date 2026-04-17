@@ -211,23 +211,37 @@ document.addEventListener('DOMContentLoaded', function () {
             if (btn.dataset.bound) return;
             btn.dataset.bound = '1';
             btn.addEventListener('click', function () {
-                const id     = this.dataset.id;
-                const status = this.dataset.status;
-                const csrf   = document.querySelector('meta[name="csrf-token"]').content;
-                const row    = document.getElementById('pending-row-' + id);
+                const id      = this.dataset.id;
+                const status  = this.dataset.status;
+                const invoice = this.dataset.invoice || '...';
+                const csrf    = document.querySelector('meta[name="csrf-token"]').content;
+                const row     = document.getElementById('pending-row-' + id);
 
                 if (status === 'rejected') {
-                    const reason = prompt('Alasan penolakan (wajib diisi):');
-                    if (!reason) return;
-                    doStatusAndRefresh(id, status, csrf, row, reason);
+                    openRejectModal(id, invoice);
                 } else {
-                    doStatusAndRefresh(id, status, csrf, row, null);
+                    doStatusAndRefresh(id, status, csrf, row, null, this);
                 }
             });
         });
     }
 
-    function doStatusAndRefresh(id, status, csrf, row, reason) {
+    function doStatusAndRefresh(id, status, csrf, row, reason, btn) {
+        // Visual feedback
+        let originalContent = '';
+        if (btn) {
+            btn.disabled = true;
+            originalContent = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>`;
+            if (window.lucide) lucide.createIcons({ root: btn });
+            
+            // Disable siblings
+            const parent = btn.closest('.flex');
+            if (parent) {
+                parent.querySelectorAll('button').forEach(b => { if(b !== btn) b.disabled = true; });
+            }
+        }
+
         const body = new URLSearchParams({ _method:'PATCH', _token: csrf, status });
         if (reason) body.append('rejection_reason', reason);
 
@@ -247,9 +261,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 // After animation, refresh entire pending list
                 setTimeout(() => refreshPendingList(), 350);
+            } else {
+                throw new Error(data.message || 'Gagal mengubah status');
             }
         })
-        .catch(() => showDashToast('Gagal mengubah status.', 'error'));
+        .catch((err) => {
+            showDashToast(err.message || 'Gagal mengubah status.', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                if (window.lucide) lucide.createIcons({ root: btn });
+                const parent = btn.closest('.flex');
+                if (parent) {
+                    parent.querySelectorAll('button').forEach(b => { b.disabled = false; });
+                }
+            }
+        });
     }
 
     function showDashToast(message, type) {
@@ -410,6 +437,106 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
     @endif
 
+    // ─── Rejection Modal Logic ─────────────────────────────────────
+    const rejectModal = document.getElementById('reject-modal');
+    window.openRejectModal = function(transactionId, invoiceNumber) {
+        if (!rejectModal) return;
+        const inner = rejectModal.querySelector('div');
+        const form = document.getElementById('reject-form');
+        const invoiceLabel = document.getElementById('reject-modal-invoice');
+
+        if (form) form.action = `/transactions/${transactionId}/status`;
+        if (invoiceLabel) invoiceLabel.textContent = invoiceNumber;
+
+        rejectModal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            rejectModal.classList.remove('opacity-0');
+            if (inner) {
+                inner.classList.remove('scale-95');
+                inner.classList.add('scale-100');
+            }
+        });
+
+        setTimeout(() => {
+            const textarea = rejectModal.querySelector('textarea[name="rejection_reason"]');
+            if (textarea) textarea.focus();
+        }, 350);
+    };
+
+    window.closeRejectModal = function() {
+        if (!rejectModal) return;
+        const inner = rejectModal.querySelector('div');
+        rejectModal.classList.add('opacity-0');
+        if (inner) {
+            inner.classList.remove('scale-100');
+            inner.classList.add('scale-95');
+        }
+        setTimeout(() => {
+            rejectModal.classList.add('hidden');
+            const form = document.getElementById('reject-form');
+            if (form) form.reset();
+        }, 300);
+    };
+
+    const rejectForm = document.getElementById('reject-form');
+    if (rejectForm) {
+        rejectForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = this.action;
+            const invoiceId = url.split('/').filter(p => p).reverse()[1]; // extract from /transactions/{id}/status
+            const reason = this.querySelector('textarea[name="rejection_reason"]').value;
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const row = document.getElementById('pending-row-' + invoiceId);
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> MEMPROSES...`;
+                if (window.lucide) lucide.createIcons({ root: submitBtn });
+            }
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ status: 'rejected', rejection_reason: reason, _method: 'PATCH' }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    closeRejectModal();
+                    showDashToast('Transaksi berhasil ditolak.', 'success');
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s, transform 0.3s';
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(-20px)';
+                    }
+                    setTimeout(() => refreshPendingList(), 350);
+                } else {
+                    throw new Error(data.message || 'Gagal menolak transaksi');
+                }
+            })
+            .catch(err => {
+                showDashToast(err.message || 'Terjadi kesalahan.', 'error');
+            })
+            .finally(() => {
+                if(typeof NProgress !== 'undefined') NProgress.done();
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Konfirmasi Tolak';
+                }
+            });
+        });
+    }
+
+    if (rejectModal) {
+        rejectModal.addEventListener('click', e => { if (e.target === rejectModal) closeRejectModal(); });
+    }
+
     // ─── Hutang Rembush: Load All Amounts On Page Ready ──────────────
     @if($isAdmin)
     loadAllHutangAmounts();
@@ -501,7 +628,7 @@ async function fetchHutangData(branchName) {
 }
 
 function renderHutangRow(t) {
-    const badge = getStatusBadge(t.status);
+    const badge = getStatusBadge(t.status, t.type, t.is_inter_branch);
     return `<tr class="hover:bg-slate-50 transition-colors">
         <td class="px-5 py-3">
             <span class="text-xs font-bold text-slate-800">${t.invoice_number}</span>
@@ -525,13 +652,16 @@ function renderHutangRow(t) {
     </tr>`;
 }
 
-function getStatusBadge(status) {
+function getStatusBadge(status, type = '', isDebt = false) {
     const map = {
-        'pending':            { cls: 'bg-amber-50 text-amber-700 border border-amber-200',    dot: 'bg-amber-500',    label: 'Pending' },
-        'waiting_payment':    { cls: 'bg-blue-50 text-blue-700 border border-blue-200',       dot: 'bg-blue-500',     label: 'Waiting Payment' },
-        'flagged':            { cls: 'bg-red-50 text-red-700 border border-red-200',           dot: 'bg-red-500',      label: 'Flagged' },
-        'pending_technician': { cls: 'bg-orange-50 text-orange-700 border border-orange-200', dot: 'bg-orange-500',   label: 'Siap Ambil' },
-        'approved':           { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-500', label: 'Menunggu Owner' },
+        'pending':            { cls: type === 'gudang' ? 'badge-gudang' : 'badge-pending',    dot: type === 'gudang' ? 'bg-blue-500' : 'bg-yellow-500',    label: type === 'gudang' ? 'Review' : 'Pending' },
+        'waiting_payment':    { cls: isDebt ? 'badge-debt' : (type === 'gudang' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment'), dot: isDebt ? 'bg-amber-500' : (type === 'gudang' ? 'bg-slate-400' : 'bg-orange-500'), label: 'Belum Bayar' },
+        'flagged':            { cls: 'badge-flagged', dot: 'bg-rose-500', label: 'Flagged' },
+        'pending_technician': { cls: 'badge-siap-ambil', dot: 'bg-teal-500', label: 'Siap Ambil' },
+        'approved':           { cls: 'badge-approved', dot: 'bg-purple-500', label: 'Menunggu Owner' },
+        'completed':          { cls: 'badge-completed', dot: 'bg-emerald-500', label: 'Selesai' },
+        'rejected':           { cls: 'badge-rejected', dot: 'bg-red-500', label: 'Ditolak' },
+        'auto-reject':        { cls: 'badge-auto-reject', dot: 'bg-slate-400', label: 'Auto Reject' }
     };
     return map[status] || { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: status };
 }
@@ -722,10 +852,17 @@ async function loadAllHutangAmounts() {
         flex-shrink: 0;
     }
     .chart-container { position: relative; height: 260px; }
-    .badge-pending  { background: #fefce8; color: #92400e; border: 1px solid #fde68a; }
-    .badge-approved { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .badge-completed{ background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-rejected { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .badge-pending  { background: #fffbeb; color: #a16207; border: 1px solid #fef08a; }
+    .badge-approved { background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+    .badge-completed{ background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-rejected { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-fuchsia  { background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; }
+    .badge-waiting-payment { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .badge-debt     { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+    .badge-gudang   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-siap-ambil { background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; }
+    .badge-flagged  { background: #fff1f2; color: #be123c; border: 1px solid #ffe4e6; }
+    .badge-auto-reject { background: #1f2937; color: #f9fafb; border: 1px solid #111827; }
     .status-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
     .table-row { transition: background .15s; }
     .table-row:hover { background: #f8fafc; }
@@ -1058,7 +1195,7 @@ async function loadAllHutangAmounts() {
                             </td>
                             <td class="px-2 py-3 hidden sm:table-cell">
                                 <span class="text-xs px-2 py-0.5 rounded-full font-semibold
-                                    {{ $t->type === 'rembush' ? 'bg-indigo-50 text-indigo-700' : 'bg-purple-50 text-purple-700' }}">
+                                    {{ $t->type === 'rembush' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-teal-50 text-teal-600 border border-teal-100' }}">
                                     {{ $t->type_label }}
                                 </span>
                             </td>
@@ -1069,24 +1206,37 @@ async function loadAllHutangAmounts() {
                             </td>
                             <td class="px-5 py-3 text-right">
                                 @php
-                                    $badgeClass = match($t->status) {
-                                        'pending'   => 'badge-pending',
-                                        'approved'  => 'badge-approved',
+                                    $status = $t->status;
+                                    $label  = $t->status_label;
+                                    $isGudang = $t->type === 'gudang';
+                                    $isLargePengajuan = $t->type === 'pengajuan' && $t->effective_amount >= 1000000;
+
+                                    $badgeClass = match($status) {
+                                        'pending'   => $isGudang ? 'badge-gudang' : 'badge-pending',
+                                        'approved'  => $isLargePengajuan ? 'badge-fuchsia' : 'badge-approved',
                                         'completed' => 'badge-completed',
                                         'rejected'  => 'badge-rejected',
+                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'badge-debt' : ($isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment')),
+                                        'pending_technician' => 'badge-siap-ambil',
+                                        'flagged' => 'badge-flagged',
+                                        'auto-reject' => 'badge-auto-reject',
                                         default     => 'bg-slate-100 text-slate-600',
                                     };
-                                    $dotColor = match($t->status) {
-                                        'pending'   => 'bg-amber-500',
-                                        'approved'  => 'bg-blue-500',
+                                    $dotColor = match($status) {
+                                        'pending'   => $isGudang ? 'bg-blue-500' : 'bg-yellow-500',
+                                        'approved'  => $isLargePengajuan ? 'bg-fuchsia-500' : 'bg-purple-500',
                                         'completed' => 'bg-emerald-500',
                                         'rejected'  => 'bg-rose-500',
+                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'bg-amber-500' : ($isGudang ? 'bg-slate-400' : 'bg-orange-500')),
+                                        'pending_technician' => 'bg-teal-500',
+                                        'flagged' => 'bg-rose-500',
+                                        'auto-reject' => 'bg-slate-400',
                                         default     => 'bg-slate-400',
                                     };
                                 @endphp
                                 <span class="status-badge {{ $badgeClass }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $dotColor }} mr-1.5"></span>
-                                    {{ $t->status_label }}
+                                    {{ $label }}
                                 </span>
                             </td>
                         </tr>
@@ -1348,6 +1498,47 @@ async function loadAllHutangAmounts() {
                     </div>
                     <button onclick="closePiutangUsahaModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-bold uppercase hover:bg-slate-700">Tutup</button>
                 </div>
+            </div>
+        </div>
+    </div>
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- STATUS REJECTION MODAL                                            --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    <div id="reject-modal"
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center opacity-0 transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-all duration-300">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-red-100 rounded-xl">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Tolak Nota</h3>
+                        <p class="text-xs text-slate-500">Nota: <strong id="reject-modal-invoice"></strong></p>
+                    </div>
+                </div>
+                <form id="reject-form" method="POST" action="">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="status" value="rejected">
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-slate-600 mb-2">
+                            Alasan Penolakan <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="rejection_reason" rows="3" required placeholder="Tuliskan alasan penolakan..."
+                            class="w-full border border-red-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-red-100 focus:border-red-300 resize-none"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeRejectModal()"
+                            class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all border border-slate-200">
+                            Batal
+                        </button>
+                        <button type="submit"
+                            class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2">
+                            Konfirmasi Tolak
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

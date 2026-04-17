@@ -44,6 +44,8 @@
 | **Telegram Bot Sync** | Notifikasi real-time, konfirmasi pembayaran cash, dan alert selisih nominal langsung ke Telegram. |
 | **Activity Log & Audit** | Audit trail lengkap untuk setiap aksi dan laporan kebocoran dana bulanan via PaymentDiscrepancyAudit. |
 | **Responsive UI** | Antarmuka *mobile-first* dengan modal rincian transaksi komprehensif dan toggle perbandingan versi. |
+| **Price Index System** | Referensi harga belanja otomatis dengan filter outlier (IQR), deteksi anomali real-time (AJAX), dan penanganan **Cold Start** untuk barang baru. |
+| **Hybrid Search** | Menjamin performa dengan switch otomatis antara Client-Side (< 5k data) dan Server-Side (≥ 5k data). |
 | **API Documentation** | Dokumentasi API interaktif dan otomatis menggunakan **Scramble** (OpenAPI/Swagger). |
 
 
@@ -117,7 +119,8 @@ graph TD
 1. **Input**: Teknisi input detail pengajuan. Sistem menyimpan **snapshot original**.
 2. **Management Review**: Owner/Atasan dapat merevisi item/nominal. Sistem menandai `is_edited_by_management = true`.
 3. **Transparency**: Semua user dapat melihat perbandingan antara "Versi Pengaju" dan "Versi Management" melalui toggle di modal detail.
-4. **Finalization**: Setelah disetujui dan dibayar, status berubah menjadi `completed` dan **pengeditan dikunci total** untuk semua role.
+4. **Payment holding**: Transaksi beralih ke `waiting_payment` setelah disetujui. Saat invoice diupload, status akan tetap `waiting_payment` jika terdapat cabang yang masih berhutang (inter-unit debt).
+5. **Finalization**: Status otomatis menjadi `completed` hanya setelah invoice terunggah DAN seluruh hutang antar cabang telah dilunaskan. Pengeditan kini dikunci total.
 
 ### 3. Gudang (Internal Flow)
 1. **Input**: Staff internal (Admin/Owner) input belanja gudang.
@@ -134,6 +137,16 @@ Sistem menerapkan **4-Layer Verification** untuk menjamin validitas keuangan:
 2. **Layer 2 (Date Logic)**: Nota berumur > 2 hari kalender otomatis berstatus `auto-reject` (dapat di-*override* oleh Admin/Owner).
 3. **Layer 3 (AI Extraction)**: Gemini Pro mengekstrak data dengan parameter `confidence`. Status `low-confidence` memerlukan review manual.
 4. **Layer 4 (Payment Audit)**: Verifikasi nominal pada struk transfer. Jika tidak cocok, transaksi di-*flag* dan memerlukan *Force Approve* dengan alasan tertulis.
+
+---
+
+## 🔍 Hybrid Search Logic
+
+Sistem pencarian transaksi dirancang untuk performa optimal pada berbagai skala data:
+1. **Threshold**: 5.000 records benchmark.
+2. **Mode Client-Side (< 5k)**: Seluruh data dimuat ke frontend (lean version) untuk pencarian instan tanpa latency server.
+3. **Mode Server-Side (≥ 5k)**: Sistem beralih ke paginasi database standar untuk menjaga penggunaan memori browser tetap rendah.
+4. **Auto-Adaptive**: Setiap pemuatan halaman melakukan pengecekan jumlah data via `/transactions/count` untuk menentukan mode terbaik secara otomatis.
 
 ---
 
@@ -429,10 +442,19 @@ Alur pengajuan tanpa OCR:
 - Hapus notifikasi (satuan atau semua)
 - Badge unread count via AJAX polling
 
-### 9. 📜 Activity Log (`ActivityLogController`)
+### 10. 📜 Activity Log (`ActivityLogController`)
 
 - Mencatat semua aktivitas user: create, update, approve, reject, delete
 - Menyimpan referensi ke user dan transaksi terkait
+
+### 11. 🧮 Price Index & Deteksi Anomali (`PriceIndexController`)
+
+Sistem untuk menjaga efisiensi anggaran belanja:
+- **Auto-Calculated**: Menghitung harga Min/Max/Avg berdasarkan riwayat transaksi yang disetujui.
+- **Outlier Filtering**: Menggunakan algoritma **IQR (Interquartile Range)** untuk membuang data harga yang tidak wajar dari kalkulasi.
+- **Real-time Detection**: Memperingatkan user jika harga yang diinput pada Pengajuan melebihi referensi maksimal.
+- **Anomaly Hub**: Dashboard khusus untuk Owner mereview pelanggaran harga (Critical/Medium/Low).
+- **Manual Lock**: Owner dapat mengunci harga referensi secara manual untuk kestabilan kebijakan.
 
 ---
 
@@ -440,28 +462,26 @@ Alur pengajuan tanpa OCR:
 
 ### Status Lifecycle
 
-```
-                    ┌─────────────┐
-                    │   PENDING   │ ← Status awal saat submit
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              ▼                         ▼
-     ┌────────────────┐        ┌──────────────┐
-     │   APPROVED     │        │   REJECTED   │
-     │ (≥ Rp 1 Jt)   │        │              │
-     └───────┬────────┘        └──────────────┘
-             │
-             ▼ (Owner final approve)
-     ┌────────────────┐
-     │   COMPLETED    │ ← juga langsung dari pending jika < Rp 1 Jt
-     └────────────────┘
+```mermaid
+graph TD
+    A[Pending] -->|Reject| B[Rejected]
+    A -->|< 1jt Approve| C[Waiting Payment]
+    A -->|>= 1jt Approve| D[Approved]
+    D -->|Owner Approve| C
+    C -->|Upload Invoice| E{Has Branch Debt?}
+    E -->|Yes| C
+    E -->|No| F[Completed]
+    C -->|Settle Final Debt| F
 ```
 
 ### Alur Approval
 
-1. **Transaksi < Rp 1.000.000**: Admin/Atasan approve → langsung `completed` ✅
-2. **Transaksi ≥ Rp 1.000.000**: Admin/Atasan approve → `approved` (menunggu Owner) → Owner approve → `completed` ✅
+1. **Gate Approval**:
+   - **Transaksi < Rp 1.000.000**: Admin/Atasan approve → `waiting_payment`.
+   - **Transaksi ≥ Rp 1.000.000**: Admin/Atasan approve → `approved` (menunggu Owner) → Owner approve → `waiting_payment`.
+2. **Payment & Debt Flow**:
+   - **Invoice Uploaded**: Jika ada hutang antar cabang, status tetap `waiting_payment`.
+   - **Debt Settled**: Transaksi otomatis `completed` saat hutang terakhir dilunaskan (dan invoice sudah ada).
 
 ---
 
@@ -572,6 +592,10 @@ php artisan queue:work                   # Jalankan queue worker
 php artisan horizon                      # Jalankan Horizon
 php artisan reverb:start                 # Jalankan WebSocket server
 
+# ── Price Index ─────────────────────────────────────────
+php artisan price-index:recalculate --mode=incremental  # Recalc item dengan transaksi baru (daily)
+php artisan price-index:recalculate --mode=full         # Recalc semua item non-manual (weekly)
+
 # ── Development ─────────────────────────────────────────
 npm run dev                              # Vite dev server
 npm run build                            # Build assets untuk production
@@ -648,6 +672,7 @@ Sistem menggunakan Redis untuk menghasilkan ID sequential yang atomic dan aman d
 ## 🎨 Dokumentasi Lanjutan
 
 - 🗺️ **[Visual Flowcharts](FLOWCHARTS.md)**: Diagram Mermaid lengkap untuk semua alur sistem.
+- 🧮 **[Price Index System](PRICE_INDEX_DOCS.md)**: Dokumentasi teknis sistem referensi harga, anomali, dan IQR logic.
 - 📋 **[Pengajuan Specification](PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md)**: Detail teknis sistem Dual-Version dan proteksi edit.
 - 💰 **[Rembush Flow Detail](Flow%20Rembush.md)**: Penjelasan naratif alur reimbursement dan integrasi AI.
 - ⚙️ **[Back-End Documentation](backend_documentation_v1.0.md)**: Arsitektur mendalam dan skema DB.

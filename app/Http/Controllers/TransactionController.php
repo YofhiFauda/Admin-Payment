@@ -16,8 +16,10 @@ use App\Notifications\TransactionStatusNotification;
 use App\Notifications\OwnerApprovalNotification;
 use Illuminate\Support\Facades\Cache;
 
+
 // 🔔 TELEGRAM: Import TelegramBotService
 use App\Services\Telegram\TelegramBotService;
+use App\Jobs\PriceIndex\CalculatePriceIndexJob;
 
 class TransactionController extends Controller
 {
@@ -33,6 +35,10 @@ class TransactionController extends Controller
     //  INDEX — Riwayat Transaksi (Rembush + Pengajuan)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  INDEX — Riwayat Transaksi (Rembush + Pengajuan)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     public function index(Request $request)
     {
         $query = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches'])->latest();
@@ -40,32 +46,6 @@ class TransactionController extends Controller
         // Teknisi hanya melihat transaksi sendiri
         if (Auth::user()->isTeknisi()) {
             $query->where('submitted_by', Auth::id());
-        }
-
-        // Search filter
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('customer', 'like', "%{$search}%")
-                  ->orWhere('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('vendor', 'like', "%{$search}%")
-                  ->orWhereHas('submitter', function ($sub) use ($search) {
-                      $sub->where('name', 'like', "%{$search}%");
-                  });
-
-                $dateFormats = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd M Y'];
-                foreach ($dateFormats as $format) {
-                    try {
-                        $parsed = \Carbon\Carbon::createFromFormat($format, $search);
-                        if ($parsed) {
-                            $q->orWhereDate('date', $parsed->toDateString())
-                          ->orWhereDate('created_at', $parsed->toDateString());
-                            break;
-                        }
-                    } catch (\Exception $e) {
-                        continue;
-                    }
-                }
-            });
         }
 
         // Status filter
@@ -119,6 +99,12 @@ class TransactionController extends Controller
         if ($endDate = $request->input('end_date')) {
             $query->whereDate('created_at', '<=', $endDate);
         }
+
+        $query->withExists(['branches as has_branch_with_debt' => function($q) {
+            $q->whereHas('debtsAsDebtor', function($sq) {
+                $sq->where('status', 'pending');
+            });
+        }]);
 
         $transactions = $query->paginate(20);
 
@@ -487,12 +473,35 @@ class TransactionController extends Controller
             }
 
             if ($transaction->isPengajuan()) {
-                $items = array_map(function ($item) {
+                $matchingService = app(\App\Services\PriceIndex\ItemMatchingService::class);
+                $items = array_map(function ($item) use ($matchingService) {
+                    $rawCustomer = trim(preg_replace('/\s+/', ' ', $item['customer'] ?? ''));
+                    $masterItemId = $item['master_item_id'] ?? null;
+                    $categoryId = $item['category'] ?? null;
+
+                    if (empty($masterItemId) && !empty($rawCustomer)) {
+                        $bestMatch = $matchingService->findBestMatch($rawCustomer, $categoryId);
+                        if ($bestMatch) {
+                            $masterItemId = $bestMatch->id;
+                        } else {
+                            $newItem = $matchingService->createPendingItem($rawCustomer, $categoryId, Auth::id());
+                            $masterItemId = $newItem->id;
+                        }
+                    }
+
+                    if (!empty($masterItemId)) {
+                        $master = \App\Models\MasterItem::find($masterItemId);
+                        if ($master) {
+                            $rawCustomer = $master->display_name;
+                        }
+                    }
+
                     return [
-                        'customer'        => $item['customer']        ?? '',
+                        'master_item_id'  => $masterItemId,
+                        'customer'        => $rawCustomer,
                         'vendor'          => $item['vendor']          ?? '',
                         'link'            => $item['link']            ?? '',
-                        'category'        => $item['category']        ?? '', 
+                        'category'        => $categoryId, 
                         'description'     => $item['description']     ?? '',
                         'specs'           => $item['specs']           ?? [],
                         'estimated_price' => intval($item['estimated_price'] ?? 0),
@@ -617,10 +626,13 @@ class TransactionController extends Controller
 
             // ─── Approval Logic ───────────────────────────
             if ($transaction->isPengajuan()) {
-                // PENGAJUAN LOGIC (Revised)
-                // - Only Atasan/Owner can approve. Admin is excluded.
-                // - Status moves to 'waiting_payment' after approval.
-                
+                // PENGAJUAN LOGIC — Dual-Gate untuk ≥ Rp 1.000.000
+                // - Admin  : tidak berwenang approve
+                // - < 1jt  : Single-gate → Atasan/Owner approve → waiting_payment
+                // - ≥ 1jt  : Dual-gate:
+                //     Gate 1: Atasan approve pending       → 'approved' (Menunggu Approve Owner)
+                //     Gate 2: Owner  approve approved      → waiting_payment
+
                 if ($newStatus === 'approved') {
                     if ($user->isAdmin()) {
                         return response()->json([
@@ -629,12 +641,60 @@ class TransactionController extends Controller
                         ], 403);
                     }
 
-                    if ($oldStatus === 'pending') {
+                    $isLargeAmount = ($transaction->amount ?? 0) >= 1_000_000;
+
+                    if ($isLargeAmount && !$user->isOwner() && $oldStatus === 'pending') {
+                        // [GATE 1] Atasan approve pengajuan besar → eskalasi ke Owner
+                        $newStatus = 'approved'; // tetap 'approved' = "Menunggu Approve Owner"
+
+                        Log::info('📋 [PENGAJUAN] Atasan approve ≥1jt → escalate to Owner', [
+                            'transaction_id' => $transaction->id,
+                            'amount'         => $transaction->amount,
+                            'approved_by'    => $user->id,
+                        ]);
+
+                    } elseif ($isLargeAmount && $user->isOwner() && $oldStatus === 'approved') {
+                        // [GATE 2] Owner approve setelah Atasan → lanjut ke pembayaran
                         $newStatus = 'waiting_payment';
+
+                        // 🔔 TELEGRAM: Notif Teknisi bahwa Owner sudah approve
+                        try {
+                            $this->telegram->notifyPaymentProcessing($transaction);
+                        } catch (\Exception $e) {
+                            Log::error('[TELEGRAM] Failed to send owner-approved payment notification', [
+                                'transaction_id' => $transaction->id,
+                                'error'          => $e->getMessage(),
+                            ]);
+                        }
+
+                        Log::info('✅ [PENGAJUAN] Owner approve gate 2 → waiting_payment', [
+                            'transaction_id' => $transaction->id,
+                            'approved_by'    => $user->id,
+                        ]);
+
+                    } else {
+                        // [SINGLE GATE] Amount < 1jt atau Owner approve langsung dari pending
+                        $newStatus = 'waiting_payment';
+
+                        // 🔔 TELEGRAM: Notif Teknisi bahwa pengajuan disetujui
+                        try {
+                            $this->telegram->notifyPaymentProcessing($transaction);
+                        } catch (\Exception $e) {
+                            Log::error('[TELEGRAM] Failed to send single-gate approval notification', [
+                                'transaction_id' => $transaction->id,
+                                'error'          => $e->getMessage(),
+                            ]);
+                        }
+
+                        Log::info('✅ [PENGAJUAN] Single-gate approve → waiting_payment', [
+                            'transaction_id' => $transaction->id,
+                            'amount'         => $transaction->amount,
+                            'approved_by'    => $user->id,
+                        ]);
                     }
                 }
-                
-                // Status akan tetap Waiting Payment jika suatu transaksi pengajuan masih belum lunas 
+
+                // Status akan tetap Waiting Payment jika suatu transaksi pengajuan masih belum lunas
                 // (belum ada invoice ATAU masih ada hutang antar cabang yang belum bayar)
                 if ($newStatus === 'completed') {
                     $hasPendingDebts = \App\Models\BranchDebt::where('transaction_id', $transaction->id)
@@ -713,6 +773,26 @@ class TransactionController extends Controller
 
             $transaction->update($updateData);
 
+            // ✅ PRICE INDEX: Dispatch recalculation job saat Pengajuan disetujui
+            // Trigger saat status berubah ke waiting_payment (setelah approve)
+            // - oldStatus 'pending'  = single-gate (< 1jt) atau Owner approve langsung
+            // - oldStatus 'approved' = gate 2 (Owner approve setelah Atasan, untuk ≥ 1jt)
+            if ($transaction->isPengajuan() && $newStatus === 'waiting_payment'
+                && in_array($oldStatus, ['pending', 'approved'])) {
+                foreach (($transaction->items ?? []) as $item) {
+                    $itemName = trim($item['customer'] ?? '');
+                    if ($itemName !== '') {
+                        dispatch(new CalculatePriceIndexJob($itemName, $item['category'] ?? null))
+                            ->delay(now()->addSeconds(5))
+                            ->onQueue('default');
+                    }
+                }
+                Log::info('📊 [PriceIndex] Recalculation queued after pengajuan approval', [
+                    'transaction_id' => $transaction->id,
+                    'items_count'    => count($transaction->items ?? []),
+                ]);
+            }
+
             // Log activity
             $actionLabel = $newStatus === 'rejected' ? 'Reject' : 'Approve';
             $description = $newStatus === 'rejected' 
@@ -771,14 +851,19 @@ class TransactionController extends Controller
                 default     => "Status transaksi diubah.",
             };
 
-            $statusLabel = match($newStatus) {
-                'approved'  => 'DISETUJUI (Menunggu Owner)',
-                'rejected'  => 'DITOLAK',
-                'completed' => 'SELESAI',
-                'pending'   => 'PENDING',
-                'waiting_payment' => 'MENUNGGU PEMBAYARAN',
-                default     => strtoupper($newStatus),
-            };
+            if ($newStatus === 'approved' && $transaction->isPengajuan()) {
+                $statusLabelStr = 'MENUNGGU APPROVE OWNER';
+            } else {
+                $statusLabelStr = match($newStatus) {
+                    'approved'  => 'MENUNGGU OWNER',
+                    'rejected'  => 'DITOLAK',
+                    'completed' => 'SELESAI',
+                    'pending'   => 'PENDING',
+                    'waiting_payment' => 'MENUNGGU PEMBAYARAN',
+                    default     => strtoupper($newStatus),
+                };
+            }
+            $statusLabel = $statusLabelStr;
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -810,7 +895,10 @@ class TransactionController extends Controller
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  DELETE
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+    /**
+     * Remove the specified transaction from storage.
+     * Authorized for non-admin management (Owner, Atasan).
+     */
     public function destroy($id)
     {
         abort_if(Auth::user()->isAdmin(), 403, 'Unauthorized action.');
@@ -826,18 +914,27 @@ class TransactionController extends Controller
 
             $transaction->delete();
 
-            ActivityLog::create([
+            // Log activity
+            $log = ActivityLog::create([
                 'user_id'     => Auth::id(),
                 'action'      => 'delete',
                 'target_id'   => $invoiceNumber,
                 'description' => "Menghapus secara permanen transaksi " . $invoiceNumber,
             ]);
+            broadcast(new \App\Events\ActivityLogged($log));
 
             Log::info('Transaction deleted', [
                 'transaction_id' => $id,
                 'invoice_number' => $invoiceNumber,
                 'deleted_by' => Auth::id(),
             ]);
+
+            if (request()->ajax() || request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Transaksi {$invoiceNumber} berhasil dihapus"
+                ]);
+            }
 
             return back()->with('success', "Transaksi {$invoiceNumber} berhasil dihapus");
 
@@ -846,6 +943,13 @@ class TransactionController extends Controller
                 'error' => $e->getMessage(),
                 'transaction_id' => $id,
             ]);
+
+            if (request()->ajax() || request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus transaksi: ' . $e->getMessage()
+                ], 500);
+            }
 
             return back()->withErrors(['error' => 'Gagal menghapus transaksi']);
         }
@@ -867,12 +971,15 @@ class TransactionController extends Controller
             }
 
             $request->validate([
-                'payment_proof'   => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'notes'           => 'nullable|string',
-                'bank_account_id' => 'required|exists:branch_bank_accounts,id',
+                'payment_proof'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
+                'notes'                  => 'nullable|string',
+                'bank_account_id'        => 'required|exists:branch_bank_accounts,id',
+                'sender_bank_account_id' => 'required|exists:branch_bank_accounts,id',
             ], [
-                'payment_proof.required' => 'Bukti transfer wajib diunggah.',
-                'bank_account_id.required' => 'Rekening tujuan wajib dipilih.',
+                'payment_proof.required'          => 'Bukti transfer wajib diunggah.',
+                'payment_proof.max'               => 'Bukti transfer maksimal 1MB.',
+                'bank_account_id.required'        => 'Rekening tujuan wajib dipilih.',
+                'sender_bank_account_id.required' => 'Rekening pengirim wajib dipilih.',
             ]);
 
             DB::beginTransaction();
@@ -884,7 +991,7 @@ class TransactionController extends Controller
                 $path = $file->storeAs('payment_proofs/debts', $filename, 'public');
             }
 
-            $debt->markAsPaid($request->notes, $path, auth()->id(), $request->bank_account_id);
+            $debt->markAsPaid($request->notes, $path, auth()->id(), $request->bank_account_id, $request->sender_bank_account_id);
 
             // Log activity
             ActivityLog::create([
@@ -894,6 +1001,30 @@ class TransactionController extends Controller
                 'target_id'      => $debt->transaction->invoice_number ?? '-',
                 'description'    => "Melunaskan hutang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
             ]);
+
+            // ✅ AUTO-COMPLETE TRANSACTION LOGIC
+            // Jika ini adalah hutang terakhir yang dilunaskan, tandai transaksi induk sebagai Selesai
+            $transaction = $debt->transaction;
+            if ($transaction && $transaction->isPengajuan() && $transaction->status === 'waiting_payment') {
+                $hasOtherPendingDebts = \App\Models\BranchDebt::where('transaction_id', $transaction->id)
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if (!$hasOtherPendingDebts && !empty($transaction->invoice_file_path)) {
+                    $transaction->update(['status' => 'completed']);
+                    
+                    // Log completion
+                    ActivityLog::create([
+                        'user_id'        => auth()->id(),
+                        'action'         => 'approve',
+                        'transaction_id' => $transaction->id,
+                        'target_id'      => $transaction->invoice_number,
+                        'description'    => "Transaksi {$transaction->invoice_number} otomatis Selesai karena semua hutang antar cabang telah dilunaskan.",
+                    ]);
+
+                    broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+                }
+            }
 
             DB::commit();
 
@@ -953,81 +1084,561 @@ class TransactionController extends Controller
     //  GET ALL TRANSACTIONS FOR CLIENT-SIDE SEARCH
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    public function getAllForSearch(Request $request)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  GET ALL TRANSACTIONS FOR CLIENT-SIDE SEARCH
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    /**
+     * 🚀 NEW: Count endpoint for auto-mode detection
+     * Returns total count based on filters WITHOUT loading data
+     */
+    // app/Http/Controllers/TransactionController.php
+
+    /**
+     * 🆕 Count endpoint - untuk auto-detection
+     */
+    public function count(Request $request)
     {
-        $query = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches'])->latest();
-
-        // Teknisi hanya melihat transaksi sendiri
-        if (Auth::user()->isTeknisi()) {
-            $query->where('submitted_by', Auth::id());
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
-
-        // Status filter
-        if ($status = $request->input('status')) {
-            if ($status !== 'all') {
-                $query->where('status', $status);
-            }
-        }
-
-        // Type filter
-        if ($type = $request->input('type')) {
-            if ($type !== 'all') {
-                $query->where('type', $type);
-            }
-        }
-
-        // Category filter
-        if ($category = $request->input('category')) {
-            if ($category !== 'all') {
-                $query->where(function($q) use ($category) {
-                    $q->where('category', $category)
-                      ->orWhere('purchase_reason', $category);
-                    
-                    // Also match legacy code if this is a known category name
-                    $cat = \App\Models\TransactionCategory::where('name', $category)->first();
-                    if ($cat && $cat->code) {
-                        $q->orWhere('category', $cat->code)
-                          ->orWhere('purchase_reason', $cat->code);
-                    }
+        
+        $query = Transaction::query();
+        
+        if ($user->role === 'teknisi') {
+            $query->where('submitted_by', $user->id);
+        } elseif ($user->role === 'atasan') {
+            $query->where(function($q) use ($user) {
+                $q->where('type', 'pengajuan')
+                ->orWhere(function($subQ) use ($user) {
+                    $subQ->whereIn('type', ['rembush', 'gudang'])
+                        ->whereHas('submitter', function($userQ) use ($user) {
+                            $userQ->where('atasan_id', $user->id);
+                        });
                 });
-            }
+            });
         }
 
-        // Branch filter
-        if ($branchId = $request->input('branch_id')) {
-            if ($branchId !== 'all') {
-                $query->whereHas('branches', function ($q) use ($branchId) {
-                    $q->where('branches.id', $branchId);
-                });
-            }
-        }
-
-        // Date Range filter
-        if ($startDate = $request->input('start_date')) {
-            $query->whereDate('created_at', '>=', $startDate);
-        }
-        if ($endDate = $request->input('end_date')) {
-            $query->whereDate('created_at', '<=', $endDate);
-        }
-
-        // Auto-cleanup stuck processing (timeout > 5 minutes)
-        Transaction::where('ai_status', 'processing')
-            ->where('updated_at', '<', now()->subMinutes(5))
-            ->update([
-                'ai_status' => 'error',
-                'description' => DB::raw('CONCAT(COALESCE(description, ""), " | AI Timeout: N8N Callback tidak diterima")')
-            ]);
-
-        // Get all transactions (limited to a safer amount for performance)
-        $transactions = $query->limit(1500)->get();
-
-        // Format data for client-side search menggunakan helper model (DRY)
-        $data = $transactions->map(function (Transaction $t) {
-            return $t->toSearchArray();
-        });
-
-        return response()->json($data);
+        $this->applyFilters($query, $request);
+        return response()->json(['count' => $query->count()]);
     }
 
+    public function stats(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+        
+        $query = Transaction::query();
+
+        if ($user->role === 'teknisi') {
+            // ✅ Perbaikan: submitted_by bukan submitter_id
+            $query->where('submitted_by', $user->id);
+        } elseif ($user->role === 'atasan') {
+            $query->where(function($q) use ($user) {
+                $q->where('type', 'pengajuan')
+                ->orWhere(function($subQ) use ($user) {
+                    $subQ->whereIn('type', ['rembush', 'gudang'])
+                        ->whereHas('submitter', function($userQ) use ($user) {
+                            $userQ->where('atasan_id', $user->id);
+                        });
+                });
+            });
+        }
+
+        $this->applyFilters($query, $request);
+
+        $stats = [
+            'all' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved' => (clone $query)->where('status', 'approved')->count(),
+            'completed' => (clone $query)->where('status', 'completed')->count(),
+            'rejected' => (clone $query)->where('status', 'rejected')->count(),
+            'waiting_payment' => (clone $query)->where('status', 'waiting_payment')->count(),
+            'flagged' => (clone $query)->where('status', 'flagged')->count(),
+            'auto_reject' => (clone $query)->where('status', 'auto-reject')->count(),
+        ];
+
+        return response()->json($stats);
+    }
+ 
+    /**
+     * 🔄 OPTIMIZED: Search with pagination for server-side mode
+     * Used when dataset > 5000 records
+     */
+    // app/Http/Controllers/TransactionController.php
+
+    /**
+     * 🆕 Server-side search dengan pagination
+     */
+    public function search(Request $request)
+    {
+        // ✅ Guard: Cek authentication
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $query = Transaction::with([
+                'submitter:id,name,telegram_chat_id', 
+                'branches:id,name'
+            ])
+            ->withExists(['branches as has_branch_with_debt' => function($q) {
+                $q->whereHas('debtsAsDebtor', function($sq) {
+                    $sq->where('status', 'pending');
+                });
+            }])
+            ->select([
+                'id', 'invoice_number', 'type', 'status',
+                'amount', 'category',
+                'created_at', 'submitted_by',
+                'has_price_anomaly',
+                'ai_status', 'upload_id', 'confidence',
+                'payment_method', 'rejection_reason', 'specs'
+            ]);
+
+        // Role-based filtering
+        if ($user->role === 'teknisi') {
+            $query->where('submitted_by', $user->id);
+        } elseif ($user->role === 'atasan') {
+            $query->where(function($q) use ($user) {
+                $q->where('type', 'pengajuan')
+                ->orWhere(function($subQ) use ($user) {
+                    $subQ->whereIn('type', ['rembush', 'gudang'])
+                        ->whereHas('submitter', function($userQ) use ($user) {
+                            $userQ->where('atasan_id', $user->id);
+                        });
+                });
+            });
+        }
+
+        // Apply filters
+        $this->applyFilters($query, $request);
+
+        // Server-side search
+        if ($request->filled('search')) {
+            $searchTerm = strtolower($request->search);
+            
+            $query->where(function($q) use ($searchTerm) {
+                $q->whereRaw('LOWER(invoice_number) LIKE ?', ["%{$searchTerm}%"])
+                ->orWhereRaw('LOWER(category) LIKE ?', ["%{$searchTerm}%"])
+                ->orWhereHas('submitter', function($sq) use ($searchTerm) {
+                    $sq->whereRaw('LOWER(name) LIKE ?', ["%{$searchTerm}%"]);
+                })
+                ->orWhereHas('branches', function($sq) use ($searchTerm) {
+                    $sq->whereRaw('LOWER(name) LIKE ?', ["%{$searchTerm}%"]);
+                });
+            });
+        }
+
+        // Paginate
+        $perPage = min((int)$request->input('per_page', 20), 100); // ✅ Batasi max per_page
+        $result = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        // Transform dengan error handling
+        $result->getCollection()->transform(function($t) {
+            try {
+                return $this->transformTransaction($t);
+            } catch (\Exception $e) {
+                \Log::error('[transformTransaction] Error: ' . $e->getMessage(), [
+                    'transaction_id' => $t->id ?? 'unknown'
+                ]);
+                // Return minimal data agar tidak crash
+                return [
+                    'id' => $t->id,
+                    'invoice_number' => $t->invoice_number ?? 'N/A',
+                    'search_text' => '',
+                ];
+            }
+        });
+
+        return response()->json($result);
+    }
+ 
+    /**
+     * 🔄 OPTIMIZED: Search data for client-side mode
+     * Used when dataset < 5000 records
+     * Includes limit to prevent memory overflow
+     */
+    public function getAllForSearch(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $query = Transaction::with(['submitter:id,name,telegram_chat_id', 'branches:id,name'])
+            ->withExists(['branches as has_branch_with_debt' => function($q) {
+                $q->whereHas('debtsAsDebtor', function($sq) {
+                    $sq->where('status', 'pending');
+                });
+            }])
+            ->select([
+                'id', 'invoice_number', 'type', 'status',
+                'amount', 'category',
+                'created_at', 'submitted_by',
+                'has_price_anomaly', // ✅ Price Index
+                'ai_status', 'upload_id', 'confidence',
+                'payment_method', 'rejection_reason', 'specs'
+            ]);
+
+        // Role-based filtering
+        if ($user->role === 'teknisi') {
+            $query->where('submitted_by', $user->id);
+        } elseif ($user->role === 'atasan') {
+            $query->where(function($q) use ($user) {
+                $q->where('type', 'pengajuan')
+                  ->orWhere(function($subQ) use ($user) {
+                      $subQ->whereIn('type', ['rembush', 'gudang'])
+                           ->whereHas('submitter', function($userQ) use ($user) {
+                               $userQ->where('atasan_id', $user->id);
+                           });
+                  });
+            });
+        }
+ 
+        // Apply filters
+        $this->applyFilters($query, $request);
+ 
+        // ⚠️ SAFETY LIMIT: Max 10k records for client-side
+        $transactions = $query->orderBy('created_at', 'desc')
+            ->limit(10000)
+            ->get()
+            ->map(function($t) {
+                return $this->transformTransaction($t);
+            });
+ 
+        return response()->json($transactions);
+    }
+ 
+    /**
+     * Helper: Apply common filters
+     */
+    /**
+     * 🆕 Helper: Apply filters
+     */
+    private function applyFilters($query, Request $request)
+    {
+        if ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            // ✅ Perbaikan: hapus prefix 'branches.' karena sudah dalam context whereHas
+            $query->whereHas('branches', function($q) use ($request) {
+                $q->where('id', $request->branch_id);
+            });
+        }
+
+        if ($request->filled('category') && $request->category !== 'all') {
+            $query->where('category', $request->category);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('type') && $request->type !== 'all') {
+            $query->where('type', $request->type);
+        }
+    }
+ 
+    /**
+     * Helper: Transform transaction for response
+     */
+    /**
+     * 🆕 Helper: Transform transaction
+     */
+    private function transformTransaction($t)
+    {
+        $typeLabels = [
+            'rembush' => 'Reimbursement',
+            'pengajuan' => 'Pengajuan', 
+            'gudang' => 'Belanja Gudang'
+        ];
+
+        $paymentLabels = [
+            'transfer_teknisi' => 'Transfer ke Teknisi', 'transfer_penjual' => 'Transfer ke Penjual',
+            'cash' => 'Tunai (Cash)', 'invoice' => 'Invoice (Pengajuan)'
+        ];
+
+        // ✅ Null-safe access untuk submitter
+        $submitterName = $t->submitter?->name ?? '-';
+        $submitterHasTelegram = $t->submitter?->telegram_chat_id ? true : false;
+        
+        // ✅ Null-safe access untuk branches
+        $branchNames = $t->branches ? $t->branches->pluck('name')->toArray() : [];
+
+        return [
+            'id' => $t->id,
+            'invoice_number' => $t->invoice_number,
+            'type' => $t->type,
+            'type_label' => $typeLabels[$t->type] ?? $t->type,
+            'status' => $t->status,
+            'status_label' => $t->status_label,
+            'amount' => $t->amount,
+            'effective_amount' => $t->effective_amount,
+            'formatted_amount' => number_format($t->amount ?? 0, 0, ',', '.'),
+            'category' => $t->category,
+            'category_label' => $t->category_label,
+            'created_at' => $t->created_at?->format('d M Y') ?? '-',
+            'submitter_name' => $submitterName,
+            'submitter_has_telegram' => $submitterHasTelegram,
+            'submitter' => $t->submitter ? [
+                'id' => $t->submitter->id,
+                'name' => $t->submitter->name,
+            ] : null,
+            'branches' => $branchNames,
+            'has_price_anomaly' => $t->has_price_anomaly ?? false,
+            'ai_status' => $t->ai_status,
+            'upload_id' => $t->upload_id,
+            'confidence' => $t->confidence,
+            'payment_method' => $t->payment_method,
+            'payment_method_label' => $paymentLabels[$t->payment_method] ?? ucfirst(str_replace('_', ' ', $t->payment_method ?? '')),
+            'rejection_reason' => $t->rejection_reason,
+            'specs' => $t->specs,
+            // Payment proof fields for frontend logic
+            'invoice_file_path' => $t->invoice_file_path,
+            'bukti_transfer'    => $t->bukti_transfer,
+            'foto_penyerahan'   => $t->foto_penyerahan,
+            // ✅ Search text optimized
+            'search_text' => strtolower(implode(' ', array_filter([
+                $t->invoice_number ?? '',
+                $submitterName,
+                $t->category_label ?? '',
+                $typeLabels[$t->type] ?? $t->type ?? '',
+                ...$branchNames
+            ])))
+        ];
+    }
+    
+    // Helper methods (same as before)
+   private function getTypeLabel($type)
+    {
+        return ['rembush' => 'Reimbursement', 'pengajuan' => 'Pengajuan', 'gudang' => 'Belanja Gudang'][$type] ?? $type;
+    }
+
+    private function getStatusLabel($status, $type = null)
+    {
+        $labels = [
+            'pending' => $type === 'gudang' ? 'Review Management' : 'Pending',
+            'approved' => 'Menunggu Owner',
+            'completed' => 'Selesai',
+            'rejected' => 'Ditolak',
+            'waiting_payment' => $type === 'gudang' ? 'Belum Dibayar' : 'Menunggu Pembayaran',
+            'flagged' => 'Flagged (Selisih)',
+            'auto-reject' => 'Auto Reject (AI)',
+        ];
+        return $labels[$status] ?? ucfirst(str_replace('_', ' ', $status));
+    }
+
+    private function getCategoryLabel($category)
+    {
+        $labels = ['bbm' => 'BBM', 'material' => 'Material', 'tools' => 'Tools & Equipment', 'service' => 'Service', 'transport' => 'Transport', 'other' => 'Lainnya'];
+        return $labels[$category] ?? ucfirst($category);
+    }
+
+    private function getPaymentMethodLabel($method)
+    {
+        $labels = ['transfer_teknisi' => 'Transfer ke Teknisi', 'transfer_penjual' => 'Transfer ke Penjual', 'cash' => 'Tunai (Cash)', 'invoice' => 'Invoice (Pengajuan)'];
+        return $labels[$method] ?? ucfirst(str_replace('_', ' ', $method));
+    }
+    /**
+     * Optimized Paginated Search for Transactions.
+     * Uses MySQL FULLTEXT indexing for speed.
+     */
+    // public function searchTransactions(Request $request)
+    // {
+    //     try {
+    //         $query = Transaction::query()
+    //             ->with(['submitter', 'branches'])
+    //             ->orderBy('created_at', 'desc');
+
+    //         if (Auth::user()->isTeknisi()) {
+    //             $query->where('submitted_by', Auth::id());
+    //         }
+
+    //         // Keyword Search
+    //         if ($search = $request->input('search')) {
+    //             $cleanSearch = trim(strip_tags($search));
+    //             if (!empty($cleanSearch)) {
+    //                 $query->where(function ($q) use ($cleanSearch) {
+    //                     $q->where('invoice_number', 'like', $cleanSearch . '%');
+                        
+    //                     // Periksa apakah pencarian mengandung dash (-)
+    //                     // Gunakan quote (") untuk pencarian Boolean agar dianggap frasa utuh
+    //                     $formattedSearch = str_contains($cleanSearch, '-') 
+    //                         ? '"' . $cleanSearch . '"' 
+    //                         : $cleanSearch . '*';
+
+    //                     // Gunakan orWhereRaw dengan parameter binding yang aman
+    //                     // Kami tidak bisa try-catch di sini karena query belum dieksekusi.
+    //                     // Eksekusi sebenarnya ada di ->paginate() nanti.
+    //                     $q->orWhereRaw("MATCH(invoice_number, customer, vendor, description) AGAINST(? IN BOOLEAN MODE)", [$formattedSearch]);
+    //                 });
+    //             }
+    //         }
+
+    //         // Status Filter
+    //         if ($status = $request->input('status')) {
+    //             if ($status !== 'all') {
+    //                 $query->where('status', $status);
+    //             }
+    //         }
+
+    //         // Type Filter
+    //         if ($type = $request->input('type')) {
+    //             if ($type !== 'all') {
+    //                 $query->where('type', $type);
+    //             }
+    //         }
+
+    //         // Category Filter
+    //         if ($category = $request->input('category')) {
+    //             if ($category !== 'all') {
+    //                 $query->where(function($q) use ($category) {
+    //                     $q->where('category', $category)
+    //                       ->orWhere('items', 'LIKE', '%' . $category . '%');
+    //                 });
+    //             }
+    //         }
+
+    //         // Branch Filter
+    //         if ($branchId = $request->input('branch_id')) {
+    //             if ($branchId !== 'all') {
+    //                 $query->whereHas('branches', function ($q) use ($branchId) {
+    //                     $q->where('branches.id', $branchId);
+    //                 });
+    //             }
+    //         }
+
+    //         // Date Range
+    //         if ($startDate = $request->input('start_date')) {
+    //             $query->whereDate('created_at', '>=', $startDate);
+    //         }
+    //         if ($endDate = $request->input('end_date')) {
+    //             $query->whereDate('created_at', '<=', $endDate);
+    //         }
+
+    //         // --- Execution ---
+    //         $perPage = $request->input('per_page', 20);
+            
+    //         // Try block to catch SQL errors specifically during pagination
+    //         try {
+    //             $paginator = $query->paginate($perPage);
+    //         } catch (\Illuminate\Database\QueryException $sqlError) {
+    //             // Fallback jika FULLTEXT index gagal (misal: MySQL version mismatch atau index hilang)
+    //             Log::warning('[searchTransactions] FULLTEXT search failed, falling back to LIKE: ' . $sqlError->getMessage());
+                
+    //             // Re-build query without MATCH
+    //             $fallbackQuery = Transaction::query()
+    //                 ->with(['submitter', 'branches'])
+    //                 ->orderBy('created_at', 'desc');
+
+    //             if (Auth::user()->isTeknisi()) {
+    //                 $fallbackQuery->where('submitted_by', Auth::id());
+    //             }
+
+    //             if ($search = $request->input('search')) {
+    //                 $cleanSearch = trim(strip_tags($search));
+    //                 $fallbackQuery->where(function ($q) use ($cleanSearch) {
+    //                     $q->where('invoice_number', 'like', '%' . $cleanSearch . '%')
+    //                       ->orWhere('customer', 'like', '%' . $cleanSearch . '%')
+    //                       ->orWhere('vendor', 'like', '%' . $cleanSearch . '%')
+    //                       ->orWhere('description', 'like', '%' . $cleanSearch . '%');
+    //                 });
+    //             }
+                
+    //             // Apply other filters again... (minimal fallback version for brevity or full copy)
+    //             // Since this is a fallback, we'll just re-paginate the original query without the search closure
+    //             // Actually, let's just use the existing $query but remove the MATCH part.
+    //             // But QueryBuilder doesn't easily allow removing parts.
+                
+    //             // Let's just return a generic error or a simpler fallback for now to confirm if this is the issue.
+    //             throw $sqlError; 
+    //         }
+
+    //         // Transform data for frontend
+    //         $items = collect($paginator->items())->map(function($t) {
+    //             return $t->toSearchArray(); 
+    //         });
+
+    //         return response()->json([
+    //             'data'         => $items,
+    //             'current_page' => $paginator->currentPage(),
+    //             'last_page'    => $paginator->lastPage(),
+    //             'per_page'     => $paginator->perPage(),
+    //             'total'        => $paginator->total(),
+    //             'from'         => $paginator->firstItem(),
+    //             'to'           => $paginator->lastItem(),
+    //         ]);
+
+    //     } catch (\Throwable $e) {
+    //         Log::error('[searchTransactions] CRITICAL 500 ERROR: ' . $e->getMessage(), [
+    //             'trace' => $e->getTraceAsString(),
+    //             'request' => $request->all()
+    //         ]);
+    //         return response()->json([
+    //             'error' => 'Internal Server Error',
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    /**
+     * Get summary counts for each status based on current filters.
+     */
+    public function getTransactionStats(Request $request)
+    {
+        try {
+            $query = Transaction::query();
+
+            // Apply same filters as search (except status)
+            if ($type = $request->input('type')) {
+                if ($type !== 'all') $query->where('type', $type);
+            }
+            if ($category = $request->input('category')) {
+                if ($category !== 'all') $query->where('category', $category);
+            }
+            if ($branchId = $request->input('branch_id')) {
+                if ($branchId !== 'all') {
+                    $query->whereHas('branches', function ($q) use ($branchId) {
+                        $q->where('branches.id', $branchId);
+                    });
+                }
+            }
+            if ($startDate = $request->input('start_date')) {
+                $query->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate = $request->input('end_date')) {
+                $query->whereDate('created_at', '<=', $endDate);
+            }
+
+            $stats = $query->select('status', DB::raw('count(*) as count'))
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray();
+
+            $stats['all'] = array_sum($stats);
+
+            return response()->json($stats);
+
+        } catch (\Throwable $e) {
+            Log::error('[getTransactionStats] Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * Remove the specified transaction from storage.
+     * Authorized for non-admin management (Owner, Atasan).
+     */
 
 }

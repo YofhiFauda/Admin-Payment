@@ -104,6 +104,7 @@ class TransactionCategorySeeder extends Seeder
             'updated_at' => $now,
         ], $pengajuanCategories, array_keys($pengajuanCategories));
 
+        DB::table('transaction_categories')->truncate();
         DB::table('transaction_categories')->insert(array_merge($rembushRows, $pengajuanRows));
     }
 }

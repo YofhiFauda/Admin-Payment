@@ -148,7 +148,7 @@
                                 <label class="block text-sm font-bold text-slate-900">Password</label>
                             </div>
                             <input type="password" name="password" required placeholder="••••••••••"
-                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-600 font-medium" />
+                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
                         </div>
 
                         {{-- Tombol Masuk --}}

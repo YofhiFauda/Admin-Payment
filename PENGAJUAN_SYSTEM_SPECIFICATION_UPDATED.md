@@ -83,11 +83,16 @@ IF status = 'rejected' THEN
 END IF
 ```
 
-**Status Definitions:**
+**Status Definitions & Lifecycle:**
 - `pending` - Pengajuan baru, belum diproses → **Management bisa Edit** ✅
-- `waiting_payment` - Disetujui, menunggu proses pembayaran/pembelian → **Management bisa Edit** ✅
-- `rejected` - Ditolak → **Management bisa Edit** ✅
-- `completed` - **FINAL STATE** - Sudah dibayar/selesai → **SEMUA ROLE TIDAK BISA EDIT** ❌
+- `waiting_payment` - **Persistent Payment State**. Transaksi yang sudah disetujui namun masih dalam proses pemenuhan (pembayaran).
+    - Tetap berada di status ini jika invoice belum diupload **ATAU** masih ada hutang antar cabang (`BranchDebt`) yang berstatus `pending`.
+    - **Management bisa Edit** ✅ (Hanya hingga sebelum status `completed`).
+- `rejected` - Ditolak → **Management bisa Edit** ✅ (untuk revisi).
+- `completed` - **FINAL STATE**. Transaksi dianggap selesai jika:
+    1. Invoice sudah diunggah.
+    2. Seluruh hutang antar cabang terkait transaksi ini telah berstatus `paid`.
+    - **SEMUA ROLE TIDAK BISA EDIT** ❌ (Audit target).
 
 **Catatan Status intermediate:**
 - Status `approved` (Disetujui) secara teknis digunakan untuk transaksi yang menunggu persetujuan Owner (misal Rembush >= 1jt), namun untuk Pengajuan alurnya disederhanakan langsung ke `waiting_payment` setelah disetujui oleh Management yang berwenang.

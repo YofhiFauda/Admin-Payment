@@ -4,7 +4,8 @@
 
 @section('content')
     {{-- Form Container --}}
-    <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 md:p-8 lg:p-10">
+    <div class="bg-white shadow-sm border border-slate-100 p-3 pt-6 md:p-8 lg:p-10">
+    {{-- <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-6 md:p-8 lg:p-10"> --}}
 
         {{-- Header --}}
         <div class="mb-8 md:mb-10 flex items-center gap-4">
@@ -226,11 +227,17 @@
                                         Informasi Barang / Jasa
                                     </label>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                                        <div class="md:col-span-2">
+                                        <div class="md:col-span-2 relative">
                                             <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
-                                            <input type="text" name="items[{{ $index }}][customer]" required value="{{ old($errPrefix . 'customer', $item['customer'] ?? '') }}"
+                                            <input type="hidden" name="items[{{ $index }}][master_item_id]" class="input-master-id" value="{{ old($errPrefix . 'master_item_id', $item['master_item_id'] ?? '') }}">
+                                            <input type="text" name="items[{{ $index }}][customer]" required value="{{ old($errPrefix . 'customer', $item['customer'] ?? '') }}" autocomplete="off"
                                                 class="input-customer w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                                placeholder="Contoh: Router Mikrotik">
+                                                placeholder="Ketik nama barang... (Autocomplete Cerdas)">
+                                                
+                                            <!-- Autocomplete Dropdown -->
+                                            <div class="autocomplete-dropdown hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                                <ul class="autocomplete-list text-sm"></ul>
+                                            </div>
                                         </div>
                                         <div class="md:col-span-2">
                                             <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
@@ -287,6 +294,36 @@
                                     <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-100">
                                         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Estimasi Biaya</label>
                                         <div class="space-y-4">
+                                            {{-- Price Index Reference Info --}}
+                                            <div class="price-ref-box hidden bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs">
+                                                <div class="flex items-center justify-between gap-2 mb-2">
+                                                    <span class="text-blue-600 font-bold uppercase tracking-wider text-[10px]">📊 Referensi Harga</span>
+                                                    <span class="price-ref-source text-blue-400 text-[10px]"></span>
+                                                </div>
+                                                <div class="grid grid-cols-3 gap-2 text-center">
+                                                    <button type="button" class="btn-fill-min bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                                        <span class="block text-[9px] text-green-500 uppercase">Min</span>
+                                                        <span class="price-ref-min">-</span>
+                                                    </button>
+                                                    <button type="button" class="btn-fill-avg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                                        <span class="block text-[9px] text-blue-500 uppercase">Avg</span>
+                                                        <span class="price-ref-avg">-</span>
+                                                    </button>
+                                                    <button type="button" class="btn-fill-max bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                                        <span class="block text-[9px] text-orange-500 uppercase">Maks</span>
+                                                        <span class="price-ref-max">-</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {{-- Warning badge jika harga melebihi max --}}
+                                            <div class="price-anomaly-warning hidden bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs text-red-700">
+                                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                </svg>
+                                                <span class="price-warning-text font-semibold">Harga melebihi referensi maksimum! Owner akan diberitahu.</span>
+                                            </div>
+
                                             <div>
                                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
                                                 <div class="relative">
@@ -508,11 +545,17 @@
                         Informasi Barang / Jasa
                     </label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                        <div class="md:col-span-2">
+                        <div class="md:col-span-2 relative">
                             <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Barang/Jasa *</label>
-                            <input type="text" name="items[__INDEX__][customer]" required
+                            <input type="hidden" name="items[__INDEX__][master_item_id]" class="input-master-id">
+                            <input type="text" name="items[__INDEX__][customer]" required autocomplete="off"
                                 class="input-customer w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                placeholder="Contoh: Router Mikrotik">
+                                placeholder="Ketik nama barang... (Autocomplete Cerdas)">
+                                
+                            <!-- Autocomplete Dropdown -->
+                            <div class="autocomplete-dropdown hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                <ul class="autocomplete-list text-sm"></ul>
+                            </div>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Informasi Vendor</label>
@@ -569,6 +612,36 @@
                     <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-100">
                         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Estimasi Biaya</label>
                         <div class="space-y-4">
+                            {{-- Price Index Reference Info --}}
+                            <div class="price-ref-box hidden bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs">
+                                <div class="flex items-center justify-between gap-2 mb-2">
+                                    <span class="text-blue-600 font-bold uppercase tracking-wider text-[10px]">📊 Referensi Harga</span>
+                                    <span class="price-ref-source text-blue-400 text-[10px]"></span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <button type="button" class="btn-fill-min bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                        <span class="block text-[9px] text-green-500 uppercase">Min</span>
+                                        <span class="price-ref-min">-</span>
+                                    </button>
+                                    <button type="button" class="btn-fill-avg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                        <span class="block text-[9px] text-blue-500 uppercase">Avg</span>
+                                        <span class="price-ref-avg">-</span>
+                                    </button>
+                                    <button type="button" class="btn-fill-max bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold rounded-lg py-1.5 transition text-[10px]">
+                                        <span class="block text-[9px] text-orange-500 uppercase">Maks</span>
+                                        <span class="price-ref-max">-</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Warning badge jika harga melebihi max --}}
+                            <div class="price-anomaly-warning hidden bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs text-red-700">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <span class="price-warning-text font-semibold">Harga melebihi referensi maksimum! Owner akan diberitahu.</span>
+                            </div>
+
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Estimasi Harga Satuan *</label>
                                 <div class="relative">
@@ -865,10 +938,98 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.value = raw > 0 ? formatRupiah(raw) : '';
                 priceHid.value = raw;
                 updateGlobalTotal();
+                triggerPriceCheck(card);
             });
+            priceDisp.addEventListener('blur', () => checkPriceAnomaly(card));
         }
         if(qtyInput) qtyInput.addEventListener('input', updateGlobalTotal);
-        if(customerInput) customerInput.addEventListener('input', updateGlobalTotal);
+
+        if(customerInput) {
+            // ─── Autocomplete Logic ───
+            let debounceTimer;
+            const dropdown = card.querySelector('.autocomplete-dropdown');
+            const list = card.querySelector('.autocomplete-list');
+            const masterIdInput = card.querySelector('.input-master-id');
+            const reasonSelect = card.querySelector('.input-reason');
+
+            if (dropdown && list) {
+                customerInput.addEventListener('input', function() {
+                    masterIdInput.value = ''; // Reset master ID 
+                    const query = this.value.trim();
+                    const category = reasonSelect ? reasonSelect.value : '';
+
+                    clearTimeout(debounceTimer);
+                    if (query.length < 2) {
+                        dropdown.classList.add('hidden');
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        fetch(`/api/items/autocomplete?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                list.innerHTML = '';
+                                if (data.suggestions && data.suggestions.length > 0) {
+                                    data.suggestions.forEach(item => {
+                                        const li = document.createElement('li');
+                                        li.className = 'px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 transition-colors flex justify-between items-center';
+                                        
+                                        // Match Badge Color
+                                        let badgeColor = 'bg-slate-100 text-slate-500';
+                                        if(item.match_type === 'exact') badgeColor = 'bg-teal-100 text-teal-700';
+                                        else if(item.match_type === 'high') badgeColor = 'bg-emerald-100 text-emerald-700';
+                                        else if(item.match_type === 'medium') badgeColor = 'bg-blue-100 text-blue-700';
+
+                                        li.innerHTML = `
+                                            <div>
+                                                <div class="font-bold text-slate-700">${item.display_name}</div>
+                                                ${item.category ? `<div class="text-[10px] text-slate-400 mt-0.5">${item.category}</div>` : ''}
+                                            </div>
+                                            <span class="text-[10px] items-center px-2 py-0.5 rounded-md font-bold ${badgeColor}">${item.confidence}%</span>
+                                        `;
+                                        
+                                        li.addEventListener('click', () => {
+                                            customerInput.value = item.display_name;
+                                            masterIdInput.value = item.id;
+                                            dropdown.classList.add('hidden');
+                                            
+                                            // Provide Quick-Fill for categories
+                                            if (reasonSelect && (!reasonSelect.value || reasonSelect.value === '') && item.category) {
+                                                reasonSelect.value = item.category;
+                                            }
+                                            updateGlobalTotal();
+                                            triggerPriceCheck(card); 
+                                        });
+                                        list.appendChild(li);
+                                    });
+                                    dropdown.classList.remove('hidden');
+                                } else {
+                                    dropdown.classList.add('hidden');
+                                }
+                            }).catch(err => {
+                                dropdown.classList.add('hidden');
+                            });
+                    }, 150);
+                    
+                    updateGlobalTotal();
+                    triggerPriceCheck(card);
+                });
+                
+                // Hide autocomplete on click outside
+                document.addEventListener('click', function(e) {
+                    if (!card.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            } else {
+                customerInput.addEventListener('input', function() {
+                    updateGlobalTotal();
+                    triggerPriceCheck(card);
+                });
+            }
+            
+            customerInput.addEventListener('blur', () => checkPriceAnomaly(card));
+        }
         
         const reasonSelect = card.querySelector('.input-reason');
         const descInput = card.querySelector('.input-desc');
@@ -882,6 +1043,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 descInput.required = false;
                 reqSpan.classList.add('hidden');
             }
+            triggerPriceCheck(card);
         }
         
         if(reasonSelect && descInput && reqSpan) {
@@ -918,6 +1080,80 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateRemoveButtons();
                 }, 300);
             });
+        }
+    }
+
+    // ─── Price Index Real-time Check ───
+    const priceCheckDebounce = {};
+
+    function triggerPriceCheck(card) {
+        const index = card.dataset.index;
+        if (priceCheckDebounce[index]) clearTimeout(priceCheckDebounce[index]);
+        
+        priceCheckDebounce[index] = setTimeout(() => {
+            checkPriceAnomaly(card);
+        }, 300);
+    }
+
+    async function checkPriceAnomaly(card) {
+        const customerInput = card.querySelector('.input-customer');
+        const masterIdInput = card.querySelector('.input-master-id');
+        const itemName = customerInput ? customerInput.value : '';
+        const masterId = masterIdInput ? masterIdInput.value : '';
+        
+        const unitPrice = parseRupiah(card.querySelector('.input-price-display').value);
+        const reasonSelect = card.querySelector('.input-reason');
+        const category  = reasonSelect ? reasonSelect.value : '';
+        const warningDiv = card.querySelector('.price-anomaly-warning');
+        const refBox = card.querySelector('.price-ref-box');
+
+        if (!itemName || unitPrice <= 0 || itemName.length < 2) {
+            if (refBox) refBox.classList.add('hidden');
+            if (warningDiv) warningDiv.classList.add('hidden');
+            return;
+        }
+
+        try {
+            const res = await fetch('{{ route("price-index.check") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ item_name: itemName, unit_price: unitPrice, category: category, master_item_id: masterId })
+            });
+            const data = await res.json();
+            
+            if (data.has_reference) {
+                if (refBox) {
+                    refBox.classList.remove('hidden');
+                    card.querySelector('.price-ref-min').textContent = data.formatted.min;
+                    card.querySelector('.price-ref-max').textContent = data.formatted.max;
+                    card.querySelector('.price-ref-avg').textContent = data.formatted.avg;
+                    card.querySelector('.price-ref-source').textContent = data.is_manual ? '• Manual' : '• Auto';
+                }
+                
+                if (data.is_anomaly && warningDiv) {
+                    warningDiv.classList.remove('hidden');
+                } else if (warningDiv) {
+                    warningDiv.classList.add('hidden');
+                }
+
+                // Setup fill buttons
+                const btnMin = card.querySelector('.btn-fill-min');
+                const btnAvg = card.querySelector('.btn-fill-avg');
+                const btnMax = card.querySelector('.btn-fill-max');
+                
+                const priceDisp = card.querySelector('.input-price-display');
+                const priceHid = card.querySelector('.input-price-hidden');
+
+                if (btnMin) btnMin.onclick = () => { priceDisp.value = formatRupiah(data.min_price); priceHid.value = data.min_price; updateGlobalTotal(); if(warningDiv) warningDiv.classList.add('hidden'); };
+                if (btnAvg) btnAvg.onclick = () => { priceDisp.value = formatRupiah(data.avg_price); priceHid.value = data.avg_price; updateGlobalTotal(); if(warningDiv) warningDiv.classList.add('hidden'); };
+                if (btnMax) btnMax.onclick = () => { priceDisp.value = formatRupiah(data.max_price); priceHid.value = data.max_price; updateGlobalTotal(); if(warningDiv) warningDiv.classList.add('hidden'); };
+
+            } else {
+                if (refBox) refBox.classList.add('hidden');
+                if (warningDiv) warningDiv.classList.add('hidden');
+            }
+        } catch (e) {
+            console.error('Price check failed', e);
         }
     }
 

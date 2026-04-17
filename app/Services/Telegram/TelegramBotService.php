@@ -783,4 +783,87 @@ HTML;
 
         return false;
     }
+
+       // ════════════════════════════════════════════════════════
+    //  PRICE INDEX NOTIFICATIONS
+    // ════════════════════════════════════════════════════════
+
+    /**
+     * ─────────────────────────────────────────────────────────
+     *  Kirim notifikasi ANOMALI HARGA ke semua OWNER
+     *  Dipanggil dari SendPriceAnomalyNotificationJob
+     * ─────────────────────────────────────────────────────────
+     */
+    public function notifyPriceAnomaly(\App\Models\PriceAnomaly $anomaly): void
+    {
+        $anomaly->loadMissing(['transaction.submitter']);
+
+        $transaction   = $anomaly->transaction;
+        $teknisiName   = $transaction?->submitter?->name ?? 'Tidak diketahui';
+        $invoiceNumber = $transaction?->invoice_number ?? '-';
+        $itemName      = $anomaly->item_name;
+        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+
+        $inputFmt        = 'Rp ' . number_format($anomaly->input_price,         0, ',', '.');
+        $refMaxFmt       = 'Rp ' . number_format($anomaly->reference_max_price, 0, ',', '.');
+        $excessFmt       = 'Rp ' . number_format($anomaly->excess_amount,       0, ',', '.');
+        $excessPct       = number_format($anomaly->excess_percentage, 1) . '%';
+
+        $severityIcon = match($anomaly->severity) {
+            'critical' => '🔴',
+            'medium'   => '🟠',
+            'low'      => '🟡',
+            default    => '⚠️',
+        };
+        $severityLabel = match($anomaly->severity) {
+            'critical' => 'CRITICAL (>50%)',
+            'medium'   => 'MEDIUM (20-50%)',
+            'low'      => 'LOW (<20%)',
+            default    => strtoupper($anomaly->severity),
+        };
+
+        $reviewUrl = config('app.url') . '/price-index/anomalies';
+
+        $message = <<<HTML
+        {$severityIcon} <b>[ANOMALI HARGA TERDETEKSI]</b>
+
+            Terdapat item dengan harga yang melebihi harga maksimum referensi pada pengajuan baru.
+
+            <b>Detail Pengajuan:</b>
+            ▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+            ▪️ Teknisi       : {$teknisiName}
+            ▪️ Waktu Sistem  : {$timestamp}
+
+            <b>Detail Anomali:</b>
+            🛠️ Item          : {$itemName}
+            💰 Harga Input   : {$inputFmt}
+            📊 Harga Max Ref : {$refMaxFmt}
+            ⚠️ Selisih       : +{$excessPct} ({$excessFmt})
+            📋 Severity      : {$severityLabel}
+
+            📌 <b>Tindakan Diperlukan:</b>
+            Silakan review anomali ini dan beri persetujuan atau penolakan.
+
+            <a href="{$reviewUrl}">🔍 Review Anomali Sekarang</a>
+        HTML;
+
+        // Kirim ke SEMUA OWNER
+        $stats = $this->sendToMultipleUsers(
+            User::query()->where('role', 'owner'),
+            $message
+        );
+
+        // Kirim ke GROUP monitoring
+        $this->sendToMonitoringGroup(
+            "[ANOMALI HARGA] {$invoiceNumber} - {$itemName} +{$excessPct}"
+        );
+
+        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Price anomaly notification sent', [
+            'anomaly_id'    => $anomaly->id,
+            'item_name'     => $itemName,
+            'severity'      => $anomaly->severity,
+            'recipients'    => $stats,
+        ]);
+    }
+
 }

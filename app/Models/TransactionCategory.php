@@ -43,33 +43,51 @@ class TransactionCategory extends Model
     /**
      * Resolve a category label from a code or name.
      */
-    public static function resolveLabel(?string $category, string $type): string
+    public static function resolveLabel(?string $category, ?string $type): string
     {
         if (!$category) {
             return '-';
         }
 
-        return \Illuminate\Support\Facades\Cache::remember("transaction_category_label:{$category}:{$type}", 3600, function() use ($category, $type) {
-            // Match by code (legacy keys) or name (labels)
-            $cat = self::where('type', $type)
+        // Default type to rembush if null to avoid breakage
+        $type = $type ?? self::TYPE_REMBUSH;
+
+        // 🛡️ RESILIENT CACHING: Prevent Error 500 if Redis/Cache driver is broken
+        try {
+            return \Illuminate\Support\Facades\Cache::remember("transaction_category_label:{$category}:{$type}", 3600, function() use ($category, $type) {
+                return self::fetchLabelFromDb($category, $type);
+            });
+        } catch (\Throwable $e) {
+            // Log for debugging if needed, but DO NOT crash
+            // \Illuminate\Support\Facades\Log::warning("[Cache] Failed to retrieve category label: " . $e->getMessage());
+            return self::fetchLabelFromDb($category, $type);
+        }
+    }
+
+    /**
+     * Internal helper to fetch label from database with fallback logic.
+     */
+    private static function fetchLabelFromDb(?string $category, ?string $type): string
+    {
+        // Match by code (legacy keys) or name (labels)
+        $cat = self::where('type', $type)
+            ->where(function($q) use ($category) {
+                $q->where('code', $category)
+                  ->orWhere('name', $category);
+            })
+            ->first();
+        
+        // Fallback for Gudang: if not found under 'gudang' type, try 'rembush'
+        if (!$cat && $type === self::TYPE_GUDANG) {
+            $cat = self::where('type', self::TYPE_REMBUSH)
                 ->where(function($q) use ($category) {
                     $q->where('code', $category)
                       ->orWhere('name', $category);
                 })
                 ->first();
-            
-            // Fallback for Gudang: if not found under 'gudang' type, try 'rembush'
-            if (!$cat && $type === self::TYPE_GUDANG) {
-                $cat = self::where('type', self::TYPE_REMBUSH)
-                    ->where(function($q) use ($category) {
-                        $q->where('code', $category)
-                          ->orWhere('name', $category);
-                    })
-                    ->first();
-            }
-            
-            return $cat ? $cat->name : $category;
-        });
+        }
+        
+        return $cat ? $cat->name : $category;
     }
 
     // ─── Type Constants ────────────────────────────────

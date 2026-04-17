@@ -1,4 +1,7 @@
 {{-- /**
+ * 
+ * ═══════════════════════════════════════════════════════════════
+ *  KODE LOKAL SAYAAA
  * ═══════════════════════════════════════════════════════════════
  *  PATCH untuk index.blade.php @push('scripts')
  *  
@@ -15,7 +18,7 @@
 
 @section('content')
     {{-- Main Content Card --}}
-    <div class="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100">
+    <div class="bg-white shadow-sm border border-gray-100">
         {{-- Header Toolbar --}}
         <div class="p-3 sm:p-4 md:p-5 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:gap-4 lg:justify-between lg:items-center">
             <div class="flex flex-col md:flex-row gap-3 flex-1">
@@ -110,7 +113,7 @@
                         'auto-reject'     => ['label' => 'Auto Reject', 'count' => $stats['auto_reject'] ?? 0],
                         'flagged'         => ['label' => 'Flagged',     'count' => $stats['flagged'] ?? 0],
                         'waiting_payment' => ['label' => 'Waiting Payment', 'count' => $stats['waiting_payment'] ?? 0],
-                        'approved'  => ['label' => 'Approved', 'count' => $stats['approved'] ?? 0],
+                        'approved'  => ['label' => 'Menunggu Approve Owner', 'count' => $stats['approved'] ?? 0],
                         'completed' => ['label' => 'Paid',     'count' => $stats['completed']],
                         'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected']],
                     ];
@@ -135,7 +138,7 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-semibold bg-gray-50/50">
-                        <th class="px-4 py-4 text-center w-10">No.</th>
+                        <th class="px-5 py-4 text-center w-10">No.</th>
                         <th class="px-5 py-4">Nama Pengaju</th>
                         <th class="px-5 py-4">Jenis</th>
                         <th class="px-5 py-4">Kategori</th>
@@ -917,200 +920,447 @@
     const csrfToken = '{{ csrf_token() }}';
     let currentTransactionId = null;
     const userRole = '{{ Auth::user()->role }}';
+    const userIsAdmin = {{ Auth::user()->isAdmin() ? 'true' : 'false' }};
+    let currentPage = 1;
     const canManage = {{ Auth::user()->canManageStatus() ? 'true' : 'false' }};
     const isOwner = {{ Auth::user()->isOwner() ? 'true' : 'false' }};
     const isAdmin = {{ Auth::user()->isAdmin() ? 'true' : 'false' }};
 
     // ═══════════════════════════════════════════════════════════════
-    // IMAGE VIEWER MODAL
+    // UTILS & AJAX FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    
-    const imageViewer  = document.getElementById('image-viewer');
-    const viewerImage  = document.getElementById('viewer-image');
-    const closeViewer  = document.getElementById('close-viewer');
-    let lastFocusedElement = null; // Store element that triggered viewer
+    function escapeHtml(unsafe) {
+        if (!unsafe || typeof unsafe !== 'string') return unsafe;
+        return unsafe.replace(/[&<"'>]/g, function (match) {
+            const map = {
+                '&': '&amp;', '<': '&lt;', '>': '&gt;',
+                '"': '&quot;', "'": '&#039;'
+            };
+            return map[match];
+        });
+    }
 
-    function openImageViewer(src) {
-        // Store currently focused element to return focus later
-        lastFocusedElement = document.activeElement;
-        
-        // Set image source
-        viewerImage.src = src;
-        
-        // Show modal FIRST (remove hidden class)
-        imageViewer.classList.remove('hidden');
-        imageViewer.classList.add('flex');
-        
-        // Set aria-hidden AFTER showing (important for timing)
-        requestAnimationFrame(() => {
-            imageViewer.setAttribute('aria-hidden', 'false');
-            if (window.toggleBodyScroll) window.toggleBodyScroll(true);
-            else document.body.style.overflow = 'hidden';
-            
-            // Reinit icons for close button
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons({ root: imageViewer });
+    function setAsReference(transactionId, itemName) {
+        if (!confirm(`Jadikan harga untuk '${itemName}' sebagai referensi baru?`)) return;
+
+        fetch(`/price-index/set-reference/${transactionId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ item_name: itemName })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showToast(res.message, 'success');
+            } else {
+                showToast(res.error || 'Gagal menyimpan referensi.', 'error');
             }
-            
-            // Focus close button AFTER everything is ready
-            setTimeout(() => {
-                if (closeViewer) closeViewer.focus();
-            }, 50);
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Terjadi kesalahan jaringan.', 'error');
         });
     }
 
-    function closeImageViewer() {
-        // Remove focus from any element inside modal FIRST
-        if (document.activeElement && imageViewer.contains(document.activeElement)) {
-            document.activeElement.blur();
-        }
-        
-        // Hide modal
-        imageViewer.classList.add('hidden');
-        imageViewer.classList.remove('flex');
-        if (window.toggleBodyScroll) window.toggleBodyScroll(false);
-        else document.body.style.overflow = '';
-        
-        // Set aria-hidden AFTER hiding
-        imageViewer.setAttribute('aria-hidden', 'true');
-        
-        // Clear image and return focus
-        setTimeout(() => { 
-            viewerImage.src = '';
-            
-            // Return focus to element that opened the viewer
-            if (lastFocusedElement && lastFocusedElement.focus) {
-                lastFocusedElement.focus();
-            }
-        }, 200);
-    }
-
-    // Tombol X → tutup
-    if (closeViewer) {
-        closeViewer.addEventListener('click', function (e) {
-            e.stopPropagation();
-            closeImageViewer();
-        });
-    }
-
-    // Klik backdrop (di luar viewer-card) → tutup
-    if (imageViewer) {
-        imageViewer.addEventListener('click', function (e) {
-            if (e.target === imageViewer) closeImageViewer();
-        });
-    }
-
-    // ESC → tutup
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) {
-            closeImageViewer();
-        }
-    });
-
+    // ✅ UNIFIED SEARCH ENGINE - Server-Side dengan Debouncing
+    //   KODE LOKAL SAYA
     // ═══════════════════════════════════════════════════════════════
-    // INSTANT SEARCH ENGINE - CLIENT SIDE
+    // HYBRID SEARCH ENGINE - Auto-Adaptive
+    // Client-side untuk < 5k records | Server-side untuk ≥ 5k records
+    // ✅ PRESERVES ALL PRICE INDEX FEATURES
     // ═══════════════════════════════════════════════════════════════
-    
-    const SearchEngine = (function() {
+
+    const SearchEngine = (function() 
+    {
+        // Configuration
+        const CLIENT_SIDE_THRESHOLD = 5000; // Switch to server-side if dataset > 5k
+        const SERVER_ITEMS_PER_PAGE = 20;
+        
+        // State
+        let mode = null; // 'client' or 'server'
         let allTransactions = [];
         let filteredTransactions = [];
         let currentPage = 1;
-        const itemsPerPage = 20;
+        let totalRecords = 0;
+        let totalPages = 0;
         let isLoading = false;
-        let isFirstLoad = true; // Track first load for skeleton
+        let isFirstLoad = true;
+        let searchTimer = null;
+        let abortController = null;
 
-        // ✅ CHANGE: Make loadData return Promise
+        // ═══════════════════════════════════════════════════════════════
+        // INITIAL LOAD - Auto-detect mode
+        // ═══════════════════════════════════════════════════════════════
         async function loadData() {
-        if (isLoading) {
-            console.warn('[SearchEngine] Already loading, skipping...');
-            return Promise.resolve();
-        }
-        
-        isLoading = true;
-        if(typeof NProgress !== 'undefined') NProgress.start();
-        
-        if (isFirstLoad) {
-            renderSkeletons();
-        }
-        
-        try {
-            const url = new URL(window.location.href);
-            const params = new URLSearchParams(url.search);
+            if (isLoading) {
+                console.warn('[SearchEngine] Already loading, skipping...');
+                return Promise.resolve();
+            }
             
-            // Add date range to params
-            const startDateEl = document.getElementById('filter-start-date');
-            const endDateEl = document.getElementById('filter-end-date');
-            if (startDateEl?.value) params.set('start_date', startDateEl.value);
-            if (endDateEl?.value) params.set('end_date', endDateEl.value);
-
-            // Add branch and category to params
-            const branchIdEl = document.getElementById('filter-branch-id');
-            const categoryEl = document.getElementById('filter-category');
-            if (branchIdEl?.value && branchIdEl.value !== 'all') params.set('branch_id', branchIdEl.value);
-            if (categoryEl?.value && categoryEl.value !== 'all') params.set('category', categoryEl.value);
-
-            updateActiveFilters();
-
-            console.log('[SearchEngine] Fetching data from:', '/transactions/search-data?' + params.toString());
+            isLoading = true;
+            if(typeof NProgress !== 'undefined') NProgress.start();
             
-            const response = await fetch('/transactions/search-data?' + params.toString(), {
+            if (isFirstLoad) {
+                renderSkeletons();
+            }
+            
+            try {
+                // First, check dataset size
+                const countUrl = buildUrl('/transactions/count');
+                const countResponse = await fetch(countUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!countResponse.ok) throw new Error(`HTTP ${countResponse.status}`);
+                const { count } = await countResponse.json();
+                
+                totalRecords = count;
+                
+                // Auto-select mode based on dataset size
+                if (count < CLIENT_SIDE_THRESHOLD) {
+                    mode = 'client';
+                    console.log(`[SearchEngine] Using CLIENT-SIDE mode (${count} records)`);
+                    await loadClientSideData();
+                } else {
+                    mode = 'server';
+                    console.log(`[SearchEngine] Using SERVER-SIDE mode (${count} records)`);
+                    await loadServerSideData();
+                }
+                
+                return Promise.resolve();
+            } catch (error) {
+                console.error('[SearchEngine] Failed to load:', error);
+                showToast('Gagal memuat data', 'error');
+                renderPage([]);
+                return Promise.reject(error);
+            } finally {
+                isLoading = false;
+                isFirstLoad = false;
+                if(typeof NProgress !== 'undefined') NProgress.done();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // CLIENT-SIDE MODE - Load all data once
+        // ═══════════════════════════════════════════════════════════════
+        async function loadClientSideData() {
+            const url = buildUrl('/transactions/search-data');
+            console.log('[SearchEngine] Fetching all data:', url);
+            
+            const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             allTransactions = await response.json();
             
-            // Re-apply search filter if there is active query
+            // Re-apply search if active
             const currentQuery = document.getElementById('instant-search').value.trim();
             if (currentQuery) {
-                const searchTerm = currentQuery.toLowerCase();
-                const terms = searchTerm.split(/\s+/);
-                filteredTransactions = allTransactions.filter(t => 
-                    terms.every(term => t.search_text.includes(term))
-                );
+                filterClientSide(currentQuery);
             } else {
                 filteredTransactions = [...allTransactions];
             }
             
-            console.log('[SearchEngine] Data loaded:', {
-                total: allTransactions.length,
-                filtered: filteredTransactions.length,
-                stayingOnPage: currentPage
-            });
-            
-            // Adjust currentPage if out of bounds after refresh
-            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+            // Adjust page if out of bounds
+            totalPages = Math.ceil(filteredTransactions.length / SERVER_ITEMS_PER_PAGE);
             if (currentPage > totalPages && totalPages > 0) {
                 currentPage = totalPages;
             }
             
             renderPage();
             updateStats();
-            
-            return Promise.resolve();
-        } catch (error) {
-            console.error('[SearchEngine] Failed to load:', error);
-            showToast('Gagal memuat data', 'error');
-            renderPage(); // Clear skeletons
-            return Promise.reject(error);
-        } finally {
-            isLoading = false;
-            isFirstLoad = false;
-            if(typeof NProgress !== 'undefined') NProgress.done();
         }
-    }
 
+        // ═══════════════════════════════════════════════════════════════
+        // SERVER-SIDE MODE - Fetch page by page
+        // ═══════════════════════════════════════════════════════════════
+async function loadServerSideData() {
+            if (abortController) abortController.abort();
+            abortController = new AbortController();
+            
+            // --- TAMBAHAN: Efek Loading Ringan ---
+            const desktopTbody = document.getElementById('desktop-tbody');
+            const mobileContainer = document.getElementById('mobile-container');
+            
+            // Tambahkan class opacity agar tidak terlihat seperti refresh total
+            desktopTbody.classList.add('opacity-40', 'transition-opacity');
+            mobileContainer.classList.add('opacity-40', 'transition-opacity');
+            
+            if(typeof NProgress !== 'undefined') NProgress.start();
+
+            const url = buildUrl('/transactions/search', {
+                page: currentPage,
+                per_page: SERVER_ITEMS_PER_PAGE,
+                search: document.getElementById('instant-search').value.trim()
+            });
+            
+            try {
+                const response = await fetch(url, {
+                    signal: abortController.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                
+                filteredTransactions = result.data;
+                totalRecords = result.total;
+                totalPages = result.last_page;
+                currentPage = result.current_page;
+                
+                renderPage();
+                updateStats();
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('[SearchEngine] Failed:', error);
+                }
+            } finally {
+                // --- TAMBAHAN: Kembalikan Opacity ---
+                desktopTbody.classList.remove('opacity-40');
+                mobileContainer.classList.remove('opacity-40');
+                if(typeof NProgress !== 'undefined') NProgress.done();
+            }
+        }
+
+
+        // ═══════════════════════════════════════════════════════════════
+        // BUILD URL with filters
+        // ═══════════════════════════════════════════════════════════════
+        function buildUrl(endpoint, extraParams = {}) {
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            
+            // Add date range
+            const startDateEl = document.getElementById('filter-start-date');
+            const endDateEl = document.getElementById('filter-end-date');
+            if (startDateEl?.value) params.set('start_date', startDateEl.value);
+            if (endDateEl?.value) params.set('end_date', endDateEl.value);
+
+            // Add branch and category
+            const branchIdEl = document.getElementById('filter-branch-id');
+            const categoryEl = document.getElementById('filter-category');
+            if (branchIdEl?.value && branchIdEl.value !== 'all') params.set('branch_id', branchIdEl.value);
+            if (categoryEl?.value && categoryEl.value !== 'all') params.set('category', categoryEl.value);
+            
+            // Add extra params
+            Object.entries(extraParams).forEach(([key, value]) => {
+                if (value !== null && value !== undefined && value !== '') {
+                    params.set(key, value);
+                }
+            });
+            
+            updateActiveFilters();
+            
+            return endpoint + '?' + params.toString();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SEARCH - Adaptive based on mode
+        // ═══════════════════════════════════════════════════════════════
+        function search(query, resetPage = true) {
+            clearTimeout(searchTimer);
+            
+            if (resetPage) currentPage = 1;
+            
+            if (mode === 'client') {
+                filterClientSide(query);
+                renderPage();
+                updateStats();
+            } else {
+                // Jangan panggil renderSkeletons() di sini! 
+                // Biarkan loadServerSideData yang menangani visual loadingnya.
+                searchTimer = setTimeout(() => {
+                    loadServerSideData();
+                }, 300); // Debounce 300ms
+            }
+        }
+
+        // Client-side filter algorithm
+        function filterClientSide(query) {
+            if (!query || query.trim() === '') {
+                filteredTransactions = [...allTransactions];
+            } else {
+                const searchTerm = query.toLowerCase().trim();
+                const terms = searchTerm.split(/\s+/);
+                
+                filteredTransactions = allTransactions.filter(transaction => {
+                    return terms.every(term => transaction.search_text.includes(term));
+                });
+            }
+            
+            totalPages = Math.ceil(filteredTransactions.length / SERVER_ITEMS_PER_PAGE);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RENDER PAGE - Works for both modes
+        // ═══════════════════════════════════════════════════════════════
+        function renderPage() {
+            let pageData;
+            
+            if (mode === 'client') {
+                // Slice from filtered array
+                const startIndex = (currentPage - 1) * SERVER_ITEMS_PER_PAGE;
+                const endIndex = startIndex + SERVER_ITEMS_PER_PAGE;
+                pageData = filteredTransactions.slice(startIndex, endIndex);
+            } else {
+                // Use data from server response
+                pageData = filteredTransactions;
+            }
+            
+            const startIndex = (currentPage - 1) * SERVER_ITEMS_PER_PAGE;
+            
+            renderDesktopTable(pageData, startIndex);
+            renderMobileCards(pageData, startIndex);
+            renderPagination();
+            updateShowingText();
+            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function updateShowingText() {
+            const startIndex = (currentPage - 1) * SERVER_ITEMS_PER_PAGE;
+            const from = filteredTransactions.length > 0 ? startIndex + 1 : 0;
+            const to = Math.min(startIndex + SERVER_ITEMS_PER_PAGE, 
+                            mode === 'client' ? filteredTransactions.length : totalRecords);
+            const total = mode === 'client' ? filteredTransactions.length : totalRecords;
+            
+            document.getElementById('showing-from').textContent = from;
+            document.getElementById('showing-to').textContent = to;
+            document.getElementById('total-records').textContent = total;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // STATS UPDATE - Fetch from server
+        // ═══════════════════════════════════════════════════════════════
+        async function updateStats() {
+            const url = buildUrl('/transactions/stats');
+            
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) return;
+                
+                const stats = await response.json();
+                const statuses = ['all', 'pending', 'approved', 'completed', 'rejected', 'waiting_payment', 'flagged', 'auto_reject'];
+                
+                statuses.forEach(status => {
+                    const el = document.querySelector(`.status-count[data-status="${status}"]`);
+                    if (el && stats[status] !== undefined) {
+                        el.textContent = `(${stats[status]})`;
+                    }
+                });
+            } catch (error) {
+                console.error('[Stats] Update failed:', error);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PAGINATION
+        // ═══════════════════════════════════════════════════════════════
+        function renderPagination() {
+            const container = document.getElementById('pagination-container');
+            const pages = mode === 'client' ? totalPages : totalPages;
+            
+            if (pages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            const isMobile = window.innerWidth < 640;
+            const maxVisible = isMobile ? 3 : 5;
+            
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(pages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            let html = '';
+            
+            // Previous
+            html += `<button onclick="SearchEngine.goToPage(${currentPage - 1})" 
+                        ${currentPage === 1 ? 'disabled' : ''} 
+                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
+                        <span class="hidden sm:inline">Prev</span>
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 sm:hidden"></i>
+                    </button>`;
+            
+            // First page + ellipsis
+            if (startPage > 1) {
+                html += `<button onclick="SearchEngine.goToPage(1)" 
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">1</button>`;
+                if (startPage > 2) html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+            }
+            
+            // Page numbers
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="SearchEngine.goToPage(${i})" 
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs sm:text-sm font-medium ${i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'}">
+                            ${i}
+                        </button>`;
+            }
+            
+            // Last page + ellipsis
+            if (endPage < pages) {
+                if (endPage < pages - 1) html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+                html += `<button onclick="SearchEngine.goToPage(${pages})" 
+                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">${pages}</button>`;
+            }
+            
+            // Next
+            html += `<button onclick="SearchEngine.goToPage(${currentPage + 1})" 
+                        ${currentPage === pages ? 'disabled' : ''} 
+                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === pages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
+                        <span class="hidden sm:inline">Next</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 sm:hidden"></i>
+                    </button>`;
+            
+            container.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
+        }
+
+        function goToPage(page) {
+            const pages = mode === 'client' ? totalPages : totalPages;
+            if (page < 1 || page > pages) return;
+            
+            currentPage = page;
+            
+            if (mode === 'client') {
+                renderPage();
+            } else {
+                loadServerSideData();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SKELETON LOADERS
+        // ═══════════════════════════════════════════════════════════════
         function renderSkeletons() {
             const tbody = document.getElementById('desktop-tbody');
             const container = document.getElementById('mobile-container');
-            document.getElementById('table-no-results').classList.add('hidden');
-            document.getElementById('mobile-no-results').classList.add('hidden');
+            document.getElementById('table-no-results')?.classList.add('hidden');
+            document.getElementById('mobile-no-results')?.classList.add('hidden');
             
             tbody.innerHTML = Array(6).fill(`
                 <tr class="animate-pulse bg-white border-b border-gray-50">
@@ -1135,53 +1385,23 @@
             `).join('');
         }
 
-        // Instant search algorithm (multi-field matching)
-        function search(query, resetPage = true) {
-            if (!query || query.trim() === '') {
-                filteredTransactions = [...allTransactions];
-            } else {
-                const searchTerm = query.toLowerCase().trim();
-                const terms = searchTerm.split(/\s+/); // Split by whitespace for multi-word search
-                
-                filteredTransactions = allTransactions.filter(transaction => {
-                    // Check if ALL terms exist in search_text
-                    return terms.every(term => transaction.search_text.includes(term));
-                });
-            }
-            
-            if (resetPage) {
-                currentPage = 1; // Reset to first page
-            }
-            renderPage();
-            updateStats();
-        }
-
-        // Render current page
-        function renderPage() {
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const pageData = filteredTransactions.slice(startIndex, endIndex);
-            
-            renderDesktopTable(pageData, startIndex);
-            renderMobileCards(pageData, startIndex);
-            renderPagination();
-            updateShowingText(startIndex, endIndex);
-            
-            // Re-init Lucide icons
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
+        // ═══════════════════════════════════════════════════════════════
+        // RENDER FUNCTIONS (Same as before, preserved from Document #1)
+        // ═══════════════════════════════════════════════════════════════
+        
         function renderDesktopTable(data, startIndex = 0) {
             const tbody = document.getElementById('desktop-tbody');
             const noResults = document.getElementById('table-no-results');
             
             if (data.length === 0) {
                 tbody.innerHTML = '';
-                noResults.classList.remove('hidden');
+                noResults?.classList.remove('hidden');
                 const query = document.getElementById('instant-search').value;
-                document.getElementById('no-result-query').textContent = query;
+                if (document.getElementById('no-result-query')) {
+                    document.getElementById('no-result-query').textContent = query;
+                }
             } else {
-                noResults.classList.add('hidden');
+                noResults?.classList.add('hidden');
                 tbody.innerHTML = data.map((t, i) => generateDesktopRow(t, startIndex + i + 1)).join('');
             }
         }
@@ -1192,170 +1412,74 @@
             
             if (data.length === 0) {
                 container.innerHTML = '';
-                noResults.classList.remove('hidden');
+                noResults?.classList.remove('hidden');
                 const query = document.getElementById('instant-search').value;
-                document.getElementById('mobile-no-result-query').textContent = query;
+                if (document.getElementById('mobile-no-result-query')) {
+                    document.getElementById('mobile-no-result-query').textContent = query;
+                }
             } else {
-                noResults.classList.add('hidden');
+                noResults?.classList.add('hidden');
                 container.innerHTML = data.map((t, i) => generateMobileCard(t, startIndex + i + 1)).join('');
             }
         }
 
-        function renderPagination() {
-            const container = document.getElementById('pagination-container');
-            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-            
-            if (totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-            
-            // Detect mobile viewport
-            const isMobile = window.innerWidth < 640;
-            let html = '';
-            
-            // Previous button
-            html += `<button onclick="SearchEngine.goToPage(${currentPage - 1})" 
-                        ${currentPage === 1 ? 'disabled' : ''} 
-                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        <span class="hidden sm:inline">Prev</span>
-                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 sm:hidden"></i>
-                     </button>`;
-            
-            // Page numbers — fewer visible on mobile
-            const maxVisible = isMobile ? 3 : 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            
-            if (endPage - startPage < maxVisible - 1) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            
-            // Show first page + ellipsis if needed
-            if (startPage > 1) {
-                html += `<button onclick="SearchEngine.goToPage(1)" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">
-                            1
-                         </button>`;
-                if (startPage > 2) {
-                    html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
-                }
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button onclick="SearchEngine.goToPage(${i})" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs sm:text-sm font-medium ${i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'}">
-                            ${i}
-                         </button>`;
-            }
-            
-            // Show last page + ellipsis if needed
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
-                }
-                html += `<button onclick="SearchEngine.goToPage(${totalPages})" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">
-                            ${totalPages}
-                         </button>`;
-            }
-            
-            // Next button
-            html += `<button onclick="SearchEngine.goToPage(${currentPage + 1})" 
-                        ${currentPage === totalPages ? 'disabled' : ''} 
-                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        <span class="hidden sm:inline">Next</span>
-                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 sm:hidden"></i>
-                     </button>`;
-            
-            container.innerHTML = html;
-            // Re-init icons for mobile arrow buttons
-            if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
-        }
-
-        function goToPage(page) {
-            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-            if (page < 1 || page > totalPages) return;
-            currentPage = page;
-            renderPage();
-        }
-
-        function updateShowingText(start, end) {
-            document.getElementById('showing-from').textContent = filteredTransactions.length > 0 ? start + 1 : 0;
-            document.getElementById('showing-to').textContent = Math.min(end, filteredTransactions.length);
-            document.getElementById('total-records').textContent = filteredTransactions.length;
-        }
-
-        function updateStats() {
-            // Update status tab counts
-            const statuses = ['all', 'pending', 'approved', 'completed', 'rejected', 'waiting_payment', 'flagged', 'auto-reject'];
-            statuses.forEach(status => {
-                const count = status === 'all' 
-                    ? filteredTransactions.length 
-                    : filteredTransactions.filter(t => t.status === status).length;
-                
-                const el = document.querySelector(`.status-count[data-status="${status}"]`);
-                if (el) el.textContent = `(${count})`;
-            });
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // Branch Tags Truncation — max 2 visible, rest in tooltip
-        // ═══════════════════════════════════════════════════════════════
+        // Helper: Branch Tags Rendering
         function renderBranchTags(branches, maxVisible = 2) {
             if (!branches || branches.length === 0) return '';
-
             const icon = '<i data-lucide="git-branch" class="w-2.5 h-2.5 mr-0.5"></i>';
-
             const visibleTags = branches.slice(0, maxVisible).map(b =>
                 `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${icon} ${b}</span>`
             ).join('');
-
             if (branches.length <= maxVisible) return visibleTags;
-
             const remaining = branches.length - maxVisible;
-            const hiddenNames = branches.slice(maxVisible).join(', ');
-
-            const tooltipStyle = 'visibility:hidden;opacity:0;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;font-size:10px;font-weight:600;line-height:1.4;padding:8px 12px;border-radius:10px;white-space:nowrap;z-index:50;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;box-shadow:0 4px 12px rgba(0,0,0,.15);';
-
-            const moreBadge = `
-                <span style="position:relative;display:inline-flex;"
-                      onmouseenter="this.querySelector('.branch-tip').style.visibility='visible';this.querySelector('.branch-tip').style.opacity='1';"
-                      onmouseleave="this.querySelector('.branch-tip').style.visibility='hidden';this.querySelector('.branch-tip').style.opacity='0';">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 cursor-default">
-                        +${remaining} lainnya
-                    </span>
-                    <span class="branch-tip" style="${tooltipStyle}">${hiddenNames}</span>
-                </span>`;
-
-            return visibleTags + moreBadge;
+            return visibleTags + `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200">+${remaining}</span>`;
         }
 
-        // Generate HTML for desktop row
+        // Helper: Escape HTML
+        function escapeHtml(text) {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ROW GENERATORS (Preserved from Document #1 - with Price Index)
+        // ═══════════════════════════════════════════════════════════════
+
         function generateDesktopRow(t, rowNum = '') {
+            const isDebtPending = t.status === 'waiting_payment' && t.status_label === 'Menunggu Pelunasan';
+            const isGudang = t.type === 'gudang';
+            const isLargePengajuan = t.type === 'pengajuan' && t.effective_amount >= 1000000;
+
             const statusBadge = {
-                pending:   'bg-amber-50 text-amber-600 border-amber-200',
-                approved:  'bg-blue-50 text-blue-600 border-blue-200',
-                completed: 'bg-green-50 text-green-600 border-green-200',
-                rejected:  'bg-red-50 text-red-600 border-red-200',
-                waiting_payment: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                pending:   isGudang ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                approved:  'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+                completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                rejected:  'bg-red-50 text-red-700 border-red-200',
+                waiting_payment: isDebtPending ? 'bg-amber-50 text-amber-700 border-amber-200' : (isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-orange-50 text-orange-700 border-orange-200'),
+                pending_technician: 'bg-teal-50 text-teal-700 border-teal-200',
                 flagged:   'bg-rose-50 text-rose-700 border-rose-200',
-                'auto-reject': 'bg-pink-50 text-pink-700 border-pink-200',
-                'Menunggu Konfirmasi Teknisi': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
-                'Sedang Diverifikasi AI': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
+                'auto-reject': 'bg-gray-800 text-gray-50 border-gray-900',
             };
+
+            const statusIcon = {
+                pending:   isGudang ? 'search' : 'clock',
+                approved:  'shield-alert',
+                completed: 'check-circle-2',
+                rejected:  'x-circle',
+                waiting_payment: isDebtPending ? 'wallet' : (isGudang ? 'store' : 'credit-card'),
+                pending_technician: 'package-check',
+                flagged:   'flag',
+                'auto-reject': 'bot',
+            };
+
             const statusLabel = {
-                pending:   t.type === 'gudang' ? 'Review Management' : 'Pending',
+                pending:   isGudang ? 'Review Management' : 'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
-                waiting_payment: t.type === 'gudang' ? 'Pembelanjaan Belum di bayar' : 'Menunggu Pembayaran',
-                flagged:   'Flagged (Selisih)',
-                'auto-reject': 'Auto Reject (AI)',
-                'Menunggu Konfirmasi Teknisi': 'Menunggu Konfirmasi',
-                'Sedang Diverifikasi AI': 'Proses AI',
-                'Ditolak Teknisi': 'Ditolak Teknisi',
+                waiting_payment: t.status_label || (isGudang ? 'Belum Dibayar' : 'Menunggu Pembayaran'),
+                flagged:   'Flagged',
+                'auto-reject': 'Auto Reject',
             };
 
             const aiBadgeHtml = generateAIBadge(t);
@@ -1363,9 +1487,7 @@
 
             return `
                 <tr class="hover:bg-blue-50/30 transition-all duration-200 group">
-                    <td class="px-4 py-4 text-center">
-                        <span class="text-xs font-bold text-slate-400">${rowNum}</span>
-                    </td>
+                    <td class="px-5 py-4 text-center"><span class="text-xs font-bold text-slate-400">${rowNum}</span></td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
@@ -1373,48 +1495,41 @@
                             </div>
                             <div>
                                 <div class="font-bold text-gray-900">${t.submitter_name || '-'}</div>
-                                ${!t.submitter_has_telegram && t.type !== 'gudang' ? `
-                                    <div class="flex items-center gap-1 mt-0.5">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
-                                            <i data-lucide="bell-off" class="w-2.5 h-2.5 mr-0.5"></i> Telegram Belum Terdaftar
-                                        </span>
-                                    </div>
-                                ` : ''}
                                 <div class="text-[11px] text-gray-400 font-medium">${t.invoice_number}</div>
-                                ${t.branches && t.branches.length > 0 ? `
-                                    <div class="flex items-center gap-1 mt-1 flex-wrap">
-                                        ${renderBranchTags(t.branches, 2)}
-                                    </div>
-                                ` : ''}
+                                ${t.branches && t.branches.length > 0 ? `<div class="flex items-center gap-1 mt-1 flex-wrap">${renderBranchTags(t.branches, 2)}</div>` : ''}
                             </div>
                         </div>
                     </td>
                     <td class="px-5 py-4">
-                        ${t.type === 'pengajuan' 
-                            ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100"><i data-lucide="shopping-bag" class="w-3 h-3"></i> Pengajuan</span>'
-                            : (t.type === 'gudang'
-                                ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-600 border-amber-100"><i data-lucide="package" class="w-3 h-3"></i> Gudang</span>'
-                                : '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100"><i data-lucide="receipt" class="w-3 h-3"></i> Rembush</span>'
-                            )}
+                        <div class="flex flex-col items-start gap-1">
+                            ${t.type === 'pengajuan' 
+                                ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100"><i data-lucide="shopping-bag" class="w-3 h-3"></i> Pengajuan</span>'
+                                : (t.type === 'gudang'
+                                    ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100"><i data-lucide="package" class="w-3 h-3"></i> Gudang</span>'
+                                    : '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100"><i data-lucide="receipt" class="w-3 h-3"></i> Rembush</span>'
+                                )}
+
+                            ${t.has_price_anomaly 
+                                ? `<span class="flex items-center gap-1 text-[10px] font-medium text-red-500" title="Anomaly">
+                                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> Anomali Harga
+                                </span>` 
+                                : ''
+                            }
+                        </div>
                     </td>
-                    <td class="px-5 py-4 text-gray-700 font-medium text-xs">
-                        ${t.category_label}
-                    </td>
+                    <td class="px-5 py-4 text-gray-700 font-medium text-xs">${t.category_label}</td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                                <i data-lucide="${statusIcon[t.status] || 'info'}" class="w-3 h-3"></i>
                                 ${statusLabel[t.status] || t.status}
                             </span>
                             ${aiBadgeHtml}
                             ${inlineActionsHtml}
                         </div>
                     </td>
-                    <td class="px-5 py-4 text-gray-500 font-medium text-xs">
-                        ${t.created_at}
-                    </td>
-                    <td class="px-5 py-4 font-bold text-gray-900">
-                        Rp ${t.formatted_amount}
-                    </td>
+                    <td class="px-5 py-4 text-gray-500 font-medium text-xs">${t.created_at}</td>
+                    <td class="px-5 py-4 font-bold text-gray-900">Rp ${t.formatted_amount}</td>
                     <td class="px-5 py-4">
                         <div class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                             <button type="button" onclick="openViewModal(${t.id})" title="Lihat Detail"
@@ -1436,28 +1551,12 @@
                             ` : ''}
                         </div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
         }
-        
-        // ───────────────────────────────────────────────────
-        // ✅ Edit button builder — enforces spec rules:
-        //   - Pengajuan + status completed → sembunyikan
-        //   - Admin → tampilkan dengan label "Lihat Versi" (read-only di server)
-        // ───────────────────────────────────────────────────
+
         function buildEditButton(t, style = 'desktop') {
-            const isCompleted = t.status === 'completed';
-            
-            // Tentukan label berdasar status Read-Only
-            let label = 'Edit';
-            if (t.type === 'pengajuan') {
-                if (isAdmin) label = 'Lihat Versi (View Only)';
-                else if (isCompleted) label = 'View Only';
-            }
-
-            // Selalu gunakan icon edit (pencil), namun fungsionalnya read-only di backend jika memenuhi syarat
+            const label = 'Edit';
             const icon  = 'pencil';
-
             if (style === 'desktop') {
                 return `<a href="/transactions/${t.id}/edit" title="${label}"
                     class="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 active:scale-95 transition-all outline-none">
@@ -1472,59 +1571,47 @@
         }
 
         function generateMobileCard(t, rowNum = '') {
+            const isDebtPending = t.status === 'waiting_payment' && t.status_label === 'Menunggu Pelunasan';
+            const isGudang = t.type === 'gudang';
+            const isLargePengajuan = t.type === 'pengajuan' && t.effective_amount >= 1000000;
+
             const mStatusBadge = {
-                pending:   'bg-amber-50 text-amber-700 border-amber-200',
-                approved:  'bg-blue-50 text-blue-700 border-blue-200',
-                completed: 'bg-green-50 text-green-700 border-green-200',
+                pending:   isGudang ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                approved:  'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+                completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
                 rejected:  'bg-red-50 text-red-700 border-red-200',
-                waiting_payment: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                waiting_payment: isDebtPending ? 'bg-amber-50 text-amber-700 border-amber-200' : (isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-orange-50 text-orange-700 border-orange-200'),
+                pending_technician: 'bg-teal-50 text-teal-700 border-teal-200',
                 flagged:   'bg-rose-50 text-rose-700 border-rose-200',
-                'auto-reject': 'bg-pink-50 text-pink-700 border-pink-200',
-                'Menunggu Konfirmasi Teknisi': 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
-                'Sedang Diverifikasi AI': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                'Ditolak Teknisi': 'bg-red-50 text-red-700 border-red-200',
+                'auto-reject': 'bg-gray-800 text-gray-50 border-gray-900',
             };
+
+            const mStatusIcon = {
+                pending:   isGudang ? 'search' : 'clock',
+                approved:  'shield-alert',
+                completed: 'check-circle-2',
+                rejected:  'x-circle',
+                waiting_payment: isDebtPending ? 'wallet' : (isGudang ? 'store' : 'credit-card'),
+                pending_technician: 'package-check',
+                flagged:   'flag',
+                'auto-reject': 'bot',
+            };
+
             const mStatusLabel = {
-                pending:   t.type === 'gudang' ? 'Review' : 'Pending',
+                pending:   isGudang ? 'Review' : 'Pending',
                 approved:  'Menunggu Owner',
                 completed: 'Selesai',
                 rejected:  'Ditolak',
-                waiting_payment: t.type === 'gudang' ? 'Belum Bayar' : 'Menunggu Bayar',
+                waiting_payment: t.status_label || (isGudang ? 'Belum Bayar' : 'Belum Bayar'),
                 flagged:   'Flagged',
                 'auto-reject': 'Auto Reject',
-                'Menunggu Konfirmasi Teknisi': 'Konfirmasi',
-                'Sedang Diverifikasi AI': 'Verifikasi AI',
-                'Ditolak Teknisi': 'Ditolak',
             };
 
             const aiBadgeHtml = generateAIBadge(t);
             const mobileActionsHtml = generateMobileActions(t);
 
-            // CRUD buttons — compact, same height as contextual actions
-            const crudButtons = `
-                <button type="button" onclick="openViewModal(${t.id})"
-                    class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
-                    <i data-lucide="eye" class="w-3 h-3"></i> Lihat
-                </button>
-                ${canManage ? `
-                    ${buildEditButton(t, 'mobile')}
-                    ${(!isAdmin) ? `
-                        <form action="/transactions/${t.id}" method="POST" class="inline" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <input type="hidden" name="_method" value="DELETE">
-                            <button type="submit"
-                                class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
-                                <i data-lucide="trash-2" class="w-3 h-3"></i>
-                            </button>
-                        </form>
-                    ` : ''}
-                ` : ''}
-            `;
-
             return `
                 <div class="tx-card px-3 sm:px-4 py-3 sm:py-3.5 border-b border-gray-100">
-
-                    {{-- Row 1: Avatar · Name/Invoice · Badges --}}
                     <div class="flex items-start gap-2.5 mb-2">
                         <div class="relative shrink-0 mt-0.5">
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-xs font-bold text-slate-600">
@@ -1539,7 +1626,8 @@
                                     <p class="text-[10px] font-medium text-slate-400 truncate">${t.invoice_number}</p>
                                 </div>
                                 <div class="flex flex-col items-end gap-0.5 shrink-0">
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide border ${mStatusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide border ${mStatusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
+                                        <i data-lucide="${mStatusIcon[t.status] || 'info'}" class="w-2 h-2"></i>
                                         ${mStatusLabel[t.status] || t.status}
                                     </span>
                                     ${aiBadgeHtml}
@@ -1548,15 +1636,6 @@
                         </div>
                     </div>
 
-                    {{-- Row 2: Branch & Telegram badges --}}
-                    ${((t.branches && t.branches.length > 0) || !t.submitter_has_telegram) ? `
-                    <div class="flex items-center gap-1 flex-wrap mb-2 pl-10 sm:pl-11">
-                        ${!t.submitter_has_telegram ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-50 text-rose-600 border border-rose-100"><i data-lucide="bell-off" class="w-2 h-2"></i> No Telegram</span>` : ''}
-                        ${t.branches && t.branches.length > 0 ? renderBranchTags(t.branches, 2) : ''}
-                    </div>
-                    ` : ''}
-
-                    {{-- Row 3: Meta info (Type · Category · Date) --}}
                     <div class="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mb-2 pl-10 sm:pl-11">
                         ${t.type === 'pengajuan'
                             ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-teal-600"><i data-lucide="shopping-bag" class="w-2 h-2"></i> Pengajuan</span>'
@@ -1570,68 +1649,50 @@
                         <span class="font-medium">${t.created_at}</span>
                     </div>
 
-                    {{-- Row 4: Nominal & Primary Actions --}}
                     <div class="flex items-center justify-between gap-2 pl-10 sm:pl-11 mb-2.5">
                         <p class="font-black text-slate-800 text-[15px] sm:text-base tracking-tight truncate">Rp ${t.formatted_amount}</p>
-                        ${mobileActionsHtml ? `
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            ${mobileActionsHtml}
-                        </div>
+                        ${mobileActionsHtml ? `<div class="flex items-center gap-1.5 shrink-0">${mobileActionsHtml}</div>` : ''}
+                    </div>
+
+                    <div class="flex items-center gap-1.5 flex-wrap pl-10 sm:pl-11">
+                        <button type="button" onclick="openViewModal(${t.id})"
+                            class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                            <i data-lucide="eye" class="w-3 h-3"></i> Lihat
+                        </button>
+                        ${buildEditButton(t, 'mobile')}
+                        ${(!isAdmin) ? `
+                            <form action="/transactions/${t.id}" method="POST" class="inline" onsubmit="return confirm('Hapus transaksi ${t.invoice_number}?')">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit"
+                                    class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                </button>
+                            </form>
                         ` : ''}
                     </div>
-
-                    ${t.status === 'rejected' && t.rejection_reason ? `
-                        <div class="mb-2.5 text-[10px] text-red-600 flex items-start gap-1.5 bg-red-50 px-2.5 py-2 rounded-lg border border-red-100 mx-0">
-                            <i data-lucide="alert-circle" class="w-3 h-3 mt-px flex-shrink-0 text-red-400"></i>
-                            <span class="line-clamp-2">${t.rejection_reason}</span>
-                        </div>
-                    ` : ''}
-
-                    {{-- Row 5: Secondary Actions --}}
-                    ${crudButtons.trim() !== '' ? `
-                    <div class="flex items-center gap-1.5 flex-wrap pl-10 sm:pl-11">
-                        ${crudButtons}
-                    </div>
-                    ` : ''}
-
-                </div>
-            `;
+                </div>`;
         }
-
 
         function generateAIBadge(t) {
-            if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) {
-                return '';
-            }
-
-            const isHighConfidence = t.confidence && t.confidence > 70;
-            const completedColor = isHighConfidence 
-                ? 'bg-green-50 text-green-600 border-green-200' 
-                : 'bg-orange-50 text-orange-600 border-orange-200';
-            const completedLabel = isHighConfidence ? 'AI ✓ High' : (t.confidence ? 'AI ✓ Low' : 'AI ✓');
-
-            const aiBadge = {
-                queued:     { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Antrian', pulse: false, title: 'Menunggu diproses' },
-                pending:    { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Pending', pulse: false, title: 'Menunggu upload selesai' },
-                processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR...', pulse: true, title: 'Sedang memproses...' },
-                completed:  { color: completedColor, icon: 'check-circle', label: completedLabel, pulse: false, title: `Selesai • Confidence: ${t.confidence ?? 0}%` },
-                error:      { color: 'bg-red-50 text-red-600 border-red-200', icon: 'alert-circle', label: 'AI ✗', pulse: false, title: 'Gagal • Silakan isi manual' },
-            }[t.ai_status];
+            if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) return '';
+            const badges = {
+                queued:     { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Antrian' },
+                pending:    { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Pending' },
+                processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR...', pulse: true },
+                completed:  { color: 'bg-green-50 text-green-600 border-green-200', icon: 'check-circle', label: 'AI ✓' },
+                error:      { color: 'bg-red-50 text-red-600 border-red-200', icon: 'alert-circle', label: 'AI ✗' },
+            };
+            const aiBadge = badges[t.ai_status];
 
             return `
-                <span class="ai-status-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold border ml-1 ${aiBadge.color} ${aiBadge.pulse ? 'animate-pulse' : ''}"
-                    data-upload-id="${t.upload_id || ''}"
-                    data-transaction-id="${t.id}"
-                    data-status="${t.ai_status}"
-                    title="${aiBadge.title}">
+                <span class="ai-status-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold border ml-1 ${aiBadge.color} ${aiBadge.pulse ? 'animate-pulse' : ''}">
                     <i data-lucide="${aiBadge.icon}" class="w-2.5 h-2.5 ${aiBadge.pulse ? 'animate-spin' : ''}"></i>
                     ${aiBadge.label}
-                    ${t.ai_status === 'completed' && t.confidence ? `<span class="ml-0.5 opacity-70">(${t.confidence}%)</span>` : ''}
-                </span>
-            `;
+                </span>`;
         }
 
-        function generateInlineActions(t) {
+function generateInlineActions(t) {
             if (!canManage) return '';
 
             let html = '';
@@ -1657,7 +1718,7 @@
                         </button>
                     </div>
                 `;
-            } else if (isOwner && t.status === 'approved' && !isPengajuan) {
+            } else if (isOwner && t.status === 'approved') {
                 const approveTitle = 'Approve Final';
                 html = `
                     <div class="flex items-center gap-1 ml-1">
@@ -1684,14 +1745,21 @@
                     </div>
                 `;
             } else if (t.status === 'waiting_payment' && canManage) {
-                html += `
-                    <div class="flex items-center gap-1 ml-1">
-                        <button type="button" onclick="openPaymentModal(${t.id})" title="Proses Pembayaran"
-                            class="p-1.5 rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white border border-cyan-200 hover:border-cyan-600 active:scale-90 transition-all outline-none">
-                            <i data-lucide="upload-cloud" class="w-3 h-3"></i>
-                        </button>
-                    </div>
-                `;
+                // ✅ Only show Upload button if NO payment proof exists yet
+                // AND there are no pending inter-branch debts
+                const hasPaymentProof = !!(t.invoice_file_path || t.bukti_transfer || t.foto_penyerahan);
+                const isDebtPending = t.status_label === 'Menunggu Pelunasan';
+                
+                if (!hasPaymentProof && !isDebtPending) {
+                    html += `
+                        <div class="flex items-center gap-1 ml-1">
+                            <button type="button" onclick="openPaymentModal(${t.id})" title="Proses Pembayaran"
+                                class="p-1.5 rounded-lg bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white border border-cyan-200 hover:border-cyan-600 active:scale-90 transition-all outline-none">
+                                <i data-lucide="upload-cloud" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    `;
+                }
             } else if (t.status === 'flagged' && (canManage || isOwner)) {
                 html += `
                     <div class="flex items-center gap-1 ml-1">
@@ -1737,7 +1805,7 @@
                     showActions = true;
                     approveTitle = t.effective_amount >= 1000000 ? 'Setujui (Menunggu Owner)' : 'Setujui';
                 }
-            } else if (isOwner && t.status === 'approved' && !isPengajuan) {
+            } else if (isOwner && t.status === 'approved') {
                 showActions = true;
                 approveTitle = 'Approve Final';
             }
@@ -1751,12 +1819,19 @@
                     </button>
                 `;
             } else if (t.status === 'waiting_payment' && canManage) {
-                extraActionHtml = `
-                    <button type="button" onclick="openPaymentModal(${t.id})" title="Upload Bukti"
-                        class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
-                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Upload Bukti</span>
-                    </button>
-                `;
+                // ✅ Only show Upload button if NO payment proof exists yet
+                // AND there are no pending inter-branch debts
+                const hasPaymentProof = !!(t.invoice_file_path || t.bukti_transfer || t.foto_penyerahan);
+                const isDebtPending = t.status_label === 'Menunggu Pelunasan';
+                
+                if (!hasPaymentProof && !isDebtPending) {
+                    extraActionHtml = `
+                        <button type="button" onclick="openPaymentModal(${t.id})" title="Upload Bukti"
+                            class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Upload Bukti</span>
+                        </button>
+                    `;
+                }
             } else if (t.status === 'flagged' && (canManage || isOwner)) {
                 extraActionHtml = `
                     <button type="button" onclick="openForceApproveModal(${t.id}, '${t.invoice_number}')" title="Force Approve"
@@ -1793,114 +1868,88 @@
                     <i data-lucide="x" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Tolak</span>
                 </button>
             `;
-        }
-
+        }   
+        
 
         function addTransaction(transaction) {
-            if (!allTransactions.some(t => t.id === transaction.id)) {
-                allTransactions.unshift(transaction);
-                const query = document.getElementById('instant-search').value.trim();
-                search(query);
+            if (mode === 'client') {
+                if (!allTransactions.some(t => t.id === transaction.id)) {
+                    allTransactions.unshift(transaction);
+                    const query = document.getElementById('instant-search').value.trim();
+                    search(query);
+                }
+            } else {
+                // Server-side: just reload current page
+                loadServerSideData();
             }
         }
 
         function updateTransaction(transaction) {
-            const index = allTransactions.findIndex(t => t.id === transaction.id);
-            if (index !== -1) {
-                allTransactions[index] = transaction;
-                const query = document.getElementById('instant-search').value.trim();
-                search(query, false); // Don't reset page
+            if (mode === 'client') {
+                const index = allTransactions.findIndex(t => t.id === transaction.id);
+                if (index !== -1) {
+                    allTransactions[index] = transaction;
+                    const query = document.getElementById('instant-search').value.trim();
+                    search(query, false);
+                } else {
+                    addTransaction(transaction);
+                }
             } else {
-                addTransaction(transaction);
+                loadServerSideData();
             }
         }
 
         // Public API
         return {
-                    init: loadData,
-                    search: search,
-                    goToPage: goToPage,
-                    getAll: () => allTransactions,
-                    getFiltered: () => filteredTransactions,
-                    addTransaction: addTransaction,
-                    updateTransaction: updateTransaction,
-                };
+            init: loadData,
+            search: search,
+            goToPage: goToPage,
+            refresh: loadData,
+            getAll: () => mode === 'client' ? allTransactions : filteredTransactions,
+            getFiltered: () => filteredTransactions,
+            addTransaction: addTransaction,
+            updateTransaction: updateTransaction,
+            getMode: () => mode
+        };
     })();
 
     // ═══════════════════════════════════════════════════════════════
-    // INITIALIZATION
+    // IMAGE VIEWER MODAL
     // ═══════════════════════════════════════════════════════════════
-    
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Lucide icons
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-
-        // ✅ Initialize aria-hidden=true for all modals (important for accessibility)
-        const viewModal = document.getElementById('view-modal');
         const imageViewer = document.getElementById('image-viewer');
-        const rejectModal = document.getElementById('reject-modal');
-        
-        if (viewModal) viewModal.setAttribute('aria-hidden', 'true');
-        if (imageViewer) imageViewer.setAttribute('aria-hidden', 'true');
-        if (rejectModal) rejectModal.setAttribute('aria-hidden', 'true');
+        const viewerImage = document.getElementById('viewer-image');
+        const closeViewer = document.getElementById('close-viewer');
+        let lastFocusedElement = null;
 
-        // Setup instant search
-        const searchInput = document.getElementById('instant-search');
-        const clearBtn = document.getElementById('search-clear');
-        
-        let searchTimer = null;
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            clearBtn.classList.toggle('hidden', query.length === 0);
-            
-            // Debounce for performance
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                SearchEngine.search(query);
-            }, 150); // Ultra-fast debounce for instant feel
-        });
+        window.openImageViewer = function(src) {
+            lastFocusedElement = document.activeElement;
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            requestAnimationFrame(() => {
+                imageViewer.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: imageViewer });
+                setTimeout(() => closeViewer?.focus(), 50);
+            });
+        };
 
-        clearBtn.addEventListener('click', function() {
-            searchInput.value = '';
-            SearchEngine.search('');
-            clearBtn.classList.add('hidden');
-            searchInput.focus();
-        });
+        window.closeImageViewer = function() {
+            if (document.activeElement && imageViewer.contains(document.activeElement)) document.activeElement.blur();
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            imageViewer.setAttribute('aria-hidden', 'true');
+            setTimeout(() => { 
+                viewerImage.src = '';
+                if (lastFocusedElement?.focus) lastFocusedElement.focus();
+            }, 200);
+        };
 
-        // Setup Date Range Filters
-        const startDateInput = document.getElementById('filter-start-date');
-        const endDateInput   = document.getElementById('filter-end-date');
-        
-        [startDateInput, endDateInput].forEach(el => {
-            if (el) {
-                el.addEventListener('change', function() {
-                    SearchEngine.init(); // Re-loads data from server with date filters
-                });
-            }
-        });
-
-        // Setup Branch & Category Filters
-        const branchInput = document.getElementById('filter-branch-id');
-        const categoryInput = document.getElementById('filter-category');
-        
-        [branchInput, categoryInput].forEach(el => {
-            if (el) {
-                el.addEventListener('change', function() {
-                    SearchEngine.init(); 
-                });
-            }
-        });
-
-        // Clear All Filters
-        document.getElementById('clear-all-filters')?.addEventListener('click', function() {
-            if (searchInput) searchInput.value = '';
-            if (startDateInput) startDateInput.value = '';
-            if (endDateInput)   endDateInput.value = '';
-            if (branchInput)    branchInput.value = 'all';
-            if (categoryInput)  categoryInput.value = 'all';
-            
-            SearchEngine.init();
-        });
+        if(closeViewer) closeViewer.addEventListener('click', e => { e.stopPropagation(); closeImageViewer(); });
+        if(imageViewer) imageViewer.addEventListener('click', e => { if (e.target === imageViewer) closeImageViewer(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeImageViewer(); });
 
         // --- Visual Indicator Helpers ---
         function updateActiveFilters() {
@@ -1910,6 +1959,11 @@
 
             chips.innerHTML = '';
             let activeCount = 0;
+
+            const branchInput = document.getElementById('filter-branch-id');
+            const categoryInput = document.getElementById('filter-category');
+            const startDateInput = document.getElementById('filter-start-date');
+            const endDateInput = document.getElementById('filter-end-date');
 
             // Branch
             if (branchInput && branchInput.value !== 'all') {
@@ -1971,6 +2025,70 @@
         // Attach updateActiveFilters to window so SearchEngine can call it
         window.updateActiveFilters = updateActiveFilters;
 
+        // ═══════════════════════════════════════════════════════════════
+        // EVENT LISTENERS - Search & Filters
+        // ═══════════════════════════════════════════════════════════════
+
+        // Search input with debounce
+        const searchInput = document.getElementById('instant-search');
+        const searchClearBtn = document.getElementById('search-clear');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const val = this.value.trim();
+                if (searchClearBtn) searchClearBtn.classList.toggle('hidden', val === '');
+                SearchEngine.search(val);
+            });
+
+            // Allow clearing with keyboard (Escape)
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    this.value = '';
+                    if (searchClearBtn) searchClearBtn.classList.add('hidden');
+                    SearchEngine.search('');
+                    this.blur();
+                }
+            });
+        }
+
+        if (searchClearBtn) {
+            searchClearBtn.addEventListener('click', function() {
+                if (searchInput) searchInput.value = '';
+                this.classList.add('hidden');
+                SearchEngine.search('');
+                if (searchInput) searchInput.focus();
+            });
+        }
+
+        // Branch, Category, Date filters
+        const filterBranch = document.getElementById('filter-branch-id');
+        const filterCategory = document.getElementById('filter-category');
+        const filterStartDate = document.getElementById('filter-start-date');
+        const filterEndDate = document.getElementById('filter-end-date');
+
+        if (filterBranch) filterBranch.addEventListener('change', () => SearchEngine.init());
+        if (filterCategory) filterCategory.addEventListener('change', () => SearchEngine.init());
+        if (filterStartDate) filterStartDate.addEventListener('change', () => SearchEngine.init());
+        if (filterEndDate) filterEndDate.addEventListener('change', () => SearchEngine.init());
+
+        // Clear All Filters button
+        const clearAllBtn = document.getElementById('clear-all-filters');
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function() {
+                if (filterBranch) filterBranch.value = 'all';
+                if (filterCategory) filterCategory.value = 'all';
+                if (filterStartDate) filterStartDate.value = '';
+                if (filterEndDate) filterEndDate.value = '';
+                if (searchInput) { searchInput.value = ''; searchClearBtn?.classList.add('hidden'); }
+                SearchEngine.init();
+            });
+        }
+
+        // Initialize clear button visibility on load
+        if (searchInput && searchInput.value.trim() !== '') {
+            searchClearBtn?.classList.remove('hidden');
+        }
+
         // Show session toasts
         @if(session('success'))
             showToast(`
@@ -2013,26 +2131,7 @@
 
             echoChannel.listen('.transaction.updated', (e) => {
                 console.log('🔔 [REALTIME] Transaction Updated:', e);
-                
-                // Refresh data via AJAX
-                if (typeof SearchEngine !== 'undefined' && typeof SearchEngine.loadData === 'function') {
-                    SearchEngine.loadData();
-                    
-                    // Optional: Show a subtle toast for the update
-                    const tx = e.transaction || e;
-                    const invoice = tx.invoice_number || 'Transaksi';
-                    const status = tx.status_label || tx.status || 'diperbarui';
-                    
-                    showToast(`
-                        <div class="flex items-start gap-2">
-                            <i data-lucide="refresh-cw" class="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 animate-spin"></i>
-                            <div>
-                                <strong>Pembaruan Otomatis</strong><br>
-                                <span class="text-[11px] opacity-90">${invoice}: ${status}</span>
-                            </div>
-                        </div>
-                    `, 'info');
-                }
+                SearchEngine.refresh();
             });
 
             console.log('📡 [REALTIME] Echo listener initialized on channel: ' + 
@@ -2049,33 +2148,17 @@
         const container = document.getElementById('toast-container');
         if (!container) return;
 
-        let bgColors = 'bg-white border text-slate-800';
-        let accentClasses = 'bg-blue-500';
-        if (type === 'success') {
-            bgColors = 'bg-emerald-50 border-emerald-200 text-emerald-800';
-            accentClasses = 'bg-emerald-500';
-        } else if (type === 'error') {
-            bgColors = 'bg-red-50 border-red-200 text-red-800';
-            accentClasses = 'bg-red-500';
-        }
+        let bgColors = 'bg-white border text-slate-800', accentClasses = 'bg-blue-500';
+        if (type === 'success') { bgColors = 'bg-emerald-50 border-emerald-200 text-emerald-800'; accentClasses = 'bg-emerald-500'; }
+        else if (type === 'error') { bgColors = 'bg-red-50 border-red-200 text-red-800'; accentClasses = 'bg-red-500'; }
 
         const toast = document.createElement('div');
-        toast.className = `relative flex items-center gap-3 px-4 py-3 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-sm font-medium transform transition-all duration-300 translate-x-[120%] opacity-0 overflow-hidden ${bgColors}`;
-        toast.innerHTML = `
-            <div class="absolute left-0 top-0 bottom-0 w-1 ${accentClasses}"></div>
-            ${message}
-        `;
+        toast.className = `relative flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transform transition-all duration-300 translate-x-[120%] opacity-0 overflow-hidden ${bgColors}`;
+        toast.innerHTML = `<div class="absolute left-0 top-0 bottom-0 w-1 ${accentClasses}"></div>${message}`;
 
         container.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.classList.remove('translate-x-[120%]', 'opacity-0');
-            toast.classList.add('translate-x-0', 'opacity-100');
-        });
-        
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons({ root: toast });
-        }
+        requestAnimationFrame(() => { toast.classList.remove('translate-x-[120%]', 'opacity-0'); toast.classList.add('translate-x-0', 'opacity-100'); });
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: toast });
 
         setTimeout(() => {
             toast.classList.remove('translate-x-0', 'opacity-100');
@@ -2083,6 +2166,52 @@
             setTimeout(() => toast.remove(), 300);
         }, 4000);
     }
+
+    // ── DELETE TRANSACTION ─────────────────────────────────
+    window.deleteTransaction = async function(id) {
+        if (!id) {
+            console.error('Delete error: No transaction ID provided');
+            showToast('ID Transaksi tidak valid.', 'error');
+            return;
+        }
+
+        if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
+            return;
+        }
+
+        try {
+            if (typeof NProgress !== 'undefined') NProgress.start();
+            
+            const response = await fetch(`/transactions/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Refresh data using SearchEngine
+                if (typeof SearchEngine !== 'undefined' && SearchEngine.refresh) {
+                    await SearchEngine.refresh();
+                } else {
+                    window.location.reload();
+                }
+                
+                showToast(result.message, 'success');
+            } else {
+                showToast(result.message || 'Gagal menghapus transaksi', 'error');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showToast('Terjadi kesalahan saat menghapus transaksi.', 'error');
+        } finally {
+            if (typeof NProgress !== 'undefined') NProgress.done();
+        }
+    };
 
     // ═══════════════════════════════════════════════════════════════
     // VIEW MODAL & OTHER FUNCTIONS
@@ -2141,18 +2270,23 @@
                 <div class="border ${cardClass} rounded-2xl overflow-hidden shadow-sm mb-4 last:mb-0 transition-all duration-300">
                     <!-- Card Header -->
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-100/50 transition-colors" onclick="const body = this.nextElementSibling; body.classList.toggle('hidden'); this.querySelector('.icon-collapse').classList.toggle('rotate-180')">
-                        <div class="flex items-center gap-3">
-                            <div class="w-7 h-7 rounded-full ${isNew ? 'bg-emerald-100 text-emerald-600' : (hasAnyChange ? 'bg-orange-100 text-orange-600' : 'bg-slate-200 text-slate-500')} flex items-center justify-center font-bold text-xs transition-colors">${idx + 1}</div>
-                            <div>
-                                <h4 class="font-bold text-slate-700 text-sm flex items-center gap-2">
-                                    ${item.customer || '-'}
-                                    ${isNew ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[9px] uppercase tracking-tighter font-black animate-pulse">Baru</span>' : ''}
-                                    ${hasAnyChange ? '<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 text-[9px] uppercase tracking-tighter font-black">Diedit</span>' : ''}
+                        <div class="flex items-center gap-3 w-full max-w-[70%]">
+                            <div class="w-7 h-7 shrink-0 rounded-full ${isNew ? 'bg-emerald-100 text-emerald-600' : (hasAnyChange ? 'bg-orange-100 text-orange-600' : 'bg-slate-200 text-slate-500')} flex items-center justify-center font-bold text-xs transition-colors">${idx + 1}</div>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-slate-700 text-sm flex items-center flex-wrap gap-2 truncate">
+                                    <span class="truncate">${escapeHtml(item.customer || '-')}</span>
+                                    ${isNew ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[9px] uppercase tracking-tighter font-black animate-pulse whitespace-nowrap">Baru</span>' : ''}
+                                    ${hasAnyChange ? '<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 text-[9px] uppercase tracking-tighter font-black whitespace-nowrap">Diedit</span>' : ''}
+                                    ${(window._modalVersionData?.d?.can_manage || window._modalVersionData?.d?.is_owner) && escapeHtml(item.customer || '-') !== '-' ? `
+                                        <button type="button" onclick="event.stopPropagation(); setAsReference('${window._modalVersionData.d.id}', '${escapeHtml(item.customer)}')" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[9px] font-bold border border-blue-200 transition-colors whitespace-nowrap">
+                                            <i data-lucide="bookmark-plus" class="w-3 h-3"></i> Referensi
+                                        </button>
+                                    ` : ''}
                                 </h4>
                                 <p class="text-[10px] text-slate-400">Rp ${price.toLocaleString('id-ID')} x ${qty}</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 shrink-0">
                             <span class="font-bold text-emerald-600 text-sm hidden sm:inline mr-2">Rp ${total.toLocaleString('id-ID')}</span>
                             <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse ${idx !== 0 ? 'rotate-180' : ''}"></i>
                         </div>
@@ -2389,13 +2523,30 @@
 
     function renderViewModal(d) {
         currentTransactionId = d.id;
+        const isDebtPending = d.status === 'waiting_payment' && d.status_label && d.status_label.includes('Hutang');
+        const isGudang = d.type === 'gudang';
+        const isLargePengajuan = d.type === 'pengajuan' && d.effective_amount >= 1000000;
 
         const statusColors = {
-            pending:         'bg-amber-50 text-amber-600 border-amber-200',
-            approved:        'bg-blue-50 text-blue-600 border-blue-200',
-            completed:       'bg-green-50 text-green-600 border-green-200',
-            rejected:        'bg-red-50 text-red-600 border-red-200',
-            waiting_payment: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+            pending:         isGudang ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+            approved:        isLargePengajuan ? 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' : 'bg-purple-50 text-purple-700 border-purple-200',
+            completed:       'bg-emerald-50 text-emerald-700 border-emerald-200',
+            rejected:        'bg-red-50 text-red-700 border-red-200',
+            waiting_payment: isDebtPending ? 'bg-amber-50 text-amber-700 border-amber-200' : (isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-orange-50 text-orange-700 border-orange-200'),
+            pending_technician: 'bg-teal-50 text-teal-700 border-teal-200',
+            flagged:         'bg-rose-50 text-rose-700 border-rose-200',
+            'auto-reject':   'bg-gray-800 text-gray-50 border-gray-900',
+        };
+
+        const statusIcons = {
+            pending:         isGudang ? 'search' : 'clock',
+            approved:        isLargePengajuan ? 'shield-alert' : 'user-check',
+            completed:       'check-circle-2',
+            rejected:        'x-circle',
+            waiting_payment: isDebtPending ? 'wallet' : (isGudang ? 'store' : 'credit-card'),
+            pending_technician: 'package-check',
+            flagged:         'flag',
+            'auto-reject':   'bot',
         };
         
         let modalTitle = 'Detail Reimbursement';
@@ -2417,7 +2568,10 @@
         }
 
         document.getElementById('v-badges').innerHTML = `
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${d.status_label}</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">
+                <i data-lucide="${statusIcons[d.status] || 'info'}" class="w-3.5 h-3.5"></i>
+                ${d.status_label}
+            </span>
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
                 <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
             </span>`;
@@ -2514,8 +2668,8 @@
             addField('Metode Bayar',      d.payment_method_label);
             addField('Keterangan',        d.description, true);
 
-            // Gudang Payment Details (for completed ones)
-            if (d.status === 'completed' && d.invoice_file_url) {
+            // Gudang Payment Details (for completed ones or those waiting for debt settlement)
+            if ((d.status === 'completed' || d.status === 'waiting_payment') && d.invoice_file_url) {
                 let sumberDanaHtml = '';
                 if (d.sumber_dana_data && d.sumber_dana_data.length > 0) {
                     const branchesLookup = {};
@@ -2565,8 +2719,8 @@
             
             // Note: Keterangan Global & Total Estimasi mapped later to v-summary-wrap
 
-            // Invoice details for Pengajuan
-            if (d.status === 'completed' && d.invoice_file_url) {
+            // Invoice details for Pengajuan (completed OR waiting for debt settlement)
+            if ((d.status === 'completed' || d.status === 'waiting_payment') && d.invoice_file_url) {
                 // Build Multi Sumber Dana HTML
                 let sumberDanaHtml = '';
                 if (d.sumber_dana_data && d.sumber_dana_data.length > 0) {
@@ -2607,21 +2761,20 @@
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             ${d.branch_debts.map(debt => `
-                                <div class="relative bg-red-50 border border-red-100 rounded-xl p-3 ${debt.status === 'paid' ? 'opacity-60' : ''}">
+                                <div class="relative ${debt.status === 'paid' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} rounded-xl p-3 ${debt.status === 'paid' ? 'opacity-90' : ''}">
                                     <div class="flex justify-between items-start pt-1">
                                         <div class="text-[11px] leading-relaxed">
-                                            <span class="font-black text-red-600">${debt.debtor_branch_name}</span> 
-                                            <span class="text-slate-500">berhutang kepada</span> 
+                                            <span class="font-black ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-600'}">${debt.debtor_branch_name}</span>
+                                            <span class="text-slate-500">berhutang kepada</span>
                                             <span class="font-bold text-slate-700">${debt.creditor_branch_name}</span>
                                         </div>
-                                        <div class="text-xs font-black text-red-600 whitespace-nowrap ml-2">Rp ${Number(debt.amount).toLocaleString('id-ID')}</div>
+                                        <div class="text-xs font-black ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-600'} whitespace-nowrap ml-2">Rp ${Number(debt.amount).toLocaleString('id-ID')}</div>
                                     </div>
-                                    <div class="flex items-center justify-between mt-3 pt-2 border-t border-red-100/50">
+                                    <div class="flex items-center justify-between mt-3 pt-2 border-t ${debt.status === 'paid' ? 'border-emerald-100/50' : 'border-red-100/50'}">
                                         <span class="text-[9px] font-bold ${debt.status === 'paid' ? 'text-emerald-600' : 'text-red-400'} uppercase">
                                             Status: ${debt.status === 'paid' ? 'Lunas' : 'Belum Lunas'}
                                         </span>
                                     </div>
-
                                     ${debt.status === 'paid' && debt.payment_proof ? `
                                         <div class="mt-3 bg-white/50 rounded-lg p-2 border border-red-100/30">
                                             <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Bukti Transfer</label>
@@ -2866,14 +3019,27 @@
                 if (typeof lucide !== 'undefined') lucide.createIcons({ root: itemsDivCont });
             } else if (itemsTbody) {
                 // Render Table (Rembush)
-                itemsTbody.innerHTML = items.map(item => `
+                itemsTbody.innerHTML = items.map((item, idx) => {
+                    const itemName = escapeHtml(item.customer || item.name || item.nama_barang || '-');
+                    const canSetRef = window._modalVersionData?.d?.can_manage || window._modalVersionData?.d?.is_owner;
+                    const refBtn = canSetRef && itemName !== '-' ? `
+                        <button type="button" onclick="setAsReference('${window._modalVersionData.d.id}', '${itemName}')" class="ml-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[9px] font-bold border border-blue-200 transition-colors">
+                            <i data-lucide="bookmark-plus" class="w-3 h-3"></i> Jadikan Referensi
+                        </button>
+                    ` : '';
+
+                    return `
                     <tr class="hover:bg-slate-50/50">
-                        <td class="px-3 py-2 text-slate-700 font-medium">${item.customer || item.name || item.nama_barang || '-'}</td>
+                        <td class="px-3 py-2 text-slate-700 font-medium">
+                            <div class="flex items-center">${itemName}${refBtn}</div>
+                        </td>
                         <td class="px-3 py-2 text-center">${item.quantity || item.qty || '-'}</td>
                         <td class="px-3 py-2">${item.unit || item.satuan || '-'}</td>
                         <td class="px-3 py-2 text-right">Rp ${Number(item.estimated_price || item.price || item.harga_satuan || 0).toLocaleString('id-ID')}</td>
                         <td class="px-3 py-2 text-right font-bold">Rp ${((Number(item.quantity || item.qty) || 0) * (Number(item.estimated_price || item.price || item.harga_satuan) || 0)).toLocaleString('id-ID')}</td>
-                    </tr>`).join('');
+                    </tr>`;
+                }).join('');
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: itemsTbody });
             }
         } else {
             if (itemsWrap) itemsWrap.classList.add('hidden');
@@ -3185,17 +3351,40 @@
         const detailContainer = document.getElementById('p-detail-container');
         detailContainer.classList.remove('hidden');
 
+        const isDebtPending = d.status === 'waiting_payment' && d.status_label && d.status_label.includes('Hutang');
+        const isGudang = d.type === 'gudang';
+        const isLargePengajuan = d.type === 'pengajuan' && d.effective_amount >= 1000000;
+
         const statusColors = {
-            pending:   'bg-amber-50 text-amber-600 border-amber-200',
-            approved:  'bg-blue-50 text-blue-600 border-blue-200',
-            completed: 'bg-green-50 text-green-600 border-green-200',
-            rejected:  'bg-red-50 text-red-600 border-red-200',
+            pending:         isGudang ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+            approved:        isLargePengajuan ? 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' : 'bg-purple-50 text-purple-700 border-purple-200',
+            completed:       'bg-emerald-50 text-emerald-700 border-emerald-200',
+            rejected:        'bg-red-50 text-red-700 border-red-200',
+            waiting_payment: isDebtPending ? 'bg-amber-50 text-amber-700 border-amber-200' : (isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-orange-50 text-orange-700 border-orange-200'),
+            pending_technician: 'bg-teal-50 text-teal-700 border-teal-200',
+            flagged:         'bg-rose-50 text-rose-700 border-rose-200',
+            'auto-reject':   'bg-gray-800 text-gray-50 border-gray-900',
         };
-        const typeBg      = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100';
-        const typeIcon    = d.type === 'pengajuan' ? 'shopping-bag' : 'receipt';
+
+        const statusIcons = {
+            pending:         isGudang ? 'search' : 'clock',
+            approved:        isLargePengajuan ? 'shield-alert' : 'user-check',
+            completed:       'check-circle-2',
+            rejected:        'x-circle',
+            waiting_payment: isDebtPending ? 'wallet' : (isGudang ? 'store' : 'credit-card'),
+            pending_technician: 'package-check',
+            flagged:         'flag',
+            'auto-reject':   'bot',
+        };
+
+        const typeBg      = d.type === 'pengajuan' ? 'bg-teal-50 text-teal-600 border-teal-100' : (d.type === 'gudang' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100');
+        const typeIcon    = d.type === 'pengajuan' ? 'shopping-bag' : (d.type === 'gudang' ? 'package' : 'receipt');
 
         document.getElementById('p-badges').innerHTML = `
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">${d.status_label}</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[d.status] || ''}">
+                <i data-lucide="${statusIcons[d.status] || 'info'}" class="w-3.5 h-3.5"></i>
+                ${d.status_label}
+            </span>
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeBg}">
                 <i data-lucide="${typeIcon}" class="w-3 h-3"></i> ${d.type_label}
             </span>`;

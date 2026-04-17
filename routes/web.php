@@ -16,7 +16,8 @@ use App\Http\Controllers\OtherExpenditureController;
 use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\GudangController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\PriceIndexController;
+use App\Http\Controllers\Api\ItemAutocompleteController;
 
 
 // Redirect root: ke dashboard jika login, ke login jika guest
@@ -156,7 +157,10 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.destroy');
 
     // ── Search ──
+    Route::get('/transactions/count', [TransactionController::class, 'count'])->name('transactions.count');
+    Route::get('/transactions/search', [TransactionController::class, 'search'])->name('transactions.search-paginated');
     Route::get('/transactions/search-data', [TransactionController::class, 'getAllForSearch'])->name('transactions.searchData');
+    Route::get('/transactions/stats', [TransactionController::class, 'stats'])->name('transactions.stats');
 
     // ── Export CSV ──
     Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
@@ -207,4 +211,43 @@ Route::middleware('auth')->group(function () {
         Route::post('/gaji/{id}/pay',       [SalaryController::class, 'pay'])->name('gaji.pay');
         Route::delete('/gaji/{id}',         [SalaryController::class, 'destroy'])->name('gaji.destroy');
     });
+
+
+    // ── Price Index ─────────────────────────────────────────────────────
+    // View: semua role (teknisi, admin, atasan, owner)
+    Route::get('/price-index', [PriceIndexController::class, 'index'])->name('price-index.index');
+    // Rate-limited: 60 req/menit — proteksi info harga dari mass scraping
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::get('/api/price-index/lookup', [PriceIndexController::class, 'lookup'])->name('price-index.lookup');
+        Route::post('/api/price-index/check', [PriceIndexController::class, 'check'])->name('price-index.check');
+
+        // ── Smart Autocomplete — Master Item ──────────────────────────────
+        // GET  /api/items/autocomplete?q=kabel&category=Elektrikal
+        Route::get('/api/items/autocomplete', [ItemAutocompleteController::class, 'search'])->name('items.autocomplete');
+        // GET  /api/items/{id}
+        Route::get('/api/items/{id}', [ItemAutocompleteController::class, 'show'])->name('items.show');
+        // POST /api/items/create-pending  (buat barang baru menunggu aproval)
+        Route::post('/api/items/create-pending', [ItemAutocompleteController::class, 'createPending'])->name('items.create-pending');
+    });
+
+    // Manage: Atasan & Owner (buat, edit)
+    Route::middleware('role:atasan,owner')->group(function () {
+        Route::post('/price-index', [PriceIndexController::class, 'store'])->name('price-index.store');
+        Route::put('/price-index/{id}', [PriceIndexController::class, 'update'])->name('price-index.update');
+        Route::get('/price-index/anomalies', [PriceIndexController::class, 'anomalies'])->name('price-index.anomalies');
+        Route::post('/price-index/anomalies/bulk-review', [PriceIndexController::class, 'bulkReviewAnomaly'])->name('price-index.anomalies.bulk-review');
+        Route::post('/price-index/anomalies/{id}/review', [PriceIndexController::class, 'reviewAnomaly'])->name('price-index.anomalies.review');
+        Route::post('/price-index/set-reference/{transaction}', [PriceIndexController::class, 'setAsReference'])->name('price-index.set-reference');
+        Route::post('/price-index/{id}/reset-auto', [PriceIndexController::class, 'resetToAuto'])->name('price-index.reset-auto');
+
+        // Analytics Dashboard & CSV Export
+        Route::get('/price-index/analytics', [PriceIndexController::class, 'analytics'])->name('price-index.analytics');
+        Route::get('/price-index/analytics/export', [PriceIndexController::class, 'exportCsv'])->name('price-index.export-csv');
+    });
+
+    // Delete: Owner only
+    Route::middleware('role:owner')->group(function () {
+        Route::delete('/price-index/{id}', [PriceIndexController::class, 'destroy'])->name('price-index.destroy');
+    });
+
 });

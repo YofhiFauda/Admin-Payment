@@ -11,9 +11,159 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\PriceIndex\PriceIndexService;
+use App\Jobs\PriceIndex\SendPriceAnomalyNotificationJob;
 
 class PengajuanController extends Controller
 {
+
+
+
+
+    /**
+     * ✅ OPTIMIZED: Server-side search dengan pagination
+     */
+    public function searchTransactions(Request $request)
+    {
+        $perPage = $request->input('per_page', 20);
+        $page = $request->input('page', 1);
+        $search = $request->input('search', '');
+        $status = $request->input('status', 'all');
+        $type = $request->input('type', 'all');
+        $category = $request->input('category', 'all');
+        $branchId = $request->input('branch_id', 'all');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        
+        // Cache key berdasarkan semua filter
+        $cacheKey = "transactions_search_" . md5(json_encode($request->all()));
+        
+        $result = Cache::remember($cacheKey, 300, function () use ($request, $perPage, $search, $status, $type, $category, $branchId, $startDate, $endDate) {
+            $query = Transaction::query()
+                ->with(['submitter.bankAccounts', 'reviewer', 'branches'])
+                ->select([
+                    'id', 'invoice_number', 'customer', 'vendor', 'type', 'category',
+                    'status', 'amount', 'date', 'created_at', 'updated_at', 
+                    'submitted_by', 'ai_status', 'confidence', 'upload_id',
+                    'payment_method', 'specs', 'rejection_reason'
+                ]);
+
+            // Teknisi filter
+            if (auth()->user()->isTeknisi()) {
+                $query->where('submitted_by', auth()->id());
+            }
+
+            // Search query - OPTIMIZED dengan FULLTEXT atau LIKE
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('invoice_number', 'LIKE', "%{$search}%")
+                      ->orWhere('customer', 'LIKE', "%{$search}%")
+                      ->orWhere('vendor', 'LIKE', "%{$search}%")
+                      ->orWhereHas('submitter', function ($sub) use ($search) {
+                          $sub->where('name', 'LIKE', "%{$search}%");
+                      });
+                });
+            }
+
+            // Status filter
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            // Type filter
+            if ($type !== 'all') {
+                $query->where('type', $type);
+            }
+
+            // Category filter
+            if ($category !== 'all') {
+                $query->where('category', $category);
+            }
+
+            // Branch filter
+            if ($branchId !== 'all') {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
+            }
+
+            // Date range
+            if ($startDate) {
+                $query->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('created_at', '<=', $endDate);
+            }
+
+            // Execute dengan pagination
+            $paginated = $query->latest()->paginate($perPage);
+            
+            // Format data untuk frontend
+            $items = $paginated->getCollection()->map(function (Transaction $t) {
+                return $t->toSearchArray();
+            });
+
+            return [
+                'data' => $items,
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+    /**
+     * ✅ NEW: Get transaction stats (for status tabs)
+     */
+    public function getTransactionStats(Request $request)
+    {
+        $cacheKey = "tx_stats_" . auth()->id() . "_" . md5(json_encode($request->except('_')));
+        
+        $stats = Cache::remember($cacheKey, 300, function () use ($request) {
+            $query = Transaction::query();
+
+            if (auth()->user()->isTeknisi()) {
+                $query->where('submitted_by', auth()->id());
+            }
+
+            // Apply same filters as search
+            if ($type = $request->input('type')) {
+                if ($type !== 'all') $query->where('type', $type);
+            }
+            if ($category = $request->input('category')) {
+                if ($category !== 'all') $query->where('category', $category);
+            }
+            if ($branchId = $request->input('branch_id')) {
+                if ($branchId !== 'all') {
+                    $query->whereHas('branches', fn($q) => $q->where('branches.id', $branchId));
+                }
+            }
+            if ($start = $request->input('start_date')) {
+                $query->whereDate('created_at', '>=', $start);
+            }
+            if ($end = $request->input('end_date')) {
+                $query->whereDate('created_at', '<=', $end);
+            }
+
+            return [
+                'count' => (clone $query)->count(),
+                'pending' => (clone $query)->where('status', 'pending')->count(),
+                'approved' => (clone $query)->where('status', 'approved')->count(),
+                'completed' => (clone $query)->where('status', 'completed')->count(),
+                'rejected' => (clone $query)->where('status', 'rejected')->count(),
+                'auto_reject' => (clone $query)->where('status', 'auto-reject')->count(),
+                'waiting_payment' => (clone $query)->where('status', 'waiting_payment')->count(),
+                'flagged' => (clone $query)->where('status', 'flagged')->count(),
+            ];
+        });
+
+        return response()->json($stats);
+    }
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  FORM — Pengajuan form (no OCR)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -128,12 +278,39 @@ class PengajuanController extends Controller
         DB::beginTransaction();
 
         try {
-            $items = array_map(function ($item) {
+            $matchingService = app(\App\Services\PriceIndex\ItemMatchingService::class);
+            $items = array_map(function ($item) use ($matchingService) {
+                // Standarisasi: Cari ID jika tidak ada, & bersihkan string
+                $rawCustomer = trim(preg_replace('/\s+/', ' ', $item['customer'] ?? ''));
+                $masterItemId = $item['master_item_id'] ?? null;
+                $categoryId = $item['category'] ?? null;
+
+                if (empty($masterItemId) && !empty($rawCustomer)) {
+                    // Jika dari frontend sengaja bypass Autocomplete, cari best match
+                    $bestMatch = $matchingService->findBestMatch($rawCustomer, $categoryId);
+                    if ($bestMatch) {
+                        $masterItemId = $bestMatch->id;
+                    } else {
+                        // Jika benar-benar baru, otomatis create as pending_approval
+                        $newItem = $matchingService->createPendingItem($rawCustomer, $categoryId, Auth::id());
+                        $masterItemId = $newItem->id;
+                    }
+                }
+
+                // Timpa nama barang dengan nama Master Catalog (Mencegah Typo / Bypass)
+                if (!empty($masterItemId)) {
+                    $master = \App\Models\MasterItem::find($masterItemId);
+                    if ($master) {
+                        $rawCustomer = $master->display_name;
+                    }
+                }
+
                 return [
-                    'customer'        => $item['customer']        ?? '',
+                    'master_item_id'  => $masterItemId,
+                    'customer'        => $rawCustomer,
                     'vendor'          => $item['vendor']          ?? '',
                     'link'            => $item['link']            ?? '',
-                    'category'        => $item['category']        ?? '',  // unified field
+                    'category'        => $categoryId,  // unified field
                     'description'     => $item['description']     ?? '',
                     'specs'           => $item['specs']           ?? [],
                     'estimated_price' => intval($item['estimated_price'] ?? 0),
@@ -181,6 +358,15 @@ class PengajuanController extends Controller
                         'allocation_amount'  => $allocAmount,
                     ]);
                 }
+            }
+
+            // ✅ PRICE INDEX — Deteksi Anomali Harga
+            $priceIndexService = app(PriceIndexService::class);
+            $anomalies = $priceIndexService->detectForTransaction($transaction);
+
+            // Jika ada anomali → dispatch job notifikasi Telegram ke Owner
+            foreach ($anomalies as $anomaly) {
+                dispatch(new SendPriceAnomalyNotificationJob($anomaly->id));
             }
 
             broadcast(new \App\Events\TransactionCreated($transaction));

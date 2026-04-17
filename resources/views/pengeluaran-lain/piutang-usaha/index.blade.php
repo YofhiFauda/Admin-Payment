@@ -72,10 +72,10 @@
                             <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider uppercase">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100 text-xs">
                         @foreach($items as $item)
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-5 py-4"><span class="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span></td>
+                            <td class="px-5 py-4"><span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span></td>
                             <td class="px-5 py-4 font-semibold">
                                 {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}
                             </td>
@@ -89,9 +89,11 @@
                                             amount: "{{ $item->formatted_nominal }}",
                                             notes: "{{ $item->keterangan ?? '-' }}",
                                             paid_by: "{{ $item->submitter->name ?? '-' }}",
-                                            paid_at: "{{ $item->tanggal->translatedFormat('d M Y') }}",
+                                            paid_at: "{{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}",
                                             selected_account: null,
-                                            all_accounts: []
+                                            all_accounts: [],
+                                            sender_branch: "{{ $item->dariBranch->name ?? '-' }}",
+                                            receiver_branch: "{{ $item->branch->name ?? '-' }}"
                                         })'
                                         class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm">
                                         <i data-lucide="image" class="w-4 h-4"></i>
@@ -175,15 +177,15 @@
                                 <th class="px-5 py-3.5 text-center font-black text-slate-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody class="divide-y divide-slate-100 text-xs">
                             @foreach($branchDebts as $debt)
                             <tr class="hover:bg-slate-50 transition-colors {{ $debt->status === 'paid' ? 'opacity-70' : '' }}">
-                                <td class="px-5 py-4 align-top"><span class="font-mono text-sm font-bold bg-slate-100 px-2 py-1 rounded-lg">{{ $debt->transaction->invoice_number ?? '-' }}</span></td>
+                                <td class="px-5 py-4 align-top"><span class="font-mono font-bold bg-slate-100 px-2 py-1 rounded-lg">{{ $debt->transaction->invoice_number ?? '-' }}</span></td>
                                 <td class="px-5 py-4 font-bold">
                                     {{ $debt->created_at->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-5 py-4">
-                                                                            <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 text-sm font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->debtorBranch->name ?? '-' }}</span> 
+                                    <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->creditorBranch->name ?? '-' }}</span> 
                                     <span class="text-slate-500">dari</span> 
                                     <span class="font-bold text-slate-700">{{ $debt->debtorBranch->name ?? '-' }}</span>
                                 </td>
@@ -205,6 +207,7 @@
                                                     paid_by: "{{ $debt->paidBy->name ?? 'System' }}",
                                                     paid_at: "{{ $debt->paid_at->format('d M Y H:i') }}",
                                                     selected_account: {{ $debt->bankAccount ? json_encode($debt->bankAccount) : 'null' }},
+                                                    sender_account: {{ $debt->senderBankAccount ? json_encode($debt->senderBankAccount) : 'null' }},
                                                     all_accounts: {{ json_encode($debt->creditorBranch->bankAccounts) }}
                                                 })'
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm">
@@ -257,10 +260,18 @@
                     </div>
                 </div>
 
-                <div>
-                    <span class="block text-[10px] font-black text-slate-400 uppercase mb-2" id="account-label">Rekening Penerima</span>
-                    <div id="view-proof-accounts" class="space-y-2">
-                        {{-- Filled by JS --}}
+                {{-- Display both sender and destination accounts if available --}}
+                <div class="space-y-4">
+                    <div id="view-proof-sender-container" class="hidden">
+                        <span class="block text-[10px] font-black text-slate-400 uppercase mb-2">Rekening Pengirim</span>
+                        <div id="view-proof-sender-account" class="space-y-2"></div>
+                    </div>
+                
+                    <div>
+                        <span class="block text-[10px] font-black text-slate-400 uppercase mb-2" id="account-label">Rekening Penerima</span>
+                        <div id="view-proof-accounts" class="space-y-2">
+                            {{-- Filled by JS --}}
+                        </div>
                     </div>
                 </div>
 
@@ -294,11 +305,47 @@
                 document.getElementById('view-proof-notes').textContent = data.notes;
                 
                 const accountsDiv = document.getElementById('view-proof-accounts');
+                const senderContainer = document.getElementById('view-proof-sender-container');
+                const senderAccountsDiv = document.getElementById('view-proof-sender-account');
+                
                 accountsDiv.innerHTML = '';
+                senderAccountsDiv.innerHTML = '';
+                
+                // Show sender account if exists
+                if (data.sender_account) {
+                    senderContainer.classList.remove('hidden');
+                    const acc = data.sender_account;
+                    senderAccountsDiv.innerHTML = `
+                        <div class="p-2.5 rounded-lg border border-slate-100 bg-white shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">${data.sender_branch || ''}</div>
+                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${acc.bank_name}</div>
+                                <div class="text-xs font-black text-slate-800 font-mono tracking-tight">${acc.account_number}</div>
+                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">${acc.account_name}</div>
+                            </div>
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-rose-500"></i>
+                        </div>
+                    `;
+                } else if (data.sender_branch && data.sender_branch !== '-') {
+                    senderContainer.classList.remove('hidden');
+                    senderAccountsDiv.innerHTML = `
+                        <div class="p-2.5 rounded-lg border border-slate-100 bg-white shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Pengirim Dana</div>
+                                <div class="text-xs font-black text-slate-800">${data.sender_branch}</div>
+                            </div>
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-rose-500"></i>
+                        </div>
+                    `;
+                } else {
+                    senderContainer.classList.add('hidden');
+                }
                 
                 // If specific account selected, show only that. Else show the first one (legacy)
                 const displayAccounts = data.selected_account ? [data.selected_account] : (data.all_accounts && data.all_accounts.length > 0 ? [data.all_accounts[0]] : []);
-                document.getElementById('account-label').textContent = 'Rekening Tujuan';
+                const accountLabel = document.getElementById('account-label');
+                accountLabel.textContent = 'Rekening Tujuan';
+                accountLabel.classList.remove('hidden');
 
                 if (displayAccounts && displayAccounts.length > 0) {
                     displayAccounts.forEach(acc => {
@@ -306,6 +353,7 @@
                         div.className = "p-2.5 rounded-lg border border-slate-100 bg-white shadow-sm flex items-center justify-between";
                         div.innerHTML = `
                             <div>
+                                <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">${data.receiver_branch || ''}</div>
                                 <div class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${acc.bank_name}</div>
                                 <div class="text-xs font-black text-slate-800 font-mono">${acc.account_number}</div>
                                 <div class="text-[10px] font-bold text-slate-500 uppercase">${acc.account_name}</div>
@@ -314,6 +362,17 @@
                         `;
                         accountsDiv.appendChild(div);
                     });
+                } else if (data.receiver_branch && data.receiver_branch !== '-') {
+                    accountLabel.classList.add('hidden');
+                    accountsDiv.innerHTML = `
+                        <div class="p-2.5 rounded-lg border border-slate-100 bg-white shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Penerima Dana</div>
+                                <div class="text-xs font-black text-slate-800">${data.receiver_branch}</div>
+                            </div>
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+                        </div>
+                    `;
                 }
             }
 

@@ -78,11 +78,11 @@
                             <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-100 text-xs">
                         @foreach($items as $item)
                         <tr class="hover:bg-slate-51 transition-colors">
                             <td class="px-5 py-4">
-                                <span class="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span>
+                                <span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span>
                             </td>
                             <td class="px-5 py-4 font-semibold text-slate-700">
                                 {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}
@@ -93,8 +93,8 @@
                             <td class="px-5 py-4">
                                 <span class="font-bold text-slate-800">{{ $item->formatted_nominal }}</span>
                             </td>
-                            <td class="px-5 py-4 text-slate-500 text-xs max-w-[200px] truncate">{{ $item->keterangan ?? '-' }}</td>
-                            <td class="px-5 py-4 text-slate-600 text-xs">{{ $item->submitter->name ?? '-' }}</td>
+                            <td class="px-5 py-4 text-slate-500 max-w-[200px] truncate">{{ $item->keterangan ?? '-' }}</td>
+                            <td class="px-5 py-4 text-slate-600">{{ $item->submitter->name ?? '-' }}</td>
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-2">
                                     @if($item->bukti_transfer)
@@ -103,9 +103,11 @@
                                             amount: "{{ $item->formatted_nominal }}",
                                             notes: "{{ $item->keterangan ?? '-' }}",
                                             paid_by: "{{ $item->submitter->name ?? '-' }}",
-                                            paid_at: "{{ $item->tanggal->translatedFormat('d M Y') }}",
+                                            paid_at: "{{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}",
                                             selected_account: null,
-                                            all_accounts: []
+                                            all_accounts: [],
+                                            sender_branch: "{{ $item->dariBranch->name ?? '-' }}",
+                                            receiver_branch: "{{ $item->branch->name ?? '-' }}"
                                         })'
                                         class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all" title="Lihat Bukti">
                                         <i data-lucide="image" class="w-4 h-4"></i>
@@ -191,25 +193,25 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Terkait Transaksi</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Tanggal</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Keterangan</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Nominal</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="px-5 py-3.5 text-center text-xs font-black text-slate-500 uppercase tracking-wider">Aksi</th>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs">
+                                <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Terkait Transaksi</th>
+                                <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Tanggal</th>
+                                <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Keterangan</th>
+                                <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Nominal</th>
+                                <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="px-5 py-3.5 text-center font-black text-slate-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody class="divide-y divide-slate-100 text-xs">
                             @foreach($branchDebts as $debt)
                             <tr class="hover:bg-slate-50 transition-colors {{ $debt->status === 'paid' ? 'opacity-70' : '' }}">
-                                <td class="px-5 py-4 align-top"><span class="font-mono text-sm font-bold bg-slate-100 px-2 py-1 rounded-lg">{{ $debt->transaction->invoice_number ?? '-' }}</span></td>
-                                <td class="px-5 py-4 align-top text-sm font-bold">
+                                <td class="px-5 py-4 align-top"><span class="font-mono font-bold bg-slate-100 px-2 py-1 rounded-lg">{{ $debt->transaction->invoice_number ?? '-' }}</span></td>
+                                <td class="px-5 py-4 align-top font-bold">
                                     {{ $debt->created_at->translatedFormat('d M Y') }}
                                 </td>
                                 <td class="px-5 py-4 align-top">
-                                    <div class="text-sm">
-                                        <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 text-sm font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->debtorBranch->name ?? '-' }}</span> 
+                                    <div class="">
+                                        <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700  font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->debtorBranch->name ?? '-' }}</span> 
                                         <span class="text-slate-500">ke</span> 
                                         <span class="font-bold text-slate-700">{{ $debt->creditorBranch->name ?? '-' }}</span>
                                     </div>
@@ -223,7 +225,7 @@
                                 <td class="px-5 py-4 text-center align-top">
                                     @if($debt->status === 'pending')
                                         <button type="button" 
-                                            onclick='openSettleModal({{ $debt->id }}, {{ json_encode($debt->creditorBranch->bankAccounts) }}, "{{ $debt->creditorBranch->name }}")' 
+                                            onclick='openSettleModal({{ $debt->id }}, {{ json_encode($debt->creditorBranch->bankAccounts) }}, "{{ $debt->creditorBranch->name }}", {{ json_encode($debt->debtorBranch->bankAccounts) }}, "{{ $debt->debtorBranch->name }}")' 
                                             class="px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-all shadow-sm">
                                             Bayar
                                         </button>
@@ -235,7 +237,10 @@
                                                 paid_by: "{{ $debt->paidBy->name ?? 'System' }}",
                                                 paid_at: "{{ $debt->paid_at->format('d M Y H:i') }}",
                                                 selected_account: {{ $debt->bankAccount ? json_encode($debt->bankAccount) : 'null' }},
-                                                all_accounts: {{ json_encode($debt->creditorBranch->bankAccounts) }}
+                                                sender_account: {{ $debt->senderBankAccount ? json_encode($debt->senderBankAccount) : 'null' }},
+                                                all_accounts: {{ json_encode($debt->creditorBranch->bankAccounts) }},
+                                                sender_branch: "{{ $debt->debtorBranch->name ?? '-' }}",
+                                                receiver_branch: "{{ $debt->creditorBranch->name ?? '-' }}"
                                             })' 
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm">
                                             <i data-lucide="image" class="w-3.5 h-3.5"></i> Bukti
@@ -287,10 +292,18 @@
                     </div>
                 </div>
 
-                <div>
-                    <span class="block text-[10px] font-black text-slate-400 uppercase mb-2" id="account-label">Rekening Tujuan</span>
-                    <div id="view-proof-accounts" class="space-y-2">
-                        {{-- Filled by JS --}}
+                {{-- Display both sender and destination accounts if available --}}
+                <div class="space-y-4">
+                    <div id="view-proof-sender-container" class="hidden">
+                        <span class="block text-[10px] font-black text-slate-400 uppercase mb-2">Rekening Pengirim</span>
+                        <div id="view-proof-sender-account" class="space-y-2"></div>
+                    </div>
+                
+                    <div>
+                        <span class="block text-[10px] font-black text-slate-400 uppercase mb-2" id="account-label">Rekening Tujuan</span>
+                        <div id="view-proof-accounts" class="space-y-2">
+                            {{-- Filled by JS --}}
+                        </div>
                     </div>
                 </div>
 
@@ -318,14 +331,6 @@
                 <button type="button" onclick="closeSettleModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-6 space-y-5">
-                <div id="settle-bank-accounts-container" class="hidden">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 px-1">Pilih Rekening Tujuan (<span id="settle-branch-name"></span>)</label>
-                    <select name="bank_account_id" id="settle-bank-accounts-select" required 
-                        class="w-full text-sm border-2 border-slate-100 p-3 rounded-xl focus:border-red-500 focus:ring-0 transition-all bg-slate-50 font-bold text-slate-800">
-                        {{-- Filled by JS --}}
-                    </select>
-                </div>
-
                 <div class="pt-2">
                     <label class="block text-xs font-black text-slate-700 uppercase mb-2 px-1 text-emerald-600 flex items-center gap-1.5">
                         <i data-lucide="image" class="w-3.5 h-3.5"></i>
@@ -333,6 +338,52 @@
                     </label>
                     <input type="file" name="payment_proof" id="branch_debt_file_input" required accept="image/jpeg,image/png" 
                         class="w-full text-sm border-2 border-slate-100 p-2 rounded-xl focus:border-red-500 focus:ring-0 transition-all">
+                </div>
+
+                <div id="settle-sender-bank-accounts-container" class="hidden mb-4 pb-4 border-b border-slate-100">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 px-1">Pilih Rekening Pengirim (Sumber: <span id="settle-sender-branch-name"></span>)</label>
+                    <select name="sender_bank_account_id" id="settle-sender-bank-accounts-select" required 
+                        class="w-full text-sm border-2 border-slate-100 p-3 rounded-xl focus:border-red-500 focus:ring-0 transition-all bg-slate-50 font-bold text-slate-800">
+                    </select>
+
+                    <div id="settle-sender-bank-account-detail" class="hidden mt-3 p-4 bg-white border border-slate-200 rounded-xl space-y-3 shadow-sm">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Nama Pengirim</span>
+                            <span id="settle-sender-detail-name" class="text-xs font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Nomor Cabang</span>
+                            <span id="settle-sender-detail-number" class="text-[15px] font-mono font-black text-red-600 tracking-tight"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Jenis Rekening</span>
+                            <span id="settle-sender-detail-bank" class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md uppercase"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settle-bank-accounts-container" class="hidden">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 px-1">Pilih Rekening Tujuan (<span id="settle-branch-name"></span>)</label>
+                    <select name="bank_account_id" id="settle-bank-accounts-select" required 
+                        class="w-full text-sm border-2 border-slate-100 p-3 rounded-xl focus:border-red-500 focus:ring-0 transition-all bg-slate-50 font-bold text-slate-800">
+                        {{-- Filled by JS --}}
+                    </select>
+
+                    {{-- Detail Rekening --}}
+                    <div id="settle-bank-account-detail" class="hidden mt-3 p-4 bg-white border border-slate-200 rounded-xl space-y-3 shadow-sm">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Nama Cabang / Rekening</span>
+                            <span id="settle-detail-name" class="text-xs font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Nomor Cabang</span>
+                            <span id="settle-detail-number" class="text-[15px] font-mono font-black text-red-600 tracking-tight"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] uppercase font-bold text-slate-400">Jenis Rekening</span>
+                            <span id="settle-detail-bank" class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md uppercase"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
@@ -394,23 +445,54 @@
         }, 4000);
     }
 
-    function openSettleModal(id, bankAccounts, branchName) { 
+    function openSettleModal(id, bankAccounts, branchName, senderBankAccounts, senderBranchName) { 
         currentDebtId = id; 
         document.getElementById('settle-branch-name').textContent = branchName;
+        document.getElementById('settle-sender-branch-name').textContent = senderBranchName;
+        
         const select = document.getElementById('settle-bank-accounts-select');
         const container = document.getElementById('settle-bank-accounts-container');
+        const detailContainer = document.getElementById('settle-bank-account-detail');
         
-        select.innerHTML = '<option value="">-- Pilih Rekening --</option>';
+        const senderSelect = document.getElementById('settle-sender-bank-accounts-select');
+        const senderContainer = document.getElementById('settle-sender-bank-accounts-container');
+        const senderDetailContainer = document.getElementById('settle-sender-bank-account-detail');
+        
+        detailContainer.classList.add('hidden'); // Reset details
+        container.classList.remove('hidden');    // Selalu tampilkan container
+        senderDetailContainer.classList.add('hidden');
+        senderContainer.classList.remove('hidden');
+
+        // Populate Destination (Creditor) Accounts
         if (bankAccounts && bankAccounts.length > 0) {
-            container.classList.remove('hidden');
+            select.disabled = false;
+            select.innerHTML = '<option value="">-- Pilih Rekening Tujuan --</option>';
             bankAccounts.forEach(acc => {
                 const opt = document.createElement('option');
                 opt.value = acc.id;
+                opt.dataset.details = JSON.stringify(acc);
                 opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
                 select.appendChild(opt);
             });
         } else {
-            container.classList.add('hidden');
+            select.disabled = true;
+            select.innerHTML = '<option value="">-- Cabang Tujuan Belum Mendaftarkan Rekening --</option>';
+        }
+
+        // Populate Sender (Debtor) Accounts
+        if (senderBankAccounts && senderBankAccounts.length > 0) {
+            senderSelect.disabled = false;
+            senderSelect.innerHTML = '<option value="">-- Pilih Rekening Pengirim --</option>';
+            senderBankAccounts.forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.id;
+                opt.dataset.details = JSON.stringify(acc);
+                opt.textContent = `${acc.bank_name} - ${acc.account_number} (${acc.account_name})`;
+                senderSelect.appendChild(opt);
+            });
+        } else {
+            senderSelect.disabled = true;
+            senderSelect.innerHTML = '<option value="">-- Cabang Sumber Belum Mendaftarkan Rekening --</option>';
         }
 
         document.getElementById('branch-debt-modal').classList.remove('hidden'); 
@@ -420,6 +502,43 @@
             document.getElementById('branch-debt-modal-box').classList.add('scale-100'); 
         }, 10);
     }
+
+    // Listener for bank account detail dynamic update
+    document.addEventListener('DOMContentLoaded', function() {
+        const select = document.getElementById('settle-bank-accounts-select');
+        if(select) {
+            select.addEventListener('change', function() {
+                const detailContainer = document.getElementById('settle-bank-account-detail');
+                const selectedOpt = this.options[this.selectedIndex];
+                if (this.value && selectedOpt.dataset.details) {
+                    const acc = JSON.parse(selectedOpt.dataset.details);
+                    document.getElementById('settle-detail-name').textContent = acc.account_name;
+                    document.getElementById('settle-detail-number').textContent = acc.account_number;
+                    document.getElementById('settle-detail-bank').textContent = acc.bank_name;
+                    detailContainer.classList.remove('hidden');
+                } else {
+                    detailContainer.classList.add('hidden');
+                }
+            });
+        }
+
+        const senderSelect = document.getElementById('settle-sender-bank-accounts-select');
+        if(senderSelect) {
+            senderSelect.addEventListener('change', function() {
+                const detailContainer = document.getElementById('settle-sender-bank-account-detail');
+                const selectedOpt = this.options[this.selectedIndex];
+                if (this.value && selectedOpt.dataset.details) {
+                    const acc = JSON.parse(selectedOpt.dataset.details);
+                    document.getElementById('settle-sender-detail-name').textContent = acc.account_name;
+                    document.getElementById('settle-sender-detail-number').textContent = acc.account_number;
+                    document.getElementById('settle-sender-detail-bank').textContent = acc.bank_name;
+                    detailContainer.classList.remove('hidden');
+                } else {
+                    detailContainer.classList.add('hidden');
+                }
+            });
+        }
+    });
 
     function closeSettleModal() { 
         const modal = document.getElementById('branch-debt-modal');
@@ -446,11 +565,47 @@
                 document.getElementById('view-proof-notes').textContent = data.notes;
                 
                 const accountsDiv = document.getElementById('view-proof-accounts');
+                const senderContainer = document.getElementById('view-proof-sender-container');
+                const senderAccountsDiv = document.getElementById('view-proof-sender-account');
+                
                 accountsDiv.innerHTML = '';
+                senderAccountsDiv.innerHTML = '';
+                
+                // Show sender account if exists
+                if (data.sender_account) {
+                    senderContainer.classList.remove('hidden');
+                    const acc = data.sender_account;
+                    senderAccountsDiv.innerHTML = `
+                        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50 shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1.5">${data.sender_branch || ''}</div>
+                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${acc.bank_name}</div>
+                                <div class="text-sm font-black text-slate-800 font-mono tracking-tight">${acc.account_number}</div>
+                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">${acc.account_name}</div>
+                            </div>
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-rose-500"></i>
+                        </div>
+                    `;
+                } else if (data.sender_branch && data.sender_branch !== '-') {
+                    senderContainer.classList.remove('hidden');
+                    senderAccountsDiv.innerHTML = `
+                        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50 shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1.5">Pengirim Dana</div>
+                                <div class="text-sm font-black text-slate-800 tracking-tight">${data.sender_branch}</div>
+                            </div>
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-rose-500"></i>
+                        </div>
+                    `;
+                } else {
+                    senderContainer.classList.add('hidden');
+                }
                 
                 // If specific account selected, show only that. Else show the first one (legacy)
                 const displayAccounts = data.selected_account ? [data.selected_account] : (data.all_accounts && data.all_accounts.length > 0 ? [data.all_accounts[0]] : []);
-                document.getElementById('account-label').textContent = 'Rekening Tujuan';
+                const accountLabel = document.getElementById('account-label');
+                accountLabel.textContent = 'Rekening Tujuan';
+                accountLabel.classList.remove('hidden');
 
                 if (displayAccounts && displayAccounts.length > 0) {
                     displayAccounts.forEach(acc => {
@@ -458,6 +613,7 @@
                         div.className = "p-3 rounded-xl border border-slate-100 bg-slate-50 shadow-sm flex items-center justify-between group";
                         div.innerHTML = `
                             <div>
+                                <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">${data.receiver_branch || ''}</div>
                                 <div class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${acc.bank_name}</div>
                                 <div class="text-sm font-black text-slate-800 font-mono tracking-tight">${acc.account_number}</div>
                                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">${acc.account_name}</div>
@@ -466,6 +622,17 @@
                         `;
                         accountsDiv.appendChild(div);
                     });
+                } else if (data.receiver_branch && data.receiver_branch !== '-') {
+                    accountLabel.classList.add('hidden');
+                    accountsDiv.innerHTML = `
+                        <div class="p-3 rounded-xl border border-slate-100 bg-slate-50 shadow-sm flex items-center justify-between group">
+                            <div>
+                                <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Penerima Dana</div>
+                                <div class="text-sm font-black text-slate-800 tracking-tight">${data.receiver_branch}</div>
+                            </div>
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+                        </div>
+                    `;
                 }
             }
 

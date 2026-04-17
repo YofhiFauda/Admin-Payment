@@ -14,6 +14,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        ini_set('memory_limit', '256M');
         $user    = Auth::user();
 
         // Check if user is technician, they cannot access dashboard
@@ -35,7 +36,7 @@ class DashboardController extends Controller
             return $q;
         };
 
-        $thisMonth = function () use ($base) {
+        $thisMonth = function () use ($base) { 
             return $base()->whereMonth('created_at', now()->month)
                           ->whereYear('created_at', now()->year);
         };
@@ -43,19 +44,15 @@ class DashboardController extends Controller
         // ─────────────────────────────────────────────
         // 1. KEY METRICS (bulan ini)
         // ─────────────────────────────────────────────
-        $totalPengeluaran = (clone $thisMonth())
-            ->whereIn('status', ['approved', 'completed'])
-            ->sum(DB::raw('COALESCE(amount, 0) + COALESCE(estimated_price, 0)'));
-
-        // More precise: use effective_amount logic per row
+        // 44: More precise: use database-level SUM to avoid memory exhaustion
         $totalPengeluaranRaw = (clone $thisMonth())
             ->whereIn('status', ['approved', 'completed'])
-            ->get()
-            ->sum(fn($t) => $t->effective_amount);
+            ->sum('amount');
 
         $pendingCount = (clone $thisMonth())->where('status', 'pending')->count();
-        $pendingTotal = (clone $thisMonth())->where('status', 'pending')->get()
-                        ->sum(fn($t) => $t->effective_amount);
+        $pendingTotal = (clone $thisMonth())
+            ->where('status', 'pending')
+            ->sum(DB::raw('COALESCE(amount, estimated_price, 0)'));
 
         $totalTransaksi = (clone $thisMonth())->count();
 
@@ -65,18 +62,20 @@ class DashboardController extends Controller
         // 2. CHART DATA
         // ─────────────────────────────────────────────
 
-        // 2a. Per kategori (rembush category + pengajuan purchase_reason)
-        $byCategory = (clone $base())
+        // 2a. Per kategori (optimized SQL grouping)
+        $byCategoryData = (clone $base())
             ->whereIn('status', ['approved', 'completed'])
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
-            ->get()
-            ->groupBy(function ($t) {
-                return $t->category_label ?: 'Lainnya';
-            })
-            ->map(fn($grp) => $grp->sum(fn($t) => $t->effective_amount))
-            ->sortByDesc(fn($v) => $v)
-            ->take(8);
+            ->groupBy('category')
+            ->select('category', DB::raw('SUM(amount) as total'))
+            ->orderByDesc('total')
+            ->take(8)
+            ->get();
+
+        $byCategory = $byCategoryData->pluck('total', 'category')->mapWithKeys(function ($total, $cat) {
+            return [\App\Models\TransactionCategory::resolveLabel($cat, 'rembush') => (float) $total];
+        });
 
         // 2b. Tren 6 bulan terakhir per Cabang (Multi-line)
         $trendMonthsLabels = collect(range(5, 0))->map(fn($offset) => now()->subMonths($offset)->format('Y-m'));
@@ -118,16 +117,10 @@ class DashboardController extends Controller
             ];
         }
 
-        // 2c. Perbandingan Tipe Transaksi (bulan ini, all statuses)
-        $rembushTotal = (clone $thisMonth())->where('type', 'rembush')
-            ->whereIn('status', ['approved', 'completed'])->get()
-            ->sum(fn($t) => $t->effective_amount);
-        $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')
-            ->whereIn('status', ['approved', 'completed'])->get()
-            ->sum(fn($t) => $t->effective_amount);
-        $gudangTotal = (clone $thisMonth())->where('type', 'gudang')
-            ->whereIn('status', ['approved', 'completed'])->get()
-            ->sum(fn($t) => $t->effective_amount);
+        // 2c. Perbandingan Tipe Transaksi (optimized database sum)
+        $rembushTotal  = (clone $thisMonth())->where('type', 'rembush')->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $gudangTotal    = (clone $thisMonth())->where('type', 'gudang')->whereIn('status', ['approved', 'completed'])->sum('amount');
 
         // 2d. Per Branch (hanya admin/atasan/owner, karena butuh pivot)
         $byBranch = collect();
@@ -170,7 +163,7 @@ class DashboardController extends Controller
         // 4. RECENT TRANSACTIONS
         // ─────────────────────────────────────────────
         $recentTransactions = (clone $base())
-            ->with(['submitter'])
+            ->with(['submitter', 'branches'])
             ->latest()
             ->take(10)
             ->get();
@@ -210,57 +203,46 @@ class DashboardController extends Controller
 
         $branchCostBreakdown = collect();
         if ($isAdmin) {
-            $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($startDate, $endDate) {
-                $q->whereIn('status', ['approved', 'completed']);
-                if ($startDate && $endDate) {
-                    $q->whereBetween('transactions.created_at', [
-                        Carbon::parse($startDate)->startOfDay(),
-                        Carbon::parse($endDate)->endOfDay()
-                    ]);
-                } elseif ($startDate) {
-                    $q->whereDate('transactions.created_at', '>=', $startDate);
-                } elseif ($endDate) {
-                    $q->whereDate('transactions.created_at', '<=', $endDate);
-                } else {
+            $startDateObj = $startDate ? Carbon::parse($startDate)->startOfDay() : null;
+            $endDateObj   = $endDate ? Carbon::parse($endDate)->endOfDay() : null;
+
+            $costData = DB::table('transaction_branches as tb')
+                ->join('branches', 'branches.id', '=', 'tb.branch_id')
+                ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+                ->whereIn('transactions.status', ['approved', 'completed'])
+                ->when($startDateObj && $endDateObj, function($q) use ($startDateObj, $endDateObj) {
+                    $q->whereBetween('transactions.created_at', [$startDateObj, $endDateObj]);
+                })
+                ->when($startDateObj && !$endDateObj, function($q) use ($startDateObj) {
+                    $q->whereDate('transactions.created_at', '>=', $startDateObj);
+                })
+                ->when(!$startDateObj && $endDateObj, function($q) use ($endDateObj) {
+                    $q->whereDate('transactions.created_at', '<=', $endDateObj);
+                })
+                ->when(!$startDateObj && !$endDateObj, function($q) {
                     $q->whereMonth('transactions.created_at', now()->month)
                       ->whereYear('transactions.created_at', now()->year);
-                }
-            })
-            ->with(['transactions' => function ($q) use ($startDate, $endDate) {
-                $q->whereIn('status', ['approved', 'completed']);
-                if ($startDate && $endDate) {
-                    $q->whereBetween('transactions.created_at', [
-                        Carbon::parse($startDate)->startOfDay(),
-                        Carbon::parse($endDate)->endOfDay()
-                    ]);
-                } elseif ($startDate) {
-                    $q->whereDate('transactions.created_at', '>=', $startDate);
-                } elseif ($endDate) {
-                    $q->whereDate('transactions.created_at', '<=', $endDate);
-                } else {
-                    $q->whereMonth('transactions.created_at', now()->month)
-                      ->whereYear('transactions.created_at', now()->year);
-                }
-            }])
-            ->orderBy('name')
-            ->get()
-            ->map(function ($branch) {
-                $categories = $branch->transactions->groupBy(function ($t) {
-                    return $t->category_label ?: 'Lainnya';
-                })->map(function ($group) {
-                    return $group->sum(function($t) {
-                        return ($t->pivot->allocation_amount > 0) 
-                            ? $t->pivot->allocation_amount 
-                            : round(($t->effective_amount * ($t->pivot->allocation_percent ?? 100)) / 100);
-                    });
-                })->sortByDesc(fn($v) => $v);
+                })
+                ->select(
+                    'branches.name as branch_name',
+                    'transactions.category',
+                    'transactions.type',
+                    DB::raw('SUM(tb.allocation_amount) as total_amount')
+                )
+                ->groupBy('branch_name', 'category', 'type')
+                ->get();
+
+            $branchCostBreakdown = $costData->groupBy('branch_name')->map(function ($items, $branchName) {
+                $categories = $items->groupBy(function($item) {
+                     return \App\Models\TransactionCategory::resolveLabel($item->category, $item->type);
+                })->map(fn($group) => $group->sum('total_amount'))->sortByDesc(fn($v) => $v);
 
                 return (object) [
-                    'name'       => $branch->name,
+                    'name'       => $branchName,
                     'categories' => $categories,
                     'total'      => $categories->sum(),
                 ];
-            });
+            })->values();
         }
 
         return view('dashboard.index', compact(
@@ -307,59 +289,46 @@ class DashboardController extends Controller
         $month = (int) $request->input('month', now()->month);
         $year  = (int) $request->input('year', now()->year);
 
-        $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($startDate, $endDate, $month, $year) {
-            $q->whereIn('status', ['approved', 'completed']);
-            
-            if ($startDate && $endDate) {
-                $q->whereBetween('transactions.created_at', [
-                    Carbon::parse($startDate)->startOfDay(),
-                    Carbon::parse($endDate)->endOfDay()
-                ]);
-            } elseif ($startDate) {
-                $q->whereDate('transactions.created_at', '>=', $startDate);
-            } elseif ($endDate) {
-                $q->whereDate('transactions.created_at', '<=', $endDate);
-            } else {
-                $q->whereMonth('transactions.created_at', $month)
-                  ->whereYear('transactions.created_at', $year);
-            }
-        })
-        ->with(['transactions' => function ($q) use ($startDate, $endDate, $month, $year) {
-            $q->whereIn('status', ['approved', 'completed']);
+        $startDateObj = $startDate ? Carbon::parse($startDate)->startOfDay() : null;
+        $endDateObj   = $endDate ? Carbon::parse($endDate)->endOfDay() : null;
 
-            if ($startDate && $endDate) {
-                $q->whereBetween('transactions.created_at', [
-                    Carbon::parse($startDate)->startOfDay(),
-                    Carbon::parse($endDate)->endOfDay()
-                ]);
-            } elseif ($startDate) {
-                $q->whereDate('transactions.created_at', '>=', $startDate);
-            } elseif ($endDate) {
-                $q->whereDate('transactions.created_at', '<=', $endDate);
-            } else {
+        $costData = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->whereIn('transactions.status', ['approved', 'completed'])
+            ->when($startDateObj && $endDateObj, function($q) use ($startDateObj, $endDateObj) {
+                $q->whereBetween('transactions.created_at', [$startDateObj, $endDateObj]);
+            })
+            ->when($startDateObj && !$endDateObj, function($q) use ($startDateObj) {
+                $q->whereDate('transactions.created_at', '>=', $startDateObj);
+            })
+            ->when(!$startDateObj && $endDateObj, function($q) use ($endDateObj) {
+                $q->whereDate('transactions.created_at', '<=', $endDateObj);
+            })
+            ->when(!$startDateObj && !$endDateObj, function($q) use ($month, $year) {
                 $q->whereMonth('transactions.created_at', $month)
                   ->whereYear('transactions.created_at', $year);
-            }
-        }])
-        ->orderBy('name')
-        ->get()
-        ->map(function ($branch) {
-            $categories = $branch->transactions->groupBy(function ($t) {
-                return $t->category_label ?: 'Lainnya';
-            })->map(function ($group) {
-                return $group->sum(function($t) {
-                    return ($t->pivot->allocation_amount > 0) 
-                        ? $t->pivot->allocation_amount 
-                        : round(($t->effective_amount * ($t->pivot->allocation_percent ?? 100)) / 100);
-                });
-            })->sortByDesc(fn($v) => $v);
+            })
+            ->select(
+                'branches.name as branch_name',
+                'transactions.category',
+                'transactions.type',
+                DB::raw('SUM(tb.allocation_amount) as total_amount')
+            )
+            ->groupBy('branch_name', 'category', 'type')
+            ->get();
+
+        $branchCostBreakdown = $costData->groupBy('branch_name')->map(function ($items, $branchName) {
+            $categories = $items->groupBy(function($item) {
+                 return \App\Models\TransactionCategory::resolveLabel($item->category, $item->type);
+            })->map(fn($group) => $group->sum('total_amount'))->sortByDesc(fn($v) => $v);
 
             return (object) [
-                'name'       => $branch->name,
+                'name'       => $branchName,
                 'categories' => $categories,
                 'total'      => $categories->sum(),
             ];
-        });
+        })->values();
 
         $html = view('dashboard._branch-cost-cards', compact('branchCostBreakdown'))->render();
 

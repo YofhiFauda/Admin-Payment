@@ -25,7 +25,7 @@ class TransactionStatusNotification extends Notification implements ShouldQueue
     public function toDatabase(object $notifiable): array
     {
         $statusLabel = match($this->status) {
-            'approved'           => 'Disetujui',
+            'approved'           => 'Menunggu Owner',
             'rejected'           => 'Ditolak',
             'completed'          => 'Selesai',
             'pending_technician' => 'Pembayaran Siap',

@@ -4,7 +4,7 @@
 
 [![Laravel](https://img.shields.io/badge/Laravel-10.x-red.svg)](https://laravel.com)
 [![Redis](https://img.shields.io/badge/Redis-Cache-red.svg)](https://redis.io)
-[![n8n](https://img.shields.io/badge/n8n-Workflow-orange.svg)](https://n8n.io)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue.svg)](https://core.telegram.org/bots)
 
 ---
 
@@ -49,68 +49,74 @@ Owner review & approve/reject
 
 ## ✨ Fitur Utama
 
-### 1. **Auto-Calculated Price Index**
-- Perhitungan otomatis dari data pengajuan approved
-- Algoritma IQR untuk filter outlier
-- Time-weighted calculation (data baru lebih berpengaruh)
-- Minimum sample threshold (5-10 transaksi)
+### 1. **Master Item Catalog & Data Standardization (V2)**
+- Tabel sentral `master_items` dengan Canonical Naming untuk mencegah duplikasi (kabel nym vs kabel Supreme nym).
+- Fitur Alias & Synonym Matching via JSON.
+- Performa ekstraksi cepat via MySQL `FULLTEXT INDEX`.
 
-### 2. **Real-Time Anomaly Detection**
-- Deteksi saat teknisi/admin input harga > max reference
-- Warning badge di UI form pengajuan
-- Log semua anomali di database
-- Multi-severity classification (Critical/Medium/Low)
+### 2. **Smart Autocomplete UI (V2)**
+- Integrasi `ItemMatchingService` (3-Level Fuzzy Matching).
+- Mencegah input sampah dari teknisi dengan Autocomplete Dropdown.
 
-### 3. **Multi-Channel Notification**
-- **Telegram**: Real-time untuk critical anomalies (>50%)
+### 3. **Auto-Calculated Price Index**
+- Perhitungan otomatis harga min/max/avg dari data approved.
+- Terelasi terpusat menggunakan `master_item_id`.
+
+### 4. **Real-Time Anomaly Detection (High Performance)**
+- Peringatan instan (response time 150-300ms) saat teknisi menginput harga yang melebihi batas batas kewajaran.
+- Deteksi berjalan di form buat pengajuan dan edit pengajuan.
+
+### 5. **Manual Override & Audit Trail**
+- Hak prerogatif Owner untuk men-set "Gunakan Harga Ini" sebagai pedoman baku.
+- Seluruh manipulasi manual mencatatkan Log Alasan (`manual_reason`).
+
+### 6. **Notification System**
+- **Telegram**: Real-time untuk notifikasi saat ada anomali kritikal saja. Fitur daily summary notification telah dihapus untuk mengurangi spam.
 - **In-App Dashboard**: Badge counter & review center
-- **Email Digest**: Daily summary untuk minor anomalies
 
-### 4. **Quick-Fill Buttons**
-- Button "Min", "Max", "Avg" di form estimasi biaya
-- Auto-populate harga berdasarkan referensi
-- Real-time validation saat input
+### 7. **Quick-Fill Buttons**
+- Button "Min", "Max", "Avg" terintegrasi secara utuh di Form Tambah dan Edit Pengajuan.
+- Mengisi secara otomatis dari referensi index dengan 1-klik.
 
-### 5. **Owner Manual Override**
-- Owner dapat set harga referensi manual
-- Button "Jadikan Referensi" di setiap transaksi
-- Audit trail untuk semua perubahan manual
-
-### 6. **Analytics Dashboard**
+### 8. **Analytics Dashboard (Fully Implemented)**
 - Price trend charts (3 months)
-- Top 10 items dengan volatilitas tertinggi
-- Items tanpa referensi
-- Export/Import CSV
-
----
+- Top 10 items dengan volatilitas paling tinggi dilengkapi progress bar warna-warni.
+- Distribusi anomali per kategori.
+- Eksport laporan lengkap dalam mode CSV File.
 
 ## 🗄️ Arsitektur Database
 
 ### Schema Tables
 
-#### **`price_indexes`** - Master Price Index
+#### **`master_items`** - Master Catalog (V2)
+```sql
+CREATE TABLE master_items (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    canonical_name VARCHAR(255) UNIQUE NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    category VARCHAR(255) NULL,
+    aliases JSON NULL,
+    status ENUM('active', 'discontinued', 'pending_approval') DEFAULT 'active',
+    -- FULLTEXT INDEX ditambahkan via DB::statement untuk canonical_name
+    FULLTEXT INDEX (canonical_name)
+);
+```
+
+#### **`price_indexes`** - Referensi Harga
 ```sql
 CREATE TABLE price_indexes (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    master_item_id BIGINT UNSIGNED NULL, -- Relasi ke V2 Catalog
     item_name VARCHAR(255) NOT NULL,
-    category_id BIGINT UNSIGNED NULL,
-    unit VARCHAR(50) NOT NULL, -- pcs, kg, meter, dll
+    category VARCHAR(255) NULL,
+    unit VARCHAR(50) NOT NULL, 
     min_price DECIMAL(15,2) NOT NULL,
     max_price DECIMAL(15,2) NOT NULL,
     avg_price DECIMAL(15,2) NOT NULL,
     is_manual BOOLEAN DEFAULT FALSE,
-    manual_set_by BIGINT UNSIGNED NULL,
-    manual_set_at TIMESTAMP NULL,
-    total_transactions INT DEFAULT 0,
-    last_calculated_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    INDEX idx_item_name (item_name),
-    INDEX idx_category (category_id),
-    INDEX idx_last_calculated (last_calculated_at),
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
-    FOREIGN KEY (manual_set_by) REFERENCES users(id) ON DELETE SET NULL
+    manual_reason TEXT NULL,
+    needs_initial_review BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (master_item_id) REFERENCES master_items(id) ON DELETE SET NULL
 );
 ```
 
@@ -212,9 +218,54 @@ ALTER TABLE pengajuan_items ADD COLUMN (
 
 ---
 
+## 📂 Struktur Direktori & Arsitektur (V2)
+
+```text
+app/
+├── Console/Commands/
+│   └── MigrateV1ToV2Command.php       # Script Cold-Start migrasi historis ke master_items
+├── Http/Controllers/
+│   ├── Api/
+│   │   └── ItemAutocompleteController.php # Endpoint Autocomplete (throttle 60/min)
+│   └── PriceIndexController.php       # Dashboard CRUD & Anomaly Review
+├── Jobs/PriceIndex/
+│   ├── CalculatePriceIndexJob.php     # Perhitungan IQR asinkron
+│   └── SendPriceAnomalyNotificationJob.php # Notifikasi Telegram
+├── Models/
+│   ├── MasterItem.php                 # Katalog sentral (canonical_name, aliases, sku)
+│   ├── PriceIndex.php                 # Referensi harga (berelasi ke master_items)
+│   └── PriceAnomaly.php               # Log fraud/anomali harga
+└── Services/PriceIndex/
+    ├── ItemMatchingService.php        # Otak pencarian 3-level (Exact -> Alias -> FULLTEXT+Levenshtein)
+    └── PriceIndexService.php          # Kalkulasi anomali & set manual referensi
+```
+
+---
+
 ## 🔄 Business Logic
 
-### 1. Algoritma Perhitungan Price Index
+### 1. Alur Smart Autocomplete Dropdown (V2)
+
+```
+INPUT: Teknisi mengetik "kabel ny" di form pengajuan
+
+STEP 1: Frontend Debounce (300ms)
+  - Hit `GET /api/items/autocomplete?q=kabel+ny`
+  
+STEP 2: Backend 3-Level Matching (ItemMatchingService)
+  - Level 1: Exact Match (O(1)) -> Apakah ada MasterItem.canonical_name == "kabel ny"?
+  - Level 2: Alias Match -> Apakah ada di JSON `aliases`?
+  - Level 3: Fuzzy Match -> MySQL FULLTEXT `MATCH() AGAINST('+kabel* +ny*')`
+  - Limit max 20 kandidat, lalu hitung Levenshtein Distance + Jaccard similarity.
+  
+STEP 3: Response & Cache
+  - Hasil disimpan di Redis Cache selama 1 Jam.
+  - Return JSON dengan struktur `{ id, display_name, confidence_score }`
+  
+OUTPUT: Dropdown memunculkan "Kabel NYM 3x2.5 (95% match)". Jika diklik, sistem mengisi referensi harga Min, Max, Avg. Jika teknisi memaksa buat baru, masuk status `pending_approval`.
+```
+
+### 2. Algoritma Perhitungan Price Index
 
 ```
 INPUT: Item dengan N transaksi approved (N >= 5)
@@ -299,9 +350,9 @@ function detectPriceAnomaly($pengajuanItem) {
 
 | Severity | Threshold | Action |
 |----------|-----------|--------|
-| **Critical** | > 50% melebihi max | Telegram + Email immediate |
-| **Medium** | 20-50% melebihi max | Telegram only |
-| **Low** | < 20% melebihi max | Daily digest email |
+| **Critical** | > 50% melebihi max | Telegram Only |
+| **Medium** | 20-50% melebihi max | Telegram Only |
+| **Low** | < 20% melebihi max | Telegram Only |
 
 ---
 
@@ -361,12 +412,8 @@ class SendPriceAnomalyNotificationJob implements ShouldQueue
     {
         $anomaly = PriceAnomaly::find($this->anomalyId);
         
-        // Route based on severity
-        match($anomaly->severity) {
-            'critical' => $service->sendTelegramAndEmail($anomaly),
-            'medium' => $service->sendTelegram($anomaly),
-            'low' => $service->addToDailyDigest($anomaly),
-        };
+        // Notify via Telegram directly from Laravel
+        $service->sendTelegramNotification($anomaly);
     }
 }
 ```
@@ -390,69 +437,39 @@ class SendPriceAnomalyNotificationJob implements ShouldQueue
 ],
 ```
 
-### n8n Workflow Integration
+### Telegram Bot Integration (Built-in Laravel)
 
-#### Workflow 1: Price Anomaly Alert
+Alih-alih menggunakan n8n, pengiriman notifikasi dilakukan sepenuhnya dari dalam Laravel menggunakan API client atau SDK Telegram.
 
-```yaml
-Name: Price Anomaly Alert Flow
-Trigger: Webhook
-URL: https://whusnet.com/n8n/webhook/price-anomaly
+#### Job 1: Price Anomaly Alert
 
-Nodes:
-  1. Webhook (Receive anomaly data)
-  2. Function (Parse & enrich data)
-  3. Switch (Route by severity)
-     - Critical → Telegram + Email
-     - Medium → Telegram only
-     - Low → Google Sheets (daily digest)
-  4. Telegram (Send message)
-  5. Gmail (Send email)
-  6. HTTP Request (Callback to Laravel: notification_sent)
-```
+Dijalankan secara asinkron dari `SendPriceAnomalyNotificationJob` tanpa external webhook.
 
-**Sample Webhook Payload:**
-```json
-{
-  "anomaly_id": 123,
-  "severity": "critical",
-  "item_name": "Kabel NYM 3x2.5",
-  "input_price": 1500000,
-  "reference_max_price": 1000000,
-  "excess_percentage": 50,
-  "teknisi_name": "Ahmad Faruqi",
-  "pengajuan_code": "PGJ-2024-001",
-  "owner_telegram_id": "123456789"
-}
-```
-
-**Telegram Message Template:**
-```
+**Telegram Message Template (via Blade atau formatting native):**
+```markdown
 🚨 *ANOMALI HARGA TERDETEKSI*
 
-📋 Pengajuan: {{pengajuan_code}}
-👤 Teknisi: {{teknisi_name}}
-🛠️ Item: {{item_name}}
+📋 Pengajuan: {$pengajuan_code}
+👤 Teknisi: {$teknisi_name}
+🛠️ Item: {$item_name}
 
-💰 Harga Input: Rp {{input_price | format_currency}}
-📊 Harga Max Ref: Rp {{reference_max_price | format_currency}}
-⚠️ Selisih: +{{excess_percentage}}% (Rp {{excess_amount | format_currency}})
+💰 Harga Input: Rp {$input_price}
+📊 Harga Max Ref: Rp {$reference_max_price}
+⚠️ Selisih: +{$excess_percentage}% (Rp {$excess_amount})
 
-[Review Sekarang]({{review_url}})
+[Review Sekarang]({$review_url})
 ```
 
-#### Workflow 2: Daily Price Index Recalculation
+#### Job 2: Daily Price Index Recalculation
 
-```yaml
-Name: Daily Price Index Recalculation
-Trigger: Schedule (Cron: 0 2 * * *)
+Dijalankan melalui native Laravel Task Scheduler, menghitung ulang anomali tetapi TIDAK mengirim spam telegram ke owner:
 
-Nodes:
-  1. Schedule Trigger (Daily 2 AM)
-  2. HTTP Request (POST to Laravel: /api/price-index/recalculate-all)
-  3. Function (Parse results)
-  4. Gmail (Send summary to Owner)
-  5. Google Sheets (Log execution)
+```php
+// routes/console.php
+Schedule::command('price-index:recalculate --mode=incremental')
+    ->dailyAt('02:30')
+    ->runInBackground()
+    ->withoutOverlapping();
 ```
 
 ### Redis Cache Strategy
@@ -513,14 +530,13 @@ Cache::forget('price_anomalies:pending:owner_' . $ownerId);
   - [ ] Setup bot commands
   - [ ] Message templates
   - [ ] Inline keyboard untuk quick actions
-- [ ] Email templates (Blade)
 - [ ] Queue jobs implementation
 
-**n8n Workflows**
-- [ ] Setup webhook endpoints
-- [ ] Create "Price Anomaly Alert" workflow
-- [ ] Create "Daily Recalculation" workflow
-- [ ] Test end-to-end flow
+**Laravel Task Scheduling**
+- [ ] Setup `app/Console/Kernel.php` untuk schedule recalculation
+- [ ] Create `SendDailyPriceSummaryTelegramJob` class
+- [ ] Setup testing native command laravel untuk webhook payload mock
+- [ ] Test end-to-end cronflow di OS/Docker
 
 ### Phase 3: UI/UX (Week 5-6)
 
@@ -764,7 +780,7 @@ class PriceAnomalyPolicy
 
 | Action | Teknisi | Admin | Atasan | Owner |
 | :--- | :---: | :---: | :---: | :---: |
-| **View Price Index** | ❌ | ✅ | ✅ | ✅ |
+| **View Price Index** | ✅ | ✅ | ✅ | ✅ |
 | **Create Price Index** | ❌ | ❌ | ✅ | ✅ |
 | **Update Price Index** | ❌ | ❌ | ✅ | ✅ |
 | **Delete Price Index** | ❌ | ❌ | ❌ | ✅ |
@@ -854,21 +870,20 @@ ORDER BY created_at DESC;
 # Check queue status
 php artisan queue:work --once -vvv
 
-# Check n8n workflow
-curl -X POST https://whusnet.com/n8n/webhook/price-anomaly \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}'
+# Check internal logic via tinker
+php artisan tinker
+> app(NotificationService::class)->sendTestTelegram()
 
-# Check Telegram bot
+# Check Telegram bot manually (API Call)
 curl https://api.telegram.org/bot<TOKEN>/getMe
 ```
 
 **Solutions:**
-1. Verify webhook URL accessible
-2. Check bot token valid
-3. Review n8n execution history
-4. Check notification_sent_at timestamp
-5. Verify owner telegram_id exists
+1. Check laravel.log untuk exception HTTP Request ke Telegram
+2. Check bot token pada `TELEGRAM_BOT_TOKEN` di `.env` valid
+3. Check status HTTP response dari Telegram API
+4. Check `notification_sent_at` timestamp apakah terupdate
+5. Verify owner `telegram_id` exists pada database User
 
 ### Issue 4: Performance Lambat di Dashboard
 
@@ -964,15 +979,15 @@ Telescope::recordException(function ($exception) {
 Alerts:
   - name: High Anomaly Rate
     condition: anomaly_count > 50/day
-    action: Email to Owner + Manager
+    action: Telegram to Owner + Manager
     
   - name: Calculation Failed
     condition: job_failed == CalculatePriceIndexJob
-    action: Slack notification
+    action: Telegram alert
     
   - name: Queue Backlog
     condition: queue_size > 1000
-    action: PagerDuty alert
+    action: Telegram alert
     
   - name: Cache Hit Rate Low
     condition: cache_hit_rate < 70%
@@ -1018,9 +1033,8 @@ Alerts:
 - [ ] Run migrations di staging environment
 - [ ] Seed sample data untuk testing
 - [ ] Configure Redis connection
-- [ ] Setup n8n workflows
-- [ ] Configure Telegram bot
-- [ ] Setup email SMTP
+- [ ] Configure Telegram bot token di `.env`
+- [ ] Verify scheduled tasks berjalan di OS/Docker
 - [ ] Run full test suite (`php artisan test`)
 - [ ] Performance test (JMeter/K6)
 
@@ -1059,7 +1073,7 @@ Alerts:
 
 - [Laravel Queue Documentation](https://laravel.com/docs/queues)
 - [Laravel Horizon Documentation](https://laravel.com/docs/horizon)
-- [n8n Workflow Automation](https://docs.n8n.io/)
+- [Telegram Bot API Documentation](https://core.telegram.org/bots/api)
 - [Redis Caching Best Practices](https://redis.io/docs/manual/patterns/)
 - [IQR Outlier Detection](https://en.wikipedia.org/wiki/Interquartile_range)
 

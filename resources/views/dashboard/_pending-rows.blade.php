@@ -9,7 +9,7 @@
             {{ $t->submitter->name ?? '-' }} &bull;
             {{ $t->type === 'rembush' ? 'Rembush' : 'Pengajuan' }}
             @if($t->status === 'approved')
-                <span class="ml-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200">Menunggu Owner</span>
+                <span class="ml-1 px-1.5 py-0.5 rounded-md bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 text-[10px] font-bold border">Menunggu Owner</span>
             @endif
         </span>
     </td>
@@ -24,14 +24,10 @@
                 <span class="hidden sm:inline">Setuju</span>
             </button>
             <button class="btn-quick-reject flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors"
-                data-id="{{ $t->id }}" data-status="rejected">
+                data-id="{{ $t->id }}" data-status="rejected" data-invoice="{{ $t->invoice_number }}">
                 <i data-lucide="x" class="w-3 h-3"></i>
                 <span class="hidden sm:inline">Tolak</span>
             </button>
-            <a href="{{ route('transactions.show', $t->id) }}"
-               class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold transition-colors">
-                <i data-lucide="eye" class="w-3 h-3"></i>
-            </a>
         </div>
     </td>
 </tr>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-url" content="{{ rtrim(config('app.url'), '/') }}">
     <title>FinanceOps</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -417,7 +418,7 @@
 
     {{-- Konten Halaman --}}
     {{-- <main class="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-1 page-enter"> --}}
-    <main class="w-full mx-auto px-1 sm:px-2 py-1 page-enter overflow-x-hidden">
+    <main class="w-full mx-auto page-enter overflow-x-hidden">
         @yield('content')
     </main>
 
@@ -523,6 +524,12 @@
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transaction-categories.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="tags" class="w-4 h-4"></i> Kelola Kategori
+                </a>
+
+                <a href="{{ route('price-index.index') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    {{ request()->routeIs('price-index.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="bookmark" class="w-4 h-4"></i> Referensi Harga
                 </a>
 
                 <a href="{{ route('activity-logs.index') }}"
@@ -1287,6 +1294,31 @@
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
                 });
+
+            if (['owner', 'atasan', 'admin'].includes(userRole)) {
+                window.Echo.private(`notifications.management`)
+                    .listen('PriceAnomalyDetected', (e) => {
+                        console.log('Price Anomaly Detected:', e);
+                        
+                        // Use existing toast system if available or create a simple notification
+                        if (typeof showRealtimeToast === 'function') {
+                            showRealtimeToast(
+                                '⚠️ Anomali Harga!',
+                                `Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%). <br><a href="${e.url}" class="text-blue-600 font-bold underline">Review Sekarang →</a>`,
+                                'bg-red-50 text-red-800 border-red-200',
+                                'alert-circle'
+                            );
+                        } else {
+                            // Fallback alert
+                            alert(`⚠️ ANOMALI HARGA: Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%).`);
+                        }
+
+                        // Refresh notification count if function exists
+                        if (typeof fetchNotifications === 'function') {
+                            fetchNotifications();
+                        }
+                    });
+            }
 
 
         }

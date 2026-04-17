@@ -11,4 +11,15 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
+    // Gunakan window.location.origin agar selalu menunjuk ke host yang SAMA
+    // dengan halaman ini — tidak bergantung pada APP_URL di .env atau meta tag.
+    // Ini mencegah cross-origin auth request yang bisa memblokir cookie.
+    authEndpoint: window.location.origin + '/broadcasting/auth',
+    auth: {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+        },
+    },
+    withCredentials: true,
 });
+

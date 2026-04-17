@@ -156,7 +156,12 @@ class OcrNotaController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Transaction::query();
+        $query = Transaction::query()
+            ->withExists(['branches as has_branch_with_debt' => function($q) {
+                $q->whereHas('debtsAsDebtor', function($sq) {
+                    $sq->where('status', 'pending');
+                });
+            }]);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -310,16 +315,18 @@ class OcrNotaController extends Controller
         // Store the file
         $path = $request->file('invoice_file')->store('invoices', 'public');
 
+        // ═══════════════════════════════════════════════════════════
+        //  1. Persist Transaction Changes (Amount, Fees, Proof) First
+        // ═══════════════════════════════════════════════════════════
+        
         // Build sumber_dana_data JSON
         $sumberDanaData = $sumberDanaList->map(fn($sd) => [
             'branch_id' => (int) $sd['branch_id'],
             'amount'    => (int) $sd['amount'],
         ])->values()->toArray();
 
-        // Use first sumber dana as primary (backward compat with sumber_dana_branch_id)
-        $primarySumberDanaId = $sumberDanaData[0]['branch_id'] ?? null;
-
-        // Update transaction amount
+        // Update transaction model with the final invoice values
+        // We do this first so calculateAndCreateDebts sees the FINAL amount.
         $transaction->update([
             'invoice_file_path'     => $path,
             'amount'                => $totalTransaksi, 
@@ -328,13 +335,28 @@ class OcrNotaController extends Controller
             'biaya_layanan_1'       => $request->biaya_layanan_1 ?? 0,
             'biaya_layanan_2'       => $request->biaya_layanan_2 ?? 0,
             'voucher_diskon'        => $request->voucher_diskon ?? 0,
-            'sumber_dana_branch_id' => $primarySumberDanaId,
+            'sumber_dana_branch_id' => $sumberDanaData[0]['branch_id'] ?? null,
             'sumber_dana_data'      => $sumberDanaData,
-            'status'                => 'completed',
             'paid_by'               => auth()->id(),
             'paid_at'               => now(),
             'description'           => ($transaction->description ? $transaction->description . ' | ' : '') . $request->catatan,
         ]);
+
+        // 💰 DEBT CALCULATION — Hitung hutang berdasarkan nominal FINAL
+        $this->calculateAndCreateDebts($transaction->fresh(), $sumberDanaData);
+
+        // Check if there are still pending debts after calculation
+        $hasPendingDebts = \App\Models\BranchDebt::where('transaction_id', $transaction->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        // ═══════════════════════════════════════════════════════════
+        //  2. Determine Final Status & Broadcast
+        // ═══════════════════════════════════════════════════════════
+        $finalStatus = $hasPendingDebts ? 'waiting_payment' : 'completed';
+        $transaction->update(['status' => $finalStatus]);
+        
+        $transaction = $transaction->fresh();
 
         // ═══════════════════════════════════════════════════════════
         //  Update Branch Allocations to reflect shared adjustments
@@ -346,25 +368,22 @@ class OcrNotaController extends Controller
             ]);
         }
 
-        // ═══════════════════════════════════════════════════════════
-        //  💰 DEBT CALCULATION — Hitung hutang antar cabang
-        // ═══════════════════════════════════════════════════════════
-        $this->calculateAndCreateDebts($transaction, $sumberDanaData);
-
         // Broadcast update
         broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
 
         // Log Activity
         $sumberNames = \App\Models\Branch::whereIn('id', $sumberDanaList->pluck('branch_id'))->pluck('name')->join(', ');
+        $logDescription = "Mengunggah Invoice untuk Pengajuan " . $transaction->invoice_number . " (" . ($finalStatus === 'completed' ? 'Selesai' : 'Pending Hutang') . "). Sumber Dana: " . $sumberNames;
+
         \App\Models\ActivityLog::create([
             'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
             'action'         => 'upload_invoice',
             'transaction_id' => $transaction->id,
             'target_id'      => $transaction->invoice_number,
-            'description'    => "Mengunggah Invoice untuk Pengajuan " . $transaction->invoice_number . " (Selesai). Sumber Dana: " . $sumberNames,
+            'description'    => $logDescription,
         ]);
 
-        // Send Notification to Submitter
+        // 🔔 Notifikasi Telegram ke Teknisi bahwa invoice sudah diupload dan transaksi selesai
         try {
             if ($transaction->submitter) {
                 $this->telegram->notifyForceApprovedToTechnician($transaction);
@@ -378,9 +397,9 @@ class OcrNotaController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => 'Invoice berhasil diunggah dan status transaksi diperbarui menjadi Selesai.',
+            'message'       => 'Invoice berhasil diunggah dan transaksi diperbarui menjadi Selesai.',
             'transaksi_id'  => $transaction->id,
-            'status'        => 'completed',
+            'status'        => $finalStatus,
             'transaction'   => $transaction->fresh()->toSearchArray(),
         ], 200);
     }

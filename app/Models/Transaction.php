@@ -26,6 +26,11 @@ class Transaction extends Model
         'transfer_penjual' => 'Transfer ke Penjual',
     ];
 
+    /**
+     * ✅ Appended fields for JSON serialization & Real-time Broadcasting.
+     * Ensures accessors like status_label are included in the broadcasted object.
+     */
+    protected $appends = ['status_label', 'category_label', 'type_label'];
 
     protected $fillable = [
         'type',
@@ -87,6 +92,8 @@ class Transaction extends Model
         'revision_count',
         'paid_by',
         'paid_at',
+        // ✅ Price Index fields
+        'has_price_anomaly',
     ];
 
     protected function casts(): array
@@ -102,6 +109,7 @@ class Transaction extends Model
             'confidence' => 'integer',
             'overall_confidence' => 'integer',
             'field_confidence' => 'array',
+            'ocr_result' => 'array',
             // ✅ NEW: Versioning casts
             'items_snapshot' => 'array',
             'is_edited_by_management' => 'boolean',
@@ -111,7 +119,17 @@ class Transaction extends Model
             'konfirmasi_at' => 'datetime',
             // ✅ Multi Sumber Dana
             'sumber_dana_data' => 'array',
+            // ✅ Price Index
+            'has_price_anomaly' => 'boolean',
         ];
+    }
+
+     /**
+     * Anomali harga yang terdeteksi pada pengajuan ini.
+     */
+    public function priceAnomalies()
+    {
+        return $this->hasMany(PriceAnomaly::class);
     }
 
     /**
@@ -246,26 +264,75 @@ class Transaction extends Model
 
     public function getStatusLabelAttribute(): string
     {
+        if ($this->status === 'waiting_payment') {
+            // 1. Check if this specific transaction has pending branch debts
+            // OR if it has payment proof but is still in waiting_payment (implies pending debts)
+            $hasOwnPendingDebts = $this->relationLoaded('branchDebts') 
+                ? $this->branchDebts->contains('status', 'pending')
+                : $this->branchDebts()->where('status', 'pending')->exists();
+
+            if ($hasOwnPendingDebts || $this->invoice_file_path || $this->bukti_transfer || $this->foto_penyerahan) {
+                return 'Menunggu Pelunasan';
+            }
+
+            // 2. NEW: Check if any of the branches involved in this transaction have ANY pending debts (from other transactions)
+            // This enforces debt clearance before allowing new payments.
+            if ($this->hasAnyPendingBranchDebt()) {
+                return 'Menunggu Pelunasan';
+            }
+
+            if ($this->isGudang()) {
+                return 'Pembelanjaan Belum di bayar';
+            }
+
+            return 'Menunggu Pembayaran';
+        }
+
         if ($this->isGudang()) {
             if ($this->status === 'pending') {
                 return 'Review Management';
             }
-            if ($this->status === 'waiting_payment') {
-                return 'Pembelanjaan Belum di bayar';
-            }
+        }
+        
+        if ($this->isPengajuan() && $this->status === 'approved') {
+            return 'Menunggu Approve Owner';
         }
 
-        return match($this->status) {
-            'pending' => 'Pending',
-            'approved' => 'Disetujui',
+        return match ($this->status) {
+            'pending'   => 'Pending',
+            'approved'  => 'Menunggu Owner',
             'completed' => 'Selesai',
-            'rejected' => 'Ditolak',
-            'waiting_payment' => 'Menunggu Pembayaran',
-            default => $this->status,
+            'rejected'  => 'Ditolak',
+            null        => 'Draft',
+            default     => (string) $this->status,
         };
     }
 
-    // ─── Amount Helpers ───────────────────────────────
+    /**
+     * Check if any of the branches involved in this transaction have any pending inter-branch debts.
+     */
+    public function hasAnyPendingBranchDebt(): bool
+    {
+        // Use eager-loaded attribute if available (from withExists)
+        if (isset($this->has_branch_with_debt_exists)) {
+            return (bool) $this->has_branch_with_debt_exists;
+        }
+
+        // Use preloaded data if available to avoid N+1
+        if ($this->relationLoaded('branches')) {
+            foreach ($this->branches as $branch) {
+                // Check if the branch has pending debts as debtor.
+                if ($branch->debtsAsDebtor()->where('status', 'pending')->exists()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return $this->branches()->whereHas('debtsAsDebtor', function($q) {
+            $q->where('status', 'pending');
+        })->exists();
+    }
 
     /**
      * Get the effective amount for display and approval logic.
@@ -404,8 +471,56 @@ class Transaction extends Model
                 ($this->vendor ?? '') . ' ' .
                 $this->created_at->format('d M Y d-m-Y Y-m-d')
             ),
+            'has_price_anomaly' => false, // Implement your logic
+            'invoice_file_path' => $this->invoice_file_path,
+            'bukti_transfer' => $this->bukti_transfer,
+            'foto_penyerahan' => $this->foto_penyerahan,
         ];
     }
+
+    /**
+     * Versi Ringan (Lean) untuk Client-side Search Engine.
+     *
+     * Mengecualikan items & changes untuk efisiensi memory saat memproses ribuan record.
+     * Semua property diakses secara defensive untuk menghindari NullPointerException
+     * pada record yang bermasalah/corrupt.
+     */
+    public function toLeanSearchArray(): array
+    {
+        $createdAt = $this->created_at;
+
+        // Note: search_text dihapus untuk menghemat RAM (OOM PREVENTION) pada 18k+ records.
+        // Frontend SearchEngine tetap bisa mencari berdasarkan kolom individu.
+        return [
+            'id'                    => $this->id,
+            'invoice_number'        => $this->invoice_number,
+            'submitter_name'        => $this->submitter->name ?? '-',
+            'customer'              => $this->customer ?? '',
+            'vendor'                => $this->vendor ?? '',
+            'type'                  => $this->type,
+            'type_label'            => $this->type_label,
+            'category'              => $this->category,
+            'category_label'        => $this->category_label,
+            'status'                => $this->status,
+            'status_label'          => $this->status_label,
+            'amount'                => $this->amount,
+            'formatted_amount'      => number_format($this->amount ?? 0, 0, ',', '.'),
+            'date'                  => $this->date ? \Carbon\Carbon::parse($this->date)->format('d M Y') : null,
+            'created_at'            => $createdAt ? $createdAt->format('d M Y') : '-',
+            'ai_status'             => $this->ai_status,
+            'upload_id'             => $this->upload_id,
+            'submitter_has_telegram'=> (bool) ($this->submitter->telegram_chat_id ?? false),
+            'branches'              => $this->branches->pluck('name')->toArray(),
+            'has_price_anomaly'     => (bool) ($this->has_price_anomaly ?? false),
+            'confidence'            => $this->confidence,
+            'effective_amount'      => $this->effective_amount ?? $this->amount,
+            'rejection_reason'      => $this->rejection_reason,
+            'invoice_file_path'     => $this->invoice_file_path,
+            'bukti_transfer'        => $this->bukti_transfer,
+            'foto_penyerahan'       => $this->foto_penyerahan,
+        ];
+    }
+
 
 
 

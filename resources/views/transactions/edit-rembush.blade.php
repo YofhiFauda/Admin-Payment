@@ -3,10 +3,12 @@
 @section('page-title', 'Edit Reimbursement')
 
 @section('content')
-    <div class="max-w-8xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12">
+    <div class="max-w-8xl mx-auto">
+    {{-- <div class="max-w-8xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12"> --}}
 
         {{-- Form Container --}}
-        <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10">
+        <div class="bg-white shadow-sm border border-slate-100 p-3 pt-6 md:p-8 lg:p-10">
+        {{-- <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10"> --}}
             
             {{-- Header --}}
             <div class="mb-8 md:mb-10 flex items-center gap-4">
