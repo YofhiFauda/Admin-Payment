@@ -17,90 +17,295 @@
 @section('page-title', 'Data Riwayat Transaksi')
 
 @section('content')
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .tabs-scroll-container {
+            position: relative;
+            mask-image: linear-gradient(to right, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+        }
+
+        @media (max-width: 768px) {
+            .filter-trigger {
+                justify-content: space-between;
+            }
+            .filter-group {
+                width: 100%;
+            }
+        }
+    </style>
     {{-- Main Content Card --}}
     <div class="bg-white shadow-sm border border-gray-100">
         {{-- Header Toolbar --}}
-        <div class="p-3 sm:p-4 md:p-5 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:gap-4 lg:justify-between lg:items-center">
-            <div class="flex flex-col md:flex-row gap-3 flex-1">
-                {{-- Search --}}
-                <div class="relative w-full md:w-64 lg:w-80">
-                    <i data-lucide="search" class="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                    <input type="text"
-                        id="instant-search"
-                        value="{{ request('search') }}"
-                        placeholder="Cari invoice, nama, vendor..."
-                        autocomplete="off"
-                        class="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-gray-400">
-                    <button type="button" id="search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 hidden p-0.5 rounded-md hover:bg-gray-200 transition-colors" title="Hapus pencarian">
-                        <i data-lucide="x" class="w-3.5 h-3.5 text-gray-400"></i>
+        <div class="p-3 sm:p-4 md:p-5 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+            <!-- DESKTOP: Responsive Layout (1024px to 1439px: 2 Rows, >= 1440px: 1 Row) -->
+            <div class="hidden lg:flex flex-wrap min-[1510px]:flex-nowrap items-center gap-3 md:gap-4 lg:gap-3">
+            {{-- <div class="hidden lg:flex flex-wrap min-[1440px]:flex-nowrap items-center gap-3 md:gap-4 lg:gap-3"> --}}
+                
+                <!-- Group 1: Search, Multi Cabang, Multi Kategori, Date Range Picker -->
+               <div class="flex items-center gap-3 w-full min-[1510px]:w-auto overflow-x-auto scrollbar-hide pb-1 min-[1510px]:pb-0">
+                    <!-- Search -->
+                    <div class="relative flex-1 min-[1510px]:flex-none min-[1510px]:w-72 group">
+                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input type="text" id="instant-search" value="{{ request('search') }}" placeholder="Cari invoice, nama..." autocomplete="off" class="search-input-sync w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all placeholder:text-gray-400">
+                        <button type="button" id="search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 hidden p-1 rounded-lg hover:bg-gray-200 transition-colors">
+                            <i data-lucide="x" class="w-3 h-3 text-gray-400"></i>
+                        </button>
+                    </div>
+
+                    @if(auth()->user()->role !== 'teknisi')
+                    <!-- Branch Filter -->
+                    <div class="relative filter-group flex-shrink-0" id="group-branch">
+                        <button type="button" class="js-filter-branch-btn filter-trigger flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all active:scale-95 group" data-target="menu-filter-branch">
+                            <i data-lucide="git-branch" class="w-3.5 h-3.5 text-gray-400 group-[.active]:text-blue-600 transition-colors"></i>
+                            <span class="js-filter-branch-label filter-label">Semua Cabang</span>
+                            <div class="flex items-center">
+                                <i data-lucide="chevron-down" class="w-3 h-3 ml-1 text-gray-400 group-[.active]:rotate-180 transition-transform"></i>
+                                <span class="js-filter-branch-reset filter-clear hidden ml-1.5 p-0.5 rounded-md hover:bg-blue-100 text-blue-600 transition-colors" title="Bersihkan">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="relative filter-group flex-shrink-0" id="group-category">
+                        <button type="button" class="js-filter-category-btn filter-trigger flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all active:scale-95 group" data-target="menu-filter-category">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-gray-400 group-[.active]:text-blue-600 transition-colors"></i>
+                            <span class="js-filter-category-label filter-label">Semua Kategori</span>
+                            <div class="flex items-center">
+                                <i data-lucide="chevron-down" class="w-3 h-3 ml-1 text-gray-400 group-[.active]:rotate-180 transition-transform"></i>
+                                <span class="js-filter-category-reset filter-clear hidden ml-1.5 p-0.5 rounded-md hover:bg-blue-100 text-blue-600 transition-colors" title="Bersihkan">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div class="relative filter-group flex-shrink-0" id="group-date">
+                        <button type="button" class="js-filter-date-btn filter-trigger flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all active:scale-95 group" data-target="menu-filter-date">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400 group-[.active]:text-blue-600 transition-colors"></i>
+                            <span class="js-filter-date-label filter-label">Pilih Tanggal</span>
+                            <div class="flex items-center">
+                                <i data-lucide="chevron-down" class="w-3 h-3 ml-1 text-gray-400 group-[.active]:rotate-180 transition-transform"></i>
+                                <span class="js-filter-date-reset filter-clear hidden ml-1.5 p-0.5 rounded-md hover:bg-blue-100 text-blue-600 transition-colors" title="Bersihkan">
+                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Spacer separating Groups (Hidden on 2-rows) -->
+                <div class="flex-1 min-w-[20px] hidden min-[1510px]:block"></div>
+
+                <!-- Group 2: Type Filters -->
+                <!-- Group 2: Type Filters - Grid on 2-row mode, flex on 1-row mode -->
+                <div class="w-full min-[1510px]:w-auto grid grid-cols-4 gap-2 min-[1510px]:flex min-[1510px]:items-center min-[1510px]:gap-2 overflow-x-auto scrollbar-hide pb-1 min-[1510px]:pb-0">
+                    @php $currentType = request('type', 'all'); @endphp
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}" class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
+                        Semua
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}" class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
+                        <i data-lucide="receipt" class="w-3 h-3 inline mr-1"></i>Rembush
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}" class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
+                        <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-1"></i>Pengajuan
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}" class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
+                        <i data-lucide="package" class="w-3 h-3 inline mr-1"></i>Gudang
+                    </a>
+                </div>
+            </div>
+
+            <!-- TABLET: 3 Rows Layout (md to lg screens) -->
+            <div class="hidden md:flex lg:hidden flex-col gap-3">
+                <!-- Row 1: Search + Date -->
+                <div class="flex gap-3">
+                    <div class="relative flex-1 group">
+                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input type="text" id="instant-search-tablet" value="{{ request('search') }}" placeholder="Cari invoice, nama..." autocomplete="off" class="search-input-sync w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all placeholder:text-gray-400">
+                        <button type="button" class="search-clear absolute right-3 top-1/2 -translate-y-1/2 hidden p-1 rounded-lg hover:bg-gray-200 transition-colors">
+                            <i data-lucide="x" class="w-3 h-3 text-gray-400"></i>
+                        </button>
+                    </div>
+                    @if(auth()->user()->role !== 'teknisi')
+                    <button type="button" class="js-filter-date-btn filter-trigger flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-[11px] font-bold text-gray-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all whitespace-nowrap group" data-target="menu-filter-date">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400 group-[.active]:text-blue-600"></i>
+                        <span class="js-filter-date-label filter-label">Pilih Tanggal</span>
+                        <i data-lucide="x" class="js-filter-date-reset hidden w-3 h-3 ml-1 text-blue-600"></i>
+                    </button>
+                    @endif
+                </div>
+
+                @if(auth()->user()->role !== 'teknisi')
+                <!-- Row 2: Branch and Category -->
+                <div class="flex gap-3">
+                    <button type="button" class="js-filter-branch-btn filter-trigger flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-white text-slate-500 border-2 border-slate-200 hover:border-blue-300 group" data-target="menu-filter-branch">
+                        <i data-lucide="git-branch" class="w-4 h-4 group-[.active]:text-blue-600"></i>
+                        <span class="js-filter-branch-label filter-label">Pilih Cabang</span>
+                        <i data-lucide="x" class="js-filter-branch-reset hidden w-3 h-3 ml-1 text-blue-600"></i>
+                    </button>
+                    <button type="button" class="js-filter-category-btn filter-trigger flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-white text-slate-500 border-2 border-slate-200 hover:border-blue-300 group" data-target="menu-filter-category">
+                        <i data-lucide="layout-grid" class="w-4 h-4 group-[.active]:text-blue-600"></i>
+                        <span class="js-filter-category-label filter-label">Pilih Kategori</span>
+                        <i data-lucide="x" class="js-filter-category-reset hidden w-3 h-3 ml-1 text-blue-600"></i>
+                    </button>
+                </div>
+                @endif
+
+                <!-- Row 3: Type Filters -->
+                <div class="bg-slate-50 rounded-2xl p-3 grid grid-cols-4 gap-2">
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                        Semua
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                        <i data-lucide="receipt" class="w-3.5 h-3.5 inline mr-1"></i>Rembush
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                        <i data-lucide="shopping-bag" class="w-3.5 h-3.5 inline mr-1"></i>Pengajuan
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                        <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Gudang
+                    </a>
+                </div>
+            </div>
+
+            <!-- MOBILE: 5 Rows Layout (screens below md) -->
+            <div class="flex md:hidden flex-col gap-3">
+                <!-- Row 1: Search -->
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                    <input type="text" id="instant-search-mobile" value="{{ request('search') }}" placeholder="Cari invoice, nama..." autocomplete="off" class="search-input-sync w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 transition-all placeholder:text-gray-400">
+                    <button type="button" class="search-clear absolute right-3 top-1/2 -translate-y-1/2 hidden p-1 rounded-lg hover:bg-gray-200 transition-colors">
+                        <i data-lucide="x" class="w-3 h-3 text-gray-400"></i>
                     </button>
                 </div>
 
                 @if(auth()->user()->role !== 'teknisi')
-                    {{-- Date Range --}}
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all">
-                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-400"></i>
-                            <input type="date" id="filter-start-date" value="{{ request('start_date') }}" title="Mulai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
-                            <span class="text-gray-300 text-[10px]">—</span>
-                            <input type="date" id="filter-end-date" value="{{ request('end_date') }}" title="Selesai" class="text-[11px] font-bold text-gray-600 bg-transparent outline-none cursor-pointer">
+                <!-- Row 2: Date -->
+                <button type="button" class="js-filter-date-btn filter-trigger w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-2xl text-xs font-bold text-gray-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all group" data-target="menu-filter-date">
+                    <i data-lucide="calendar" class="w-4 h-4 text-gray-400 group-[.active]:text-blue-600"></i>
+                    <span class="js-filter-date-label filter-label">Pilih Tanggal</span>
+                    <i data-lucide="x" class="js-filter-date-reset hidden w-4 h-4 ml-1 text-blue-600"></i>
+                </button>
+
+                <!-- Row 3: Branch -->
+                <button type="button" class="js-filter-branch-btn filter-trigger w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-white text-slate-500 border-2 border-slate-200 hover:border-blue-300 group" data-target="menu-filter-branch">
+                    <i data-lucide="git-branch" class="w-4 h-4 group-[.active]:text-blue-600"></i>
+                    <span class="js-filter-branch-label filter-label">Pilih Cabang</span>
+                    <i data-lucide="x" class="js-filter-branch-reset hidden w-4 h-4 ml-1 text-blue-600"></i>
+                </button>
+
+                <!-- Row 4: Category -->
+                <button type="button" class="js-filter-category-btn filter-trigger w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-white text-slate-500 border-2 border-slate-200 hover:border-blue-300 group" data-target="menu-filter-category">
+                    <i data-lucide="layout-grid" class="w-4 h-4 group-[.active]:text-blue-600"></i>
+                    <span class="js-filter-category-label filter-label">Pilih Kategori</span>
+                    <i data-lucide="x" class="js-filter-category-reset hidden w-4 h-4 ml-1 text-blue-600"></i>
+                </button>
+                @endif
+
+                <!-- Row 5: Type Filters -->
+                <div class="bg-slate-50 rounded-2xl p-2.5 grid grid-cols-2 gap-2">
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                        Semua
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                        <i data-lucide="receipt" class="w-3.5 h-3.5 inline mr-1"></i>Rembush
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                        <i data-lucide="shopping-bag" class="w-3.5 h-3.5 inline mr-1"></i>Pengajuan
+                    </a>
+                    <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}" class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                        <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Gudang
+                    </a>
+                </div>
+            </div>
+
+            @if(auth()->user()->role !== 'teknisi')
+            <!-- SINGLETON POPOVERS: Shared by all layouts (Fixed Positioning) -->
+            <div id="popover-container">
+                <!-- Branch Popover -->
+                <div id="menu-filter-branch" class="filter-popover hidden fixed w-full md:w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div class="relative mb-3">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
+                        <input type="text" placeholder="Cari cabang..." class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
+                    </div>
+                    <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="branch-list">
+                        @foreach($branches as $b)
+                        <label class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
+                            <div class="flex items-center justify-center relative w-4 h-4">
+                                <input type="checkbox" name="branch_id[]" value="{{ $b->id }}" class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-10">
+                                <div class="w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all flex items-center justify-center">
+                                    <i data-lucide="check" class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $b->name }}</span>
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Category Popover -->
+                <div id="menu-filter-category" class="filter-popover hidden fixed w-full md:w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div class="relative mb-3">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
+                        <input type="text" placeholder="Cari kategori..." class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
+                    </div>
+                    <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="category-list">
+                        @foreach($categories as $key => $val)
+                        <label class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
+                            <div class="flex items-center justify-center relative w-4 h-4">
+                                <input type="checkbox" name="category[]" value="{{ $key }}" class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-10">
+                                <div class="w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all flex items-center justify-center">
+                                    <i data-lucide="check" class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $val }}</span>
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Date Popover -->
+                <div id="menu-filter-date" class="filter-popover hidden fixed bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 min-w-min w-full md:w-auto">
+                    <!-- Presets -->
+                    <div class="w-full md:w-40 bg-slate-50 p-2.5 flex flex-col gap-1 shrink-0">
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="today">Hari Ini</button>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="yesterday">Kemarin</button>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="last7">7 Hari Terakhir</button>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="last30">30 Hari Terakhir</button>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="thisMonth">Bulan Ini</button>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all" data-range="lastMonth">Bulan Lalu</button>
+                        <div class="h-px bg-slate-200/60 my-1 mx-2"></div>
+                        <button type="button" class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-bold text-left bg-blue-50 text-blue-700 ring-1 ring-blue-200" data-range="custom">Custom Tanggal</button>
+                    </div>
+                    <!-- Custom Range -->
+                    <div class="p-4 flex-1 flex flex-col gap-4 bg-white md:w-[360px]">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="group">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">DARI TANGGAL</label>
+                                <input type="date" id="filter-start-date" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                            </div>
+                            <div class="group">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">SAMPAI TANGGAL</label>
+                                <input type="date" id="filter-end-date" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-cancel-date" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-all active:scale-95">Batal</button>
+                            <button type="button" id="btn-apply-date" class="flex-[2] py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]" disabled>Terapkan Filter</button>
                         </div>
                     </div>
-
-                    {{-- Branch Filter --}}
-                    <div class="flex items-center gap-2">
-                        <select id="filter-branch-id" title="Cabang" class="text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all cursor-pointer">
-                            <option value="all">Semua Cabang</option>
-                            @foreach($branches as $b)
-                                <option value="{{ $b->id }}" {{ request('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Category Filter --}}
-                    <div class="flex items-center gap-2">
-                        <select id="filter-category" title="Kategori" class="text-[11px] font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all cursor-pointer">
-                            <option value="all">Semua Kategori</option>
-                            @foreach($categories as $key => $val)
-                                <option value="{{ $key }}" {{ request('category') == $key ? 'selected' : '' }}>{{ $val }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
+                </div>
             </div>
-
-            {{-- Type Filter --}}
-            <div class="flex items-center gap-2 sm:gap-3 w-full lg:w-auto overflow-x-auto scrollbar-hide py-1">
-                @php $currentType = request('type', 'all'); @endphp
-                <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
-                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
-                    {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
-                    Semua
-                </a>
-                <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
-                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
-                    {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
-                    <i data-lucide="receipt" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Rembush
-                </a>
-                <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
-                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
-                    {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
-                    <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Pengajuan
-                </a>
-                <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
-                    class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold transition-all whitespace-nowrap border
-                    {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
-                    <i data-lucide="package" class="w-3 h-3 inline mr-0.5 sm:mr-1"></i>Gudang
-                </a>
-            </div>
+            @endif
         </div>
 
-        {{-- Active Filters Indicator --}}
-        <div id="active-filters-bar" class="px-3 sm:px-5 py-2 border-b border-gray-50 bg-gray-50/30 flex flex-wrap items-center gap-2 hidden">
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Filter Aktif:</span>
-            <div id="active-filters-chips" class="flex flex-wrap items-center gap-2"></div>
-            <button type="button" id="clear-all-filters" class="text-[10px] font-bold text-red-500 hover:text-red-600 ml-auto transition-colors">Hapus Semua</button>
-        </div>
 
         {{-- Status Tabs --}}
         <div id="search-results-container">
@@ -112,7 +317,7 @@
                         'pending'   => ['label' => 'Pending',  'count' => $stats['pending']],
                         'auto-reject'     => ['label' => 'Auto Reject', 'count' => $stats['auto_reject'] ?? 0],
                         'flagged'         => ['label' => 'Flagged',     'count' => $stats['flagged'] ?? 0],
-                        'waiting_payment' => ['label' => 'Waiting Payment', 'count' => $stats['waiting_payment'] ?? 0],
+                        'waiting_payment' => ['label' => 'Menunggu Pembayaran', 'count' => $stats['waiting_payment'] ?? 0],
                         'approved'  => ['label' => 'Menunggu Approve Owner', 'count' => $stats['approved'] ?? 0],
                         'completed' => ['label' => 'Paid',     'count' => $stats['completed']],
                         'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected']],
@@ -134,16 +339,16 @@
         </div>
 
         {{-- Table View --}}
-        <div class="hidden lg:block overflow-x-auto">
+        <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-semibold bg-gray-50/50">
-                        <th class="px-5 py-4 text-center w-10">No.</th>
+                    <tr class="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-semibold bg-gray-50/50 whitespace-nowrap">
+                        <th class="px-5 py-4 text-center w-10 hidden xl:table-cell">No.</th>
                         <th class="px-5 py-4">Nama Pengaju</th>
                         <th class="px-5 py-4">Jenis</th>
-                        <th class="px-5 py-4">Kategori</th>
+                        <th class="px-5 py-4 hidden lg:table-cell">Kategori</th>
                         <th class="px-5 py-4">Status</th>
-                        <th class="px-5 py-4">Tanggal</th>
+                        <th class="px-5 py-4 hidden xl:table-cell">Tanggal</th>
                         <th class="px-5 py-4">Nominal</th>
                         <th class="px-5 py-4 text-center">Tindakan</th>
                     </tr>
@@ -165,12 +370,12 @@
         </div>
 
         {{-- Mobile/Tablet Card View --}}
-        <div id="mobile-container" class="lg:hidden divide-y divide-gray-50 transition-all duration-300">
+        <div id="mobile-container" class="md:hidden divide-y divide-gray-50 transition-all duration-300">
             {{-- Will be populated by JavaScript --}}
         </div>
 
         {{-- No results message (mobile) --}}
-        <div id="mobile-no-results" class="hidden lg:hidden p-12 text-center">
+        <div id="mobile-no-results" class="hidden md:hidden p-12 text-center">
             <div class="flex flex-col items-center justify-center opacity-40">
                 <i data-lucide="search" class="w-12 h-12 text-gray-300 mb-3"></i>
                 <h3 class="text-sm font-bold text-gray-900">Tidak Ditemukan</h3>
@@ -966,9 +1171,32 @@
     // ✅ UNIFIED SEARCH ENGINE - Server-Side dengan Debouncing
     //   KODE LOKAL SAYA
     // ═══════════════════════════════════════════════════════════════
+    // SEARCH INPUT SYNC & UTILS (Global)
+    // ═══════════════════════════════════════════════════════════════
+    window.getActiveSearchValue = function() {
+        const desktop = document.getElementById('instant-search');
+        const tablet = document.getElementById('instant-search-tablet');
+        const mobile = document.getElementById('instant-search-mobile');
+        return (desktop?.value || tablet?.value || mobile?.value || '').trim();
+    };
+
+    window.syncSearchInputs = function(value) {
+        document.querySelectorAll('.search-input-sync').forEach(input => {
+            if (input.value !== value) input.value = value;
+            
+            // Toggle clear buttons in all parents
+            const parent = input.parentElement;
+            const clearBtn = parent.querySelector('.search-clear') || document.getElementById('search-clear');
+            if (clearBtn) {
+                if (value.length > 0) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+        });
+    };
+
+    // ═══════════════════════════════════════════════════════════════
     // HYBRID SEARCH ENGINE - Auto-Adaptive
     // Client-side untuk < 5k records | Server-side untuk ≥ 5k records
-    // ✅ PRESERVES ALL PRICE INDEX FEATURES
     // ═══════════════════════════════════════════════════════════════
 
     const SearchEngine = (function() 
@@ -1063,7 +1291,7 @@
             allTransactions = await response.json();
             
             // Re-apply search if active
-            const currentQuery = document.getElementById('instant-search').value.trim();
+            const currentQuery = getActiveSearchValue();
             if (currentQuery) {
                 filterClientSide(currentQuery);
             } else {
@@ -1097,10 +1325,13 @@ async function loadServerSideData() {
             
             if(typeof NProgress !== 'undefined') NProgress.start();
 
+            // Synchronize search inputs value
+            const searchVal = getActiveSearchValue();
+
             const url = buildUrl('/transactions/search', {
                 page: currentPage,
                 per_page: SERVER_ITEMS_PER_PAGE,
-                search: document.getElementById('instant-search').value.trim()
+                search: searchVal
             });
             
             try {
@@ -1139,32 +1370,41 @@ async function loadServerSideData() {
         // BUILD URL with filters
         // ═══════════════════════════════════════════════════════════════
         function buildUrl(endpoint, extraParams = {}) {
-            const url = new URL(window.location.href);
-            const params = new URLSearchParams(url.search);
+            const params = new URLSearchParams();
             
-            // Add date range
+            // Search Query - Get from any available input
+            const searchVal = getActiveSearchValue();
+            if (searchVal) params.set('search', searchVal);
+
+            // Inherit top-level filters from URL (Type & Status)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('type')) params.set('type', urlParams.get('type'));
+            if (urlParams.has('status')) params.set('status', urlParams.get('status'));
+
+            // Date Range
             const startDateEl = document.getElementById('filter-start-date');
             const endDateEl = document.getElementById('filter-end-date');
             if (startDateEl?.value) params.set('start_date', startDateEl.value);
             if (endDateEl?.value) params.set('end_date', endDateEl.value);
 
-            // Add branch and category
-            const branchIdEl = document.getElementById('filter-branch-id');
-            const categoryEl = document.getElementById('filter-category');
-            if (branchIdEl?.value && branchIdEl.value !== 'all') params.set('branch_id', branchIdEl.value);
-            if (categoryEl?.value && categoryEl.value !== 'all') params.set('category', categoryEl.value);
+            // Branch (Array)
+            const branchCheckboxes = document.querySelectorAll('input[name="branch_id[]"]:checked');
+            branchCheckboxes.forEach(cb => params.append('branch_id[]', cb.value));
+
+            // Category (Array)
+            const categoryCheckboxes = document.querySelectorAll('input[name="category[]"]:checked');
+            categoryCheckboxes.forEach(cb => params.append('category[]', cb.value));
             
-            // Add extra params
+            // Add extra params (like page)
             Object.entries(extraParams).forEach(([key, value]) => {
-                if (value !== null && value !== undefined && value !== '') {
+                if (value !== null && value !== undefined && value !== '' && key !== 'search') {
                     params.set(key, value);
                 }
             });
             
-            updateActiveFilters();
-            
             return endpoint + '?' + params.toString();
         }
+
 
         // ═══════════════════════════════════════════════════════════════
         // SEARCH - Adaptive based on mode
@@ -1245,7 +1485,7 @@ async function loadServerSideData() {
         // STATS UPDATE - Fetch from server
         // ═══════════════════════════════════════════════════════════════
         async function updateStats() {
-            const url = buildUrl('/transactions/stats');
+            const url = buildUrl('/transactions/stats', { status: 'all' });
             
             try {
                 const response = await fetch(url, {
@@ -1361,12 +1601,12 @@ async function loadServerSideData() {
             
             tbody.innerHTML = Array(6).fill(`
                 <tr class="animate-pulse bg-white border-b border-gray-50">
-                    <td class="px-4 py-4"><div class="h-4 bg-slate-200 rounded w-6 mx-auto"></div></td>
+                    <td class="px-4 py-4 hidden xl:table-cell"><div class="h-4 bg-slate-200 rounded w-6 mx-auto"></div></td>
                     <td class="px-5 py-4"><div class="flex gap-3 items-center"><div class="w-8 h-8 rounded-full bg-slate-200 shrink-0"></div><div><div class="h-4 bg-slate-200 rounded w-28 mb-1.5"></div><div class="h-3 bg-slate-100 rounded w-16"></div></div></div></td>
                     <td class="px-5 py-4"><div class="h-6 bg-slate-100 rounded-lg w-20 border border-slate-200"></div></td>
-                    <td class="px-5 py-4"><div class="h-4 bg-slate-200 rounded w-24"></div></td>
+                    <td class="px-5 py-4 hidden lg:table-cell"><div class="h-4 bg-slate-200 rounded w-24"></div></td>
                     <td class="px-5 py-4"><div class="h-6 bg-slate-100 rounded-full w-24 border border-slate-200"></div></td>
-                    <td class="px-5 py-4"><div class="h-4 bg-slate-200 rounded w-20"></div></td>
+                    <td class="px-5 py-4 hidden xl:table-cell"><div class="h-4 bg-slate-200 rounded w-20"></div></td>
                     <td class="px-5 py-4"><div class="h-5 bg-slate-200 rounded w-24"></div></td>
                     <td class="px-5 py-4"><div class="flex justify-center gap-1"><div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div><div class="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div></div></td>
                 </tr>
@@ -1400,6 +1640,9 @@ async function loadServerSideData() {
             } else {
                 noResults?.classList.add('hidden');
                 tbody.innerHTML = data.map((t, i) => generateDesktopRow(t, startIndex + i + 1)).join('');
+                
+                // ✅ Update Lucide Icons for dynamic content
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
             }
         }
 
@@ -1417,6 +1660,9 @@ async function loadServerSideData() {
             } else {
                 noResults?.classList.add('hidden');
                 container.innerHTML = data.map((t, i) => generateMobileCard(t, startIndex + i + 1)).join('');
+
+                // ✅ Update Lucide Icons for dynamic content
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
             }
         }
 
@@ -1425,11 +1671,39 @@ async function loadServerSideData() {
             if (!branches || branches.length === 0) return '';
             const icon = '<i data-lucide="git-branch" class="w-2.5 h-2.5 mr-0.5"></i>';
             const visibleTags = branches.slice(0, maxVisible).map(b =>
-                `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${icon} ${b}</span>`
+                `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${icon} ${escapeHtml(b)}</span>`
             ).join('');
+            
             if (branches.length <= maxVisible) return visibleTags;
+            
             const remaining = branches.length - maxVisible;
-            return visibleTags + `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200">+${remaining}</span>`;
+            const hiddenItems = branches.slice(maxVisible).map(b => 
+                `<div class="flex items-center gap-1.5 py-0.5">
+                    <span class="w-1 h-1 rounded-full bg-blue-400"></span>
+                    <span>${escapeHtml(b)}</span>
+                </div>`
+            ).join('');
+
+            return visibleTags + `
+                <div class="relative inline-block group/branch ml-0.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 cursor-help hover:bg-blue-100 transition-colors">
+                        +${remaining}
+                    </span>
+                    <!-- Tooltip Premium -->
+                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 opacity-0 invisible group-hover/branch:opacity-100 group-hover/branch:visible transition-all duration-200 z-[100] pointer-events-none">
+                        <div class="bg-slate-900 text-white p-2.5 rounded-xl shadow-2xl border border-white/10 backdrop-blur-md">
+                            <div class="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-white/10">
+                                <i data-lucide="git-branch" class="w-3 h-3 text-blue-400"></i>
+                                <span class="text-[10px] font-bold text-gray-400 tracking-wider">CABANG LAINNYA</span>
+                            </div>
+                            <div class="text-[11px] font-semibold text-gray-200 max-h-48 overflow-y-auto custom-scrollbar">
+                                ${hiddenItems}
+                            </div>
+                        </div>
+                        <!-- Arrow -->
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
+                    </div>
+                </div>`;
         }
 
         // Helper: Escape HTML
@@ -1484,7 +1758,7 @@ async function loadServerSideData() {
 
             return `
                 <tr class="hover:bg-blue-50/30 transition-all duration-200 group">
-                    <td class="px-5 py-4 text-center"><span class="text-xs font-bold text-slate-400">${rowNum}</span></td>
+                    <td class="px-5 py-4 text-center hidden xl:table-cell"><span class="text-xs font-bold text-slate-400">${rowNum}</span></td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
@@ -1497,7 +1771,7 @@ async function loadServerSideData() {
                             </div>
                         </div>
                     </td>
-                    <td class="px-5 py-4">
+                    <td class="px-5 py-4 whitespace-nowrap">
                         <div class="flex flex-col items-start gap-1">
                             ${t.type === 'pengajuan' 
                                 ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100"><i data-lucide="shopping-bag" class="w-3 h-3"></i> Pengajuan</span>'
@@ -1514,8 +1788,8 @@ async function loadServerSideData() {
                             }
                         </div>
                     </td>
-                    <td class="px-5 py-4 text-gray-700 font-medium text-xs">${t.category_label}</td>
-                    <td class="px-5 py-4">
+                    <td class="px-5 py-4 text-gray-700 font-medium text-xs whitespace-nowrap hidden lg:table-cell">${t.category_label}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">
                         <div class="flex items-center gap-2">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadge[t.status] || 'bg-gray-50 text-gray-700 border-gray-200'}">
                                 <i data-lucide="${statusIcon[t.status] || 'info'}" class="w-3 h-3"></i>
@@ -1525,9 +1799,9 @@ async function loadServerSideData() {
                             ${inlineActionsHtml}
                         </div>
                     </td>
-                    <td class="px-5 py-4 text-gray-500 font-medium text-xs">${t.created_at}</td>
-                    <td class="px-5 py-4 font-bold text-gray-900">Rp ${t.formatted_amount}</td>
-                    <td class="px-5 py-4">
+                    <td class="px-5 py-4 text-gray-500 font-medium text-xs whitespace-nowrap hidden xl:table-cell">${t.created_at}</td>
+                    <td class="px-5 py-4 font-bold text-gray-900 whitespace-nowrap">Rp ${t.formatted_amount}</td>
+                    <td class="px-5 py-4 whitespace-nowrap">
                         <div class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                             <button type="button" onclick="openViewModal(${t.id})" title="Lihat Detail"
                                 class="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all outline-none">
@@ -1629,17 +1903,18 @@ async function loadServerSideData() {
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mb-2 pl-10 sm:pl-11">
-                        ${t.type === 'pengajuan'
-                            ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-teal-600"><i data-lucide="shopping-bag" class="w-2 h-2"></i> Pengajuan</span>'
-                            : (t.type === 'gudang'
-                                ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-600"><i data-lucide="package" class="w-2 h-2"></i> Gudang</span>'
-                                : '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-600"><i data-lucide="receipt" class="w-2 h-2"></i> Rembush</span>'
-                            )}
-                        <span class="text-slate-300">/</span>
-                        <span class="font-medium truncate">${t.category_label}</span>
-                        <span class="text-slate-300">/</span>
-                        <span class="font-medium">${t.created_at}</span>
+                    <div class="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mb-3 pl-10 sm:pl-11">
+                        <div class="flex items-center gap-1.5 flex-wrap flex-1">
+                            ${t.type === 'pengajuan'
+                                ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-teal-600 px-1.5 py-0.5 rounded-md bg-teal-50 border border-teal-100"><i data-lucide="shopping-bag" class="w-2.5 h-2.5"></i> Pengajuan</span>'
+                                : (t.type === 'gudang'
+                                    ? '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-600 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-100"><i data-lucide="package" class="w-2.5 h-2.5"></i> Gudang</span>'
+                                    : '<span class="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-600 px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-100"><i data-lucide="receipt" class="w-2.5 h-2.5"></i> Rembush</span>'
+                                )}
+                            <span class="text-slate-300">/</span>
+                            <span class="font-bold text-slate-500">${t.category_label}</span>
+                        </div>
+                        <span class="font-medium text-slate-400 whitespace-nowrap">${t.created_at}</span>
                     </div>
 
                     <div class="flex items-center justify-between gap-2 pl-10 sm:pl-11 mb-2.5">
@@ -1652,11 +1927,15 @@ async function loadServerSideData() {
                             class="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:text-blue-600 hover:border-blue-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
                             <i data-lucide="eye" class="w-3 h-3"></i> Lihat
                         </button>
-                        ${buildEditButton(t, 'mobile')}
-                        <button type="button" onclick="confirmDeleteTransaction(${t.id}, '${t.invoice_number}')"
-                                    class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
-                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        ${canManage ? `
+                            ${buildEditButton(t, 'mobile')}
+                            ${(!isAdmin) ? `
+                                <button type="button" onclick="confirmDeleteTransaction(${t.id}, '${t.invoice_number}')"
+                                        class="flex items-center gap-1 px-2 py-1.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-red-500 hover:border-red-300 active:scale-95 transition-all text-[11px] font-semibold outline-none">
+                                        <i data-lucide="trash-2" class="w-3 h-3"></i>
                                 </button>
+                            ` : ''}
+                        ` : ''}
                     </div>
                 </div>`;
         }
@@ -1949,141 +2228,408 @@ function generateInlineActions(t) {
         if(imageViewer) imageViewer.addEventListener('click', e => { if (e.target === imageViewer) closeImageViewer(); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeImageViewer(); });
 
-        // --- Visual Indicator Helpers ---
-        function updateActiveFilters() {
-            const bar = document.getElementById('active-filters-bar');
-            const chips = document.getElementById('active-filters-chips');
-            if (!bar || !chips) return;
+        // ═══════════════════════════════════════════════════════════════
+        // UI & FILTER LOGIC - NEW PREMIUM SYSTEM
+        // ═══════════════════════════════════════════════════════════════
+        
+        // --- Popover DOM Containment Fix ---
+        // Move popovers to body to avoid CSS transform/relative-containingblocks causing double offsets
+        const popoverContainer = document.getElementById('popover-container');
+        if (popoverContainer && popoverContainer.parentNode !== document.body) {
+            document.body.appendChild(popoverContainer);
+        }
 
-            chips.innerHTML = '';
-            let activeCount = 0;
+        // --- Popover Management ---
+        const popovers = {
+            branch: { 
+                btn: document.getElementById('btn-filter-branch'), 
+                menu: document.getElementById('menu-filter-branch') 
+            },
+            category: { 
+                btn: document.getElementById('btn-filter-category'), 
+                menu: document.getElementById('menu-filter-category') 
+            },
+            date: { 
+                btn: document.getElementById('btn-filter-date'), 
+                menu: document.getElementById('menu-filter-date') 
+            }
+        };
 
-            const branchInput = document.getElementById('filter-branch-id');
-            const categoryInput = document.getElementById('filter-category');
-            const startDateInput = document.getElementById('filter-start-date');
-            const endDateInput = document.getElementById('filter-end-date');
+        function closeAllPopovers() {
+            Object.values(popovers).forEach(p => {
+                if (!p.menu) return;
+                p.menu.classList.add('hidden', 'opacity-0', 'scale-95');
+                p.menu.classList.remove('opacity-100', 'scale-100');
+                if (p.btn) p.btn.setAttribute('aria-expanded', 'false');
+            });
+        }
 
-            // Branch
-            if (branchInput && branchInput.value !== 'all') {
-                const name = branchInput.options[branchInput.selectedIndex].text;
-                chips.appendChild(createFilterChip('Cabang: ' + name, () => {
-                    branchInput.value = 'all';
-                    SearchEngine.init();
-                }));
-                branchInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
-                activeCount++;
-            } else if (branchInput) {
-                branchInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+        // --- Popover Trigger Logic ---
+        document.addEventListener('click', function(e) {
+            // 1. Ignore if clicking a reset button (Reset logic handles this)
+            if (e.target.closest('.js-filter-branch-reset, .js-filter-category-reset, .js-filter-date-reset')) {
+                return;
+            }
+            
+            const trigger = e.target.closest('.filter-trigger');
+            
+            // 2. Toggling logic if clicking a trigger
+            if (trigger) {
+                e.stopPropagation();
+                const targetId = trigger.getAttribute('data-target');
+                const targetMenu = document.getElementById(targetId);
+                
+                if (targetMenu) {
+                    const isOpen = !targetMenu.classList.contains('hidden');
+                    
+                    // Close others first
+                    document.querySelectorAll('.filter-popover').forEach(m => {
+                        if (m !== targetMenu) {
+                            m.classList.add('hidden', 'opacity-0', 'scale-95');
+                            m.classList.remove('opacity-100', 'scale-100');
+                        }
+                    });
+                    document.querySelectorAll('.filter-trigger').forEach(t => {
+                        if (t !== trigger) t.classList.remove('active');
+                    });
+                    
+                    if (isOpen) {
+                        targetMenu.classList.add('hidden', 'opacity-0', 'scale-95');
+                        targetMenu.classList.remove('opacity-100', 'scale-100');
+                        trigger.classList.remove('active');
+                    } else {
+                        targetMenu.classList.remove('hidden');
+                        trigger.classList.add('active');
+                        
+                        // Positioning
+                        const rect = trigger.getBoundingClientRect();
+                        const isMobile = window.innerWidth < 768;
+                        
+                        if (!isMobile) {
+                            targetMenu.style.top = (rect.bottom + 8) + 'px';
+                            
+                            // Get natural width to calculate boundary
+                            targetMenu.style.display = 'block'; // temp show for width
+                            const menuWidth = targetMenu.offsetWidth || 300;
+                            targetMenu.style.display = '';
+
+                            let leftPos = rect.left;
+                            if (leftPos + menuWidth > window.innerWidth) {
+                                leftPos = window.innerWidth - menuWidth - 20;
+                            }
+                            
+                            targetMenu.style.left = leftPos + 'px';
+                            targetMenu.style.right = 'auto';
+                            targetMenu.style.width = ''; // Let it use its own width classes
+                        } else {
+                            targetMenu.style.top = (rect.bottom + 8) + 'px';
+                            targetMenu.style.left = '10px';
+                            targetMenu.style.right = 'auto';
+                            targetMenu.style.width = 'calc(100vw - 20px)';
+                        }
+
+                        targetMenu.offsetHeight; // force reflow
+                        requestAnimationFrame(() => {
+                            targetMenu.classList.remove('opacity-0', 'scale-95');
+                            targetMenu.classList.add('opacity-100', 'scale-100');
+                        });
+                        
+                        const searchInput = targetMenu.querySelector('input[type="text"]');
+                        if (searchInput) setTimeout(() => searchInput.focus(), 100);
+                    }
+                }
+                return;
             }
 
-            // Category
-            if (categoryInput && categoryInput.value !== 'all') {
-                const name = categoryInput.options[categoryInput.selectedIndex].text;
-                chips.appendChild(createFilterChip('Kategori: ' + name, () => {
-                    categoryInput.value = 'all';
-                    SearchEngine.init();
-                }));
-                categoryInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
-                activeCount++;
-            } else if (categoryInput) {
-                categoryInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            // 3. Close all if clicking elsewhere (not on popover or trigger)
+            if (!e.target.closest('.filter-popover')) {
+                document.querySelectorAll('.filter-popover').forEach(m => {
+                    m.classList.add('hidden', 'opacity-0', 'scale-95');
+                    m.classList.remove('opacity-100', 'scale-100');
+                });
+                document.querySelectorAll('.filter-trigger').forEach(t => t.classList.remove('active'));
+            }
+        });
+
+        // Global listeners for search sync
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('search-input-sync')) {
+                const val = e.target.value;
+                syncSearchInputs(val);
+                SearchEngine.search(val);
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const clearBtn = e.target.closest('.search-clear') || (e.target.id === 'search-clear' ? e.target : null);
+            if (clearBtn) {
+                syncSearchInputs('');
+                SearchEngine.search('');
+            }
+        });
+
+        // REDUNDANT LISTENER REMOVED TO PREVENT POP-UP REGRESSION
+
+        // --- Multi-select Logic (Branch & Category) ---
+        function updateFilterIndicators() {
+            // Branch Indicator
+            const branchCheckboxes = document.querySelectorAll('input[name="branch_id[]"]:checked');
+            const branchBtns = document.querySelectorAll('.js-filter-branch-btn');
+            const branchLabels = document.querySelectorAll('.js-filter-branch-label');
+            const branchResets = document.querySelectorAll('.js-filter-branch-reset');
+            
+            if (branchCheckboxes.length > 0) {
+                const firstLabel = branchCheckboxes[0].closest('label').querySelector('span').textContent.trim();
+                const text = branchCheckboxes.length === 1 ? firstLabel : `${firstLabel} +${branchCheckboxes.length - 1}`;
+                
+                branchLabels.forEach(el => {
+                    el.textContent = text;
+                    el.classList.add('text-blue-600');
+                });
+                branchBtns.forEach(btn => {
+                    btn.classList.add('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                branchResets.forEach(el => el.classList.remove('hidden'));
+            } else {
+                branchLabels.forEach(el => {
+                    el.textContent = (window.innerWidth < 1024) ? 'Pilih Cabang' : 'Semua Cabang';
+                    el.classList.remove('text-blue-600');
+                });
+                branchBtns.forEach(btn => {
+                    btn.classList.remove('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                branchResets.forEach(el => el.classList.add('hidden'));
             }
 
-            // Dates
-            if (startDateInput && startDateInput.value) {
-                activeCount++;
-                startDateInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
-            } else if (startDateInput) {
-                startDateInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
-            }
-            if (endDateInput && endDateInput.value) {
-                activeCount++;
-                endDateInput.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
-            } else if (endDateInput) {
-                endDateInput.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            // Category Indicator
+            const categoryCheckboxes = document.querySelectorAll('input[name="category[]"]:checked');
+            const categoryBtns = document.querySelectorAll('.js-filter-category-btn');
+            const categoryLabels = document.querySelectorAll('.js-filter-category-label');
+            const categoryResets = document.querySelectorAll('.js-filter-category-reset');
+            
+            if (categoryCheckboxes.length > 0) {
+                const firstLabel = categoryCheckboxes[0].closest('label').querySelector('span').textContent.trim();
+                const text = categoryCheckboxes.length === 1 ? firstLabel : `${firstLabel} +${categoryCheckboxes.length - 1}`;
+                
+                categoryLabels.forEach(el => {
+                    el.textContent = text;
+                    el.classList.add('text-blue-600');
+                });
+                categoryBtns.forEach(btn => {
+                    btn.classList.add('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                categoryResets.forEach(el => el.classList.remove('hidden'));
+            } else {
+                categoryLabels.forEach(el => {
+                    el.textContent = (window.innerWidth < 1024) ? 'Pilih Kategori' : 'Semua Kategori';
+                    el.classList.remove('text-blue-600');
+                });
+                categoryBtns.forEach(btn => {
+                    btn.classList.remove('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                categoryResets.forEach(el => el.classList.add('hidden'));
             }
 
-            bar.classList.toggle('hidden', activeCount === 0);
+            // Date Indicator
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+            const dateBtns = document.querySelectorAll('.js-filter-date-btn');
+            const dateLabels = document.querySelectorAll('.js-filter-date-label');
+            const dateResets = document.querySelectorAll('.js-filter-date-reset');
+
+            if (startDate || endDate) {
+                const formatDateStr = (dateString) => {
+                    if (!dateString) return '';
+                    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+                    return new Date(dateString + 'T00:00:00Z').toLocaleDateString('id-ID', options);
+                };
+
+                const formattedStart = formatDateStr(startDate);
+                const formattedEnd = formatDateStr(endDate);
+                const text = (startDate && endDate) ? `${formattedStart} — ${formattedEnd}` : (formattedStart || formattedEnd);
+
+                dateLabels.forEach(el => {
+                    el.textContent = text;
+                    el.classList.add('text-blue-600');
+                });
+                dateBtns.forEach(btn => {
+                    btn.classList.add('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                dateResets.forEach(el => el.classList.remove('hidden'));
+            } else {
+                dateLabels.forEach(el => {
+                    el.textContent = 'Pilih Tanggal';
+                    el.classList.remove('text-blue-600');
+                });
+                dateBtns.forEach(btn => {
+                    btn.classList.remove('border-blue-200', 'bg-blue-50/50', 'active');
+                });
+                dateResets.forEach(el => el.classList.add('hidden'));
+            }
+            
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function createFilterChip(label, onClear) {
-            const chip = document.createElement('div');
-            chip.className = 'flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-200 rounded-lg shadow-sm text-[10px] font-bold text-gray-600';
-            chip.innerHTML = `
-                <span>${label}</span>
-                <button type="button" class="hover:text-red-500 transition-colors">
-                    <i data-lucide="x" class="w-2.5 h-2.5"></i>
-                </button>
-            `;
-            chip.querySelector('button').onclick = onClear;
-            return chip;
-        }
+        // Export to global for other scripts
+        window.updateFilterIndicators = updateFilterIndicators;
 
-        // Attach updateActiveFilters to window so SearchEngine can call it
-        window.updateActiveFilters = updateActiveFilters;
-
-        // ═══════════════════════════════════════════════════════════════
-        // EVENT LISTENERS - Search & Filters
-        // ═══════════════════════════════════════════════════════════════
-
-        // Search input with debounce
-        const searchInput = document.getElementById('instant-search');
-        const searchClearBtn = document.getElementById('search-clear');
-
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                const val = this.value.trim();
-                if (searchClearBtn) searchClearBtn.classList.toggle('hidden', val === '');
-                SearchEngine.search(val);
+        // Event listeners for checkboxes
+        document.querySelectorAll('input[name="branch_id[]"], input[name="category[]"]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                updateFilterIndicators();
+                SearchEngine.init();
             });
+        });
 
-            // Allow clearing with keyboard (Escape)
-            searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    this.value = '';
-                    if (searchClearBtn) searchClearBtn.classList.add('hidden');
-                    SearchEngine.search('');
-                    this.blur();
+        // Search within popovers
+        document.querySelectorAll('.popover-search').forEach(search => {
+            search.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                const container = this.closest('.p-3').querySelector('.custom-scrollbar');
+                if (container) {
+                    container.querySelectorAll('label').forEach(label => {
+                        const text = label.querySelector('span').textContent.toLowerCase();
+                        label.classList.toggle('hidden', !text.includes(query));
+                    });
                 }
             });
-        }
+        });
 
-        if (searchClearBtn) {
-            searchClearBtn.addEventListener('click', function() {
-                if (searchInput) searchInput.value = '';
-                this.classList.add('hidden');
-                SearchEngine.search('');
-                if (searchInput) searchInput.focus();
+        // Quick Reset Buttons with Immediate Propagation Control
+        document.addEventListener('click', function(e) {
+            // Branch Reset
+            const branchReset = e.target.closest('.js-filter-branch-reset');
+            if (branchReset) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelectorAll('input[name="branch_id[]"]').forEach(cb => cb.checked = false);
+                updateFilterIndicators();
+                SearchEngine.init();
+                return;
+            }
+
+            // Category Reset
+            const categoryReset = e.target.closest('.js-filter-category-reset');
+            if (categoryReset) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.querySelectorAll('input[name="category[]"]').forEach(cb => cb.checked = false);
+                updateFilterIndicators();
+                SearchEngine.init();
+                return;
+            }
+
+            // Date Reset
+            const dateReset = e.target.closest('.js-filter-date-reset');
+            if (dateReset) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                document.getElementById('filter-start-date').value = '';
+                document.getElementById('filter-end-date').value = '';
+                updateFilterIndicators();
+                SearchEngine.init();
+                return;
+            }
+        }, true); // Use capture phase for reset to beat the trigger logic
+
+        // --- Date Range Picker Logic ---
+        window.setDateRange = function(range) {
+            const start = document.getElementById('filter-start-date');
+            const end = document.getElementById('filter-end-date');
+            const today = new Date();
+            let startDate, endDate = today;
+
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            switch(range) {
+                case 'today':
+                    startDate = today;
+                    break;
+                case 'yesterday':
+                    startDate = new Date();
+                    startDate.setDate(today.getDate() - 1);
+                    endDate = new Date(startDate);
+                    break;
+                case 'last7':
+                    startDate = new Date();
+                    startDate.setDate(today.getDate() - 6);
+                    break;
+                case 'last30':
+                    startDate = new Date();
+                    startDate.setDate(today.getDate() - 29);
+                    break;
+                case 'thisMonth':
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    break;
+            }
+
+            start.value = formatDate(startDate);
+            end.value = formatDate(endDate);
+            
+            // Highlight active preset
+            document.querySelectorAll('.date-preset-btn').forEach(p => {
+                const isActive = p.dataset.range === range;
+                p.classList.toggle('bg-white', isActive);
+                p.classList.toggle('text-blue-600', isActive);
+                p.classList.toggle('ring-1', isActive);
+                p.classList.toggle('ring-blue-100', isActive);
             });
+            updateApplyButtonState();
         }
 
-        // Branch, Category, Date filters
-        const filterBranch = document.getElementById('filter-branch-id');
-        const filterCategory = document.getElementById('filter-category');
         const filterStartDate = document.getElementById('filter-start-date');
         const filterEndDate = document.getElementById('filter-end-date');
+        const btnApplyDate = document.getElementById('btn-apply-date');
+        
+        function updateApplyButtonState() {
+            if (!filterStartDate || !filterEndDate || !btnApplyDate) return;
+            const isFilled = filterStartDate.value && filterEndDate.value;
+            btnApplyDate.disabled = !isFilled;
+            if (isFilled) {
+                btnApplyDate.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnApplyDate.classList.add('hover:bg-blue-700', 'shadow-lg');
+            } else {
+                btnApplyDate.classList.add('opacity-50', 'cursor-not-allowed');
+                btnApplyDate.classList.remove('hover:bg-blue-700', 'shadow-lg');
+            }
+        }
 
-        if (filterBranch) filterBranch.addEventListener('change', () => SearchEngine.init());
-        if (filterCategory) filterCategory.addEventListener('change', () => SearchEngine.init());
-        if (filterStartDate) filterStartDate.addEventListener('change', () => SearchEngine.init());
-        if (filterEndDate) filterEndDate.addEventListener('change', () => SearchEngine.init());
+        if (filterStartDate) filterStartDate.addEventListener('input', updateApplyButtonState);
+        if (filterEndDate) filterEndDate.addEventListener('input', updateApplyButtonState);
+        updateApplyButtonState();
 
-        // Clear All Filters button
-        const clearAllBtn = document.getElementById('clear-all-filters');
-        if (clearAllBtn) {
-            clearAllBtn.addEventListener('click', function() {
-                if (filterBranch) filterBranch.value = 'all';
-                if (filterCategory) filterCategory.value = 'all';
-                if (filterStartDate) filterStartDate.value = '';
-                if (filterEndDate) filterEndDate.value = '';
-                if (searchInput) { searchInput.value = ''; searchClearBtn?.classList.add('hidden'); }
-                SearchEngine.init();
+        document.querySelectorAll('.date-preset-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                setDateRange(this.dataset.range);
+            });
+        });
+
+        document.getElementById('btn-cancel-date')?.addEventListener('click', () => {
+            // Close logic handled by global click listener
+        });
+
+        document.getElementById('btn-apply-date')?.addEventListener('click', () => {
+            updateFilterIndicators();
+            // Close logic handled by global click listener
+            SearchEngine.init();
+        });
+
+        // --- Search input with debounce ---
+        const searchInput = document.getElementById('instant-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                SearchEngine.search(this.value.trim());
             });
         }
 
         // Initialize clear button visibility on load
         if (searchInput && searchInput.value.trim() !== '') {
+            const searchClearBtn = document.getElementById('search-clear');
             searchClearBtn?.classList.remove('hidden');
         }
 

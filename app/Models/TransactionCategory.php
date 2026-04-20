@@ -52,16 +52,29 @@ class TransactionCategory extends Model
         // Default type to rembush if null to avoid breakage
         $type = $type ?? self::TYPE_REMBUSH;
 
-        // 🛡️ RESILIENT CACHING: Prevent Error 500 if Redis/Cache driver is broken
+        // ⚡ Level-1: PHP static in-memory cache (survives for the entire request lifetime).
+        // This ensures we NEVER query the DB more than once per unique (category, type) pair,
+        // even when the Redis/Cache driver is unavailable.
+        static $memoryCache = [];
+        $cacheKey = "{$category}:{$type}";
+        if (isset($memoryCache[$cacheKey])) {
+            return $memoryCache[$cacheKey];
+        }
+
+        // 🛡️ Level-2: Redis/Cache driver (cross-request cache).
         try {
-            return \Illuminate\Support\Facades\Cache::remember("transaction_category_label:{$category}:{$type}", 3600, function() use ($category, $type) {
+            $label = \Illuminate\Support\Facades\Cache::remember("transaction_category_label:{$cacheKey}", 3600, function() use ($category, $type) {
                 return self::fetchLabelFromDb($category, $type);
             });
         } catch (\Throwable $e) {
-            // Log for debugging if needed, but DO NOT crash
-            // \Illuminate\Support\Facades\Log::warning("[Cache] Failed to retrieve category label: " . $e->getMessage());
-            return self::fetchLabelFromDb($category, $type);
+            // Cache is down — fall back to DB directly.
+            $label = self::fetchLabelFromDb($category, $type);
         }
+
+        // Store result in memory cache for subsequent calls in the same request.
+        $memoryCache[$cacheKey] = $label;
+
+        return $label;
     }
 
     /**

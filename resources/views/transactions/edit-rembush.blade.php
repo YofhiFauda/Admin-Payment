@@ -677,14 +677,27 @@
         // ─────────────────────────────────────────────
         function validateAndToggleSubmit() {
             let isValid = true;
+            const totalAllocated = selectedBranches.reduce((s, b) => s + (parseFloat(b.value) || 0), 0);
 
-            if (selectedBranches.length > 0 && currentMethod === 'percent') {
-                const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
-                if (Math.abs(totalPct - 100) > 0.5) {
+            if (selectedBranches.length > 0) {
+                // 1. Check total nominal balance (Anti-manipulation)
+                if (totalAmount > 0 && Math.abs(totalAllocated - totalAmount) > 2) {
                     isValid = false;
                     if (percentWarning) {
-                        percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
+                        percentWarning.textContent = `⚠ Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`;
                         percentWarning.classList.remove('hidden');
+                    }
+                } else if (currentMethod === 'percent') {
+                    // 2. Check percent if in percent mode
+                    const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
+                    if (Math.abs(totalPct - 100) > 0.5) {
+                        isValid = false;
+                        if (percentWarning) {
+                            percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
+                            percentWarning.classList.remove('hidden');
+                        }
+                    } else {
+                        if (percentWarning) percentWarning.classList.add('hidden');
                     }
                 } else {
                     if (percentWarning) percentWarning.classList.add('hidden');

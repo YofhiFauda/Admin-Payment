@@ -282,42 +282,59 @@
                     </div>
                 </div>
 
-                {{-- 4. PEMBAGIAN CABANG --}}
-                <div class="mb-12">
-                    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Pembagian Cabang</label>
-                    
-                    {{-- Branch Pills --}}
-                    <div class="flex flex-wrap gap-2 mb-6" id="branch-pills-container">
+                {{-- ══════════════════════════════════ --}}
+                {{--        4. DISTRIBUSI CABANG        --}}
+                {{-- ══════════════════════════════════ --}}
+                <div class="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 mb-8 md:mb-10 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Pembagian Cabang</label>
+                            <p class="text-[10px] md:text-xs text-slate-400">Pilih cabang yang akan menanggung biaya ini</p>
+                        </div>
+                        
+                        {{-- Metode Distribusi (Tampilan Kode 1, Logic attributes Kode 2) --}}
+                        <div class="flex bg-slate-100 rounded-xl p-1 text-[10px] md:text-xs font-bold self-start md:self-center">
+                            <button type="button" data-mode="equal" class="alloc-mode-btn px-4 py-2 rounded-lg bg-white shadow-sm text-slate-700 transition-all">Bagi Rata</button>
+                            <button type="button" data-mode="percent" class="alloc-mode-btn px-4 py-2 rounded-lg text-slate-500 transition-all hover:text-slate-700">Persentase</button>
+                            <button type="button" data-mode="manual" class="alloc-mode-btn px-4 py-2 rounded-lg text-slate-500 transition-all hover:text-slate-700">Manual</button>
+                        </div>
+                    </div>
+
+                    {{-- Branch Pills (Logic attributes Kode 2) --}}
+                    <div class="flex flex-wrap gap-2 md:gap-3 mb-8" id="branch-pills-container">
                         @foreach($branches as $branch)
-                            <button type="button" data-branch-id="{{ $branch->id }}" data-branch-name="{{ $branch->name }}" 
-                                class="branch-pill px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all border border-slate-200 text-slate-500 hover:bg-slate-50">
+                            <button type="button"
+                                data-branch-id="{{ $branch->id }}"
+                                data-branch-name="{{ $branch->name }}"
+                                class="branch-pill px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer">
                                 {{ $branch->name }}
                             </button>
                         @endforeach
                     </div>
 
-                    <div class="border border-slate-100 rounded-2xl p-4 md:p-6" id="allocation-container" style="display: none;">
-                        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
-                            <span class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Metode Distribusi</span>
-                            
-                            {{-- Toggles --}}
-                            <div class="flex bg-slate-100 p-1 rounded-lg w-fit">
-                                <button type="button" data-mode="equal" class="alloc-mode-btn bg-white shadow-sm text-slate-800 px-3 md:px-4 py-1.5 rounded text-[10px] font-bold transition-colors">Bagi Rata</button>
-                                <button type="button" data-mode="percent" class="alloc-mode-btn text-slate-400 px-3 md:px-4 py-1.5 rounded text-[10px] font-bold transition-colors hover:text-slate-600">Persentase</button>
-                                <button type="button" data-mode="manual" class="alloc-mode-btn text-slate-400 px-3 md:px-4 py-1.5 rounded text-[10px] font-bold transition-colors hover:text-slate-600">Manual</button>
-                            </div>
-                        </div>
-
+                    {{-- Allocation Container & Distribution List (Logic ID Kode 2, Styling Kode 1) --}}
+                    <div id="allocation-container" style="display: none;">
+                        
                         {{-- Active Branches Allocation Inputs/Display --}}
-                        <div class="space-y-3" id="active-branches-list">
+                        <div id="active-branches-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{-- Dynamic Content via JS --}}
                         </div>
-                            
+                        
                         {{-- Hidden inputs temp container --}}
                         <div id="branch-hidden-inputs"></div>
 
+                        {{-- Warning & Error Handling --}}
+                        <div id="percent-warning" class="text-red-500 text-xs mt-4 hidden font-bold flex items-center gap-1.5">
+                            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                            ⚠ Total persen harus 100%
+                        </div>
+                        <div id="amount-warning" class="text-orange-500 text-xs mt-2 hidden font-bold flex items-center gap-1.5">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                            ⚠ Total alokasi belum sesuai
+                        </div>
+
                         @error('branches')
                             <p class="mt-2 text-red-500 font-bold text-[10px] md:text-xs">{{ $message }}</p>
-                            <p id="percent-warning" class="mt-2 text-red-500 font-bold text-[10px] md:text-xs hidden"></p>
                         @enderror
                     </div>
                 </div>
@@ -336,7 +353,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8 md:mb-10 relative z-10">
                         {{-- Left Side: Total --}}
                         <div>
-                            <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Total Pengajuan</span>
+                            <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Total Reimbursement</span>
                             <div class="text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 md:mb-6 tracking-tight" id="final-total">Rp 0</div>
                             <div class="flex flex-wrap gap-2">
                                 <span class="bg-white/10 text-slate-300 px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider" id="summary-mode-badge">Metode: Bagi Rata</span>
@@ -861,12 +878,12 @@
 
                 if (idx > -1) {
                     selectedBranches.splice(idx, 1);
-                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'hover:text-emerald-500');
                     this.classList.add('border-slate-200', 'text-slate-500');
                 } else {
                     selectedBranches.push({ id, name, value: 0, percent: 0 });
                     this.classList.remove('border-slate-200', 'text-slate-500');
-                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'hover:text-emerald-500');
                 }
 
                 allocationContainer.style.display = selectedBranches.length > 0 ? 'block' : 'none';
@@ -1020,23 +1037,39 @@
 
         function validateAndToggleSubmit() {
             let isValid = true;
+            const totalAllocated = selectedBranches.reduce((s, b) => s + (parseFloat(b.value) || 0), 0);
+            const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
+
+            if (percentWarning) percentWarning.classList.add('hidden');
+            const amountWarning = document.getElementById('amount-warning');
+            if (amountWarning) amountWarning.classList.add('hidden');
 
             if (selectedBranches.length === 0) {
+                // No branches — form still valid (cabang optional for rembush)
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-slate-700', 'text-slate-500');
+                submitBtn.classList.add('bg-emerald-500');
+                return;
+            }
+
+            // 1. VALIDASI PERSENTASE (Wajib 100% meskipun nominal Rp 0)
+            if (Math.abs(totalPct - 100) > 0.5) {
                 isValid = false;
-                if (percentWarning) percentWarning.classList.add('hidden');
-            } else if (currentMethod === 'percent') {
-                const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
-                if (Math.abs(totalPct - 100) > 0.5) {
-                    isValid = false;
-                    if (percentWarning) {
-                        percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
-                        percentWarning.classList.remove('hidden');
-                    }
-                } else {
-                    if (percentWarning) percentWarning.classList.add('hidden');
+                if (percentWarning) {
+                    percentWarning.textContent = `⚠ Total alokasi harus tepat 100% (saat ini ${totalPct.toFixed(1)}%)`;
+                    percentWarning.classList.remove('hidden');
                 }
-            } else {
-                if (percentWarning) percentWarning.classList.add('hidden');
+            }
+
+            // 2. VALIDASI NOMINAL (Hanya jika nominal sudah ada/diisi)
+            if (isValid && totalAmount > 0) {
+                if (Math.abs(totalAllocated - totalAmount) > 500) { // Toleransi Rp 500
+                    isValid = false;
+                    if (amountWarning) {
+                        amountWarning.textContent = `⚠ Total alokasi ${formatRupiah(totalAllocated)} belum sesuai dengan total transaksi ${formatRupiah(totalAmount)}`;
+                        amountWarning.classList.remove('hidden');
+                    }
+                }
             }
 
             submitBtn.disabled = !isValid;

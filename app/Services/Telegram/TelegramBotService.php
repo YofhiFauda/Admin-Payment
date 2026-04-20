@@ -614,6 +614,35 @@ HTML;
         $this->sendMessage($teknisi->telegram_chat_id, $message);
     }
 
+    /**
+     * Notifikasi pengajuan menunggu otorisasi owner (khusus >= 1jt)
+     */
+    public function notifyWaitingOwnerApproval(Transaction $transaction): void
+    {
+        $teknisi = $transaction->submitter;
+        
+        if (!$teknisi || !$teknisi->telegram_chat_id) {
+            return;
+        }
+
+        $invoiceNumber = $transaction->invoice_number;
+        $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+
+        $message = <<<HTML
+⏳ <b>[STATUS TRANSAKSI: MENUNGGU OTORISASI OWNER]</b>
+
+Admin/Atasan telah menyetujui pengajuan Anda. Karena nominal transaksi Rp 1.000.000 atau lebih, saat ini sistem sedang menunggu verifikasi akhir dari Owner.
+
+<b>Keterangan Transaksi:</b>
+▪️ No. Invoice   : <code>{$invoiceNumber}</code>
+▪️ Nominal       : {$nominal}
+
+Pengajuan Anda akan otomatis diproses ke tahap pembayaran setelah mendapatkan persetujuan dari Owner.
+HTML;
+
+        $this->sendMessage($teknisi->telegram_chat_id, $message);
+    }
+
     // ════════════════════════════════════════════════════════
     //  BROADCAST METHODS
     // ════════════════════════════════════════════════════════

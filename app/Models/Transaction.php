@@ -265,18 +265,20 @@ class Transaction extends Model
     public function getStatusLabelAttribute(): string
     {
         if ($this->status === 'waiting_payment') {
-            // 1. Check if this specific transaction has pending branch debts
-            // OR if it has payment proof but is still in waiting_payment (implies pending debts)
-            $hasOwnPendingDebts = $this->relationLoaded('branchDebts') 
-                ? $this->branchDebts->contains('status', 'pending')
-                : $this->branchDebts()->where('status', 'pending')->exists();
+            // ✅ OPTIMIZATION: Check the pre-fetched withExists attribute first (zero extra queries).
+            $hasPendingDebt = array_key_exists('has_branch_with_debt', $this->attributes)
+                ? (bool) $this->attributes['has_branch_with_debt']
+                : (
+                    $this->relationLoaded('branchDebts')
+                        ? $this->branchDebts->contains('status', 'pending')
+                        : $this->branchDebts()->where('status', 'pending')->exists()
+                );
 
-            if ($hasOwnPendingDebts || $this->invoice_file_path || $this->bukti_transfer || $this->foto_penyerahan) {
+            if ($hasPendingDebt || $this->invoice_file_path || $this->bukti_transfer || $this->foto_penyerahan) {
                 return 'Menunggu Pelunasan';
             }
 
-            // 2. NEW: Check if any of the branches involved in this transaction have ANY pending debts (from other transactions)
-            // This enforces debt clearance before allowing new payments.
+            // Check if any of the branches involved have ANY pending debts (from other transactions)
             if ($this->hasAnyPendingBranchDebt()) {
                 return 'Menunggu Pelunasan';
             }
@@ -313,17 +315,23 @@ class Transaction extends Model
      */
     public function hasAnyPendingBranchDebt(): bool
     {
-        // Use eager-loaded attribute if available (from withExists)
-        if (isset($this->has_branch_with_debt_exists)) {
-            return (bool) $this->has_branch_with_debt_exists;
+        // ✅ FIXED: withExists() sets attribute as 'has_branch_with_debt' (not 'has_branch_with_debt_exists').
+        // Use it as the primary fast-path check to avoid any extra queries.
+        if (array_key_exists('has_branch_with_debt', $this->attributes)) {
+            return (bool) $this->attributes['has_branch_with_debt'];
         }
 
         // Use preloaded data if available to avoid N+1
         if ($this->relationLoaded('branches')) {
             foreach ($this->branches as $branch) {
-                // Check if the branch has pending debts as debtor.
-                if ($branch->debtsAsDebtor()->where('status', 'pending')->exists()) {
-                    return true;
+                if ($branch->relationLoaded('debtsAsDebtor')) {
+                    if ($branch->debtsAsDebtor->where('status', 'pending')->isNotEmpty()) {
+                        return true;
+                    }
+                } else {
+                    if ($branch->debtsAsDebtor()->where('status', 'pending')->exists()) {
+                        return true;
+                    }
                 }
             }
             return false;

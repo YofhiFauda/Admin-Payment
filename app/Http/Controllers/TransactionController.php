@@ -74,11 +74,7 @@ class TransactionController extends Controller
                         $q->orWhere('category', $cat->code);
                     }
                     
-                    // Backward compatibility for old Pengajuan column
-                    $q->orWhere('purchase_reason', $category);
-                    if ($cat && $cat->code) {
-                        $q->orWhere('purchase_reason', $cat->code);
-                    }
+                    // Legacy purchase_reason column removed
                 });
             }
         }
@@ -552,15 +548,42 @@ class TransactionController extends Controller
             $transaction->branches()->detach();
             if ($request->branches && count($request->branches) > 0) {
                 $effectiveAmount = $transaction->amount;
+                $totalAllocated  = 0;
+
+                // 🔒 SECURITY FIX: Never trust allocation_amount from request.
+                // Always recalculate from allocation_percent to prevent manipulation
+                // where a user submits a valid percent (50%+50%=100%) but a tampered
+                // amount (20k+20k ≠ 100k) causing untracked funds.
+                $branchAttachData = [];
                 foreach ($request->branches as $branchData) {
                     $allocPercent = floatval($branchData['allocation_percent']);
-                    $allocAmount = isset($branchData['allocation_amount']) && $branchData['allocation_amount']
-                        ? intval($branchData['allocation_amount'])
-                        : intval(round(($effectiveAmount * $allocPercent) / 100));
+                    $allocAmount  = intval(round(($effectiveAmount * $allocPercent) / 100));
+                    $totalAllocated += $allocAmount;
 
-                    $transaction->branches()->attach($branchData['branch_id'], [
+                    $branchAttachData[] = [
+                        'id'                 => $branchData['branch_id'],
                         'allocation_percent' => $allocPercent,
                         'allocation_amount'  => $allocAmount,
+                    ];
+                }
+
+                // ✅ Integrity check: Handle rounding differences on last branch
+                $diff = $effectiveAmount - $totalAllocated;
+                if (abs($diff) <= count($branchAttachData)) {
+                    // Adjust last branch to absorb rounding cent differences
+                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
+                } elseif (abs($diff) > 100) {
+                    // Difference > Rp 100: reject (possible manipulation)
+                    DB::rollBack();
+                    return back()->withErrors([
+                        'branches' => 'Total nominal alokasi cabang (Rp ' . number_format($totalAllocated) . ') tidak sesuai dengan total transaksi (Rp ' . number_format($effectiveAmount) . ').'
+                    ])->withInput();
+                }
+
+                foreach ($branchAttachData as $branch) {
+                    $transaction->branches()->attach($branch['id'], [
+                        'allocation_percent' => $branch['allocation_percent'],
+                        'allocation_amount'  => $branch['allocation_amount'],
                     ]);
                 }
             }
@@ -646,6 +669,16 @@ class TransactionController extends Controller
                     if ($isLargeAmount && !$user->isOwner() && $oldStatus === 'pending') {
                         // [GATE 1] Atasan approve pengajuan besar → eskalasi ke Owner
                         $newStatus = 'approved'; // tetap 'approved' = "Menunggu Approve Owner"
+
+                        // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa Admin/Atasan sudah OK, tinggal tunggu Owner
+                        try {
+                            $this->telegram->notifyWaitingOwnerApproval($transaction);
+                        } catch (\Exception $e) {
+                            Log::error('[TELEGRAM] Failed to send waiting owner approval notification', [
+                                'transaction_id' => $transaction->id,
+                                'error'          => $e->getMessage(),
+                            ]);
+                        }
 
                         Log::info('📋 [PENGAJUAN] Atasan approve ≥1jt → escalate to Owner', [
                             'transaction_id' => $transaction->id,
@@ -1278,11 +1311,14 @@ class TransactionController extends Controller
             }])
             ->select([
                 'id', 'invoice_number', 'type', 'status',
-                'amount', 'category',
+                'amount', 'category', 'date',
+                'customer', 'vendor',
                 'created_at', 'submitted_by',
                 'has_price_anomaly', // ✅ Price Index
                 'ai_status', 'upload_id', 'confidence',
-                'payment_method', 'rejection_reason', 'specs'
+                'payment_method', 'rejection_reason', 'specs',
+                // ✅ Payment proof fields (required by status_label & frontend)
+                'invoice_file_path', 'bukti_transfer', 'foto_penyerahan',
             ]);
 
         // Role-based filtering
@@ -1322,15 +1358,37 @@ class TransactionController extends Controller
      */
     private function applyFilters($query, Request $request)
     {
-        if ($request->filled('branch_id') && $request->branch_id !== 'all') {
-            // ✅ Perbaikan: hapus prefix 'branches.' karena sudah dalam context whereHas
-            $query->whereHas('branches', function($q) use ($request) {
-                $q->where('id', $request->branch_id);
-            });
+        if ($request->filled('branch_id')) {
+            $branchIds = is_array($request->branch_id) ? $request->branch_id : [$request->branch_id];
+            // Filter out 'all' strings just in case
+            $branchIds = array_filter($branchIds, fn($id) => $id !== 'all');
+            
+            if (!empty($branchIds)) {
+                $query->whereHas('branches', function($q) use ($branchIds) {
+                    $q->whereIn('branches.id', $branchIds);
+                });
+            }
         }
 
-        if ($request->filled('category') && $request->category !== 'all') {
-            $query->where('category', $request->category);
+        if ($request->filled('category')) {
+            $categories = is_array($request->category) ? $request->category : [$request->category];
+            $categories = array_filter($categories, fn($cat) => $cat !== 'all');
+            
+            if (!empty($categories)) {
+                $query->where(function ($q) use ($categories) {
+                    $q->whereIn('category', $categories);
+                    
+                    // Legacy support matching logic
+                    foreach ($categories as $catName) {
+                        $cat = TransactionCategory::where('name', $catName)->first();
+                        if ($cat && $cat->code) {
+                            $q->orWhere('category', $cat->code);
+                        }
+                        
+                        // Legacy purchase_reason column removed
+                    }
+                });
+            }
         }
 
         if ($request->filled('start_date')) {

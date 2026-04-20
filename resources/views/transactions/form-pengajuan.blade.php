@@ -111,14 +111,16 @@
                         <button type="button"
                             data-id="{{ $branch->id }}"
                             data-name="{{ $branch->name }}"
-                            class="branch-pill px-4 py-2.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:border-teal-300 transition-all cursor-pointer">
+                            {{-- class="branch-pill px-4 py-2.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:border-teal-300 transition-all cursor-pointer"> --}}
+                            class="branch-pill px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer">
                             {{ $branch->name }}
                         </button>
                     @endforeach
                 </div>
 
                 {{-- Distribution Detail Card --}}
-                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5 md:p-6">
+                {{-- <div class="bg-slate-50 border border-slate-100 rounded-2xl p-5 md:p-6"> --}}
+                <div>
                     <div id="distribution-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {{-- Dynamic Content via JS --}}
                     </div>
@@ -127,6 +129,12 @@
                         ⚠ Total persen harus 100%
                     </div>
                 </div>
+            </div>
+
+            {{-- Divider --}}
+            <div class="relative flex justify-center items-center mb-8">
+                <div class="w-full h-px bg-slate-100 absolute"></div>
+                <span class="bg-white px-4 relative z-10 text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">Summary Billing</span>
             </div>
 
             {{-- ══════════════════════════════════ --}}
@@ -943,12 +951,12 @@
 
                 if (index > -1) {
                     selectedBranches.splice(index, 1);
-                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md', 'hover:text-emerald-500');
                     this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                 } else {
                     selectedBranches.push({ id, name, value: 0, percent: 0 });
                     this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
-                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md', 'hover:text-emerald-500');
                 }
                 renderDistribution();
             });
@@ -1022,14 +1030,23 @@
                 }
 
                 const rowHtml = `
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white rounded-xl border border-slate-200 px-4 py-3 gap-3">
-                        <div class="font-bold sm:font-medium text-slate-700 flex items-center gap-2">
+                    <div class="flex justify-between items-center text-xs md:text-sm bg-white p-3 rounded-xl border border-slate-50">
+                        <span class="text-slate-600 font-medium flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
                             ${branch.name}
-                        </div>
+                        </span>
                         <div class="flex justify-end">${inputHtml}</div>
                     </div>
                 `;
+                // const rowHtml = `
+                //     <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white rounded-xl border border-slate-200 px-4 py-3 gap-3">
+                //         <div class="font-bold sm:font-medium text-slate-700 flex items-center gap-2">
+                //             <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                //             ${branch.name}
+                //         </div>
+                //         <div class="flex justify-end">${inputHtml}</div>
+                //     </div>
+                // `;
                 distributionList.insertAdjacentHTML('beforeend', rowHtml);
             });
 
@@ -1106,19 +1123,31 @@
         function validateAndSubmit() {
             let isValid = true;
             const totalAmount = parseInt(formTotalInput.value) || 0;
+            const totalAllocated = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.value)||0), 0);
             
-            // Validation 1: Branch Method Percent
-            if (currentMethod === 'percent') {
-                const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
-                if (Math.abs(totalPercent - 100) > 0.1) {
-                    isValid = false;
-                    percentWarning.classList.remove('hidden');
-                    percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent}%. Harus 100%`;
+            // Validation 1: Branch Method Percent & Total Amount
+            if (selectedBranches.length > 0) {
+                // 1a. Check percent if in percent mode
+                if (currentMethod === 'percent') {
+                    const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
+                    if (Math.abs(totalPercent - 100) > 0.1) {
+                        isValid = false;
+                        percentWarning.classList.remove('hidden');
+                        percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent.toFixed(1)}%. Harus 100%`;
+                    } else {
+                        percentWarning.classList.add('hidden');
+                    }
                 } else {
                     percentWarning.classList.add('hidden');
                 }
-            } else {
-                percentWarning.classList.add('hidden');
+
+                // 1b. Check total nominal balance (Anti-manipulation)
+                if (totalAmount > 0 && Math.abs(totalAllocated - totalAmount) > 2) {
+                    isValid = false;
+                    // We reuse percentWarning or can use a new one, but for simplicity let's use percentWarning
+                    percentWarning.classList.remove('hidden');
+                    percentWarning.textContent = `⚠ Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`;
+                }
             }
             
             // Validation 2: Items Total Amount > 0

@@ -1413,25 +1413,35 @@ document.addEventListener('DOMContentLoaded', function () {
     function validateAndSubmit() {
         let isValid = true;
         const totalAmount = parseInt(formTotalInput.value) || 0;
+        const totalAllocated = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.value)||0), 0);
 
-        if (currentMethod === 'percent') {
-            const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
-            if (Math.abs(totalPercent - 100) > 0.1) {
+        if (selectedBranches.length > 0) {
+            // 1. Check total nominal balance (Anti-manipulation)
+            if (totalAmount > 0 && Math.abs(totalAllocated - totalAmount) > 2) {
                 isValid = false;
                 percentWarning.classList.remove('hidden');
-                percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent}%. Harus 100%`;
+                percentWarning.textContent = `⚠ Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`;
+            } else if (currentMethod === 'percent') {
+                // 2. Check percent if in percent mode
+                const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
+                if (Math.abs(totalPercent - 100) > 0.1) {
+                    isValid = false;
+                    percentWarning.classList.remove('hidden');
+                    percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent.toFixed(1)}%. Harus 100%`;
+                } else {
+                    percentWarning.classList.add('hidden');
+                }
             } else {
                 percentWarning.classList.add('hidden');
             }
         } else {
             percentWarning.classList.add('hidden');
         }
-        
+
         if (totalAmount <= 0) isValid = false;
 
         summarySubmit.disabled = !isValid;
     }
-
     /**
      * ═══════════════════════════════════════════════════════════════
      *  VERSION SWITCHING & CHANGE HIGHLIGHTING LOGIC
