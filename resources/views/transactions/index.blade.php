@@ -381,7 +381,7 @@
                     onclick="openExportModal()"
                     class="flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-600/20 active:scale-95">
                     <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                    <span class="hidden sm:inline">Export Excel/CSV</span>
+                    <span class="hidden sm:inline">Export Excel</span>
                     <span class="sm:hidden">Export</span>
                 </button>
                 @endif
@@ -411,7 +411,7 @@
                 </div>
                 <div>
                     <h3 class="text-base font-black text-slate-900" id="export-modal-title">Export Laporan Transaksi</h3>
-                    <p class="text-[11px] text-slate-400 mt-0.5 font-medium">Format CSV · Kompatibel dengan Excel & Google Sheets</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5 font-medium">Format Excel (.xlsx) · Rumus Otomatis · Google Sheets Ready</p>
                 </div>
             </div>
             <button type="button" onclick="closeExportModal()"
@@ -512,7 +512,7 @@
             <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2.5">
                 <i data-lucide="info" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i>
                 <div class="text-[11px] font-medium text-blue-600 leading-relaxed">
-                    File CSV akan otomatis dibuka oleh Excel. Kolom Rembush, Pengajuan, dan Gudang sudah dipisahkan dengan rapi. Pengajuan multi-item akan di-<em>expand</em> per baris.
+                    File <strong>Excel (.xlsx)</strong> akan langsung terdownload. Kolom kalkulasi seperti <em>Total Estimasi</em> dan <em>Grand Total</em> menggunakan <strong>rumus Excel</strong>—klik selnya untuk melihat formula. Pengajuan multi-item di-<em>expand</em> per baris.
                 </div>
             </div>
         </div>
@@ -527,7 +527,7 @@
                 class="flex-[2] py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-[0.98]">
                 <span id="export-btn-idle" class="flex items-center gap-2">
                     <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                    Download CSV
+                    Download Excel
                 </span>
                 <span id="export-btn-loading" class="hidden flex items-center gap-2">
                     <svg class="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -604,7 +604,7 @@ function doExport(btnEl) {
     fetch(url, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'text/csv',
+            'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         },
         credentials: 'same-origin',
     })
@@ -612,7 +612,7 @@ function doExport(btnEl) {
         if (!response.ok) throw new Error('Server error ' + response.status);
         const disposition = response.headers.get('Content-Disposition') || '';
         const match = disposition.match(/filename="?([^"]+)"?/);
-        const filename = match ? match[1] : 'Laporan_Transaksi.csv';
+        const filename = match ? match[1] : 'Laporan_Transaksi.xlsx';
         return response.blob().then(blob => ({ blob, filename }));
     })
     .then(({ blob, filename }) => {
