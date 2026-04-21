@@ -17,6 +17,7 @@ services:
       sh -c "composer install --no-interaction --optimize-autoloader && php-fpm"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -129,6 +130,7 @@ services:
       "
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -195,6 +197,7 @@ services:
       - "8081:8081"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -227,6 +230,7 @@ services:
       sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:

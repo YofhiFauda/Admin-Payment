@@ -8,6 +8,7 @@ use App\Models\PaymentDiscrepancyAudit;
 use App\Services\Telegram\TelegramBotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -61,6 +62,22 @@ class PaymentVerificationController extends Controller
 
         // 🔍 DEBUG: Log payload asli dari N8N untuk analisa Match/Mismatch
         Log::channel('ai_autofill')->info('🔍 [PAYMENT VERIFY] Raw N8N Payload Received', $request->all());
+
+        $uploadId = $request->upload_id;
+
+        // ── ✅ NEW: Penanggulangan Race Condition via Redis Lock ──
+        $lock = Cache::lock("lock:payment_verify:{$uploadId}", 30);
+
+        try {
+            if (!$lock->get()) {
+                Log::channel('ai_autofill')->warning('🔒 [PAYMENT VERIFY] DUPLICATE REQUEST BLOCKED (LOCKED)', [
+                    'upload_id' => $uploadId
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Request is already being processed.'
+                ], 202);
+            }
 
         // Normalisasi status: N8N kadang kirim "completed" atau "mismatch"
         // Laravel hanya pakai "match" atau "flagged" secara internal
@@ -240,6 +257,9 @@ class PaymentVerificationController extends Controller
                     'selisih'        => $request->selisih,
                 ],
             ]);
+        }
+        } finally {
+            $lock->release();
         }
     }
 }

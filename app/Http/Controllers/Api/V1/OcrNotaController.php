@@ -46,8 +46,21 @@ class OcrNotaController extends Controller
      */
     public function uploadNota(Request $request)
     {
+        // ── ✅ NEW: Rate Limiting per User (1 upload / 5 detik) ──
+        $userId = auth()->id() ?? $request->ip();
+        $key    = 'ocr_upload_limit:' . $userId;
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 1)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($key);
+            Log::channel('ocr')->warning('⏳ [OCR LIMIT] Rate limit hit', ['user' => $userId, 'seconds' => $seconds]);
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu cepat. Harap tunggu {$seconds} detik lagi.",
+            ], 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($key, 5);
         $validator = Validator::make($request->all(), [
-            'foto_nota'        => 'required|file|image|max:1024',
+            'foto_nota'        => 'required|file|image|max:10240',
             'transaksi_id'     => 'nullable|string',
             'expected_nominal' => 'nullable|numeric',
             'payment_method'   => 'required|in:cash,transfer_teknisi,transfer_penjual',
@@ -239,7 +252,7 @@ class OcrNotaController extends Controller
         $request->replace($input);
 
         $validator = Validator::make($request->all(), [
-            'invoice_file'       => 'required|file|image|max:2048',
+            'invoice_file'       => 'required|file|image|max:5120',
             'transaksi_id'       => 'required|string',
             'diskon_pengiriman'  => 'nullable|numeric|min:0',
             'ongkir'             => 'nullable|numeric|min:0',
@@ -490,8 +503,8 @@ class OcrNotaController extends Controller
     public function uploadCash(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'foto_penyerahan' => 'nullable|file|image|max:1024',
-            'file'            => 'nullable|file|image|max:1024',
+            'foto_penyerahan' => 'nullable|file|image|max:5120',
+            'file'            => 'nullable|file|image|max:5120',
             'upload_id'       => 'required|string',
             'transaksi_id'    => 'required|string',
             'teknisi_id'      => 'nullable|string',
@@ -728,8 +741,8 @@ class OcrNotaController extends Controller
     public function uploadTransfer(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'bukti_transfer'   => 'nullable|file|image|max:1024',
-            'file'             => 'nullable|file|image|max:1024',
+            'bukti_transfer'   => 'nullable|file|image|max:5120',
+            'file'             => 'nullable|file|image|max:5120',
             'upload_id'        => 'required|string',
             'transaksi_id'     => 'required|string',
             'expected_nominal' => 'required|numeric',

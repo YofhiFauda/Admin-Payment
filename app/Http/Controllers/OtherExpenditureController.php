@@ -122,7 +122,7 @@ class OtherExpenditureController extends Controller
             'tanggal'       => 'required|date',
             'nominal'       => 'required|numeric|min:1',
             'keterangan'    => 'nullable|string|max:1000',
-            'bukti_transfer'=> 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'bukti_transfer'=> 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ];
 
         if (in_array($jenis, ['bayar_hutang', 'piutang_usaha'])) {

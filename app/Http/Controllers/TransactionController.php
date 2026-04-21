@@ -1017,7 +1017,7 @@ class TransactionController extends Controller
             }
 
             $request->validate([
-                'payment_proof'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024',
+                'payment_proof'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'notes'                  => 'nullable|string',
                 'bank_account_id'        => 'required|exists:branch_bank_accounts,id',
                 'sender_bank_account_id' => 'required|exists:branch_bank_accounts,id',

@@ -183,7 +183,7 @@ class PengajuanController extends Controller
     public function uploadPhoto(Request $request)
     {
         $request->validate([
-            'file' => 'required|image|mimes:jpg,jpeg,png|max:1024',
+            'file' => 'required|image|mimes:jpg,jpeg,png|max:10240',
         ]);
 
         $file = $request->file('file');
@@ -222,7 +222,7 @@ class PengajuanController extends Controller
         
         $request->validate([
             'type'                              => 'required|in:pengajuan',
-            'file'                              => 'nullable|image|max:2048',
+            'file'                              => 'nullable|image|max:5120',
             'items'                             => 'required|array|min:1',
             'items.*.customer'                  => 'required|string|max:255',
             'items.*.category'                  => ['required', 'string', function($attr, $val, $fail) {

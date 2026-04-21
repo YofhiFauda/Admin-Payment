@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
+    libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
     libicu-dev \
@@ -19,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     gcc \
     make \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-configure intl \
     && docker-php-ext-install \
         pdo_mysql \
@@ -42,6 +46,9 @@ RUN echo "pm.max_children = 20" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Custom PHP settings
+COPY ./docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
 
 # Set working directory
 WORKDIR /var/www

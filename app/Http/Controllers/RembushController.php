@@ -62,7 +62,7 @@ class RembushController extends Controller
 
         // ② Validasi file
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:1024'
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'
         ]);
 
         $file     = $request->file('file');
@@ -78,7 +78,7 @@ class RembushController extends Controller
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
             'file_size_bytes' => $file->getSize(),
-            'file_size_kb' => round($file->getSize() / 1024, 2),
+            'file_size_kb' => round($file->getSize() / 5120, 2),
         ]);
 
         // ③ Simpan file ke temp storage

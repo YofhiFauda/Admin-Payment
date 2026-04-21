@@ -92,14 +92,28 @@ class AiAutoFillController extends Controller
         if (!$uploadId) {
             return response()->json(['message' => 'upload_id is required'], 422);
         }
-        // ─── ✅ FIX Bug #1: Tangkap SEMUA status gagal dari n8n ───
-        $failStatuses = ['failed', 'low_confidence', 'error', 'auto_reject'];
-        if ($request->boolean('ocr_failed') || in_array($request->status, $failStatuses)) {
-            $request->merge([
-                'message' => $request->reason ?? $request->message ?? 'OCR gagal',
-            ]);
-            return $this->handleOcrFailed($request, $uploadId);
-        }
+
+        // ── ✅ NEW: Penanggulangan Race Condition via Redis Lock ──
+        $lock = Cache::lock("lock:ai_callback:{$uploadId}", 30); // Lock selama 30 detik
+        
+        try {
+            if (!$lock->get()) {
+                Log::channel('ai_autofill')->warning('🔒 [AI CALLBACK] DUPLICATE REQUEST BLOCKED (LOCKED)', [
+                    'upload_id' => $uploadId
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Request is already being processed.'
+                ], 202);
+            }
+            // ─── ✅ FIX Bug #1: Tangkap SEMUA status gagal dari n8n ───
+            $failStatuses = ['failed', 'low_confidence', 'error', 'auto_reject'];
+            if ($request->boolean('ocr_failed') || in_array($request->status, $failStatuses)) {
+                $request->merge([
+                    'message' => $request->reason ?? $request->message ?? 'OCR gagal',
+                ]);
+                return $this->handleOcrFailed($request, $uploadId);
+            }
         // ─── ✅ FIX Bug #1: Validator menerima auto_reject & low_confidence ───
         $validator = Validator::make($request->all(), [
             'upload_id'              => 'nullable|string',
@@ -198,6 +212,9 @@ class AiAutoFillController extends Controller
             'confidence'       => $cacheData['confidence'],
             'confidence_label' => $cacheData['confidence_label'],
         ]);
+        } finally {
+            $lock->release();
+        }
     }
     
     /**

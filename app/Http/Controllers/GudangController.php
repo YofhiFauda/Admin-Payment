@@ -55,7 +55,7 @@ class GudangController extends Controller
             'description'    => 'nullable|string|max:2000',
             'payment_method' => 'required|string|in:cash,transfer_teknisi,transfer_penjual',
             'pengeluaran_siapa' => 'required|string|max:255',
-            'nota'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'nota'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'branches'       => 'required|array|min:1',
             'branches.*.branch_id' => 'required|exists:branches,id',
             'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',

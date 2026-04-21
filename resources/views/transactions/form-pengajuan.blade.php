@@ -36,7 +36,7 @@
                     <div id="photo-placeholder" class="flex flex-col items-center justify-center">
                         <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-slate-400"></i>
                         <span class="text-sm font-bold text-slate-700 mb-1" id="photo-name-display">Pilih Foto (Klik atau Drag)</span>
-                        <span class="text-[10px] text-slate-400">Format: JPG, PNG. Maksimal 1MB.</span>
+                        <span class="text-[10px] text-slate-400">Format: JPG, PNG. Maksimal 5MB.</span>
                     </div>
 
                     {{-- Preview --}}
@@ -532,9 +532,9 @@
                 if (photoInput.files && photoInput.files[0]) {
                     const file = photoInput.files[0];
                     
-                    // Validasi ukuran (1MB)
-                    if (file.size > 1024 * 1024) {
-                        showToast('Ukuran file terlalu besar (Maks. 1MB)', 'error');
+                    // Validasi ukuran (5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        showToast('Ukuran file terlalu besar (Maks. 5MB)', 'error');
                         photoInput.value = '';
                         resetPhotoUI();
                         return;

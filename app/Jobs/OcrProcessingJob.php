@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Log;
  *  ✅ FIX: Broadcast saat status berubah queued → processing
  * ═══════════════════════════════════════════════════════════════
  */
-class OcrProcessingJob implements ShouldQueue
+class OcrProcessingJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -44,6 +45,14 @@ class OcrProcessingJob implements ShouldQueue
         $this->transaksiId = $transaksiId ?? optional(
             \App\Models\Transaction::where('upload_id', $uploadId)->first()
         )->id;
+    }
+
+    /**
+     * Pastikan satu upload_id hanya diproses satu kali dalam satu waktu.
+     */
+    public function uniqueId(): string
+    {
+        return (string) $this->uploadId;
     }
 
     public function handle()
@@ -121,6 +130,18 @@ class OcrProcessingJob implements ShouldQueue
 
                 return;
             }
+
+            // ── ✅ NEW: Selalu optimalkan gambar untuk OCR sebelum kirim ke n8n ──
+            $compressionService = app(\App\Services\ImageCompressionService::class);
+            Log::channel('ocr')->info('🗜️ [OCR JOB] OPTIMIZING IMAGE FOR N8N', [
+                'upload_id'        => $this->uploadId,
+                'original_size_kb' => round(filesize($fullPath) / 1024, 2),
+            ]);
+            $fullPath = $compressionService->optimizeForOcr($fullPath);
+            Log::channel('ocr')->info('✅ [OCR JOB] OPTIMIZATION DONE', [
+                'upload_id'      => $this->uploadId,
+                'final_size_kb'  => round(filesize($fullPath) / 1024, 2),
+            ]);
 
             Log::channel('ocr')->info('📤 [OCR JOB] SENDING TO N8N', [
                 'upload_id'    => $this->uploadId,

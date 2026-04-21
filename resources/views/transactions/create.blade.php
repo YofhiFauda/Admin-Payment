@@ -712,7 +712,7 @@
 
                 <div id="uploadDefault">
                     <p class="ic-upload-title">Klik atau Seret File ke Sini</p>
-                    <p class="ic-upload-hint">JPG, PNG — Maks. 1MB</p>
+                    <p class="ic-upload-hint">JPG, PNG — Maks. 5MB</p>
                 </div>
 
                 <div id="uploadPreview" class="ic-file-preview relative group overflow-hidden">
@@ -756,7 +756,7 @@
             </svg>
         </div>
         <h3>Drop file di sini</h3>
-        <p>Maksimal ukuran 1MB</p>
+        <p>Maksimal ukuran 5MB</p>
     </div>
 </div>
 
@@ -802,7 +802,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const globalOverlay  = document.getElementById('globalDragOverlay');
     const toast          = document.getElementById('toast');
 
-    const MAX_SIZE = 1024 * 1024;
+    const MAX_SIZE = 5 * 1024 * 1024;
     let selectedFile = null;
     let selectedType = null;
 
@@ -866,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (this.files && this.files[0]) {
             const file = this.files[0];
             if (file.size > MAX_SIZE) {
-                showToast('Ukuran file terlalu besar (Maks. 1MB)');
+                showToast('Ukuran file terlalu besar (Maks. 5MB)');
                 this.value = '';
                 resetUploadUI();
                 return;
@@ -935,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function () {
         globalOverlay.style.opacity = '0';
         setTimeout(() => globalOverlay.classList.remove('show'), 200);
         if (e.dataTransfer.files.length) {
-            if (e.dataTransfer.files[0].size > MAX_SIZE) { showToast('Ukuran file maksimal 1MB!'); return; }
+            if (e.dataTransfer.files[0].size > MAX_SIZE) { showToast('Ukuran file maksimal 5MB!'); return; }
             fileInput.files = e.dataTransfer.files;
             fileInput.dispatchEvent(new Event('change'));
         }
