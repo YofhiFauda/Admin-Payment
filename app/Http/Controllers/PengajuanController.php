@@ -348,14 +348,32 @@ class PengajuanController extends Controller
             // Attach branches if provided
             if ($request->branches && count($request->branches) > 0) {
                 $effectiveAmount = $transaction->amount;
+                $branchAttachData = [];
+                $totalAllocated = 0;
+                
                 foreach ($request->branches as $branchData) {
                     $allocPercent = floatval($branchData['allocation_percent']);
                     // Selalu hitung ulang di backend berdasarkan persen untuk akurasi
                     $allocAmount = intval(round(($effectiveAmount * $allocPercent) / 100));
+                    $totalAllocated += $allocAmount;
 
-                    $transaction->branches()->attach($branchData['branch_id'], [
+                    $branchAttachData[] = [
+                        'id'                 => $branchData['branch_id'],
                         'allocation_percent' => $allocPercent,
                         'allocation_amount'  => $allocAmount,
+                    ];
+                }
+                
+                // Absorb difference in last branch to ensure sum equals exactly $effectiveAmount
+                $diff = $effectiveAmount - $totalAllocated;
+                if (count($branchAttachData) > 0 && $diff != 0) {
+                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
+                }
+
+                foreach ($branchAttachData as $branch) {
+                    $transaction->branches()->attach($branch['id'], [
+                        'allocation_percent' => $branch['allocation_percent'],
+                        'allocation_amount'  => $branch['allocation_amount'],
                     ]);
                 }
             }

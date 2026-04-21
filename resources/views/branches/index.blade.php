@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page-title', '')
+@section('page-title', 'Kelola Cabang')
 
 @section('content')
 <style>
@@ -45,7 +45,7 @@
     }
     .btn-cancel:hover { background: #e2e8f0; }
     .error-msg { font-size: .8rem; color: #ef4444; margin-top: 4px; display: none; }
-</div>
+</style>
 
 <div class="p-4 md:p-6">
 

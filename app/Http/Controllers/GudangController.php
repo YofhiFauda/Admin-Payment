@@ -107,13 +107,31 @@ class GudangController extends Controller
             ]);
 
             // Attach branches
+            $branchAttachData = [];
+            $totalAllocated = 0;
+            $effectiveAmount = $transaction->amount;
+
             foreach ($request->branches as $branchData) {
                 $allocPercent = floatval($branchData['allocation_percent']);
-                $allocAmount = intval(round(($transaction->amount * $allocPercent) / 100));
+                $allocAmount = intval(round(($effectiveAmount * $allocPercent) / 100));
+                $totalAllocated += $allocAmount;
 
-                $transaction->branches()->attach($branchData['branch_id'], [
+                $branchAttachData[] = [
+                    'id'                 => $branchData['branch_id'],
                     'allocation_percent' => $allocPercent,
                     'allocation_amount'  => $allocAmount,
+                ];
+            }
+
+            $diff = $effectiveAmount - $totalAllocated;
+            if (count($branchAttachData) > 0 && $diff != 0) {
+                $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
+            }
+
+            foreach ($branchAttachData as $branch) {
+                $transaction->branches()->attach($branch['id'], [
+                    'allocation_percent' => $branch['allocation_percent'],
+                    'allocation_amount'  => $branch['allocation_amount'],
                 ]);
             }
 

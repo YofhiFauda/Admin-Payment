@@ -172,9 +172,9 @@ class TelegramBotService
         // Determine "Lebih" or "Kurang"
         $selisihSuffix = "";
         if ($selisihValue > 0) {
-            $selisihSuffix = " (Lebih)";
-        } elseif ($selisihValue < 0) {
             $selisihSuffix = " (Kurang)";
+        } elseif ($selisihValue < 0) {
+            $selisihSuffix = " (Lebih)";
         }
 
         // Parse detail validasi from flag_reason
@@ -302,9 +302,9 @@ HTML;
         // Determine "Lebih" or "Kurang"
         $selisihSuffix = "";
         if (($selisihVal ?? 0) > 0) {
-            $selisihSuffix = " (Lebih)";
-        } elseif (($selisihVal ?? 0) < 0) {
             $selisihSuffix = " (Kurang)";
+        } elseif (($selisihVal ?? 0) < 0) {
+            $selisihSuffix = " (Lebih)";
         }
 
         $approverName   = $approver->name;

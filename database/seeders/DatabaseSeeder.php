@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             BranchSeeder::class,
             TransactionCategorySeeder::class,
-            PriceIndexSeeder::class,
-            TransactionSeeder::class,
+            // PriceIndexSeeder::class,
+            // TransactionSeeder::class,
         ]);
     }
 }

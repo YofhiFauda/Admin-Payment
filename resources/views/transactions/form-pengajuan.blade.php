@@ -48,8 +48,7 @@
                         </div>
                     </div>
 
-                    <input type="file" name="file" id="reference_photo" accept="image/jpeg,image/png,image/jpg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        {{ in_array(auth()->user()->role, ['owner', 'atasan']) ? '' : 'required' }}>
+                    <input type="file" name="file" id="reference_photo" accept="image/jpeg,image/png,image/jpg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                 </div>
             </div>
 

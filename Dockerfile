@@ -34,6 +34,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Increase PHP-FPM max_children
+RUN echo "pm.max_children = 20" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "pm.start_servers = 5" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "pm.max_spare_servers = 10" >> /usr/local/etc/php-fpm.d/zz-docker.conf
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

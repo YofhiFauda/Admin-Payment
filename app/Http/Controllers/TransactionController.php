@@ -567,17 +567,22 @@ class TransactionController extends Controller
                     ];
                 }
 
-                // ✅ Integrity check: Handle rounding differences on last branch
+                // ✅ Integrity check: Handle rounding differences on last branch caused by percentages (e.g. 33.33% x 3 = 99.99%)
                 $diff = $effectiveAmount - $totalAllocated;
-                if (abs($diff) <= count($branchAttachData)) {
-                    // Adjust last branch to absorb rounding cent differences
-                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
-                } elseif (abs($diff) > 100) {
-                    // Difference > Rp 100: reject (possible manipulation)
+                
+                // Tolerance: max of Rp 10,000 or 1% of transaction amount to cover percentage rounding gaps
+                $tolerance = max(10000, $effectiveAmount * 0.01);
+                
+                if (abs($diff) > $tolerance) {
+                    // Possible manipulation or frontend bug (sum of percentages is way off)
                     DB::rollBack();
                     return back()->withErrors([
-                        'branches' => 'Total nominal alokasi cabang (Rp ' . number_format($totalAllocated) . ') tidak sesuai dengan total transaksi (Rp ' . number_format($effectiveAmount) . ').'
+                        'branches' => 'Total nominal alokasi cabang (Rp ' . number_format($totalAllocated) . ') terlalu jauh bedanya dengan total transaksi (Rp ' . number_format($effectiveAmount) . ').'
                     ])->withInput();
+                }
+
+                if (count($branchAttachData) > 0 && $diff != 0) {
+                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
                 }
 
                 foreach ($branchAttachData as $branch) {
@@ -1508,147 +1513,6 @@ class TransactionController extends Controller
         $labels = ['transfer_teknisi' => 'Transfer ke Teknisi', 'transfer_penjual' => 'Transfer ke Penjual', 'cash' => 'Tunai (Cash)', 'invoice' => 'Invoice (Pengajuan)'];
         return $labels[$method] ?? ucfirst(str_replace('_', ' ', $method));
     }
-    /**
-     * Optimized Paginated Search for Transactions.
-     * Uses MySQL FULLTEXT indexing for speed.
-     */
-    // public function searchTransactions(Request $request)
-    // {
-    //     try {
-    //         $query = Transaction::query()
-    //             ->with(['submitter', 'branches'])
-    //             ->orderBy('created_at', 'desc');
-
-    //         if (Auth::user()->isTeknisi()) {
-    //             $query->where('submitted_by', Auth::id());
-    //         }
-
-    //         // Keyword Search
-    //         if ($search = $request->input('search')) {
-    //             $cleanSearch = trim(strip_tags($search));
-    //             if (!empty($cleanSearch)) {
-    //                 $query->where(function ($q) use ($cleanSearch) {
-    //                     $q->where('invoice_number', 'like', $cleanSearch . '%');
-                        
-    //                     // Periksa apakah pencarian mengandung dash (-)
-    //                     // Gunakan quote (") untuk pencarian Boolean agar dianggap frasa utuh
-    //                     $formattedSearch = str_contains($cleanSearch, '-') 
-    //                         ? '"' . $cleanSearch . '"' 
-    //                         : $cleanSearch . '*';
-
-    //                     // Gunakan orWhereRaw dengan parameter binding yang aman
-    //                     // Kami tidak bisa try-catch di sini karena query belum dieksekusi.
-    //                     // Eksekusi sebenarnya ada di ->paginate() nanti.
-    //                     $q->orWhereRaw("MATCH(invoice_number, customer, vendor, description) AGAINST(? IN BOOLEAN MODE)", [$formattedSearch]);
-    //                 });
-    //             }
-    //         }
-
-    //         // Status Filter
-    //         if ($status = $request->input('status')) {
-    //             if ($status !== 'all') {
-    //                 $query->where('status', $status);
-    //             }
-    //         }
-
-    //         // Type Filter
-    //         if ($type = $request->input('type')) {
-    //             if ($type !== 'all') {
-    //                 $query->where('type', $type);
-    //             }
-    //         }
-
-    //         // Category Filter
-    //         if ($category = $request->input('category')) {
-    //             if ($category !== 'all') {
-    //                 $query->where(function($q) use ($category) {
-    //                     $q->where('category', $category)
-    //                       ->orWhere('items', 'LIKE', '%' . $category . '%');
-    //                 });
-    //             }
-    //         }
-
-    //         // Branch Filter
-    //         if ($branchId = $request->input('branch_id')) {
-    //             if ($branchId !== 'all') {
-    //                 $query->whereHas('branches', function ($q) use ($branchId) {
-    //                     $q->where('branches.id', $branchId);
-    //                 });
-    //             }
-    //         }
-
-    //         // Date Range
-    //         if ($startDate = $request->input('start_date')) {
-    //             $query->whereDate('created_at', '>=', $startDate);
-    //         }
-    //         if ($endDate = $request->input('end_date')) {
-    //             $query->whereDate('created_at', '<=', $endDate);
-    //         }
-
-    //         // --- Execution ---
-    //         $perPage = $request->input('per_page', 20);
-            
-    //         // Try block to catch SQL errors specifically during pagination
-    //         try {
-    //             $paginator = $query->paginate($perPage);
-    //         } catch (\Illuminate\Database\QueryException $sqlError) {
-    //             // Fallback jika FULLTEXT index gagal (misal: MySQL version mismatch atau index hilang)
-    //             Log::warning('[searchTransactions] FULLTEXT search failed, falling back to LIKE: ' . $sqlError->getMessage());
-                
-    //             // Re-build query without MATCH
-    //             $fallbackQuery = Transaction::query()
-    //                 ->with(['submitter', 'branches'])
-    //                 ->orderBy('created_at', 'desc');
-
-    //             if (Auth::user()->isTeknisi()) {
-    //                 $fallbackQuery->where('submitted_by', Auth::id());
-    //             }
-
-    //             if ($search = $request->input('search')) {
-    //                 $cleanSearch = trim(strip_tags($search));
-    //                 $fallbackQuery->where(function ($q) use ($cleanSearch) {
-    //                     $q->where('invoice_number', 'like', '%' . $cleanSearch . '%')
-    //                       ->orWhere('customer', 'like', '%' . $cleanSearch . '%')
-    //                       ->orWhere('vendor', 'like', '%' . $cleanSearch . '%')
-    //                       ->orWhere('description', 'like', '%' . $cleanSearch . '%');
-    //                 });
-    //             }
-                
-    //             // Apply other filters again... (minimal fallback version for brevity or full copy)
-    //             // Since this is a fallback, we'll just re-paginate the original query without the search closure
-    //             // Actually, let's just use the existing $query but remove the MATCH part.
-    //             // But QueryBuilder doesn't easily allow removing parts.
-                
-    //             // Let's just return a generic error or a simpler fallback for now to confirm if this is the issue.
-    //             throw $sqlError; 
-    //         }
-
-    //         // Transform data for frontend
-    //         $items = collect($paginator->items())->map(function($t) {
-    //             return $t->toSearchArray(); 
-    //         });
-
-    //         return response()->json([
-    //             'data'         => $items,
-    //             'current_page' => $paginator->currentPage(),
-    //             'last_page'    => $paginator->lastPage(),
-    //             'per_page'     => $paginator->perPage(),
-    //             'total'        => $paginator->total(),
-    //             'from'         => $paginator->firstItem(),
-    //             'to'           => $paginator->lastItem(),
-    //         ]);
-
-    //     } catch (\Throwable $e) {
-    //         Log::error('[searchTransactions] CRITICAL 500 ERROR: ' . $e->getMessage(), [
-    //             'trace' => $e->getTraceAsString(),
-    //             'request' => $request->all()
-    //         ]);
-    //         return response()->json([
-    //             'error' => 'Internal Server Error',
-    //             'message' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
 
     /**
      * Get summary counts for each status based on current filters.
@@ -1694,9 +1558,262 @@ class TransactionController extends Controller
         }
     }
     
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  EXPORT — Laporan Bulanan Transaksi (CSV/Excel)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     /**
-     * Remove the specified transaction from storage.
-     * Authorized for non-admin management (Owner, Atasan).
+     * Export transaksi sebagai CSV yang rapi untuk Excel.
+     *
+     * Strategi:
+     *  - REMBUSH / GUDANG / ALL : Menggunakan 17 kolom (Format Rembush)
+     *  - PENGAJUAN              : Menggunakan 23 kolom (Format Pengajuan)
+     *
+     * Semua tipe sekarang mengekspansi 1 baris per item.
      */
+    public function export(Request $request)
+    {
+        // ── Authorization ─────────────────────────────
+        $user = Auth::user();
 
+        // ── Filter Parameters ─────────────────────────
+        $month   = $request->input('month');
+        $year    = $request->input('year', now()->year);
+        $type    = $request->input('type'); // rembush|pengajuan|gudang|all
+        $status  = $request->input('status');
+        $branchId = $request->input('branch_id');
+
+        // ── Determine Export Format ───────────────────
+        // Format utama: 'pengajuan' atau 'rembush' (untuk rembush, gudang, dan all)
+        $exportFormat = ($type === 'pengajuan') ? 'pengajuan' : 'rembush';
+
+        // ── Query ─────────────────────────────────────
+        $query = Transaction::with(['submitter', 'reviewer', 'branches', 'payer', 'sumberDanaBranch'])
+            ->orderBy('date', 'asc')
+            ->orderBy('created_at', 'asc');
+
+        if ($user->isTeknisi()) {
+            $query->where('submitted_by', Auth::id());
+        }
+
+        if ($type && $type !== 'all') {
+            $query->where('type', $type);
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $query->whereYear('created_at', $year);
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        if ($branchId && $branchId !== 'all') {
+            $query->whereHas('branches', function ($q) use ($branchId) {
+                $q->where('branches.id', $branchId);
+            });
+        }
+
+        // ── Filename ──────────────────────────────────
+        $periodLabel = $month
+            ? \Carbon\Carbon::create($year, $month)->translatedFormat('F_Y')
+            : "Full_{$year}";
+        $formatLabel = ($exportFormat === 'pengajuan') ? '_Pengajuan' : '_Rembush';
+        $filename  = "Laporan_Transaksi{$formatLabel}_{$periodLabel}.csv";
+
+        $httpHeaders = [
+            'Content-Type'                  => 'text/csv; charset=UTF-8',
+            'Content-Disposition'           => "attachment; filename=\"{$filename}\"",
+            'Pragma'                        => 'no-cache',
+            'Cache-Control'                 => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'                       => '0',
+            'Access-Control-Expose-Headers' => 'Content-Disposition',
+        ];
+
+        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($query, $exportFormat) {
+            $output = fopen('php://output', 'w');
+            fwrite($output, "\xEF\xBB\xBF"); // BOM for Excel
+
+            // ─── HEADER ROW ───────────────────────────────
+            fputcsv($output, $this->getExportHeaders($exportFormat));
+
+            // ─── DATA ROWS ────────────────────────────────
+            $rowNo = 0;
+            $sums  = ['rembush' => 0, 'pengajuan' => 0, 'gudang' => 0];
+            $counts = ['rembush' => 0, 'pengajuan' => 0, 'gudang' => 0];
+
+            foreach ($query->cursor() as $t) {
+                $rowNo++;
+                $tType = $t->type ?? 'lain';
+                if (isset($sums[$tType])) {
+                    $sums[$tType] += $t->amount;
+                    $counts[$tType]++;
+                }
+
+                $items = is_array($t->items) && count($t->items) > 0 ? $t->items : [[]];
+
+                foreach ($items as $idx => $item) {
+                    $isFirstRow = ($idx === 0);
+                    $row = $this->mapTransactionToRow($t, $exportFormat, $item, $idx, $isFirstRow ? $rowNo : '');
+                    fputcsv($output, $row);
+                }
+            }
+
+            // ── Summary Row ───────────────────────────────
+            fputcsv($output, []);
+            fputcsv($output, ['--- RINGKASAN ---']);
+            fputcsv($output, ['Total Transaksi', $rowNo]);
+            fputcsv($output, ['Grand Total', array_sum($sums)]);
+
+            fclose($output);
+        }, 200, $httpHeaders);
+    }
+
+    /**
+     * Get CSV headers based on export format
+     */
+    private function getExportHeaders($format)
+    {
+        if ($format === 'pengajuan') {
+            return [
+                'Sumber Dana Cabang',
+                'Cabang Berhutang',
+                'Invoice Number',
+                'tanggal',
+                'bulan',
+                'kategori',
+                'Nama Vendor',
+                'Link Rekomendasi',
+                'Merk',
+                'Tipe/Seri',
+                'Ukuran',
+                'Warna',
+                'Keterangan',
+                'Harga Satuan',
+                'Jumlah',
+                'Total Estimasi',
+                'Ongkir',
+                'Diskon Pengiriman',
+                'Voucher Diskon',
+                'Biaya Layanan 1',
+                'Biaya Layanan 2',
+                'cash/bank pembayar',
+                'status'
+            ];
+        }
+
+        // Default: Rembush format (17 columns)
+        return [
+            'Cabang',
+            'Invoice Number',
+            'tanggal',
+            'bulan',
+            'kategori',
+            'nama vendor',
+            'Metode Pencairan',
+            'Nama Barang',
+            'Qty',
+            'Satuan',
+            'Harga Satuan',
+            'Total',
+            'Deskripsi',
+            'Total Nominal',
+            'Metode Distribusi',
+            'cash/bank pembayar',
+            'status'
+        ];
+    }
+
+    /**
+     * Map transaction data to CSV row
+     */
+    private function mapTransactionToRow($t, $format, $item, $idx, $rowIdentifier)
+    {
+        $isFirstRow = ($rowIdentifier !== '');
+        $dateStr = $t->date ? $t->date->format('d/m/Y') : '-';
+        $monthStr = $t->date ? $t->date->translatedFormat('F') : '-';
+        $payerName = $t->payer->name ?? ($t->reviewer->name ?? '-');
+
+        if ($format === 'pengajuan') {
+            // "Cabang Berhutang" adalah cabang yang bukan sumber dana
+            $cabangBerhutang = $t->branches
+                ->filter(fn($b) => $b->id != $t->sumber_dana_branch_id)
+                ->pluck('name')
+                ->join(', ');
+
+            $specs = $item['specs'] ?? [];
+            $qty = $item['quantity'] ?? ($item['qty'] ?? 0);
+            $price = $item['estimated_price'] ?? ($item['harga_satuan'] ?? 0);
+
+            return [
+                $isFirstRow ? ($t->sumberDanaBranch->name ?? '-') : '',
+                $isFirstRow ? ($cabangBerhutang ?: '-') : '',
+                $isFirstRow ? $t->invoice_number : '',
+                $isFirstRow ? $dateStr : '',
+                $isFirstRow ? $monthStr : '',
+                $isFirstRow ? $t->category_label : '',
+                $item['vendor'] ?? '-',
+                $item['link'] ?? '-',
+                $specs['merk'] ?? '-',
+                $specs['tipe'] ?? ($specs['tipe_seri'] ?? '-'),
+                $specs['ukuran'] ?? '-',
+                $specs['warna'] ?? '-',
+                $item['description'] ?? ($item['customer'] ?? '-'),
+                $price,
+                $qty,
+                $price * $qty,
+                $isFirstRow ? ($t->ongkir ?? 0) : '',
+                $isFirstRow ? ($t->diskon_pengiriman ?? 0) : '',
+                $isFirstRow ? ($t->voucher_diskon ?? 0) : '',
+                $isFirstRow ? ($t->biaya_layanan_1 ?? 0) : '',
+                $isFirstRow ? ($t->biaya_layanan_2 ?? 0) : '',
+                $isFirstRow ? $payerName : '',
+                $isFirstRow ? $t->status_label : '',
+            ];
+        }
+
+        // Rembush / Gudang / All format
+        $branchNames = $t->branches->pluck('name')->join(', ');
+        $qty = $item['qty'] ?? ($item['quantity'] ?? 0);
+        $price = $item['harga_satuan'] ?? ($item['estimated_price'] ?? 0);
+        
+        return [
+            $isFirstRow ? $branchNames : '',
+            $isFirstRow ? $t->invoice_number : '',
+            $isFirstRow ? $dateStr : '',
+            $isFirstRow ? $monthStr : '',
+            $isFirstRow ? $t->category_label : '',
+            $isFirstRow ? ($t->vendor ?? ($t->vendor_name ?? '-')) : '',
+            $isFirstRow ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method_label) : '',
+            $item['nama_barang'] ?? ($item['customer'] ?? '-'),
+            $qty,
+            $item['satuan'] ?? '-',
+            $price,
+            $qty * $price,
+            $isFirstRow ? ($t->description ?? '-') : '',
+            $isFirstRow ? $t->amount : '',
+            $isFirstRow ? $this->deduceDistributionMethod($t) : '',
+            $isFirstRow ? $payerName : '',
+            $isFirstRow ? $t->status_label : '',
+        ];
+    }
+
+    /**
+     * Deduce the distribution method used for the transaction
+     */
+    private function deduceDistributionMethod($t)
+    {
+        if ($t->branches->isEmpty()) return '-';
+        
+        $percents = $t->branches->pluck('pivot.allocation_percent')->map(fn($p) => round((float)$p, 2))->unique();
+        
+        if ($percents->count() === 1) return 'Bagi Rata';
+        
+        $isAllIntegers = $t->branches->every(function($b) {
+            $p = $b->pivot->allocation_percent;
+            return floor($p) == $p;
+        });
+
+        return $isAllIntegers ? 'Persentase' : 'Manual';
+    }
 }

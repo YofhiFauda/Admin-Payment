@@ -274,17 +274,26 @@ class Transaction extends Model
                         : $this->branchDebts()->where('status', 'pending')->exists()
                 );
 
-            if ($hasPendingDebt || $this->invoice_file_path || $this->bukti_transfer || $this->foto_penyerahan) {
-                return 'Menunggu Pelunasan';
+            // ✅ Fix: Terminology "Pelunasan" (Settlement) is specialized for Pengajuan and Gudang.
+            // For Rembush, we use simpler terms since it's a reimbursement of money already spent.
+            if (!$this->isRembush()) {
+                // Only show "Menunggu Pelunasan" if payment documentation exists or this transaction specifically generated debt records.
+                // We removed the global hasAnyPendingBranchDebt check from here to ensure the label starts as "Menunggu Pembayaran" after approval.
+                if ($hasPendingDebt || $this->invoice_file_path || $this->bukti_transfer || $this->foto_penyerahan) {
+                    return 'Menunggu Pelunasan';
+                }
+
+                if ($this->isGudang()) {
+                    return 'Pembelanjaan Belum di bayar';
+                }
+
+                return 'Menunggu Pembayaran';
             }
 
-            // Check if any of the branches involved have ANY pending debts (from other transactions)
-            if ($this->hasAnyPendingBranchDebt()) {
-                return 'Menunggu Pelunasan';
-            }
-
-            if ($this->isGudang()) {
-                return 'Pembelanjaan Belum di bayar';
+            // ✅ Logic for Rembush in 'waiting_payment' status:
+            // If office has uploaded proof of transfer/cash, it's waiting for technician confirmation.
+            if ($this->bukti_transfer || $this->foto_penyerahan) {
+                return 'Menunggu Konfirmasi';
             }
 
             return 'Menunggu Pembayaran';
