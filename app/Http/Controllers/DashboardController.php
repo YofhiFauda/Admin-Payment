@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\BranchDebt;
+use App\Models\BranchReceivable;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use \Illuminate\Database\Eloquent\Model;
 class DashboardController extends Controller
 {
     public function index()
@@ -518,5 +520,75 @@ class DashboardController extends Controller
             'total_piutang'   => $totalPiutang,
             'formatted_total' => 'Rp ' . number_format($totalPiutang, 0, ',', '.'),
         ]);
+    }
+    /**
+     * AJAX endpoint: returns Rembush, Debt, and Receivable stats for ALL branches in one go.
+     * This prevents the N+1 AJAX request problem that causes 504 timeouts.
+     */
+    public function batchBranchStats()
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['branches' => []]);
+        }
+
+        $branches = Branch::all();
+        $hutangStatuses = ['pending', 'waiting_payment', 'flagged', 'pending_technician', 'approved'];
+
+        // 1. Fetch Rembush Hutang (Grouped by Branch)
+        $rembushData = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->where('transactions.type', 'rembush')
+            ->whereIn('transactions.status', $hutangStatuses)
+            ->select('branches.name', DB::raw('SUM(tb.allocation_amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        // 2. Fetch Hutang Usaha (Inter-branch Debts where branch is Debtor)
+        $debtData = BranchDebt::where('status', 'pending')
+            ->join('branches', 'branches.id', '=', 'branch_debts.debtor_branch_id')
+            ->select('branches.name', DB::raw('SUM(amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        // 3. Fetch Piutang Usaha (Inter-branch Receivables where branch is Creditor)
+        $receivableData = BranchDebt::where('status', 'pending')
+            ->join('branches', 'branches.id', '=', 'branch_debts.creditor_branch_id')
+            ->select('branches.name', DB::raw('SUM(amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        $result = [];
+        foreach ($branches as $branch) {
+            $name = $branch->name;
+            
+            $rembushTotal = (int) ($rembushData[$name] ?? 0);
+            $debtTotal    = (int) ($debtData[$name] ?? 0);
+            $recvTotal    = (int) ($receivableData[$name] ?? 0);
+
+            $result[$name] = [
+                'rembush' => [
+                    'total'     => $rembushTotal,
+                    'formatted' => 'Rp ' . number_format($rembushTotal, 0, ',', '.'),
+                    'is_lunas'  => $rembushTotal <= 0
+                ],
+                'debt' => [
+                    'total'     => $debtTotal,
+                    'formatted' => 'Rp ' . number_format($debtTotal, 0, ',', '.'),
+                    'is_lunas'  => $debtTotal <= 0
+                ],
+                'receivable' => [
+                    'total'     => $recvTotal,
+                    'formatted' => 'Rp ' . number_format($recvTotal, 0, ',', '.'),
+                    'is_lunas'  => $recvTotal <= 0
+                ]
+            ];
+        }
+
+        return response()->json(['branches' => $result]);
     }
 }

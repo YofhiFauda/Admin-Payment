@@ -1314,7 +1314,7 @@
                     }
                 });
 
-            if (['owner', 'atasan', 'admin'].includes(userRole)) {
+            if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
                 window.Echo.private(`notifications.management`)
                     .listen('PriceAnomalyDetected', (e) => {
                         console.log('Price Anomaly Detected:', e);

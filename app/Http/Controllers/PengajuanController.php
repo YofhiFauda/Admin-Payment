@@ -183,7 +183,7 @@ class PengajuanController extends Controller
     public function uploadPhoto(Request $request)
     {
         $request->validate([
-            'file' => 'required|image|mimes:jpg,jpeg,png|max:10240',
+            'file' => 'required|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $file = $request->file('file');
@@ -222,7 +222,7 @@ class PengajuanController extends Controller
         
         $request->validate([
             'type'                              => 'required|in:pengajuan',
-            'file'                              => 'nullable|image|max:5120',
+            'file'                              => 'nullable|mimes:jpg,jpeg,png,pdf|max:5120',
             'items'                             => 'required|array|min:1',
             'items.*.customer'                  => 'required|string|max:255',
             'items.*.category'                  => ['required', 'string', function($attr, $val, $fail) {
@@ -240,6 +240,9 @@ class PengajuanController extends Controller
             'branches.*.allocation_amount'      => 'nullable|numeric|min:0',
             'global_notes'                      => 'nullable|string|max:2000',
             'estimated_price'                   => 'nullable|numeric|min:0',
+            'dpp_lainnya'                       => 'nullable|integer|min:0',
+            'tax_amount'                        => 'nullable|integer|min:0',
+            'biaya_layanan_1'                   => 'nullable|integer|min:0',
         ], [
             'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
             'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
@@ -318,9 +321,13 @@ class PengajuanController extends Controller
                 ];
             }, $request->items);
 
+            $dppLainnya = intval($request->dpp_lainnya ?? 0);
+            $ppn = intval($request->tax_amount ?? 0);
+            $layanan1 = intval($request->biaya_layanan_1 ?? 0);
+
             $totalAmount = collect($items)->sum(function($item) {
                 return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
-            });
+            }) + $dppLainnya + $ppn + $layanan1;
 
             $transaction = Transaction::create([
                 'type'            => Transaction::TYPE_PENGAJUAN,
@@ -331,6 +338,9 @@ class PengajuanController extends Controller
                 'category'        => $items[0]['category'] ?? null,
                 'description'     => $request->global_notes,
                 'amount'          => $totalAmount,
+                'dpp_lainnya'     => $dppLainnya,
+                'tax_amount'      => $ppn,
+                'biaya_layanan_1' => $layanan1,
                 'items'           => $items,
                 'file_path'       => $filePath,
                 'date'            => now()->format('Y-m-d'),

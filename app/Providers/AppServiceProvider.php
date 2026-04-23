@@ -3,7 +3,9 @@
 namespace App\Providers;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -22,24 +24,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // \Illuminate\Support\Facades\URL::forceScheme('https');
+        URL::forceScheme('https');
 
         // ─── Rate Limit: AI Autofill ────────────────────────────────
-        \Illuminate\Support\Facades\RateLimiter::for('ai-auto-fill', function (\Illuminate\Http\Request $request) {
+        RateLimiter::for('ai-auto-fill', function (Request $request) {
             $key = $request->ip() . ':' . $request->header('X-SECRET', 'no-secret');
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($key);
+            return Limit::perMinute(60)->by($key);
         });
 
         // ─── Rate Limit: Upload Foto ────────────────────────────────
-        \Illuminate\Support\Facades\RateLimiter::for('upload-nota', function (\Illuminate\Http\Request $request) {
+        RateLimiter::for('upload-nota', function (Request $request) {
             return $request->user()
-                ? \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('user:' . $request->user()->id)
-                : \Illuminate\Cache\RateLimiting\Limit::perMinute(3)->by($request->ip());
+                ? Limit::perMinute(5)->by('user:' . $request->user()->id)
+                : Limit::perMinute(3)->by($request->ip());
         });
 
         // ─── Rate Limit: Polling ────────────────────────────────────
-        \Illuminate\Support\Facades\RateLimiter::for('ocr-polling', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->ip());
+        RateLimiter::for('ocr-polling', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
         });
     }
 }

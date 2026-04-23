@@ -1,7 +1,8 @@
 <?php
-
+ 
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,29 +19,26 @@ use Illuminate\Support\Facades\Log;
  * HELPER: Unified authorization logger
  */
 $authorize = function ($channel, $condition, $user, $extra = []) {
-    // FAIL-SAFE: User ID 1 (Super Admin) selalu lolos otorisasi di semua channel
-    if (($user->id ?? 0) === 1) {
+    // FAIL-SAFE: User ID 1 (Super Admin) ATAU Role Admin selalu lolos
+    $currentRole = strtolower(trim((string)($user->role ?? 'none')));
+    
+    if (($user->id ?? 0) === 1 || $currentRole === 'admin') {
         $condition = true;
-        $extra['bypass_used'] = 'SUPER_ADMIN_ALWAYS_ALLOWED';
+        $extra['bypass_used'] = 'ADMIN_OR_SUPERADMIN_BYPASS';
     }
 
     $allowed = (bool) $condition;
     
-    // Ambil data role dengan pembersihan ekstra
-    $rawRole = (string)($user->role ?? 'none');
-    $cleanRole = strtolower(trim($rawRole));
-    
-    // Log detail untuk memecahkan misteri 403
-    Log::info("📡 [BROADCAST AUTH] " . ($allowed ? "ALLOWED" : "DENIED"), [
-        'channel'     => $channel,
-        'user_id'     => $user->id ?? 'guest',
-        'role_raw'    => $rawRole,
-        'role_clean'  => $cleanRole,
-        'condition_in'=> (bool)$condition,
-        'is_logged_in'=> Auth::check(),
-        'session_id'  => session()->getId(),
-        'extra'       => $extra
-    ]);
+    // Log detail untuk memecahkan misteri 403 (hanya jika denied agar log tidak penuh)
+    if (!$allowed) {
+        Log::warning("📡 [BROADCAST AUTH] DENIED", [
+            'channel'     => $channel,
+            'user_id'     => $user->id ?? 'guest',
+            'role'        => $currentRole,
+            'condition'   => (bool)$condition,
+            'extra'       => $extra
+        ]);
+    }
 
     return $allowed;
 };
@@ -62,7 +60,7 @@ Broadcast::channel('transactions.{id}', function ($user, $id) use ($authorize) {
 });
 
 Broadcast::channel('transactions', function ($user) use ($authorize) {
-    return $authorize("transactions", Auth::check(), $user);
+    return $authorize("transactions", (bool) $user, $user);
 });
 
 Broadcast::channel('activities', function ($user) use ($authorize) {

@@ -342,13 +342,14 @@ class TransactionController extends Controller
                     ->with('error', 'Anda tidak memiliki akses untuk mengedit Pengajuan.');
             }
 
-            // Admin selalu read-only. Atasan & Owner read-only JIKA status selesai
+            // ✅ Role-Based Access: Admin = restricted (branch only), Teknisi = diblokir, Management = full edit (unless completed)
+            $isAdminOnlyBranch = $user->isAdmin() && !$isCompleted;
             $isReadOnly = $user->isAdmin() || $isCompleted;
 
             $pengajuanCategories = TransactionCategory::forPengajuan()->active()->get();
 
             return view('transactions.edit-pengajuan', compact(
-                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted', 'pengajuanCategories'
+                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted', 'pengajuanCategories', 'isAdminOnlyBranch'
             ));
         }
 
@@ -368,10 +369,10 @@ class TransactionController extends Controller
             return response()->json(['error' => 'Transaksi yang sudah Selesai tidak dapat diubah.'], 403);
         }
 
-        // ✅ Guard: Pengajuan — hanya Owner dan Atasan yang bisa update
+        // ✅ Guard: Pengajuan — Owner, Atasan, dan Admin bisa update
         if ($transaction->isPengajuan()) {
-            $isManagement = $user->isOwner() || $user->isAtasan();
-            if (!$isManagement) {
+            $canUpdate = $user->isOwner() || $user->isAtasan() || $user->isAdmin();
+            if (!$canUpdate) {
                 return redirect()->route('transactions.index')
                     ->with('error', 'Anda tidak memiliki akses untuk mengubah Pengajuan.');
             }
@@ -379,28 +380,39 @@ class TransactionController extends Controller
 
         // Validation depends on type
         if ($transaction->isPengajuan()) {
-            $request->validate([
-                'items'           => 'required|array|min:1',
-                'items.*.customer'=> 'required|string|max:255',
-                'items.*.vendor'  => 'nullable|string|max:255',
-                'items.*.link'    => 'nullable|url|max:1000',
-                'items.*.category'=> ['required', 'string', function($attr, $val, $fail) {
-                    $exists = TransactionCategory::where('name', $val)
-                        ->where('type', 'pengajuan')
-                        ->where('is_active', true)
-                        ->exists();
-                    if (!$exists) $fail('Alasan/Kategori tidak valid.');
-                }],
-                'items.*.description' => 'nullable|string|max:2000',
-                'items.*.specs'   => 'nullable|array',
-                'items.*.quantity'=> 'required|integer|min:1',
-                'items.*.estimated_price' => 'required|numeric|min:0',
-                'estimated_price' => 'nullable|numeric|min:0',
+            $rules = [
                 'branches'        => 'nullable|array',
                 'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
-            ], [
+                'dpp_lainnya'     => 'nullable|integer|min:0',
+                'tax_amount'      => 'nullable|integer|min:0',
+                'biaya_layanan_1' => 'nullable|integer|min:0',
+            ];
+
+            // ✅ Only require items if NOT Admin (Management can edit everything)
+            if (!$user->isAdmin()) {
+                $rules = array_merge($rules, [
+                    'items'           => 'required|array|min:1',
+                    'items.*.customer'=> 'required|string|max:255',
+                    'items.*.vendor'  => 'nullable|string|max:255',
+                    'items.*.link'    => 'nullable|url|max:1000',
+                    'items.*.category'=> ['required', 'string', function($attr, $val, $fail) {
+                        $exists = TransactionCategory::where('name', $val)
+                            ->where('type', 'pengajuan')
+                            ->where('is_active', true)
+                            ->exists();
+                        if (!$exists) $fail('Alasan/Kategori tidak valid.');
+                    }],
+                    'items.*.description' => 'nullable|string|max:2000',
+                    'items.*.specs'   => 'nullable|array',
+                    'items.*.quantity'=> 'required|integer|min:1',
+                    'items.*.estimated_price' => 'required|numeric|min:0',
+                    'estimated_price' => 'nullable|numeric|min:0',
+                ]);
+            }
+
+            $request->validate($rules, [
                 'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
                 'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
                 'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
@@ -477,59 +489,74 @@ class TransactionController extends Controller
             }
 
             if ($transaction->isPengajuan()) {
-                $matchingService = app(\App\Services\PriceIndex\ItemMatchingService::class);
-                $items = array_map(function ($item) use ($matchingService) {
-                    $rawCustomer = trim(preg_replace('/\s+/', ' ', $item['customer'] ?? ''));
-                    $masterItemId = $item['master_item_id'] ?? null;
-                    $categoryId = $item['category'] ?? null;
+                if (!$user->isAdmin()) {
+                    $matchingService = app(\App\Services\PriceIndex\ItemMatchingService::class);
+                    $items = array_map(function ($item) use ($matchingService) {
+                        $rawCustomer = trim(preg_replace('/\s+/', ' ', $item['customer'] ?? ''));
+                        $masterItemId = $item['master_item_id'] ?? null;
+                        $categoryId = $item['category'] ?? null;
 
-                    if (empty($masterItemId) && !empty($rawCustomer)) {
-                        $bestMatch = $matchingService->findBestMatch($rawCustomer, $categoryId);
-                        if ($bestMatch) {
-                            $masterItemId = $bestMatch->id;
-                        } else {
-                            $newItem = $matchingService->createPendingItem($rawCustomer, $categoryId, Auth::id());
-                            $masterItemId = $newItem->id;
+                        if (empty($masterItemId) && !empty($rawCustomer)) {
+                            $bestMatch = $matchingService->findBestMatch($rawCustomer, $categoryId);
+                            if ($bestMatch) {
+                                $masterItemId = $bestMatch->id;
+                            } else {
+                                $newItem = $matchingService->createPendingItem($rawCustomer, $categoryId, Auth::id());
+                                $masterItemId = $newItem->id;
+                            }
                         }
-                    }
 
-                    if (!empty($masterItemId)) {
-                        $master = \App\Models\MasterItem::find($masterItemId);
-                        if ($master) {
-                            $rawCustomer = $master->display_name;
+                        if (!empty($masterItemId)) {
+                            $master = \App\Models\MasterItem::find($masterItemId);
+                            if ($master) {
+                                $rawCustomer = $master->display_name;
+                            }
                         }
-                    }
 
-                    return [
-                        'master_item_id'  => $masterItemId,
-                        'customer'        => $rawCustomer,
-                        'vendor'          => $item['vendor']          ?? '',
-                        'link'            => $item['link']            ?? '',
-                        'category'        => $categoryId, 
-                        'description'     => $item['description']     ?? '',
-                        'specs'           => $item['specs']           ?? [],
-                        'estimated_price' => intval($item['estimated_price'] ?? 0),
-                        'quantity'        => intval($item['quantity']        ?? 1),
-                    ];
-                }, $request->items);
+                        return [
+                            'master_item_id'  => $masterItemId,
+                            'customer'        => $rawCustomer,
+                            'vendor'          => $item['vendor']          ?? '',
+                            'link'            => $item['link']            ?? '',
+                            'category'        => $categoryId, 
+                            'description'     => $item['description']     ?? '',
+                            'specs'           => $item['specs']           ?? [],
+                            'estimated_price' => intval($item['estimated_price'] ?? 0),
+                            'quantity'        => intval($item['quantity']        ?? 1),
+                        ];
+                    }, $request->items);
 
-                $firstItem = $items[0] ?? [];
-                $totalAmount = collect($items)->sum(function($item) {
-                    return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
-                });
+                    $firstItem = $items[0] ?? [];
+                    
+                    $dppLainnya = intval($request->dpp_lainnya ?? 0);
+                    $ppn = intval($request->tax_amount ?? 0);
+                    $layanan1 = intval($request->biaya_layanan_1 ?? 0);
 
-                $transaction->update([
-                    'customer'        => $firstItem['customer'] ?? 'Multiple Items',
-                    'vendor'          => $firstItem['vendor'] ?? null,
-                    'link'            => $firstItem['link'] ?? null,
-                    'description'     => $request->global_notes ?? $firstItem['description'] ?? null,
-                    'specs'           => $firstItem['specs'] ?? null,
-                    'quantity'        => $firstItem['quantity'] ?? 1,
-                    'estimated_price' => $firstItem['estimated_price'] ?? 0,
-                    'category'        => $firstItem['category'] ?? null,
-                    'amount'          => $totalAmount,
-                    'items'           => $items,
-                ]);
+                    $totalAmount = collect($items)->sum(function($item) {
+                        return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
+                    }) + $dppLainnya + $ppn + $layanan1;
+
+                    $transaction->update([
+                        'customer'        => $firstItem['customer'] ?? 'Multiple Items',
+                        'vendor'          => $firstItem['vendor'] ?? null,
+                        'link'            => $firstItem['link'] ?? null,
+                        'description'     => $request->global_notes ?? $firstItem['description'] ?? null,
+                        'specs'           => $firstItem['specs'] ?? null,
+                        'quantity'        => $firstItem['quantity'] ?? 1,
+                        'estimated_price' => $firstItem['estimated_price'] ?? 0,
+                        'category'        => $firstItem['category'] ?? null,
+                        'amount'          => $totalAmount,
+                        'dpp_lainnya'     => $dppLainnya,
+                        'tax_amount'      => $ppn,
+                        'biaya_layanan_1' => $layanan1,
+                        'items'           => $items,
+                    ]);
+                } else {
+                    Log::info('[ADMIN-EDIT] Admin updated branches for pengajuan', [
+                        'transaction_id' => $transaction->id,
+                        'admin_id'       => $user->id,
+                    ]);
+                }
             } else {
                 $specs = null;
                 if ($request->payment_method === 'transfer_penjual') {
@@ -1793,8 +1820,8 @@ class TransactionController extends Controller
             // F=kategori, G=Nama Vendor, H=Link, I=Merk, J=Tipe/Seri, K=Ukuran, L=Warna,
             // M=Keterangan, N=Harga Satuan, O=Jumlah, P=Total,
             // Q=Ongkir, R=Diskon Pengiriman, S=Voucher, T=Biaya Layanan 1, U=Biaya Layanan 2,
-            // V=Total Estimasi, W=cash/bank, X=status
-            return [['Total', 'Total Estimasi'], 'V']; // Grand Total sums column V (Total Estimasi)
+            // V=DPP Lainnya, W=PPN, X=Total Estimasi, Y=cash/bank, Z=status
+            return [['Total', 'Total Estimasi'], 'X']; // Grand Total sums column X (Total Estimasi)
         }
 
         // Rembush: A=Cabang, B=Invoice, C=tanggal, D=bulan, E=kategori, F=nama vendor,
@@ -1831,9 +1858,9 @@ class TransactionController extends Controller
             
             if ($heading === 'Total Estimasi') {
                 // If it's the first row of a transaction, include adjustments
-                // Total Estimasi (V) = Total (P) + Ongkir (Q) - Diskon (R) - Voucher (S) + Service1 (T) + Service2 (U)
+                // Total Estimasi (X) = Total (P) + Ongkir (Q) - Diskon (R) - Voucher (S) + Service1 (T) + Service2 (U) + DPP (V) + PPN (W)
                 if ($isFirstRow) {
-                    return "=P{$row}+Q{$row}-R{$row}-S{$row}+T{$row}+U{$row}";
+                    return "=P{$row}+Q{$row}-R{$row}-S{$row}+T{$row}+U{$row}+V{$row}+W{$row}";
                 }
                 // Subsequent rows only contribute their base price * qty
                 return "=P{$row}";
@@ -1851,7 +1878,7 @@ class TransactionController extends Controller
     private function getCurrencyColumns(string $format): array
     {
         if ($format === 'pengajuan') {
-            return ['Harga Satuan', 'Total', 'Ongkir', 'Diskon Pengiriman', 'Voucher Diskon', 'Biaya Layanan 1', 'Biaya Layanan 2', 'Total Estimasi'];
+            return ['Harga Satuan', 'Total', 'Ongkir', 'Diskon Pengiriman', 'Voucher Diskon', 'Biaya Layanan 1', 'Biaya Layanan 2', 'DPP Lainnya', 'PPN', 'Total Estimasi'];
         }
         return ['Harga Satuan', 'Total Nominal'];
     }
@@ -1884,9 +1911,11 @@ class TransactionController extends Controller
                 'Voucher Diskon',      // S
                 'Biaya Layanan 1',     // T
                 'Biaya Layanan 2',     // U
-                'Total Estimasi',      // V  ← FORMULA: =P+Q-R-S+T+U
-                'cash/bank pembayar',  // W
-                'status',              // X
+                'DPP Lainnya',         // V
+                'PPN',                 // W
+                'Total Estimasi',      // X  ← FORMULA: =P+Q-R-S+T+U+V+W
+                'cash/bank pembayar',  // Y
+                'status',              // Z
             ];
         }
 
@@ -1955,9 +1984,11 @@ class TransactionController extends Controller
                 $isFirstRow ? (float) ($t->voucher_diskon ?? 0) : '',    // S
                 $isFirstRow ? (float) ($t->biaya_layanan_1 ?? 0) : '',   // T
                 $isFirstRow ? (float) ($t->biaya_layanan_2 ?? 0) : '',   // U
-                0,                                                        // V  Total Estimasi (overridden by formula)
-                $isFirstRow ? $payerName : '',                            // W
-                $isFirstRow ? $t->status_label : '',                      // X
+                $isFirstRow ? (float) ($t->dpp_lainnya ?? 0) : '',       // V
+                $isFirstRow ? (float) ($t->tax_amount ?? 0) : '',        // W
+                0,                                                        // X  Total Estimasi (overridden by formula)
+                $isFirstRow ? $payerName : '',                            // Y
+                $isFirstRow ? $t->status_label : '',                      // Z
             ];
         }
 

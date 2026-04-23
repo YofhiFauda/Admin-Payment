@@ -36,7 +36,7 @@
                     <div id="photo-placeholder" class="flex flex-col items-center justify-center">
                         <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-slate-400"></i>
                         <span class="text-sm font-bold text-slate-700 mb-1" id="photo-name-display">Pilih Foto (Klik atau Drag)</span>
-                        <span class="text-[10px] text-slate-400">Format: JPG, PNG. Maksimal 5MB.</span>
+                        <span class="text-[10px] text-slate-400">Format: JPG, PNG, PDF. Maksimal 5MB.</span>
                     </div>
 
                     {{-- Preview --}}
@@ -48,7 +48,17 @@
                         </div>
                     </div>
 
-                    <input type="file" name="file" id="reference_photo" accept="image/jpeg,image/png,image/jpg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    {{-- Preview PDF --}}
+                    <div id="photo-preview-pdf" class="hidden absolute inset-0 w-full h-full rounded-2xl overflow-hidden flex flex-col items-center justify-center bg-slate-100 group">
+                        <i data-lucide="file-text" class="w-16 h-16 text-emerald-600 mb-2"></i>
+                        <span class="text-sm font-bold text-slate-700" id="pdf-name-display">File PDF Terpilih</span>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                            <i data-lucide="refresh-cw" class="w-8 h-8 mb-2"></i>
+                            <span class="text-xs font-black uppercase tracking-widest">Ganti File</span>
+                        </div>
+                    </div>
+
+                    <input type="file" name="file" id="reference_photo" accept="image/jpeg,image/png,image/jpg,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                 </div>
             </div>
 
@@ -142,6 +152,46 @@
             <div id="summary-billing-section" class="bg-[#1a1c23] rounded-[2rem] p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl hidden">
                 <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
 
+                {{-- DPP, PPN & Service Fee Inputs --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 relative z-10">
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            DPP Lainnya <span class="text-[9px] font-normal text-slate-500 lowercase">(biaya tambahan)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-dpp-lainnya-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                placeholder="0">
+                            <input type="hidden" name="dpp_lainnya" id="input-dpp-lainnya-hidden" value="0">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            PPN <span class="text-[9px] font-normal text-slate-500 lowercase">(pajak pertambahan nilai)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-ppn-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                placeholder="0">
+                            <input type="hidden" name="tax_amount" id="input-ppn-hidden" value="0">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            Biaya Layanan 1 <span class="text-[9px] font-normal text-slate-500 lowercase">(service fee)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-layanan1-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                placeholder="0">
+                            <input type="hidden" name="biaya_layanan_1" id="input-layanan1-hidden" value="0">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-8 md:mb-10 relative z-10">
                     {{-- Left Side: Total --}}
                     <div>
@@ -217,13 +267,24 @@
                 </button>
             </div>
 
-            {{-- Gambar Wrapper dengan Background Grid/Dots --}}
+            {{-- Gambar/PDF Wrapper dengan Background Grid/Dots --}}
             <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
                 <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
                 <img id="viewer-image"
                      src=""
                      class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
                      alt="Preview foto referensi" />
+                
+                {{-- PDF Viewer Iframe --}}
+                <iframe id="viewer-pdf" class="hidden relative z-10 w-full h-full rounded-lg border-0" src=""></iframe>
+            </div>
+
+            {{-- Footer for PDF Actions --}}
+            <div id="viewer-footer" class="mt-6 flex justify-center hidden">
+                <a id="viewer-pdf-link" href="#" target="_blank" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    BUKA DI TAB BARU / DOWNLOAD
+                </a>
             </div>
         </div>
     </div>
@@ -282,7 +343,7 @@
                             <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Link Barang/Referensi <span class="text-red-500">*</span></label>
                             <input type="url" name="items[__INDEX__][link]"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all"
-                                placeholder="https://tokopedia.link/..." required>
+                                placeholder="https://tokopedia.link/...">
                         </div>
                     </div>
                 </div>
@@ -452,21 +513,54 @@
         // ═══════════════════════════════════════
         const imageViewer  = document.getElementById('image-viewer');
         const viewerImage  = document.getElementById('viewer-image');
+        const viewerPdf    = document.getElementById('viewer-pdf');
+        const viewerFooter = document.getElementById('viewer-footer');
+        const viewerPdfLink= document.getElementById('viewer-pdf-link');
         const closeViewer  = document.getElementById('close-viewer');
         const refWrapper   = document.getElementById('ref-photo-wrapper');
 
         function openViewer(src) {
-            viewerImage.src = src;
+            const isPdf = src.toLowerCase().endsWith('.pdf') || src.startsWith('data:application/pdf');
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            if (isPdf) {
+                if (isMobile) {
+                    // Reliable on mobile: open in new tab
+                    window.open(src, '_blank');
+                    return;
+                }
+                // Desktop: show iframe + footer link
+                viewerImage.classList.add('hidden');
+                viewerPdf.classList.remove('hidden');
+                viewerPdf.src = src;
+                viewerFooter.classList.remove('hidden');
+                viewerPdfLink.href = src;
+                document.getElementById('viewer-header-title').textContent = 'PREVIEW DOKUMEN PDF';
+            } else {
+                // Regular image
+                viewerImage.classList.remove('hidden');
+                viewerPdf.classList.add('hidden');
+                viewerFooter.classList.add('hidden');
+                viewerImage.src = src;
+                document.getElementById('viewer-header-title').textContent = 'PREVIEW FOTO';
+            }
+
             imageViewer.classList.remove('hidden');
             imageViewer.classList.add('flex');
             document.body.style.overflow = 'hidden';
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: imageViewer });
         }
 
         function closeViewerFn() {
             imageViewer.classList.add('hidden');
             imageViewer.classList.remove('flex');
             document.body.style.overflow = '';
-            setTimeout(() => { viewerImage.src = ''; }, 200);
+            setTimeout(() => { 
+                viewerImage.src = ''; 
+                viewerPdf.src = '';
+                viewerPdf.classList.add('hidden');
+                viewerFooter.classList.add('hidden');
+            }, 200);
         }
 
         if (refWrapper) {
@@ -544,6 +638,12 @@
                     photoDisplay.classList.remove('text-slate-700');
                     photoDisplay.classList.add('text-emerald-600');
                     
+                    const isPdf = file.type === 'application/pdf';
+                    if (isPdf) {
+                        const pdfNameDisplay = document.getElementById('pdf-name-display');
+                        if (pdfNameDisplay) pdfNameDisplay.textContent = file.name;
+                    }
+                    
                     const icon = photoContainer.querySelector('i');
                     if (icon) {
                         icon.classList.add('text-emerald-500');
@@ -553,11 +653,22 @@
                     // Create preview
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        previewImg.src = e.target.result;
+                        if (isPdf) {
+                            previewImg.classList.add('hidden');
+                            document.getElementById('photo-preview-pdf').classList.remove('hidden');
+                            // Store the data URL on the container for the viewer
+                            document.getElementById('photo-preview-pdf').dataset.src = e.target.result;
+                        } else {
+                            previewImg.classList.remove('hidden');
+                            document.getElementById('photo-preview-pdf').classList.add('hidden');
+                            previewImg.src = e.target.result;
+                        }
                         previewWrapper.classList.remove('hidden');
                         photoPlaceholder.classList.add('hidden');
                         photoContainer.classList.remove('border-dashed');
                         photoContainer.classList.add('border-solid', 'border-emerald-200');
+                        
+                        if (typeof lucide !== 'undefined') lucide.createIcons({ root: photoContainer });
                     }
                     reader.readAsDataURL(file);
 
@@ -577,11 +688,24 @@
                 }
                 
                 previewWrapper.classList.add('hidden');
+                document.getElementById('photo-preview-pdf').classList.add('hidden');
                 photoPlaceholder.classList.remove('hidden');
                 photoContainer.classList.add('border-dashed');
                 photoContainer.classList.remove('border-solid', 'border-emerald-200');
                 previewImg.src = '';
             }
+        }
+
+        // Attach viewer to photo preview
+        if (previewWrapper) {
+            previewWrapper.addEventListener('click', function(e) {
+                const pdfPreview = document.getElementById('photo-preview-pdf');
+                if (!pdfPreview.classList.contains('hidden')) {
+                    openViewer(pdfPreview.dataset.src);
+                } else if (previewImg.src) {
+                    openViewer(previewImg.src);
+                }
+            });
         }
 
         // ═══════════════════════════════════════
@@ -619,7 +743,7 @@
 
         // Core dynamic logic
         function updateGlobalTotal() {
-            let total = 0;
+            let itemsTotal = 0;
             const itemCards = itemsContainer.querySelectorAll('.item-card');
             
             itemCards.forEach(card => {
@@ -633,7 +757,7 @@
                 const price = parseRupiah(priceInput.value);
                 const qty = parseInt(qtyInput.value) || 1;
                 const subtotal = price * qty;
-                total += subtotal;
+                itemsTotal += subtotal;
                 
                 if(subtotalDisplay) subtotalDisplay.textContent = 'Rp ' + formatRupiah(subtotal);
                 
@@ -645,8 +769,13 @@
                 }
             });
 
-            formTotalInput.value = total;
-            globalTotalDisplay.textContent = 'Rp ' + formatRupiah(total);
+            const dppLainnya = parseRupiah(document.getElementById('input-dpp-lainnya-hidden').value);
+            const ppn = parseRupiah(document.getElementById('input-ppn-hidden').value);
+            const layanan1 = parseRupiah(document.getElementById('input-layanan1-hidden').value);
+            const grandTotal = itemsTotal + dppLainnya + ppn + layanan1;
+
+            formTotalInput.value = grandTotal;
+            globalTotalDisplay.textContent = 'Rp ' + formatRupiah(grandTotal);
             
             renderDistribution();
         }
@@ -934,6 +1063,39 @@
         }
 
         btnAddItem.addEventListener('click', addItem);
+        
+        // ─── DPP, PPN & Service Fee Event Listeners ───
+        const dppLainnyaDisp = document.getElementById('input-dpp-lainnya-display');
+        const dppLainnyaHid  = document.getElementById('input-dpp-lainnya-hidden');
+        const ppnDisp = document.getElementById('input-ppn-display');
+        const ppnHid  = document.getElementById('input-ppn-hidden');
+        const lay1Disp = document.getElementById('input-layanan1-display');
+        const lay1Hid  = document.getElementById('input-layanan1-hidden');
+
+        if(dppLainnyaDisp) {
+            dppLainnyaDisp.addEventListener('input', function() {
+                let raw = parseRupiah(this.value);
+                this.value = raw > 0 ? formatRupiah(raw) : '';
+                dppLainnyaHid.value = raw;
+                updateGlobalTotal();
+            });
+        }
+        if(ppnDisp) {
+            ppnDisp.addEventListener('input', function() {
+                let raw = parseRupiah(this.value);
+                this.value = raw > 0 ? formatRupiah(raw) : '';
+                ppnHid.value = raw;
+                updateGlobalTotal();
+            });
+        }
+        if(lay1Disp) {
+            lay1Disp.addEventListener('input', function() {
+                let raw = parseRupiah(this.value);
+                this.value = raw > 0 ? formatRupiah(raw) : '';
+                lay1Hid.value = raw;
+                updateGlobalTotal();
+            });
+        }
         
         // Add initial first item
         addItem();

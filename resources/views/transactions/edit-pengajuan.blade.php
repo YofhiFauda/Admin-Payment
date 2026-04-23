@@ -42,9 +42,13 @@
                     </svg>
                 </div>
                 <div>
-                    <h4 class="text-sm font-bold text-amber-900 mb-0.5">Mode Hanya Baca (Read-Only)</h4>
+                    <h4 class="text-sm font-bold text-amber-900 mb-0.5">{{ ($isAdminOnlyBranch ?? false) ? 'Mode Edit Terbatas (Admin)' : 'Mode Hanya Baca (Read-Only)' }}</h4>
                     <p class="text-xs leading-relaxed text-amber-700">
-                        Anda masuk dengan peran <strong>Admin</strong>. Halaman ini difungsikan secara khusus untuk meninjau perbandingan versi pengajuan; modifikasi atau perubahan data tidak dapat dilakukan pada mode ini.
+                        @if($isAdminOnlyBranch ?? false)
+                            Anda masuk dengan peran <strong>Admin</strong>. Anda hanya diperbolehkan mengubah <strong>Pembagian Cabang</strong>. Field lainnya tetap terkunci untuk menjaga integritas data pengajuan.
+                        @else
+                            Anda masuk dengan peran <strong>Admin</strong>. Halaman ini difungsikan secara khusus untuk meninjau perbandingan versi pengajuan; modifikasi atau perubahan data tidak dapat dilakukan pada mode ini.
+                        @endif
                     </p>
                 </div>
             </div>
@@ -119,7 +123,8 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form" class="{{ ($isReadOnly ?? false) ? 'version-readonly' : '' }}">
+        <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form" 
+            class="{{ ($isReadOnly ?? false) ? 'version-readonly' : '' }} {{ ($isAdminOnlyBranch ?? false) ? 'form-admin-restricted-mode' : '' }}">
             @csrf
             @method('PUT')
             <input type="hidden" name="type" value="pengajuan">
@@ -143,6 +148,12 @@
                             'specs'           => is_array($transaction->specs) ? $transaction->specs : []
                         ]
                     ];
+
+                // Calculate Pre-Rendered Totals
+                $phpItemsTotal = collect($itemsToRender)->sum(function($item) {
+                    return ($item['quantity'] ?? 1) * ($item['estimated_price'] ?? 0);
+                });
+                $phpGrandTotal = $phpItemsTotal + ($transaction->dpp_lainnya ?? 0) + ($transaction->tax_amount ?? 0) + ($transaction->biaya_layanan_1 ?? 0);
             @endphp
             
             {{-- 1. FOTO REFERENSI --}}
@@ -180,10 +191,12 @@
                         </label>
                         <p class="text-[10px] md:text-xs text-slate-400 mt-1">Kelola barang yang diajukan</p>
                     </div>
+                    @if(!($isAdminOnlyBranch ?? false))
                     <button type="button" id="btn-add-item" class="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-600 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm">
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         Tambah Barang
                     </button>
+                    @endif
                 </div>
 
                 <div id="items-container" class="space-y-6">
@@ -210,9 +223,11 @@
                                     <div class="badge-mount"></div>
                                     
                                     <div class="flex items-center gap-2">
+                                        @if(!($isAdminOnlyBranch ?? false))
                                         <button type="button" class="btn-remove-item text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors {{ count($itemsToRender) <= 1 ? 'hidden' : '' }}" title="Hapus Barang">
                                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                                         </button>
+                                        @endif
                                         <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform duration-200 icon-collapse"></i>
                                     </div>
                                 </div>
@@ -356,8 +371,8 @@
                         <p class="text-xs text-slate-500">Total estimasi dari seluruh barang di atas</p>
                     </div>
                     <div class="text-left sm:text-right w-full sm:w-auto bg-white border border-slate-200 px-6 py-4 rounded-xl shadow-sm">
-                        <div id="total-estimate-global" class="text-xl md:text-2xl font-black text-emerald-600">Rp 0</div>
-                        <input type="hidden" name="estimated_price" id="form-total-estimated-price" value="0">
+                        <div id="total-estimate-global" class="text-xl md:text-2xl font-black text-emerald-600">Rp {{ number_format($phpItemsTotal, 0, ',', '.') }}</div>
+                        <input type="hidden" name="estimated_price" id="form-total-estimated-price" value="{{ $phpItemsTotal }}">
                     </div>
                 </div>
             </div>
@@ -415,17 +430,59 @@
                 </div>
             </div>
 
-            {{-- ══════════════════════════════════ --}}
             {{-- SUMMARY BILLING (FULL WIDTH BLACK CARD) --}}
             {{-- ══════════════════════════════════ --}}
-            <div id="summary-billing-section" class="bg-[#1a1c23] rounded-[2rem] p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl hidden">
+            <div id="summary-billing-section" class="bg-[#1a1c23] rounded-[2rem] p-6 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl">
                 <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
+
+                {{-- DPP, PPN & Service Fee Inputs --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 relative z-10">
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            DPP Lainnya <span class="text-[9px] font-normal text-slate-500 lowercase">(biaya tambahan)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-dpp-lainnya-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                value="{{ $transaction->dpp_lainnya > 0 ? number_format($transaction->dpp_lainnya, 0, ',', '.') : '' }}"
+                                placeholder="0">
+                            <input type="hidden" name="dpp_lainnya" id="input-dpp-lainnya-hidden" value="{{ $transaction->dpp_lainnya ?? 0 }}">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            PPN <span class="text-[9px] font-normal text-slate-500 lowercase">(pajak pertambahan nilai)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-ppn-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                value="{{ $transaction->tax_amount > 0 ? number_format($transaction->tax_amount, 0, ',', '.') : '' }}"
+                                placeholder="0">
+                            <input type="hidden" name="tax_amount" id="input-ppn-hidden" value="{{ $transaction->tax_amount ?? 0 }}">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
+                            Biaya Layanan 1 <span class="text-[9px] font-normal text-slate-500 lowercase">(service fee)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
+                            <input type="text" id="input-layanan1-display" 
+                                class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
+                                value="{{ $transaction->biaya_layanan_1 > 0 ? number_format($transaction->biaya_layanan_1, 0, ',', '.') : '' }}"
+                                placeholder="0">
+                            <input type="hidden" name="biaya_layanan_1" id="input-layanan1-hidden" value="{{ $transaction->biaya_layanan_1 ?? 0 }}">
+                        </div>
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-8 md:mb-10 relative z-10">
                     {{-- Left Side: Total --}}
                     <div>
                         <span class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Total Pengajuan</span>
-                        <div class="text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 md:mb-6 tracking-tight" id="summary-total">Rp 0</div>
+                        <div class="text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 mb-4 md:mb-6 tracking-tight" id="summary-total">Rp {{ number_format($phpGrandTotal, 0, ',', '.') }}</div>
                         <div class="flex flex-wrap gap-2">
                             <span class="bg-white/10 text-slate-300 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider border border-white/5" id="summary-method">Metode: -</span>
                             <span class="bg-white/10 text-slate-300 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider border border-white/5" id="summary-branch-count">0 Cabang</span>
@@ -441,8 +498,8 @@
                     </div>
                 </div>
 
-                {{-- Submit Button (Hidden for Read-Only mode) --}}
-                @if(!($isReadOnly ?? false))
+                {{-- Submit Button (Hidden for Read-Only mode, unless Admin editing branches) --}}
+                @if(!($isReadOnly ?? false) || ($isAdminOnlyBranch ?? false))
                 <button type="submit" id="summary-submit" disabled
                     class="w-full relative z-10 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-4 md:py-5 rounded-2xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] disabled:shadow-none text-xs md:text-sm uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     <span id="submit-text">Simpan Perubahan</span>
@@ -674,7 +731,10 @@
             <span class="badge-text">Modified</span>
         </div>
     </template>
+    </div>
 @endsection
+
+
 
 <style>
     /* Badge styles berdasarkan tipe perubahan */
@@ -741,19 +801,70 @@
         z-index: 1;
     }
     
-    /* Read-only mode untuk versi pengaju */
+    /* Read-only mode untuk versi pengaju & Admin restricted */
     .version-readonly .item-body input,
     .version-readonly .item-body select,
-    .version-readonly .item-body textarea {
-        background-color: #f8fafc !important;
+    .version-readonly .item-body textarea,
+    .version-readonly #summary-billing-section input:not([type="hidden"]) {
         cursor: not-allowed !important;
         pointer-events: none !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
     }
-    
+
+    /* Admin restricted mode adjustment: allow interaction in branch section */
+    .form-admin-restricted-mode .method-btn,
+    .form-admin-restricted-mode .branch-pill,
+    .form-admin-restricted-mode #distribution-list input,
+    .form-admin-restricted-mode #summary-submit,
+    .form-admin-restricted-mode #btn-version-original,
+    .form-admin-restricted-mode #btn-version-management {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        opacity: 1 !important;
+        filter: grayscale(0) !important;
+    }
+
+    .form-admin-restricted-mode #distribution-list input {
+        cursor: text !important;
+    }
+
+
+    .dist-row-grid {
+        display: grid;
+        grid-template-columns: 1fr 100px 140px;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .dist-row-grid:hover {
+        border-color: #10b981;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+
+    /* Khusus untuk input di luar black card (bg putih) */
+    .version-readonly .bg-white input,
+    .version-readonly .bg-white select,
+    .version-readonly .bg-white textarea {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        border-color: #e2e8f0 !important;
+    }
+
+
     .version-readonly .btn-remove-item,
     .version-readonly #btn-add-item {
         display: none !important;
     }
+
 </style>
 
 @push('scripts')
@@ -853,20 +964,62 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (closeViewer) { closeViewer.addEventListener('click', function(e) { e.stopPropagation(); closeViewerFn(); }); }
         if (imageViewer) { imageViewer.addEventListener('click', function(e) { if (e.target === imageViewer) closeViewerFn(); }); }
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); });
+        if (imageViewer) {
+            document.addEventListener('keydown', function(e) { 
+                if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); 
+            });
+        }
 
         // ═══════════════════════════════════════
         // INITIAL DATA LOAD
         // ═══════════════════════════════════════
+    // ───────────────────────────────────────────────────
+    // Helper functions
+    // ───────────────────────────────────────────────────
+    function parseRupiah(str) { return parseInt((str || '').toString().replace(/\D/g, '') || '0'); }
+    function formatRupiah(num) { return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+    @php
+        $itemCount = count($itemsToRender);
+    @endphp
+    let itemCounter = {{ $itemCount }};
+
+    // ───────────────────────────────────────────────────
+    // POPULATE SELECTED BRANCHES (Crucial for first render)
+    // ───────────────────────────────────────────────────
+    @php
+        $selectedBranchData = $transaction->branches->map(function($b) {
+            $pivot = $b->pivot ?? (object)[];
+            return [
+                'id' => (string) $b->id,
+                'name' => $b->name,
+                'percent' => (float) ($pivot->allocation_percent ?? 0),
+                'value' => (float) ($pivot->allocation_amount ?? 0)
+            ];
+        })->values()->toArray();
+    @endphp
+    let selectedBranches = @json($selectedBranchData);
+    const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
+    const isReadOnly = @json($isReadOnly ?? false);
+    const canEditDistribution = !isReadOnly || isAdminOnlyBranch;
+    
+    // Default method to manual if we have amounts, or percent if we have percents
+    let currentMethod = 'equal';
+    if (selectedBranches.length > 0) {
+        const hasManualAmount = selectedBranches.some(b => b.value > 0);
+        const hasPercent = selectedBranches.some(b => b.percent > 0 && b.percent % (100/selectedBranches.length) !== 0);
+        if (hasManualAmount) currentMethod = 'manual';
+        else if (hasPercent) currentMethod = 'percent';
+    }
+
+
     const itemsContainer = document.getElementById('items-container');
     const btnAddItem = document.getElementById('btn-add-item');
-    const itemTemplate = document.getElementById('item-template').innerHTML;
+    const itemTemplateEl = document.getElementById('item-template');
+    const itemTemplate = itemTemplateEl ? itemTemplateEl.innerHTML : '';
     const formTotalInput = document.getElementById('form-total-estimated-price');
     const globalTotalDisplay = document.getElementById('total-estimate-global');
     
-    // ═══════════════════════════════════════
-    // DISTRIBUTION VARIABLES & ELEMENTS
-    // ═══════════════════════════════════════
     const branchPills       = document.querySelectorAll('.branch-pill');
     const methodBtns        = document.querySelectorAll('.method-btn');
     const distributionList  = document.getElementById('distribution-list');
@@ -879,22 +1032,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const summaryBranchCount = document.getElementById('summary-branch-count');
     const summaryBranchesList = document.getElementById('summary-branches-list');
     const summarySubmit     = document.getElementById('summary-submit');
-    
-    let selectedBranches = []; // { id, name, value, percent }
-    let currentMethod    = 'equal';
-    
-    @php
-        $itemCount = count($itemsToRender);
-    @endphp
-    let itemCounter = {{ $itemCount }};
 
-    // Helper functions
-    function parseRupiah(str) { return parseInt((str || '').toString().replace(/\D/g, '') || '0'); }
-    function formatRupiah(num) { return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-
-    // Core dynamic logic
     function updateGlobalTotal() {
-        let total = 0;
+        let itemsTotal = 0;
         const itemCards = itemsContainer.querySelectorAll('.item-card');
         
         itemCards.forEach(card => {
@@ -905,10 +1045,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const subtitleDisplay = card.querySelector('.item-subtitle');
             const customerInput = card.querySelector('.input-customer');
             
-            const price = parseRupiah(priceInput.value);
-            const qty = parseInt(qtyInput.value) || 1;
+            // For Admin, priceInput might be disabled but we still need its value
+            const price = parseRupiah(priceInput ? priceInput.value : '0');
+            const qty = parseInt(qtyInput ? qtyInput.value : '1') || 1;
             const subtotal = price * qty;
-            total += subtotal;
+            itemsTotal += subtotal;
             
             if(subtotalDisplay) subtotalDisplay.textContent = 'Rp ' + formatRupiah(subtotal);
             
@@ -920,10 +1061,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        formTotalInput.value = total;
-        globalTotalDisplay.textContent = 'Rp ' + formatRupiah(total);
+        const dppInput = document.getElementById('input-dpp-lainnya-hidden');
+        const ppnInput = document.getElementById('input-ppn-hidden');
+        const lay1Input = document.getElementById('input-layanan1-hidden');
+
+        const dppLainnya = dppInput ? parseRupiah(dppInput.value) : 0;
+        const ppn = ppnInput ? parseRupiah(ppnInput.value) : 0;
+        const layanan1 = lay1Input ? parseRupiah(lay1Input.value) : 0;
+        const grandTotal = itemsTotal + dppLainnya + ppn + layanan1;
+
+        if (formTotalInput) formTotalInput.value = grandTotal;
+        if (globalTotalDisplay) globalTotalDisplay.textContent = 'Rp ' + formatRupiah(grandTotal);
+        if (summaryTotal) summaryTotal.textContent = 'Rp ' + formatRupiah(grandTotal);
         
-        renderDistribution();
+        // Pass total to distribution to avoid dependency on global input value state
+        renderDistribution(grandTotal);
     }
 
     function setupItemCardEvents(card) {
@@ -1215,138 +1367,214 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 100);
     }
     
-    btnAddItem.addEventListener('click', addItem);
-        
-    // Inisialisasi event untuk existing items
-    itemsContainer.querySelectorAll('.item-card').forEach(setupItemCardEvents);
-    updateGlobalTotal();
+    if (btnAddItem) btnAddItem.addEventListener('click', addItem);
+    
+    // ─── DPP, PPN & Service Fee Event Listeners ───
+    const dppLainnyaDisp = document.getElementById('input-dpp-lainnya-display');
+    const dppLainnyaHid  = document.getElementById('input-dpp-lainnya-hidden');
+    const ppnDisp = document.getElementById('input-ppn-display');
+    const ppnHid  = document.getElementById('input-ppn-hidden');
+    const lay1Disp = document.getElementById('input-layanan1-display');
+    const lay1Hid  = document.getElementById('input-layanan1-hidden');
 
-    // ─────────────────────────────
-    // EVENT LISTENERS: BRANCH PILLS
-    // ─────────────────────────────
-    branchPills.forEach(btn => {
-        // Pre-select from existing transaction data
-        if (btn.dataset.preselected === 'true') {
-            const percent = parseFloat(btn.dataset.presetPercent || 0);
-            const amount  = parseFloat(btn.dataset.presetAmount || 0);
+    if (dppLainnyaDisp) {
+        dppLainnyaDisp.addEventListener('input', function() {
+            let raw = parseRupiah(this.value);
+            this.value = raw > 0 ? formatRupiah(raw) : '';
+            dppLainnyaHid.value = raw;
+            updateGlobalTotal();
+        });
+    }
+    if (ppnDisp) {
+        ppnDisp.addEventListener('input', function() {
+            let raw = parseRupiah(this.value);
+            this.value = raw > 0 ? formatRupiah(raw) : '';
+            ppnHid.value = raw;
+            updateGlobalTotal();
+        });
+    }
+    if (lay1Disp) {
+        lay1Disp.addEventListener('input', function() {
+            let raw = parseRupiah(this.value);
+            this.value = raw > 0 ? formatRupiah(raw) : '';
+            lay1Hid.value = raw;
+            updateGlobalTotal();
+        });
+    }
+
+    // ───────────────────────────────────────────────────
+    // INITIAL POPULATION FALLBACK (If json failed)
+    // ───────────────────────────────────────────────────
+    if (selectedBranches.length === 0) {
+        document.querySelectorAll('.branch-pill.bg-emerald-500').forEach(btn => {
             selectedBranches.push({
                 id: btn.dataset.id,
                 name: btn.dataset.name,
-                value: amount,
-                percent: percent
+                percent: 0,
+                value: 0
             });
-        }
-
-        btn.addEventListener('click', function () {
-            const id   = this.dataset.id;
-            const name = this.dataset.name;
-            const index = selectedBranches.findIndex(b => b.id == id);
-
-            if (index > -1) {
-                // Deselect
-                selectedBranches.splice(index, 1);
-                this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
-                this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
-            } else {
-                // Select
-                selectedBranches.push({ id, name, value: 0, percent: 0 });
-                this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
-                this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
-            }
-            renderDistribution();
         });
-    });
-
-    // ─────────────────────────────
-    // EVENT LISTENERS: METHODS
-    // ─────────────────────────────
-    methodBtns.forEach(btn => {
-        btn.addEventListener('click', function () {
-            methodBtns.forEach(b => {
-                b.classList.remove('bg-white', 'shadow', 'text-slate-700');
-                b.classList.add('text-slate-500');
-            });
-            this.classList.remove('text-slate-500');
-            this.classList.add('bg-white', 'shadow', 'text-slate-700');
-
-            currentMethod = this.dataset.method;
-            renderDistribution();
-        });
-    });
-
-    // ─────────────────────────────
-    // CORE LOGIC: RENDER DISTRIBUTION
-    // ─────────────────────────────
-    function renderDistribution() {
-        distributionList.innerHTML = '';
-
-        if (selectedBranches.length === 0) {
-            summarySection.classList.add('hidden');
-            summarySubmit.disabled = true;
-            percentWarning.classList.add('hidden');
-            return;
-        }
-
-        summarySection.classList.remove('hidden');
-        const totalAmount = parseInt(formTotalInput.value) || 0;
-
-        selectedBranches.forEach((branch, idx) => {
-            if (currentMethod === 'equal') {
-                branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
-                branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
-            } else if (currentMethod === 'percent') {
-                branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
-            } else if (currentMethod === 'manual') {
-                branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
-            }
-
-            let inputHtml = '';
-            if (currentMethod === 'equal') {
-                inputHtml = `<div class="font-bold text-emerald-600">Rp ${formatRupiah(branch.value)}</div>`;
-            } else if (currentMethod === 'percent') {
-                inputHtml = `
-                    <div class="flex items-center gap-2">
-                        <input type="number"
-                            class="dist-input-percent w-20 text-right text-sm border border-slate-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none"
-                            data-index="${idx}"
-                            value="${branch.percent || 0}"
-                            min="0" max="100">
-                        <span class="text-xs font-bold text-slate-400">%</span>
-                        <span class="text-emerald-500 font-bold text-sm w-32 text-right">Rp ${formatRupiah(branch.value)}</span>
-                    </div>
-                `;
-            } else if (currentMethod === 'manual') {
-                const displayVal = branch.value > 0 ? formatRupiah(branch.value) : '';
-                inputHtml = `
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Rp</span>
-                        <input type="text"
-                            class="dist-input-manual w-32 text-right text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-1 focus:ring-2 focus:ring-emerald-500 outline-none"
-                            data-index="${idx}"
-                            value="${displayVal}" placeholder="0">
-                    </div>
-                `;
-            }
-
-            const rowHtml = `
-                <div class="flex justify-between items-center bg-white rounded-xl border border-slate-200 px-4 py-3">
-                    <div class="font-medium text-slate-700 flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        ${branch.name}
-                    </div>
-                    <div>${inputHtml}</div>
-                </div>
-            `;
-            distributionList.insertAdjacentHTML('beforeend', rowHtml);
-        });
-
-        const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
-        summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
-
-        updateHiddenInputs();
-        updateSummaryList();
-        validateAndSubmit();
     }
+
+    // Initialize preselected branches for existing items
+
+        itemsContainer.querySelectorAll('.item-card').forEach(setupItemCardEvents);
+        updateGlobalTotal();
+
+        // ─────────────────────────────
+        // EVENT LISTENERS: BRANCH PILLS
+        // ─────────────────────────────
+        branchPills.forEach(btn => {
+
+            btn.addEventListener('click', function () {
+                if (!canEditDistribution) return;
+
+                const id   = this.dataset.id;
+                const name = this.dataset.name;
+                const index = selectedBranches.findIndex(b => b.id == id);
+
+                if (index > -1) {
+                    // Deselect
+                    selectedBranches.splice(index, 1);
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                } else {
+                    // Select
+                    selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                }
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────
+        // EVENT LISTENERS: METHODS
+        // ─────────────────────────────
+        methodBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (!canEditDistribution) return;
+
+                methodBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                    b.classList.add('text-slate-500');
+                });
+                this.classList.remove('text-slate-500');
+                this.classList.add('bg-white', 'shadow', 'text-slate-700');
+
+                currentMethod = this.dataset.method;
+                renderDistribution();
+            });
+        });
+
+        // ─────────────────────────────
+        // CORE LOGIC: RENDER DISTRIBUTION
+        // ─────────────────────────────
+        function renderDistribution(forcedTotal = null) {
+            const totalAmount = forcedTotal !== null ? forcedTotal : (parseInt(formTotalInput.value) || 0);
+            distributionList.innerHTML = '';
+
+            // Selalu update label total di summary black card
+            if (summaryTotal) summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
+
+            if (selectedBranches.length === 0) {
+                distributionList.innerHTML = `
+                    <div class="p-8 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl">
+                        <i data-lucide="info" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                        <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Pilih cabang di atas untuk membagi biaya</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                
+                // Admin tetap bisa melihat summary billing kosong jika baru mulai
+                const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
+                if (isAdminOnlyBranch) {
+                    summarySection.classList.remove('hidden');
+                    summarySection.style.display = 'block';
+                } else {
+                    summarySection.classList.add('hidden');
+                }
+                summarySubmit.disabled = true;
+                percentWarning.classList.add('hidden');
+                return;
+            }
+
+
+
+            selectedBranches.forEach((branch, idx) => {
+                if (currentMethod === 'equal') {
+                    branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
+                    branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
+                } else if (currentMethod === 'percent') {
+                    branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+                } else if (currentMethod === 'manual') {
+                    branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
+                }
+
+
+                let inputHtml = '';
+                let percentDisplay = '';
+                const disabledAttr = canEditDistribution ? '' : 'disabled';
+                const pointerClass = canEditDistribution ? 'pointer-events-auto cursor-text' : 'pointer-events-none cursor-not-allowed';
+
+                if (currentMethod === 'equal') {
+                    percentDisplay = `<span class="text-xs font-bold text-slate-500">${branch.percent}%</span>`;
+                    inputHtml = `<div class="font-bold text-emerald-600 text-right">Rp ${formatRupiah(branch.value)}</div>`;
+                } else if (currentMethod === 'percent') {
+                    percentDisplay = `
+                        <div class="flex items-center gap-1 justify-center">
+                            <input type="number"
+                                ${disabledAttr}
+                                class="dist-input-percent w-16 text-center text-xs font-bold border border-slate-200 rounded-lg px-1 py-1 focus:ring-2 focus:ring-emerald-500 outline-none ${pointerClass}"
+                                data-index="${idx}"
+                                value="${branch.percent || 0}"
+                                min="0" max="100">
+                            <span class="text-[10px] font-bold text-slate-400">%</span>
+                        </div>
+                    `;
+                    inputHtml = `<div class="text-emerald-500 font-bold text-sm text-right">Rp ${formatRupiah(branch.value)}</div>`;
+                } else if (currentMethod === 'manual') {
+                    percentDisplay = `<span class="text-xs font-bold text-slate-500">${branch.percent}%</span>`;
+                    const displayVal = branch.value > 0 ? formatRupiah(branch.value) : '';
+                    inputHtml = `
+                        <div class="relative flex justify-end">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">Rp</span>
+                            <input type="text"
+                                ${disabledAttr}
+                                class="dist-input-manual w-full max-w-[120px] text-right text-xs font-bold border border-slate-200 rounded-lg pl-7 pr-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none ${pointerClass}"
+                                data-index="${idx}"
+                                value="${displayVal}" placeholder="0">
+                        </div>
+                    `;
+                }
+
+                const rowHtml = `
+                    <div class="dist-row-grid">
+                        <div class="font-bold text-slate-700 flex items-center gap-2 truncate">
+                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div>
+                            <span class="truncate">${branch.name}</span>
+                        </div>
+                        <div class="flex justify-center">${percentDisplay}</div>
+                        <div class="flex justify-end">${inputHtml}</div>
+                    </div>
+                `;
+                distributionList.insertAdjacentHTML('beforeend', rowHtml);
+            });
+
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
+            summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
+
+            updateHiddenInputs();
+            updateSummaryList();
+            validateAndSubmit();
+            
+            // Re-enforce read-only state for Admin/Read-Only modes
+            if (typeof enforceReadOnly === 'function') enforceReadOnly();
+        }
+
 
     function updateHiddenInputs() {
         hiddenInputsContainer.innerHTML = '';
@@ -1384,7 +1612,9 @@ document.addEventListener('DOMContentLoaded', function () {
         summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
     }
 
-    distributionList.addEventListener('input', function(e) {
+    if (distributionList) {
+        distributionList.addEventListener('input', function(e) {
+
         const index = e.target.dataset.index;
         if (index === undefined) return;
         const totalAmount = parseInt(formTotalInput.value) || 0;
@@ -1409,6 +1639,8 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSummaryList();
         validateAndSubmit();
     });
+}
+
 
     function validateAndSubmit() {
         let isValid = true;
@@ -1502,7 +1734,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // ───────────────────────────────────────────────────
         function renderVersion(version) {
             const dataToRender = version === 'original' ? originalItems : managementItems;
-            const isReadOnly = version === 'original';
+            const isReadOnly = version === 'original' || @json($isAdminOnlyBranch ?? false);
             
             // Clear container
             itemsContainerVersioned.innerHTML = '';
@@ -1557,6 +1789,9 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Update remove buttons visibility
             updateRemoveButtons();
+
+            // Re-enforce read-only state for Admin/Read-Only modes
+            if (typeof enforceReadOnly === 'function') enforceReadOnly();
         }
         
         // ───────────────────────────────────────────────────
@@ -1720,6 +1955,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // ───────────────────────────────────────────────────
         function disableItemCard(card) {
             card.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'hidden') return; // Preserve hidden data
                 el.disabled = true;
                 el.style.cursor = 'not-allowed';
                 el.style.backgroundColor = '#f8fafc';
@@ -1772,38 +2008,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // FIX: Expand collapsed items if they have validation errors to prevent "invalid form control not focusable"
-    document.getElementById('pengajuan-form').addEventListener('invalid', function(e) {
-        const invalidField = e.target;
-        const itemBody = invalidField.closest('.item-body');
-        
-        if (itemBody && itemBody.classList.contains('hidden')) {
-            itemBody.classList.remove('hidden');
-            const card = itemBody.closest('.item-card');
-            if (card) {
-                const icon = card.querySelector('.icon-collapse');
-                if (icon) icon.classList.remove('rotate-180');
-                
-                setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    const pengajuanForm = document.getElementById('pengajuan-form');
+    if (pengajuanForm) {
+        pengajuanForm.addEventListener('invalid', function(e) {
+            const invalidField = e.target;
+            const itemBody = invalidField.closest('.item-body');
+            
+            if (itemBody && itemBody.classList.contains('hidden')) {
+                itemBody.classList.remove('hidden');
+                const card = itemBody.closest('.item-card');
+                if (card) {
+                    const icon = card.querySelector('.icon-collapse');
+                    if (icon) icon.classList.remove('rotate-180');
+                    
+                    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                }
             }
-        }
-    }, true);
+        }, true);
 
-    document.getElementById('pengajuan-form').addEventListener('submit', function(e) {
-        const totalAmount = parseInt(formTotalInput.value) || 0;
-        if(totalAmount <= 0) {
-            e.preventDefault();
-            alert('Total estimasi tidak boleh Rp 0. Silakan isi harga barang.');
-            return;
-        }
+        pengajuanForm.addEventListener('submit', function(e) {
+            const totalAmount = parseInt(formTotalInput.value) || 0;
+            if(totalAmount <= 0) {
+                e.preventDefault();
+                alert('Total estimasi tidak boleh Rp 0. Silakan isi harga barang.');
+                return;
+            }
 
-        if (summarySubmit.disabled) {
-            e.preventDefault();
-            return;
-        }
-        summarySubmit.disabled = true;
-        document.getElementById('submit-text').textContent = 'Memproses...';
-        document.getElementById('submit-spinner').classList.remove('hidden');
-    });
+            if (summarySubmit && summarySubmit.disabled) {
+                e.preventDefault();
+                return;
+            }
+            if (summarySubmit) summarySubmit.disabled = true;
+            
+            const submitTextEl = document.getElementById('submit-text');
+            const submitSpinnerEl = document.getElementById('submit-spinner');
+            if (submitTextEl) submitTextEl.textContent = 'Memproses...';
+            if (submitSpinnerEl) submitSpinnerEl.classList.remove('hidden');
+        });
+    }
 
     // ─────────────────────────────
     // INITIALIZE with existing data
@@ -1816,29 +2058,83 @@ document.addEventListener('DOMContentLoaded', function () {
     // READ-ONLY MODE: Disable all form inputs
     // (Triggered when isReadOnly = true via Blade)
     // ═══════════════════════════════════════
-    @if($isReadOnly ?? false)
-    (function enforceReadOnly() {
+    function enforceReadOnly() {
         const form = document.getElementById('pengajuan-form');
         if (!form) return;
 
-        // Disable all form controls
+        const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
+        const isReadOnly = @json($isReadOnly ?? false);
+
+        if (!isReadOnly) return;
+
+        // Fetch elements locally since they might be out of scope or not yet defined
+        const summarySection = document.getElementById('summary-billing-section');
+
+        // Disable all form controls EXCEPT those allowed for Admin restricted edit
         form.querySelectorAll('input, select, textarea, button[type="button"]').forEach(el => {
-            if (el.id === 'btn-version-original' || el.id === 'btn-version-management') return; // Keep version toggle
+            // NEVER disable hidden inputs
+            if (el.type === 'hidden') return;
+
+            // Version toggle always allowed
+            if (el.id === 'btn-version-original' || el.id === 'btn-version-management') return; 
+            
+            // If Admin restricted mode, allow branch section and submit
+            if (isAdminOnlyBranch) {
+                const isBranchPill = el.classList.contains('branch-pill');
+                const isMethodBtn = el.classList.contains('method-btn');
+                const isDistInput = el.closest('#distribution-list');
+                const isSubmit = el.id === 'summary-submit';
+                const isVersionBtn = el.id === 'btn-version-original' || el.id === 'btn-version-management';
+
+                if (isBranchPill || isMethodBtn || isDistInput || isSubmit || isVersionBtn) {
+                    el.disabled = false;
+                    el.removeAttribute('disabled');
+                    el.style.pointerEvents = 'auto';
+                    el.style.cursor = (isDistInput || el.tagName === 'INPUT') ? 'text' : 'pointer';
+                    el.style.opacity = '1';
+                    el.style.filter = 'grayscale(0)';
+                    return;
+                }
+            }
+
             el.disabled = true;
+            el.setAttribute('disabled', 'disabled');
             el.style.cursor = 'not-allowed';
             el.style.pointerEvents = 'none';
         });
 
-        // Also block form submission
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-        }, true);
+        // Special case for summary section visibility
+        if (summarySection) {
+            summarySection.classList.remove('hidden');
+            summarySection.style.display = 'block';
+            summarySection.style.pointerEvents = 'auto';
+            summarySection.style.opacity = '1';
+            
+            // Ensure child elements are also interactable if they are distribution components
+            summarySection.querySelectorAll('*').forEach(child => {
+                child.style.pointerEvents = 'auto';
+            });
+        }
+
+        // Block form submission ONLY if NOT Admin restricted mode
+        if (!isAdminOnlyBranch) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }, true);
+        }
 
         // Hide action buttons
         const addItemBtn = document.getElementById('btn-add-item');
         if (addItemBtn) addItemBtn.style.display = 'none';
-    })();
+        
+        const deleteItemBtns = document.querySelectorAll('.btn-remove-item');
+        deleteItemBtns.forEach(btn => btn.style.display = 'none');
+    }
+
+    // Call it initially
+    @if($isReadOnly ?? false)
+        enforceReadOnly();
     @endif
 </script>
 @endpush

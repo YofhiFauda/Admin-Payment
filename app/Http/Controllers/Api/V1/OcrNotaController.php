@@ -236,7 +236,7 @@ class OcrNotaController extends Controller
         // Remove formatting dots from nominal inputs sent from frontend
         // ═══════════════════════════════════════════════════════════
         $input = $request->all();
-        $fieldsToUnformat = ['diskon_pengiriman', 'ongkir', 'biaya_layanan_1', 'biaya_layanan_2', 'voucher_diskon'];
+        $fieldsToUnformat = ['diskon_pengiriman', 'ongkir', 'dpp_lainnya', 'tax_amount', 'biaya_layanan_1', 'biaya_layanan_2', 'voucher_diskon'];
         foreach ($fieldsToUnformat as $field) {
             if (!empty($input[$field])) {
                 $input[$field] = (int) preg_replace('/\D/', '', (string) $input[$field]);
@@ -256,6 +256,8 @@ class OcrNotaController extends Controller
             'transaksi_id'       => 'required|string',
             'diskon_pengiriman'  => 'nullable|numeric|min:0',
             'ongkir'             => 'nullable|numeric|min:0',
+            'dpp_lainnya'        => 'nullable|numeric|min:0',
+            'tax_amount'         => 'nullable|numeric|min:0',
             'biaya_layanan_1'    => 'nullable|numeric|min:0',
             'biaya_layanan_2'    => 'nullable|numeric|min:0',
             'voucher_diskon'     => 'nullable|numeric|min:0',
@@ -298,12 +300,14 @@ class OcrNotaController extends Controller
         // Calculate Final Amount: base + ongkir + fees - discounts
         $baseAmount = (int) $transaction->amount;
         $ongkir     = (int) ($request->ongkir ?? 0);
+        $dppLainnya = (int) ($request->dpp_lainnya ?? 0);
         $layanan1   = (int) ($request->biaya_layanan_1 ?? 0);
+        $taxAmount  = (int) ($request->tax_amount ?? 0);
         $layanan2   = (int) ($request->biaya_layanan_2 ?? 0);
         $diskonOngkir = (int) ($request->diskon_pengiriman ?? 0);
         $voucher      = (int) ($request->voucher_diskon ?? 0);
 
-        $totalTransaksi = $baseAmount + $ongkir + $layanan1 + $layanan2 - $diskonOngkir - $voucher;
+        $totalTransaksi = $baseAmount + $ongkir + $dppLainnya + $taxAmount + $layanan1 + $layanan2 - $diskonOngkir - $voucher;
 
         if (abs($totalDana - $totalTransaksi) > 1) {
             return response()->json([
@@ -345,6 +349,8 @@ class OcrNotaController extends Controller
             'amount'                => $totalTransaksi, 
             'diskon_pengiriman'     => $request->diskon_pengiriman ?? 0,
             'ongkir'                => $request->ongkir ?? 0,
+            'dpp_lainnya'           => $request->dpp_lainnya ?? 0,
+            'tax_amount'            => $request->tax_amount ?? 0,
             'biaya_layanan_1'       => $request->biaya_layanan_1 ?? 0,
             'biaya_layanan_2'       => $request->biaya_layanan_2 ?? 0,
             'voucher_diskon'        => $request->voucher_diskon ?? 0,

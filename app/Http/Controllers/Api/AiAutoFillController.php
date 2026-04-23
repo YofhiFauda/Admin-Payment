@@ -126,6 +126,8 @@ class AiAutoFillController extends Controller
             'date'                   => 'nullable|date',
             'total_belanja'          => 'nullable|numeric',
             'amount'                 => 'nullable|numeric',
+            'dpp_lainnya'            => 'nullable|numeric',
+            'tax_amount'             => 'nullable|numeric',
             'items'                  => 'nullable|array',
             'confidence'             => 'nullable|integer|min:0|max:100',
             'overall_confidence'     => 'nullable|integer|min:0|max:100',
@@ -483,6 +485,8 @@ class AiAutoFillController extends Controller
 
                 'amount'        => $request->total_belanja ?? $request->amount ?? 0,
                 'total_belanja' => $request->total_belanja ?? $request->amount ?? 0,
+                'dpp_lainnya'   => $request->dpp_lainnya ?? 0,
+                'tax_amount'    => $request->tax_amount ?? $request->tax ?? 0,
 
                 'date'    => $date,
                 'tanggal' => $date,
@@ -560,6 +564,8 @@ class AiAutoFillController extends Controller
                 'customer'           => $cacheData['customer'],
                 'vendor'             => $cacheData['vendor'] ?? $cacheData['customer'],
                 'amount'             => $cacheData['amount'],
+                'dpp_lainnya'        => $cacheData['dpp_lainnya'] ?? 0,
+                'tax_amount'         => $cacheData['tax_amount'] ?? 0,
                 'items'              => $cacheData['items'],
                 'date'               => $cacheData['date'],
                 'ai_status'          => 'completed',

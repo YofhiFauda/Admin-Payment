@@ -92,6 +92,7 @@ class Transaction extends Model
         'revision_count',
         'paid_by',
         'paid_at',
+        'dpp_lainnya',
         // ✅ Price Index fields
         'has_price_anomaly',
     ];
@@ -121,6 +122,15 @@ class Transaction extends Model
             'sumber_dana_data' => 'array',
             // ✅ Price Index
             'has_price_anomaly' => 'boolean',
+            // ✅ Monetary Breakdown
+            'tax_amount' => 'integer',
+            'discount_amount' => 'integer',
+            'ongkir' => 'integer',
+            'biaya_layanan_1' => 'integer',
+            'biaya_layanan_2' => 'integer',
+            'dpp_lainnya' => 'integer',
+            'voucher_diskon' => 'integer',
+            'diskon_pengiriman' => 'integer',
         ];
     }
 

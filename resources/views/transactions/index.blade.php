@@ -716,18 +716,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     {{-- ✅ Revisi Banner (Pengajuan yang direvisi Management) --}}
                     <div id="v-revision-banner" class="hidden"></div>
 
-                    {{-- ✅ UPDATED: Foto dengan Click-to-Zoom --}}
+                    {{-- ✅ UPDATED: Foto/PDF dengan Click-to-Zoom --}}
                     <div id="v-image-wrap" class="hidden">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Foto Nota / Referensi</label>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Foto Nota / Dokumen</label>
                         <div id="v-image-wrapper" 
-                             class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-colors group"
-                             title="Klik untuk memperbesar">
+                             class="group relative bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 flex items-center justify-center cursor-zoom-in hover:border-emerald-200 transition-all">
                             <img id="v-image" src="" class="max-h-48 object-contain rounded-xl" alt="Nota">
                             
-                            {{-- Preview Badge --}}
-                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i data-lucide="expand" class="w-3.5 h-3.5 text-emerald-600"></i>
-                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Perbesar</span>
+                            {{-- PDF Placeholder in Detail View --}}
+                            <div id="v-pdf-icon" class="hidden flex flex-col items-center justify-center py-4">
+                                <i data-lucide="file-text" class="w-16 h-16 text-emerald-600 mb-2"></i>
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Dokumen PDF Terlampir</span>
+                                <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold">Klik untuk melihat detail</p>
                             </div>
                         </div>
                     </div>
@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function () {
 @endpush
 
 @push('modals')
-    {{-- ✅ IMAGE VIEWER MODAL (Fullscreen Zoom) --}}
+    {{-- ✅ IMAGE/PDF VIEWER MODAL (Fullscreen Zoom) --}}
     <div id="image-viewer"
          class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[9999] p-4 sm:p-10 overscroll-contain"
          role="dialog" 
@@ -912,8 +912,8 @@ document.addEventListener('DOMContentLoaded', function () {
             {{-- Header & Close Button --}}
             <div class="flex justify-between items-center shrink-0 mb-6 border-b border-slate-100 pb-4">
                 <div>
-                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW FOTO</h3>
-                    <p id="viewer-title" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Klik di luar gambar ruang ini atau X untuk menutup</p>
+                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW DOKUMEN</h3>
+                    <p id="viewer-title" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Klik di luar gambar atau X untuk menutup</p>
                 </div>
                 <button id="close-viewer"
                         type="button"
@@ -924,13 +924,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 </button>
             </div>
 
-            {{-- Gambar Wrapper dengan Background Grid/Dots ala Preview Image --}}
+            {{-- Gambar/PDF Wrapper dengan Background Grid/Dots --}}
             <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
                 <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
                 <img id="viewer-image"
                      src=""
                      class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
                      alt="Preview foto referensi" />
+
+                {{-- PDF Viewer Iframe --}}
+                <iframe id="viewer-pdf" class="hidden relative z-10 w-full h-full rounded-lg border-0" src=""></iframe>
+            </div>
+
+            {{-- Footer for PDF Actions --}}
+            <div id="viewer-footer" class="mt-6 flex justify-center hidden">
+                <a id="viewer-pdf-link" href="#" target="_blank" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    BUKA DI TAB BARU / DOWNLOAD
+                </a>
             </div>
         </div>
     </div>
@@ -1238,6 +1249,22 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
                                     <input type="text" name="voucher_diskon" id="p_voucher_diskon" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">DPP Lainnya</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="dpp_lainnya" id="p_dpp_lainnya" placeholder="0"
+                                        class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5">PPN</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                                    <input type="text" name="tax_amount" id="p_tax_amount" placeholder="0"
                                         class="nominal-input w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300">
                                 </div>
                             </div>
@@ -2487,9 +2514,33 @@ function generateInlineActions(t) {
         const closeViewer = document.getElementById('close-viewer');
         let lastFocusedElement = null;
 
-        window.openImageViewer = function(src) {
+        window.openImageViewer = function(src, title = null, forcePdf = false) {
             lastFocusedElement = document.activeElement;
-            viewerImage.src = src;
+            const isPdf = forcePdf || src.toLowerCase().endsWith('.pdf') || src.startsWith('data:application/pdf');
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const viewerPdf    = document.getElementById('viewer-pdf');
+            const viewerFooter = document.getElementById('viewer-footer');
+            const viewerPdfLink= document.getElementById('viewer-pdf-link');
+
+            if (isPdf) {
+                if (isMobile) {
+                    window.open(src, '_blank');
+                    return;
+                }
+                viewerImage.classList.add('hidden');
+                viewerPdf.classList.remove('hidden');
+                viewerPdf.src = src;
+                viewerFooter.classList.remove('hidden');
+                viewerPdfLink.href = src;
+                document.getElementById('viewer-header-title').textContent = 'PREVIEW DOKUMEN PDF';
+            } else {
+                viewerImage.classList.remove('hidden');
+                viewerPdf.classList.add('hidden');
+                viewerFooter.classList.add('hidden');
+                viewerImage.src = src;
+                document.getElementById('viewer-header-title').textContent = 'PREVIEW FOTO';
+            }
+
             imageViewer.classList.remove('hidden');
             imageViewer.classList.add('flex');
             requestAnimationFrame(() => {
@@ -2508,6 +2559,14 @@ function generateInlineActions(t) {
             imageViewer.setAttribute('aria-hidden', 'true');
             setTimeout(() => { 
                 viewerImage.src = '';
+                const vPdf = document.getElementById('viewer-pdf');
+                if (vPdf) {
+                    vPdf.src = '';
+                    vPdf.classList.add('hidden');
+                }
+                const vFooter = document.getElementById('viewer-footer');
+                if (vFooter) vFooter.classList.add('hidden');
+                
                 if (lastFocusedElement?.focus) lastFocusedElement.focus();
             }, 200);
         };
@@ -3202,8 +3261,13 @@ function generateInlineActions(t) {
                     imgWrapper.parentNode.replaceChild(newWrapper, imgWrapper);
                     newWrapper.addEventListener('click', function() {
                         const img = document.getElementById('v-image');
-                        if (img && img.src) {
+                        const pdfIcon = document.getElementById('v-pdf-icon');
+                        let src = '';
+                        
+                        if (img && !img.classList.contains('hidden') && img.src) {
                             openImageViewer(img.src);
+                        } else if (pdfIcon && !pdfIcon.classList.contains('hidden') && pdfIcon.dataset.src) {
+                            openImageViewer(pdfIcon.dataset.src, null, true);
                         }
                     });
                 }
@@ -3385,9 +3449,22 @@ function generateInlineActions(t) {
             </span>`;
 
         const imgWrap = document.getElementById('v-image-wrap');
+        const vImage = document.getElementById('v-image');
+        const vPdfIcon = document.getElementById('v-pdf-icon');
+
         if (d.image_url) {
             imgWrap.classList.remove('hidden');
-            document.getElementById('v-image').src = d.image_url;
+            const isPdf = (d.file_path && d.file_path.toLowerCase().endsWith('.pdf')) || (d.image_url && d.image_url.toLowerCase().endsWith('.pdf'));
+            
+            if (isPdf) {
+                vImage.classList.add('hidden');
+                vPdfIcon.classList.remove('hidden');
+                vPdfIcon.dataset.src = d.image_url;
+            } else {
+                vImage.classList.remove('hidden');
+                vPdfIcon.classList.add('hidden');
+                vImage.src = d.image_url;
+            }
         } else {
             imgWrap.classList.add('hidden');
         }
@@ -3619,8 +3696,12 @@ function generateInlineActions(t) {
                                 <div class="text-sm font-bold text-slate-700">Rp ${Number(d.voucher_diskon || 0).toLocaleString('id-ID')}</div>
                             </div>
                             <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Biaya Layanan 1</label>
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">DPP Lainnya</label>
                                 <div class="text-sm font-bold text-slate-700">Rp ${Number(d.biaya_layanan_1 || 0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">PPN</label>
+                                <div class="text-sm font-bold text-slate-700">Rp ${Number(d.tax_amount || 0).toLocaleString('id-ID')}</div>
                             </div>
                             <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                                 <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Biaya Layanan 2</label>
@@ -3674,7 +3755,39 @@ function generateInlineActions(t) {
                 }
             }
             
-            summaryTotal.textContent = d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : '-';
+            let summaryTotalHtml = '';
+            if (d.type === 'pengajuan' && (d.dpp_lainnya > 0 || d.tax_amount > 0 || d.biaya_layanan_1 > 0)) {
+                summaryTotalHtml = `
+                    <div class="flex flex-col gap-1 w-full">
+                        <div class="flex justify-between items-center text-[10px] text-blue-600/70 font-bold uppercase tracking-wider border-b border-blue-100 pb-1 mb-1">
+                            <span>Subtotal Items</span>
+                            <span>Rp ${Number((d.amount || 0) - (d.dpp_lainnya || 0) - (d.tax_amount || 0) - (d.biaya_layanan_1 || 0)).toLocaleString('id-ID')}</span>
+                        </div>
+                        ${d.dpp_lainnya > 0 ? `
+                        <div class="flex justify-between items-center text-[10px] text-blue-500 font-bold">
+                            <span>DPP Lainnya</span>
+                            <span>+ Rp ${Number(d.dpp_lainnya).toLocaleString('id-ID')}</span>
+                        </div>` : ''}
+                        ${d.tax_amount > 0 ? `
+                        <div class="flex justify-between items-center text-[10px] text-blue-500 font-bold">
+                            <span>PPN</span>
+                            <span>+ Rp ${Number(d.tax_amount).toLocaleString('id-ID')}</span>
+                        </div>` : ''}
+                        ${d.biaya_layanan_1 > 0 ? `
+                        <div class="flex justify-between items-center text-[10px] text-blue-500 font-bold">
+                            <span>Biaya Layanan 1</span>
+                            <span>+ Rp ${Number(d.biaya_layanan_1).toLocaleString('id-ID')}</span>
+                        </div>` : ''}
+                        <div class="flex justify-between items-center mt-1 pt-1 border-t-2 border-blue-200">
+                            <span class="text-[11px] font-black text-blue-800 uppercase">Grand Total</span>
+                            <span class="text-lg md:text-xl font-black text-blue-700 tracking-tight">Rp ${Number(d.amount).toLocaleString('id-ID')}</span>
+                        </div>
+                    </div>
+                `;
+                summaryTotal.innerHTML = summaryTotalHtml;
+            } else {
+                summaryTotal.textContent = d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : '-';
+            }
         } else {
             summaryWrap.classList.add('hidden');
         }
@@ -4363,7 +4476,7 @@ function generateInlineActions(t) {
                                     });
 
                                     // Adjustment fields listeners
-                                    ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+                                    ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
                                         document.getElementById(id).addEventListener('input', () => calculateSumberDanaTotal(d.effective_amount));
                                     });
                     
@@ -4432,10 +4545,12 @@ function generateInlineActions(t) {
         const ongkir      = unformatNumber(document.getElementById('p_ongkir').value);
         const diskon      = unformatNumber(document.getElementById('p_diskon_pengiriman').value);
         const voucher     = unformatNumber(document.getElementById('p_voucher_diskon').value);
+        const dppLainnya  = unformatNumber(document.getElementById('p_dpp_lainnya').value);
+        const taxAmt      = unformatNumber(document.getElementById('p_tax_amount').value);
         const layanan1    = unformatNumber(document.getElementById('p_biaya_layanan_1').value);
         const layanan2    = unformatNumber(document.getElementById('p_biaya_layanan_2').value);
         
-        const finalTotalTarget = baseTotal + ongkir + layanan1 + layanan2 - diskon - voucher;
+        const finalTotalTarget = baseTotal + ongkir + dppLainnya + taxAmt + layanan1 + layanan2 - diskon - voucher;
 
         totalEl.classList.remove('hidden');
 
@@ -4652,7 +4767,7 @@ function generateInlineActions(t) {
         if (namaInput) { namaInput.required = false; namaInput.disabled = true; }
         document.getElementById('cash_catatan').disabled = true;
         document.getElementById('p_catatan').disabled = true;
-        ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+        ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = true;
         });
@@ -4669,7 +4784,7 @@ function generateInlineActions(t) {
             
             // Enable Pengajuan fields
             document.getElementById('p_catatan').disabled = false;
-            ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
+            ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = false;
             });

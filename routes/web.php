@@ -65,6 +65,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ── Dashboard ────────────────────────────────────────────────
+    Route::get('/dashboard/batch-branch-stats', [DashboardController::class, 'batchBranchStats'])->name('dashboard.batchBranchStats');
+
     Route::middleware('role:admin,atasan,owner')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/branch-cost-data', [DashboardController::class, 'branchCostData'])->name('dashboard.branchCostData');
