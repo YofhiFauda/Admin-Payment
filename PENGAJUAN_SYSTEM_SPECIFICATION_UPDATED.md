@@ -1,8 +1,8 @@
 # 📋 SPESIFIKASI SISTEM PENGAJUAN
 ## Implementasi Complete: Dual-Version, Authorization, Detail Modal, & Role-Based Visibility
 
-**Version:** 2.1  
-**Date:** 2 April 2026  
+**Version:** 2.2  
+**Date:** 24 April 2026  
 **Status:** Ready for Implementation  
 
 ---
@@ -27,15 +27,15 @@
 Implementasi sistem pengajuan dengan 4 komponen utama:
 
 1. **Dual-Version System** - Track original vs edited version
-2. **Role-Based Authorization** - Fine-grained permission control dengan read-only access untuk Admin
+2. **Role-Based Authorization** - Fine-grained permission control dengan **Limited Edit Mode** untuk Admin
 3. **Detail Modal Pengajuan** - Rich information display dengan version toggle (embedded di index.blade.php)
-4. **Edit Protection** - Disable edit saat status "selesai"
+4. **Phase Locking** - Proteksi otomatis saat status "Menunggu Pelunasan" atau "Selesai"
 
 ### Key Features
 - ✅ Management (Owner/Atasan) dapat Create, Read, Update, Delete pengajuan (jika status != selesai)
-- ✅ **Admin dapat View detail (read-only) DAN akses halaman Edit (read-only) untuk melihat kedua versi**
+- ✅ **Admin memiliki akses Limited Edit pada fase "Menunggu Pembayaran" (Hanya cabang & metode distribusi)**
 - ✅ Teknisi dapat View detail transaksi mereka
-- ✅ Edit disabled otomatis saat status = "selesai" untuk SEMUA role
+- ✅ **Edit disabled otomatis saat fase Pelunasan atau status "Selesai" untuk SEMUA role**
 - ✅ Status "pending" masih bisa di-edit oleh Management
 - ✅ Version tracking dengan visual indicators (🟡 outline untuk edited fields)
 - ✅ Transparent revision history dengan toggle button
@@ -48,47 +48,48 @@ Implementasi sistem pengajuan dengan 4 komponen utama:
 
 ### BR-001: Edit Permission Based on Role & Status
 
-| Role | Create | Read | Update (Pending) | Update (Selesai) | Delete |
-|------|--------|------|------------------|------------------|--------|
-| **Owner** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Atasan** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Admin** | ❌ | ✅ | ❌ (Read-only view) | ❌ | ❌ |
+| Role | Create | Read | Update (Pending) | Update (Waiting Payment) | Update (Settlement/Selesai) |
+|------|--------|------|------------------|--------------------------|-----------------------------|
+| **Owner** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Atasan** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Admin** | ❌ | ✅ | ❌ (Read-only) | ⚠️ (Limited Edit) | ❌ |
 | **Teknisi** | ✅ (via form) | ✅ (own only) | ❌ | ❌ | ❌ |
 
 **Catatan Penting:**
-- Admin bisa **akses halaman edit** tapi dalam mode **read-only** untuk melihat perbandingan Versi Pengaju vs Versi Management
-- Management (Owner/Atasan) bisa edit pengajuan selama status masih **Pending** atau **Diproses**
+- **Limited Edit (Admin):** Admin HANYA bisa mengedit Pembagian Cabang dan Metode Distribusi. Bidang harga, item, DPP, dan PPN terkunci rapat.
+- **Settlement Phase:** Saat transaksi memasuki fase pelunasan (Settlement), akses edit dikunci total untuk SEMUA peran demi menjaga integritas pembayaran.
 - Semua role **TIDAK BISA** edit jika status = **Selesai**
 
 ### BR-002: Edit Protection Based on Status
 
 ```
-IF status = 'completed' THEN
+IF status = 'completed' OR isSettlementPhase() THEN
     - Tombol Edit = disabled/hidden (ALL ROLES termasuk Owner & Atasan)
     - Halaman Edit = read-only mode (jika ada role yang coba akses)
     - Submit button = hidden
-    - Alert message = "Pengajuan yang sudah selesai tidak dapat diedit"
+    - Version Switching = VISIBLE (untuk audit)
+    - Alert message = "Transaksi Dikunci (Fase Pelunasan/Selesai)"
 END IF
 
-IF status = 'pending' OR status = 'waiting_payment' THEN
+IF status = 'waiting_payment' AND role = 'admin' THEN
+    - Restricted Mode = ENABLED
+    - Editable Fields = [Branch Distribution, Distribution Method, Submit Button]
+    - Read-Only Fields = [Items, Unit Prices, DPP, PPN, Service Fees]
+    - Banner: "Mode Edit Terbatas (Admin)"
+END IF
+
+IF status = 'pending' OR status = 'waiting_payment' AND role = 'management' THEN
     - Management (Owner/Atasan): Edit allowed (full access)
-    - Admin: Edit button visible → navigate to read-only view page
-    - Teknisi: No edit access
-END IF
-
-IF status = 'rejected' THEN
-    - Management: Edit allowed (dapat mengubah kembali untuk koreksi)
-    - Admin: Read-only view
-    - Teknisi: No edit access
 END IF
 ```
 
 **Status Definitions & Lifecycle:**
 - `pending` - Pengajuan baru, belum diproses → **Management bisa Edit** ✅
 - `waiting_payment` - **Persistent Payment State**. Transaksi yang sudah disetujui namun masih dalam proses pemenuhan (pembayaran).
-    - Tetap berada di status ini jika invoice belum diupload **ATAU** masih ada hutang antar cabang (`BranchDebt`) yang berstatus `pending`.
-    - **Management bisa Edit** ✅ (Hanya hingga sebelum status `completed`).
-- `rejected` - Ditolak → **Management bisa Edit** ✅ (untuk revisi).
+    - **Management bisa Edit Full** ✅.
+    - **Admin bisa Edit Terbatas** ⚠️ (Hanya distribusi cabang).
+- `settlement` (Internal Check) - **Settlement Phase**. Transaksi yang sudah diupload invoice-nya namun masih menunggu pelunasan hutang antar cabang.
+    - **TOTAL LOCKOUT** ❌. Read-only untuk semua peran.
 - `completed` - **FINAL STATE**. Transaksi dianggap selesai jika:
     1. Invoice sudah diunggah.
     2. Seluruh hutang antar cabang terkait transaksi ini telah berstatus `paid`.

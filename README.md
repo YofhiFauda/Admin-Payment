@@ -362,13 +362,14 @@ Terdapat 4 peran pengguna dengan hak akses hierarkis:
 | Role | Dashboard | Input Transaksi | Edit Pengajuan | Approval | Kelola Cabang |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Teknisi** | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ (Read-only) | ✅ (< 1 Jt) | ✅ |
+| **Admin** | ✅ | ✅ | ✅ (Limited Edit) | ✅ (< 1 Jt) | ✅ |
 | **Atasan** | ✅ | ✅ (Gudang/PR) | ✅ (Full Edit) | ✅ (< 1 Jt) | ✅ |
 | **Owner** | ✅ | ✅ | ✅ (Full Edit) | ✅ (Semua) | ✅ |
 
 ### Detail Akses Khusus
 
-- **Admin Read-Only**: Admin dapat mengakses halaman edit Pengajuan untuk melihat perbandingan versi (comparison mode) tanpa bisa mengubah data.
+- **Admin Limited Edit**: Admin dapat mengakses halaman edit Pengajuan dalam status `waiting_payment` untuk mengelola **Pembagian Cabang** dan **Metode Distribusi**. Bidang finansial (Item, Harga, DPP, PPN) tetap terkunci (Read-only).
+- **Settlement Lockout**: Jika transaksi memasuki fase pelunasan (`isSettlementPhase`), seluruh akses edit akan dikunci total untuk SEMUA role, termasuk Owner.
 - **Edit Protection**: Jika status transaksi adalah `completed`, tombol edit akan disembunyikan untuk SEMUA role guna menjaga integritas audit.
 
 ---

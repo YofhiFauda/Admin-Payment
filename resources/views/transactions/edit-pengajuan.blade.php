@@ -42,19 +42,41 @@
                     </svg>
                 </div>
                 <div>
-                    <h4 class="text-sm font-bold text-amber-900 mb-0.5">{{ ($isAdminOnlyBranch ?? false) ? 'Mode Edit Terbatas (Admin)' : 'Mode Hanya Baca (Read-Only)' }}</h4>
+                    <h4 class="text-sm font-bold text-amber-900 mb-0.5">
+                        @if($isAdminOnlyBranch ?? false)
+                            Mode Edit Terbatas (Admin)
+                        @elseif($isSettlement ?? false)
+                            Transaksi Dikunci (Menunggu Pelunasan)
+                        @elseif($transaction->status === 'completed')
+                            Transaksi Dikunci (Selesai)
+                        @else
+                            Mode Hanya Baca (Review)
+                        @endif
+                    </h4>
                     <p class="text-xs leading-relaxed text-amber-700">
                         @if($isAdminOnlyBranch ?? false)
-                            Anda masuk dengan peran <strong>Admin</strong>. Anda hanya diperbolehkan mengubah <strong>Pembagian Cabang</strong>. Field lainnya tetap terkunci untuk menjaga integritas data pengajuan.
+                            Anda masuk dengan peran <strong>Admin</strong>. Anda diperbolehkan mengubah <strong>Pembagian Cabang</strong> serta meninjau <strong>perbandingan versi</strong> pengajuan. Data barang tetap terkunci.
+                        @elseif($isSettlement ?? false)
+                            @if(Auth::user()->isAdmin())
+                                Transaksi sudah masuk fase <strong>Pelunasan</strong>. Halaman ini difungsikan untuk meninjau perbandingan versi pengajuan; perubahan data sudah tidak dapat dilakukan.
+                            @else
+                                Transaksi ini sudah memasuki tahap <strong>Pelunasan</strong>. Data tidak dapat diubah untuk menjaga konsistensi finansial.
+                            @endif
+                        @elseif($transaction->status === 'completed')
+                            Transaksi ini sudah berstatus <strong>Selesai</strong>. Seluruh data telah dikunci dan tidak dapat diubah kembali.
                         @else
-                            Anda masuk dengan peran <strong>Admin</strong>. Halaman ini difungsikan secara khusus untuk meninjau perbandingan versi pengajuan; modifikasi atau perubahan data tidak dapat dilakukan pada mode ini.
+                            @if(Auth::user()->isAdmin())
+                                Halaman ini difungsikan secara khusus untuk meninjau perbandingan versi pengajuan; modifikasi data tidak dapat dilakukan pada mode ini.
+                            @else
+                                Halaman ini dalam mode <strong>Hanya Baca</strong> (Read-Only). Modifikasi data tidak diperbolehkan pada tahap ini.
+                            @endif
                         @endif
                     </p>
                 </div>
             </div>
         @endif
 
-        @if($transaction->isPengajuan() && $transaction->hasBeenEditedByManagement())
+        @if($transaction->isPengajuan() && ($transaction->hasBeenEditedByManagement() || Auth::user()->isAdmin() || ($isWaitingPayment ?? false) || ($isSettlement ?? false)))
             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 md:p-6 mb-6 shadow-sm">
                 
                 {{-- Header Info --}}
@@ -64,15 +86,25 @@
                             <i data-lucide="git-branch" class="w-5 h-5 text-blue-600"></i>
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-slate-800 mb-1">
-                                Pengajuan Telah Direvisi oleh Management
+                            <h3 class="text-sm font-bold text-slate-800 mb-1" id="version-header-title">
+                                @if($isSettlement ?? false)
+                                    Peninjauan Transaksi (Fase Pelunasan)
+                                @elseif($isAdminOnlyBranch ?? false)
+                                    Peninjauan Transaksi (Mode Admin)
+                                @else
+                                    Pengajuan Telah Direvisi oleh Management
+                                @endif
                             </h3>
-                            <p class="text-xs text-slate-500">
-                                Terakhir diedit oleh <span class="font-bold text-blue-600">{{ $transaction->editor->name ?? 'N/A' }}</span>
-                                pada {{ $transaction->edited_at ? $transaction->edited_at->format('d M Y, H:i') : '-' }}
-                                <span class="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold ml-1">
-                                    Revisi ke-{{ $transaction->revision_count }}
-                                </span>
+                            <p class="text-xs text-slate-500" id="version-header-subtitle">
+                                @if($transaction->hasBeenEditedByManagement())
+                                    Terakhir diedit oleh <span class="font-bold text-blue-600">{{ $transaction->editor->name ?? 'N/A' }}</span>
+                                    pada {{ $transaction->edited_at ? $transaction->edited_at->format('d M Y, H:i') : '-' }}
+                                    <span class="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold ml-1">
+                                        Revisi ke-{{ $transaction->revision_count }}
+                                    </span>
+                                @else
+                                    Menampilkan perbandingan antara data asli teknisi dan penyesuaian management.
+                                @endif
                             </p>
                         </div>
                     </div>
@@ -118,10 +150,17 @@
                         'original' => $transaction->getOriginalVersion(),
                         'management' => $transaction->getManagementVersion(),
                         'changes' => $transaction->getItemChanges(),
+                        'global_changes' => [
+                            'dpp_lainnya' => $transaction->dpp_lainnya > 0,
+                            'tax_amount' => $transaction->tax_amount > 0,
+                            'biaya_layanan_1' => $transaction->biaya_layanan_1 > 0
+                        ],
+                        'is_settlement' => (bool) ($isSettlement ?? false),
+                        'is_admin_only_branch' => (bool) ($isAdminOnlyBranch ?? false)
                     ]) !!}
                 </script>
             </div>
-        @endif
+@endif
 
         <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="pengajuan-form" 
             class="{{ ($isReadOnly ?? false) ? 'version-readonly' : '' }} {{ ($isAdminOnlyBranch ?? false) ? 'form-admin-restricted-mode' : '' }}">
@@ -437,11 +476,14 @@
 
                 {{-- DPP, PPN & Service Fee Inputs --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 relative z-10">
-                    <div class="group">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
-                            DPP Lainnya <span class="text-[9px] font-normal text-slate-500 lowercase">(biaya tambahan)</span>
-                        </label>
-                        <div class="relative">
+                    <div class="group global-field-container" data-field="dpp_lainnya">
+                        <div class="flex items-center justify-between mb-2.5 ml-1">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider group-focus-within:text-emerald-400 transition-colors">
+                                DPP Lainnya <span class="text-[9px] font-normal text-slate-500 lowercase">(biaya tambahan)</span>
+                            </label>
+                            <div class="global-badge-mount"></div>
+                        </div>
+                        <div class="relative field-input-wrapper">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
                             <input type="text" id="input-dpp-lainnya-display" 
                                 class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
@@ -450,11 +492,14 @@
                             <input type="hidden" name="dpp_lainnya" id="input-dpp-lainnya-hidden" value="{{ $transaction->dpp_lainnya ?? 0 }}">
                         </div>
                     </div>
-                    <div class="group">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
-                            PPN <span class="text-[9px] font-normal text-slate-500 lowercase">(pajak pertambahan nilai)</span>
-                        </label>
-                        <div class="relative">
+                    <div class="group global-field-container" data-field="tax_amount">
+                        <div class="flex items-center justify-between mb-2.5 ml-1">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider group-focus-within:text-emerald-400 transition-colors">
+                                PPN <span class="text-[9px] font-normal text-slate-500 lowercase">(pajak pertambahan nilai)</span>
+                            </label>
+                            <div class="global-badge-mount"></div>
+                        </div>
+                        <div class="relative field-input-wrapper">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
                             <input type="text" id="input-ppn-display" 
                                 class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
@@ -463,11 +508,14 @@
                             <input type="hidden" name="tax_amount" id="input-ppn-hidden" value="{{ $transaction->tax_amount ?? 0 }}">
                         </div>
                     </div>
-                    <div class="group">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 ml-1 group-focus-within:text-emerald-400 transition-colors">
-                            Biaya Layanan 1 <span class="text-[9px] font-normal text-slate-500 lowercase">(service fee)</span>
-                        </label>
-                        <div class="relative">
+                    <div class="group global-field-container" data-field="biaya_layanan_1">
+                        <div class="flex items-center justify-between mb-2.5 ml-1">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider group-focus-within:text-emerald-400 transition-colors">
+                                Biaya Layanan 1 <span class="text-[9px] font-normal text-slate-500 lowercase">(service fee)</span>
+                            </label>
+                            <div class="global-badge-mount"></div>
+                        </div>
+                        <div class="relative field-input-wrapper">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">Rp</span>
                             <input type="text" id="input-layanan1-display" 
                                 class="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all placeholder:text-slate-700" 
@@ -1692,12 +1740,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const originalItems = versionData.original || [];
         const managementItems = versionData.management || [];
         const changes = versionData.changes || [];
+        const globalChanges = versionData.global_changes || {};
+        const isSettlement = versionData.is_settlement || false;
+        const isAdminOnlyBranch = versionData.is_admin_only_branch || false;
         
         let currentVersion = 'original'; // Start with original version
         
         const btnOriginal = document.getElementById('btn-version-original');
         const btnManagement = document.getElementById('btn-version-management');
         const itemsContainerVersioned = document.getElementById('items-container');
+        const versionTitle = document.getElementById('version-header-title');
+        const versionSubtitle = document.getElementById('version-header-subtitle');
         
         // ───────────────────────────────────────────────────
         // Toggle Version Button Click
@@ -1719,8 +1772,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 currentVersion = targetVersion;
                 
+                // Update Header Labels
+                updateHeaderLabels(targetVersion);
+                
                 // Re-render items
                 renderVersion(targetVersion);
+                
+                // Update global field highlights
+                updateGlobalHighlights(targetVersion);
                 
                 // Re-init lucide icons
                 if (typeof lucide !== 'undefined') {
@@ -1728,6 +1787,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+
+        function updateHeaderLabels(version) {
+            if (!versionTitle || !versionSubtitle) return;
+
+            if (version === 'original') {
+                versionTitle.textContent = 'Versi Pengaju (Original)';
+                versionSubtitle.innerHTML = 'Menampilkan data awal yang dikirimkan oleh teknisi sebelum ada penyesuaian management.';
+            } else {
+                // Version Management
+                if (isSettlement) {
+                    versionTitle.innerHTML = 'Versi Management <span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] ml-2">Transaksi Dikunci (Menunggu Pelunasan)</span>';
+                    versionSubtitle.textContent = 'Data hasil penyesuaian akhir management. Transaksi dalam fase pelunasan.';
+                } else if (isAdminOnlyBranch) {
+                    versionTitle.innerHTML = 'Versi Management <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] ml-2">Mode Edit Terbatas (Admin)</span>';
+                    versionSubtitle.textContent = 'Data hasil revisi management. Anda dapat mengubah pembagian cabang pada mode ini.';
+                } else {
+                    versionTitle.textContent = 'Versi Management (Terbaru)';
+                    versionSubtitle.textContent = 'Menampilkan data yang telah disesuaikan oleh Management untuk proses pembayaran.';
+                }
+            }
+        }
+
+        function updateGlobalHighlights(version) {
+            document.querySelectorAll('.global-field-container').forEach(container => {
+                const fieldName = container.dataset.field;
+                const mount = container.querySelector('.global-badge-mount');
+                const wrapper = container.querySelector('.field-input-wrapper');
+                
+                // Clear previous states
+                if (mount) mount.innerHTML = '';
+                if (wrapper) wrapper.classList.remove('field-changed');
+
+                if (version === 'management' && globalChanges[fieldName]) {
+                    // Apply highlighting
+                    if (wrapper) wrapper.classList.add('field-changed');
+                    
+                    // Add "Ditambahkan" badge for management version if field has value
+                    const badgeTemplate = document.getElementById('change-badge-template');
+                    if (badgeTemplate && mount) {
+                        const badge = badgeTemplate.content.cloneNode(true).querySelector('.change-badge');
+                        badge.classList.add('added');
+                        badge.querySelector('.badge-text').textContent = 'Ditambahkan';
+                        badge.querySelector('.badge-icon').setAttribute('data-lucide', 'plus-circle');
+                        mount.appendChild(badge);
+                    }
+                }
+            });
+        }
         
         // ───────────────────────────────────────────────────
         // Render Version
@@ -1985,6 +2092,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 mgmtBtn.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
             }
         }
+        
+        // Initial labels and highlights
+        updateHeaderLabels(defaultVersion);
+        updateGlobalHighlights(defaultVersion);
     }
 
     // ═══════════════════════════════════════
@@ -2065,9 +2176,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
         const isReadOnly = @json($isReadOnly ?? false);
 
-        if (!isReadOnly) return;
+        // If neither flag is true, we are in full edit mode (Management)
+        if (!isReadOnly && !isAdminOnlyBranch) return;
 
-        // Fetch elements locally since they might be out of scope or not yet defined
+        // Fetch elements locally
         const summarySection = document.getElementById('summary-billing-section');
 
         // Disable all form controls EXCEPT those allowed for Admin restricted edit
@@ -2084,9 +2196,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const isMethodBtn = el.classList.contains('method-btn');
                 const isDistInput = el.closest('#distribution-list');
                 const isSubmit = el.id === 'summary-submit';
-                const isVersionBtn = el.id === 'btn-version-original' || el.id === 'btn-version-management';
 
-                if (isBranchPill || isMethodBtn || isDistInput || isSubmit || isVersionBtn) {
+                // Whitelist only branch distribution fields and submit button
+                if (isBranchPill || isMethodBtn || isDistInput || isSubmit) {
                     el.disabled = false;
                     el.removeAttribute('disabled');
                     el.style.pointerEvents = 'auto';
@@ -2097,34 +2209,45 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            // Global Lock (Settlement) OR Restricted Field (Admin)
             el.disabled = true;
             el.setAttribute('disabled', 'disabled');
             el.style.cursor = 'not-allowed';
             el.style.pointerEvents = 'none';
+            
+            // Optional: visual feedback for locked fields in admin mode
+            if (isAdminOnlyBranch && !isReadOnly) {
+                el.classList.add('bg-slate-50', 'text-slate-500');
+            }
         });
 
         // Special case for summary section visibility
         if (summarySection) {
             summarySection.classList.remove('hidden');
             summarySection.style.display = 'block';
-            summarySection.style.pointerEvents = 'auto';
-            summarySection.style.opacity = '1';
             
-            // Ensure child elements are also interactable if they are distribution components
-            summarySection.querySelectorAll('*').forEach(child => {
-                child.style.pointerEvents = 'auto';
-            });
+            // If it's a total lock (Settlement), block all pointer events in summary
+            if (isReadOnly && !isAdminOnlyBranch) {
+                summarySection.style.pointerEvents = 'none';
+                summarySection.style.opacity = '0.8';
+            } else {
+                summarySection.style.pointerEvents = 'auto';
+                summarySection.style.opacity = '1';
+                
+                // But for Admin mode, we specifically locked the financial inputs above via the loop
+            }
         }
 
-        // Block form submission ONLY if NOT Admin restricted mode
-        if (!isAdminOnlyBranch) {
+        // Block form submission ONLY if NOT allowed (Settlement phase for everyone)
+        // If isAdminOnlyBranch is true, we ALLOW submission (for branches)
+        if (isReadOnly && !isAdminOnlyBranch) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
             }, true);
         }
 
-        // Hide action buttons
+        // Hide action buttons that are strictly for Management
         const addItemBtn = document.getElementById('btn-add-item');
         if (addItemBtn) addItemBtn.style.display = 'none';
         
@@ -2132,8 +2255,8 @@ document.addEventListener('DOMContentLoaded', function () {
         deleteItemBtns.forEach(btn => btn.style.display = 'none');
     }
 
-    // Call it initially
-    @if($isReadOnly ?? false)
+    // Call it initially if either lock applies
+    @if(($isReadOnly ?? false) || ($isAdminOnlyBranch ?? false))
         enforceReadOnly();
     @endif
 </script>

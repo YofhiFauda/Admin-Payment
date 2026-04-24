@@ -334,13 +334,10 @@ class Transaction extends Model
      */
     public function hasAnyPendingBranchDebt(): bool
     {
-        // ✅ FIXED: withExists() sets attribute as 'has_branch_with_debt' (not 'has_branch_with_debt_exists').
-        // Use it as the primary fast-path check to avoid any extra queries.
         if (array_key_exists('has_branch_with_debt', $this->attributes)) {
             return (bool) $this->attributes['has_branch_with_debt'];
         }
 
-        // Use preloaded data if available to avoid N+1
         if ($this->relationLoaded('branches')) {
             foreach ($this->branches as $branch) {
                 if ($branch->relationLoaded('debtsAsDebtor')) {
@@ -356,10 +353,33 @@ class Transaction extends Model
             return false;
         }
 
-        return $this->branches()->whereHas('debtsAsDebtor', function($q) {
-            $q->where('status', 'pending');
-        })->exists();
+        return \App\Models\BranchDebt::where('transaction_id', $this->id)
+            ->where('status', 'pending')
+            ->exists();
     }
+
+    /**
+     * Determine if the transaction is in the settlement phase (Menunggu Pelunasan).
+     * This phase happens after approval, specifically when invoices are uploaded or inter-branch debts exist.
+     */
+    public function isSettlementPhase(): bool
+    {
+        // 🔒 Settlement phase only applies to non-rembush 'waiting_payment' status
+        if ($this->status !== 'waiting_payment' || $this->isRembush()) {
+            return false;
+        }
+
+        // Logic must match getStatusLabelAttribute condition for "Menunggu Pelunasan"
+        $hasPendingDebt = array_key_exists('has_branch_with_debt', $this->attributes)
+            ? (bool) $this->attributes['has_branch_with_debt']
+            : $this->branchDebts()->where('status', 'pending')->exists();
+
+        return (bool) ($hasPendingDebt || 
+               $this->invoice_file_path || 
+               $this->bukti_transfer || 
+               $this->foto_penyerahan);
+    }
+
 
     /**
      * Get the effective amount for display and approval logic.

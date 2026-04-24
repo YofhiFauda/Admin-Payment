@@ -324,8 +324,23 @@ class TransactionController extends Controller
         $branches = Branch::all();
         $user = Auth::user();
 
-        // ✅ Proteksi: Status 'completed' (Selesai)
+        // ✅ Status Detection
+        $isSettlement = $transaction->isSettlementPhase(); // Status: Menunggu Pelunasan
         $isCompleted = ($transaction->status === 'completed');
+        $isWaitingPayment = ($transaction->status === 'waiting_payment');
+
+        // ✅ Access Control Logic
+        // 1. Lock Phase: Status Completed or Menunggu Pelunasan (ALL ROLES are Read-Only)
+        $isLocked = ($isCompleted || $isSettlement);
+        
+        // 2. Admin Limited Mode: Admin role, Status Menunggu Pembayaran, and NOT Locked
+        $isAdminOnlyBranch = $user->isAdmin() && $isWaitingPayment && !$isLocked;
+
+        // 3. General Read-Only: 
+        // - True if Locked (Settlement/Completed)
+        // - True if Admin and in Waiting Payment (to trigger JS restrictions)
+        // - Management (Owner/Atasan) is NOT read-only if not locked.
+        $isReadOnly = $isLocked || ($user->isAdmin() && $isWaitingPayment);
 
         // ✅ Calculate item count based on transaction type
         if ($transaction->isPengajuan()) {
@@ -334,7 +349,7 @@ class TransactionController extends Controller
             $itemCount = $transaction->items ? count($transaction->items) : 0;
         }
 
-        // ✅ Role-Based Access: Admin = read-only, Teknisi = diblokir, Management = full edit (unless completed)
+        // ✅ Role-Based Block: Teknisi cannot access Pengajuan edit at all
         if ($transaction->isPengajuan()) {
             if ($user->isTeknisi()) {
                 // Teknisi tidak bisa akses edit page pengajuan sama sekali
@@ -342,14 +357,11 @@ class TransactionController extends Controller
                     ->with('error', 'Anda tidak memiliki akses untuk mengedit Pengajuan.');
             }
 
-            // ✅ Role-Based Access: Admin = restricted (branch only), Teknisi = diblokir, Management = full edit (unless completed)
-            $isAdminOnlyBranch = $user->isAdmin() && !$isCompleted;
-            $isReadOnly = $user->isAdmin() || $isCompleted;
 
             $pengajuanCategories = TransactionCategory::forPengajuan()->active()->get();
 
             return view('transactions.edit-pengajuan', compact(
-                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted', 'pengajuanCategories', 'isAdminOnlyBranch'
+                'transaction', 'branches', 'itemCount', 'isReadOnly', 'isCompleted', 'pengajuanCategories', 'isAdminOnlyBranch', 'isSettlement', 'isWaitingPayment'
             ));
         }
 
@@ -364,9 +376,9 @@ class TransactionController extends Controller
         $transaction = Transaction::findOrFail($id);
         $user = Auth::user();
 
-        // ✅ Guard: Status 'completed' (Selesai) — semua role diblokir
-        if ($transaction->status === 'completed') {
-            return response()->json(['error' => 'Transaksi yang sudah Selesai tidak dapat diubah.'], 403);
+        // ✅ Guard: Status 'completed' (Selesai) atau Fase Pelunasan — semua role diblokir
+        if ($transaction->status === 'completed' || $transaction->isSettlementPhase()) {
+            return response()->json(['error' => 'Transaksi yang sudah Selesai atau dalam fase Pelunasan tidak dapat diubah.'], 403);
         }
 
         // ✅ Guard: Pengajuan — Owner, Atasan, dan Admin bisa update

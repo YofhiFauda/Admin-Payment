@@ -12,7 +12,13 @@ An internal financial management system for **WHUSNET** to manage reimbursements
     - Upon uploading an invoice, if there are inter-branch debts (`BranchDebt`), the status **remains** `waiting_payment`.
     - The transaction automatically transitions to `completed` **only after** all associated branch debts are marked as `paid`.
 - **OCR Workflow:** Uses n8n + Google Gemini Pro for 3-layer security (Duplicate detection, Date logic, AI extraction). Supports complex invoices with shipping, service fees, and discounts.
-- **Dual-Version System:** Management (Owner/Atasan) can override technician submissions (Pengajuan). Both original and edited versions are stored for audit trails.
+- **Dual-Version System:** Management (Owner/Atasan) can override technician submissions (Pengajuan). Both original and edited versions are stored for audit trails. A version switcher allows side-by-side comparison with change highlighting.
+- **Transaction Access Control & Phase Locking (New):**
+    - **Settlement Phase ("Menunggu Pelunasan"):** Fully read-only for ALL roles. No further edits or uploads allowed. Version switching remains visible for audit purposes.
+    - **Payment Wait Phase ("Menunggu Pembayaran"):**
+        - **Management:** Full access to edit items, prices, and branches.
+        - **Admin:** **Restricted Edit Mode.** Only allowed to modify "Branch Distribution" and "Distribution Methods". All financial fields (Items, Prices, DPP, PPN, etc.) are strictly locked.
+    - **Visual Enforcement:** UI components are dynamically disabled based on role/status, supplemented by backend controller guards.
 - **Multi-Branch Strategy:** 
     - **Allocation:** Single transactions can be split across multiple branches with specific percentage/amount allocation.
     - **Branch Debt:** Automatic tracking of inter-branch borrowing when one branch pays for another's needs (`BranchDebt` model).
