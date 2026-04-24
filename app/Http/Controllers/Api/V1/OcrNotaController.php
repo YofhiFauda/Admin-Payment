@@ -265,6 +265,7 @@ class OcrNotaController extends Controller
             'sumber_dana.*.branch_id' => 'required|integer|exists:branches,id',
             'sumber_dana.*.amount'    => 'required|numeric|min:0',
             'catatan'            => 'nullable|string|max:1000',
+            'payment_method'     => 'required|string|in:cash,transfer',
         ]);
 
         if ($validator->fails()) {
@@ -358,6 +359,7 @@ class OcrNotaController extends Controller
             'sumber_dana_data'      => $sumberDanaData,
             'paid_by'               => auth()->id(),
             'paid_at'               => now(),
+            'payment_method'        => $request->payment_method,
             'description'           => ($transaction->description ? $transaction->description . ' | ' : '') . $request->catatan,
         ]);
 

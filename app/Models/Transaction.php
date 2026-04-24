@@ -483,6 +483,7 @@ class Transaction extends Model
             'created_at_search' => $this->created_at->format('d-m-Y Y-m-d'),
             'ai_status' => $this->ai_status,
             'payment_method' => $this->payment_method,
+            'is_paid' => (bool) ($this->paid_at || $this->bukti_transfer || $this->foto_penyerahan || $this->invoice_file_path || $this->status === 'completed'),
             'specs' => $this->specs,
             'submitter' => $this->submitted_by ? [
                 'id' => $this->submitter->id,
@@ -565,6 +566,8 @@ class Transaction extends Model
             'invoice_file_path'     => $this->invoice_file_path,
             'bukti_transfer'        => $this->bukti_transfer,
             'foto_penyerahan'       => $this->foto_penyerahan,
+            'payment_method'        => $this->payment_method,
+            'is_paid'               => (bool) ($this->paid_at || $this->bukti_transfer || $this->foto_penyerahan || $this->invoice_file_path || $this->status === 'completed'),
         ];
     }
 

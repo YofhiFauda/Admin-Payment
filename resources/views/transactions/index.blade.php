@@ -1143,6 +1143,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG, PDF. Max 2MB.</p>
                     </div>
 
+                    {{-- METODE PEMBAYARAN (Cash / Rekening) --}}
+                    <div id="payment-method-container" class="mb-4 hidden">
+                        <label class="block text-xs font-bold text-slate-600 mb-2">Metode Pembayaran <span class="text-red-500">*</span></label>
+                        <select name="payment_method" id="payment_method_select"
+                            class="w-full border border-slate-200 rounded-xl p-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all bg-white">
+                            <option value="cash">Cash (Tunai)</option>
+                            <option value="transfer">Rekening (Transfer)</option>
+                        </select>
+                    </div>
+
                     {{-- TRANSFER FIELDS (Hidden by default) --}}
                     <div id="transfer-fields" class="hidden space-y-4 mb-5 border-t border-slate-100 pt-4">
                         <div>
@@ -3969,7 +3979,7 @@ function generateInlineActions(t) {
         // ✅ Riwayat Pembayaran (Payment History)
         const payHistWrap = document.getElementById('v-payment-history-wrap');
         
-        if (window._modalVersionData?.d?.is_paid && window._modalVersionData?.d?.type === 'rembush') {
+        if (window._modalVersionData?.d?.is_paid && (window._modalVersionData?.d?.type === 'rembush' || window._modalVersionData?.d?.type === 'pengajuan')) {
             const hist = window._modalVersionData.d;
             payHistWrap.classList.remove('hidden');
 
@@ -4056,6 +4066,10 @@ function generateInlineActions(t) {
                     }
                 } else if (hist.payment_method === 'cash') {
                     methodLabel = 'Tunai (Cash)';
+                    if (hist.type === 'pengajuan') accountInfo = 'Dibayarkan Tunai';
+                } else if (hist.payment_method === 'transfer' && hist.type === 'pengajuan') {
+                    methodLabel = 'Rekening (Transfer)';
+                    accountInfo = 'Dibayarkan via Transfer';
                 }
 
                 if (summaryMethod) summaryMethod.innerHTML = methodLabel;
@@ -4709,6 +4723,8 @@ function generateInlineActions(t) {
         document.getElementById('transfer-fields').classList.add('hidden');
         document.getElementById('pengajuan-invoice-fields').classList.add('hidden');
         document.getElementById('p-detail-container').classList.add('hidden');
+        document.getElementById('payment-method-container').classList.add('hidden');
+        document.getElementById('payment_method_select').required = false;
 
         // Show loading, hide body
         loading.classList.remove('hidden');
@@ -4777,6 +4793,8 @@ function generateInlineActions(t) {
         if (isPengajuan) {
             endpoint = '/api/v1/payment/pengajuan/upload';
             document.getElementById('pengajuan-invoice-fields').classList.remove('hidden');
+            document.getElementById('payment-method-container').classList.remove('hidden');
+            document.getElementById('payment_method_select').required = true;
             document.getElementById('payment-modal-title').textContent = 'Upload Pembayaran Invoice';
             paymentFileInput.name = 'invoice_file';
             paymentFileInput.required = true;

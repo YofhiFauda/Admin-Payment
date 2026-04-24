@@ -1773,6 +1773,35 @@ class TransactionController extends Controller
 
         $dataLastRow = $currentRow - 1;
 
+        // ── Total Row ─────────────────────────────────
+        if ($dataLastRow >= 2) {
+            $totalRow = $currentRow;
+            $sheet->setCellValue("A{$totalRow}", 'TOTAL');
+            $sheet->getStyle("A{$totalRow}")->getFont()->setBold(true);
+            
+            $sumCols = [];
+            if ($exportFormat === 'pengajuan') {
+                $sumCols = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X'];
+            } else {
+                $sumCols = ['I', 'K', 'L', 'N'];
+            }
+
+            foreach ($sumCols as $col) {
+                $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}2:{$col}{$dataLastRow})");
+                $sheet->getStyle("{$col}{$totalRow}")->getFont()->setBold(true);
+                $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
+            }
+
+            // Style the total row
+            $sheet->getStyle("A{$totalRow}:{$lastCol}{$totalRow}")->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFE2EFDA']], // Light Green for Total
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => $borderColor]]]
+            ]);
+            
+            $currentRow++;
+        }
+
         // ── Auto Column Width ─────────────────────────
         foreach (range(1, $colCount) as $colIdx) {
             $col = Coordinate::stringFromColumnIndex($colIdx);
@@ -1832,13 +1861,12 @@ class TransactionController extends Controller
             // F=kategori, G=Nama Vendor, H=Link, I=Merk, J=Tipe/Seri, K=Ukuran, L=Warna,
             // M=Keterangan, N=Harga Satuan, O=Jumlah, P=Total,
             // Q=Ongkir, R=Diskon Pengiriman, S=Voucher, T=Biaya Layanan 1, U=Biaya Layanan 2,
-            // V=DPP Lainnya, W=PPN, X=Total Estimasi, Y=cash/bank, Z=status
+            // V=DPP Lainnya, W=PPN, X=Total Estimasi, Y=Metode Pembelian, Z=status
             return [['Total', 'Total Estimasi'], 'X']; // Grand Total sums column X (Total Estimasi)
         }
 
-        // Rembush: A=Cabang, B=Invoice, C=tanggal, D=bulan, E=kategori, F=nama vendor,
-        // G=Metode, H=Nama Barang, I=Qty, J=Satuan, K=Harga Satuan, L=Total,
-        // M=Deskripsi, N=Total Nominal, O=Met. Distribusi, P=cash/bank, Q=status
+        // G=Metode Pembayaran, H=Nama Barang, I=Qty, J=Satuan, K=Harga Satuan, L=Total,
+        // M=Deskripsi, N=Total Nominal, O=Met. Distribusi, P=Metode Pencairan, Q=status
         return [['Total'], 'N']; // Grand Total sums column N (Total Nominal)
     }
 
@@ -1926,7 +1954,7 @@ class TransactionController extends Controller
                 'DPP Lainnya',         // V
                 'PPN',                 // W
                 'Total Estimasi',      // X  ← FORMULA: =P+Q-R-S+T+U+V+W
-                'cash/bank pembayar',  // Y
+                'Metode Pembelian',    // Y
                 'status',              // Z
             ];
         }
@@ -1939,7 +1967,7 @@ class TransactionController extends Controller
             'bulan',             // D
             'kategori',          // E
             'nama vendor',       // F
-            'Metode Pencairan',  // G
+            'Metode Pembayaran', // G
             'Nama Barang',       // H
             'Qty',               // I
             'Satuan',            // J
@@ -1948,7 +1976,7 @@ class TransactionController extends Controller
             'Deskripsi',         // M
             'Total Nominal',     // N
             'Metode Distribusi', // O
-            'cash/bank pembayar',// P
+            'Metode Pencairan',  // P
             'status',            // Q
         ];
     }
@@ -1999,7 +2027,7 @@ class TransactionController extends Controller
                 $isFirstRow ? (float) ($t->dpp_lainnya ?? 0) : '',       // V
                 $isFirstRow ? (float) ($t->tax_amount ?? 0) : '',        // W
                 0,                                                        // X  Total Estimasi (overridden by formula)
-                $isFirstRow ? $payerName : '',                            // Y
+                $isFirstRow ? ($t->payment_method === 'cash' ? 'Cash' : ($t->payment_method === 'transfer' ? 'Rekening' : '-')) : '', // Y
                 $isFirstRow ? $t->status_label : '',                      // Z
             ];
         }
@@ -2025,7 +2053,7 @@ class TransactionController extends Controller
             $isFirstRow ? ($t->description ?? '-') : '',                                             // M
             $isFirstRow ? (float) $t->amount : '',                                                   // N  Total Nominal
             $isFirstRow ? $this->deduceDistributionMethod($t) : '',                                  // O
-            $isFirstRow ? $payerName : '',                                                           // P
+            $isFirstRow ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method_label) : '', // P
             $isFirstRow ? $t->status_label : '',                                                     // Q
         ];
     }
