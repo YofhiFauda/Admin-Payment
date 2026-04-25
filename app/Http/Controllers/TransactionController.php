@@ -867,7 +867,11 @@ class TransactionController extends Controller
                 foreach (($transaction->items ?? []) as $item) {
                     $itemName = trim($item['customer'] ?? '');
                     if ($itemName !== '') {
-                        dispatch(new CalculatePriceIndexJob($itemName, $item['category'] ?? null))
+                        dispatch(new CalculatePriceIndexJob(
+                            $itemName, 
+                            floatval($item['estimated_price'] ?? 0), 
+                            $item['category'] ?? null
+                        ))
                             ->delay(now()->addSeconds(5))
                             ->onQueue('default');
                     }
@@ -1055,17 +1059,31 @@ class TransactionController extends Controller
                 ], 400);
             }
 
-            $request->validate([
-                'payment_proof'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-                'notes'                  => 'nullable|string',
-                'bank_account_id'        => 'required|exists:branch_bank_accounts,id',
-                'sender_bank_account_id' => 'required|exists:branch_bank_accounts,id',
-            ], [
-                'payment_proof.required'          => 'Bukti transfer wajib diunggah.',
-                'payment_proof.max'               => 'Bukti transfer maksimal 1MB.',
-                'bank_account_id.required'        => 'Rekening tujuan wajib dipilih.',
-                'sender_bank_account_id.required' => 'Rekening pengirim wajib dipilih.',
-            ]);
+            $isCash = $request->input('payment_method') === 'cash';
+
+            // Validasi conditional: Cash → proof & rekening opsional; Transfer → wajib
+            $rules = [
+                'payment_method' => 'required|in:transfer,cash',
+                'notes'          => 'nullable|string',
+            ];
+            $messages = [];
+
+            if (!$isCash) {
+                $rules['payment_proof']          = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                $rules['bank_account_id']        = 'required|exists:branch_bank_accounts,id';
+                $rules['sender_bank_account_id'] = 'required|exists:branch_bank_accounts,id';
+                $messages = [
+                    'payment_proof.required'          => 'Bukti transfer wajib diunggah.',
+                    'payment_proof.max'               => 'Ukuran bukti transfer maksimal 5MB.',
+                    'bank_account_id.required'        => 'Rekening tujuan wajib dipilih.',
+                    'sender_bank_account_id.required' => 'Rekening pengirim wajib dipilih.',
+                ];
+            } else {
+                // Cash: proof opsional tapi jika dikirim harus valid
+                $rules['payment_proof'] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
+            }
+
+            $request->validate($rules, $messages);
 
             DB::beginTransaction();
 
@@ -1076,7 +1094,18 @@ class TransactionController extends Controller
                 $path = $file->storeAs('payment_proofs/debts', $filename, 'public');
             }
 
-            $debt->markAsPaid($request->notes, $path, auth()->id(), $request->bank_account_id, $request->sender_bank_account_id);
+            $paymentMethod = $isCash ? 'cash' : 'transfer';
+
+            $debt->markAsPaid(
+                $request->notes,
+                $path,
+                auth()->id(),
+                $isCash ? null : (int) $request->bank_account_id,
+                $isCash ? null : (int) $request->sender_bank_account_id,
+                $paymentMethod
+            );
+
+            $methodLabel = $isCash ? 'Tunai (Cash)' : 'Transfer';
 
             // Log activity
             ActivityLog::create([
@@ -1084,7 +1113,7 @@ class TransactionController extends Controller
                 'action'         => 'settle_debt',
                 'transaction_id' => $debt->transaction_id,
                 'target_id'      => $debt->transaction->invoice_number ?? '-',
-                'description'    => "Melunaskan hutang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
+                'description'    => "Melunaskan hutang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount} via {$methodLabel}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
             ]);
 
             // ✅ AUTO-COMPLETE TRANSACTION LOGIC
@@ -1119,12 +1148,13 @@ class TransactionController extends Controller
                 'debtor'         => $debt->debtorBranch->name,
                 'creditor'       => $debt->creditorBranch->name,
                 'amount'         => $debt->amount,
+                'method'         => $paymentMethod,
                 'settled_by'     => Auth::id(),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan.",
+                'message' => "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan via {$methodLabel}.",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

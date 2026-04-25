@@ -217,6 +217,12 @@
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm">
                                                 <i data-lucide="image" class="w-3.5 h-3.5"></i> Lihat Nota
                                             </button>
+                                        @elseif($debt->status === 'paid')
+                                            {{-- Bayar via Cash (tanpa bukti transfer) --}}
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700">
+                                                <i data-lucide="banknote" class="w-3 h-3"></i>
+                                                Lunas (Cash)
+                                            </span>
                                         @else                                            <span class="text-slate-400 font-medium">-</span>
                                         @endif
                                     </div>

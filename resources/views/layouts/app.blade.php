@@ -454,11 +454,13 @@
                     <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
                 </a>
 
+                @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                 <a href="{{ route('gudang.loading') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('gudang.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="package" class="w-4 h-4"></i> Input Gudang
                 </a>
+                @endif
 
                 {{-- ▼ Input Pengeluaran Lain (dropdown) - admin, atasan, owner --}}
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
@@ -526,11 +528,13 @@
                     <i data-lucide="tags" class="w-4 h-4"></i> Kelola Kategori
                 </a>
 
+                @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('price-index.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bookmark" class="w-4 h-4"></i> Referensi Harga
                 </a>
+                @endif
 
                 <a href="{{ route('activity-logs.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all

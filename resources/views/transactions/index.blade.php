@@ -736,18 +736,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div id="v-items-wrap" class="hidden">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Daftar Barang</label>
                         {{-- Table Container untuk Rembush --}}
-                        <div id="v-items-table-container" class="border border-slate-100 rounded-xl overflow-hidden hidden">
-                            <table class="w-full text-xs">
-                                <thead class="bg-slate-50 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                        <div id="v-items-table-container" class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hidden">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-100/50 text-slate-500 font-bold uppercase tracking-wider">
                                     <tr>
-                                        <th class="px-3 py-2 text-left">Nama</th>
+                                        <th class="px-3 py-2">Nama Barang</th>
                                         <th class="px-3 py-2 text-center">Qty</th>
-                                        <th class="px-3 py-2 text-left">Satuan</th>
-                                        <th class="px-3 py-2 text-right">Harga</th>
+                                        <th class="px-3 py-2">Satuan</th>
+                                        <th class="px-3 py-2 text-right">Harga Sat.</th>
                                         <th class="px-3 py-2 text-right">Total</th>
                                     </tr>
                                 </thead>
-                                <tbody id="v-items-tbody" class="divide-y divide-slate-50"></tbody>
+                                <tbody id="v-items-tbody" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
                         {{-- Div Container untuk Pengajuan (Cards Grid) --}}
@@ -1141,6 +1141,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         <input type="file" name="file" id="payment_file_input" required accept=".jpg,.jpeg,.png,.pdf"
                             class="w-full border border-cyan-200 rounded-xl p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 transition-all cursor-pointer bg-white">
                         <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG, PDF. Max 2MB.</p>
+                        
+                        {{-- Real-time File Preview --}}
+                        <div id="payment-file-preview" class="hidden mt-3 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl transition-all">
+                            <div class="flex items-center gap-4">
+                                <div id="preview-placeholder" class="w-20 h-20 bg-white rounded-xl border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
+                                    {{-- Image or PDF Icon will be here --}}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p id="preview-filename" class="text-xs font-bold text-slate-700 truncate mb-0.5"></p>
+                                    <p id="preview-filesize" class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"></p>
+                                    <button type="button" onclick="resetPaymentFileInput()" class="mt-2 text-[10px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors uppercase tracking-widest outline-none">
+                                        <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- METODE PEMBAYARAN (Cash / Rekening) --}}
@@ -4545,7 +4561,52 @@ function generateInlineActions(t) {
     // Initial attach
     document.addEventListener('DOMContentLoaded', () => {
         attachNominalFormatters();
+
+        // ✅ Real-time File Preview for Payment Modal
+        const paymentFileInput = document.getElementById('payment_file_input');
+        const previewWrap      = document.getElementById('payment-file-preview');
+        const previewPlaceholder = document.getElementById('preview-placeholder');
+        const previewFilename    = document.getElementById('preview-filename');
+        const previewFilesize    = document.getElementById('preview-filesize');
+
+        if (paymentFileInput) {
+            paymentFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    previewWrap.classList.remove('hidden');
+                    previewFilename.textContent = file.name;
+                    previewFilesize.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            previewPlaceholder.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-cover rounded-lg">`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else if (file.type === 'application/pdf') {
+                        previewPlaceholder.innerHTML = `
+                            <div class="flex flex-col items-center justify-center text-rose-500">
+                                <i data-lucide="file-text" class="w-8 h-8"></i>
+                                <span class="text-[8px] font-black mt-1 uppercase">PDF</span>
+                            </div>`;
+                        if (typeof lucide !== 'undefined') lucide.createIcons({ root: previewPlaceholder });
+                    } else {
+                        previewPlaceholder.innerHTML = `<i data-lucide="file" class="w-8 h-8 text-slate-300"></i>`;
+                        if (typeof lucide !== 'undefined') lucide.createIcons({ root: previewPlaceholder });
+                    }
+                } else {
+                    window.resetPaymentFileInput();
+                }
+            });
+        }
     });
+
+    window.resetPaymentFileInput = function() {
+        const input = document.getElementById('payment_file_input');
+        const wrap  = document.getElementById('payment-file-preview');
+        if (input) input.value = '';
+        if (wrap) wrap.classList.add('hidden');
+    };
 
     function calculateSumberDanaTotal(baseTotal) {
         const totalEl = document.getElementById('p_sumber_dana_total');
@@ -4698,6 +4759,7 @@ function generateInlineActions(t) {
         }    }
 
     function openPaymentModal(id) {
+        window.resetPaymentFileInput();
         // Find transaction from the existing memory array
         const transaction = SearchEngine.getAll().find(x => x.id === id);
         if (!transaction) return;

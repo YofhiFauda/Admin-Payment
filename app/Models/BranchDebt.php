@@ -16,6 +16,7 @@ class BranchDebt extends Model
         'payment_proof',
         'paid_at',
         'notes',
+        'payment_method',
         'paid_by_id',
         'bank_account_id',
         'sender_bank_account_id',
@@ -78,16 +79,23 @@ class BranchDebt extends Model
     //  HELPERS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    public function markAsPaid(?string $notes = null, ?string $payment_proof = null, ?int $paidBy = null, ?int $bankAccountId = null, ?int $senderBankAccountId = null): void
-    {
+    public function markAsPaid(
+        ?string $notes = null,
+        ?string $payment_proof = null,
+        ?int $paidBy = null,
+        ?int $bankAccountId = null,
+        ?int $senderBankAccountId = null,
+        string $paymentMethod = 'transfer'
+    ): void {
         $this->update([
             'status'                 => 'paid',
             'paid_at'                => now(),
             'notes'                  => $notes ?? $this->notes,
             'payment_proof'          => $payment_proof ?? $this->payment_proof,
             'paid_by_id'             => $paidBy ?? auth()->id(),
-            'bank_account_id'        => $bankAccountId,
-            'sender_bank_account_id' => $senderBankAccountId,
+            'payment_method'         => $paymentMethod,
+            'bank_account_id'        => $paymentMethod === 'cash' ? null : $bankAccountId,
+            'sender_bank_account_id' => $paymentMethod === 'cash' ? null : $senderBankAccountId,
         ]);
     }
 
@@ -99,6 +107,11 @@ class BranchDebt extends Model
     public function isPaid(): bool
     {
         return $this->status === 'paid';
+    }
+
+    public function isCash(): bool
+    {
+        return $this->payment_method === 'cash';
     }
 
     public function getFormattedAmountAttribute(): string

@@ -1,13 +1,13 @@
-# 🏢 WHUSNET Admin Payment - GEMINI Context
+# WHUSNET Admin Payment - GEMINI Context
 
 This file provides essential technical context for Gemini CLI when working on the **WHUSNET Admin Payment** project.
 
-## 🎯 Project Overview
+## Project Overview
 An internal financial management system for **WHUSNET** to manage reimbursements (Rembush), purchase requests (Pengajuan), Warehouse purchases (Gudang), miscellaneous expenditures, and salaries. It features automated **OCR data extraction** (Gemini AI), multi-level approval workflows, and real-time monitoring.
 
 ### Key Capabilities:
-- **Dual-Gate Approval (New):** For **Pengajuan (Purchase Request)**, transactions ≥ Rp 1.000.000 require two-level approval: first by **Atasan** (status: `approved` / "Menunggu Approve Owner"), then by **Owner** (status: `waiting_payment`). Transaksi < 1jt remain single-gate.
-- **Pengajuan Status Flow (Debt-Aware):** 
+- **Dual-Gate Approval (New):** For **Pengajuan (Purchase Request)**, transactions >= Rp 1.000.000 require two-level approval: first by **Atasan** (status: `approved` / "Menunggu Approve Owner"), then by **Owner** (status: `waiting_payment`). Transaksi < 1jt remain single-gate.
+- **Pengajuan Status Flow (Debt-Aware):**
     - Transactions move to `waiting_payment` after Owner/Atasan approval.
     - Upon uploading an invoice, if there are inter-branch debts (`BranchDebt`), the status **remains** `waiting_payment`.
     - The transaction automatically transitions to `completed` **only after** all associated branch debts are marked as `paid`.
@@ -19,16 +19,20 @@ An internal financial management system for **WHUSNET** to manage reimbursements
         - **Management:** Full access to edit items, prices, and branches.
         - **Admin:** **Restricted Edit Mode.** Only allowed to modify "Branch Distribution" and "Distribution Methods". All financial fields (Items, Prices, DPP, PPN, etc.) are strictly locked.
     - **Visual Enforcement:** UI components are dynamically disabled based on role/status, supplemented by backend controller guards.
-- **Multi-Branch Strategy:** 
+- **Multi-Branch Strategy:**
     - **Allocation:** Single transactions can be split across multiple branches with specific percentage/amount allocation.
     - **Branch Debt:** Automatic tracking of inter-branch borrowing when one branch pays for another's needs (`BranchDebt` model).
-    - **BranchDebt Settlement:** Support for settling inter-branch debts with payment proof (transfer/cash) and notes.
+    - **BranchDebt Settlement:** Support for settling inter-branch debts with two payment methods:
+        - **Transfer:** Requires payment proof (image/PDF max 5MB), sender bank account, and destination bank account. All fields are mandatory.
+        - **Cash (Tunai):** No bank accounts required; payment proof is optional. The UI dynamically shows/hides account selection fields based on the chosen method.
+        - The `BranchDebt` record stores `payment_method` (`transfer` | `cash`, default: `transfer`). Cash payments display a **"Lunas (Cash)"** badge on both the Bayar Hutang and Piutang Usaha pages.
+        - The parent Pengajuan transaction auto-transitions to `completed` once all associated branch debts are settled (applies to both methods).
     - **Dashboard Tracking:** New AJAX-powered dashboard widgets for real-time monitoring of "Hutang Antar Cabang" (Inter-branch Debt) and "Piutang Antar Cabang" (Inter-branch Receivable).
-- **Payment History:** Detailed tracking of payment events (transfer/cash), payment proofs, and multi-step verification (Step 1: Payer → Recipient, Step 2: Confirmation/AI Verification).
+- **Payment History:** Detailed tracking of payment events (transfer/cash), payment proofs, and multi-step verification (Step 1: Payer -> Recipient, Step 2: Confirmation/AI Verification).
 - **Hybrid Search Logic (Auto-Adaptive):**
     - **Threshold:** Switches between modes at **5,000 records** benchmark.
     - **Client-Side (< 5k):** Fetches entire dataset (lean version) for instant, browser-side filtering. Safety limit is capped at 10,000 records.
-    - **Server-Side (≥ 5k):** Switches to standard paginated database queries to prevent browser memory overflow and maintain performance.
+    - **Server-Side (>= 5k):** Switches to standard paginated database queries to prevent browser memory overflow and maintain performance.
     - **Auto-Detection:** Every initial load triggers a `/count` check to determine the most efficient search mode.
 - **Price Index System (Dual-Tracking):**
     - **Market Pricing:** Automatically calculates Min, Max, and Avg prices from historical approved transactions (using IQR outlier detection).
@@ -42,7 +46,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 - **Real-time Engine:** Laravel Reverb (WebSockets) for instant UI updates.
 - **Infrastructure:** Docker (9 services: App, Nginx, DB, Redis, Horizon, Reverb, Scheduler, Node, phpMyAdmin).
 
-## 🛠 Tech Stack
+## Tech Stack
 - **Backend:** PHP 8.4, Laravel 12.
 - **Frontend:** Blade, Tailwind CSS v4, Vite, Vanilla JS (SearchEngine, Axios).
 - **Database/Cache:** MySQL 8.0, Redis 7.2.
@@ -51,7 +55,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 - **Automation:** n8n (Self-hosted workflow orchestrator).
 - **AI:** Google Gemini Pro (Text/Image Extraction).
 
-## 🚀 Building and Running
+## Building and Running
 
 | Task | Command |
 |---|---|
@@ -62,13 +66,13 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 | **Horizon** | `php artisan horizon` |
 | **Reverb** | `php artisan reverb:start` |
 
-## 📂 Architecture & Conventions
+## Architecture & Conventions
 
 ### Directory Highlights
 - `app/Services/`: `IdGeneratorService` (Redis-based atomic IDs), OCR processing.
-- `app/Models/`: 
+- `app/Models/`:
     - `Transaction`: Core logic for Rembush/Pengajuan/Gudang & Versioning.
-    - `BranchDebt`: Tracks inter-unit financial obligations.
+    - `BranchDebt`: Tracks inter-unit financial obligations. Fields: `status` (`pending`|`paid`), `payment_method` (`transfer`|`cash`), `payment_proof` (nullable for cash), `bank_account_id` / `sender_bank_account_id` (nullable for cash).
     - `GudangController`: Handles internal warehouse expenditure flow.
     - `OtherExpenditure` & `SalaryRecord`: Extended financial modules.
 - `resources/js/`: Contains `SearchEngine` logic for real-time list filtering.
@@ -80,6 +84,12 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 - **ID Strategy:** Redis-based Sequential ID Generator for atomicity across Docker containers.
 - **Authorization:** Role-based (`owner`, `atasan`, `admin`, `teknisi`) via `role` middleware.
 
+### BranchDebt Payment Logic
+When settling a `BranchDebt` via `TransactionController::settleBranchDebt()`:
+- `payment_method=transfer` (default): `payment_proof` **required**, `bank_account_id` **required**, `sender_bank_account_id` **required**.
+- `payment_method=cash`: `payment_proof` **nullable** (optional upload), bank account fields are **skipped** and stored as `null`.
+- After settlement, the controller checks if all remaining debts for the parent transaction are `paid`. If yes, and the transaction has an `invoice_file_path`, it auto-updates to `completed`.
+
 ### OCR Security Layers
 1. **Layer 1:** Duplicate detection (Redis hash check).
 2. **Layer 2:** Date validation (Auto-reject old notas).
@@ -89,11 +99,12 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 
 ---
 
-## 🧪 Testing Strategy
+## Testing Strategy
 - **Feature Tests:** Authentication, Transaction flows, and `OcrNotaFlowTest`.
 - **Unit Tests:** `IdGeneratorService`, `BranchDebt` logic.
 
-## ⚠️ Important Notes
+## Important Notes
 - **Horizon Monitoring:** Critical for OCR status updates.
 - **Status Flow:** `OtherExpenditure` and `SalaryRecord` have specific approval states (`draft`, `pending`, `approved`, `paid`, `rejected`).
 - **Webhook Security:** n8n calls must include the `X-SECRET` header.
+- **BranchDebt `payment_method`:** Defaults to `transfer` for all existing records (backward-compatible migration). New cash payments store `null` for bank account fields.

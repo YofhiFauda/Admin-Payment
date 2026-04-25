@@ -244,6 +244,12 @@
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm">
                                             <i data-lucide="image" class="w-3.5 h-3.5"></i> Bukti
                                         </button>
+                                    @elseif($debt->status === 'paid')
+                                        {{-- Bayar via Cash (tanpa bukti transfer) --}}
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] font-bold text-emerald-700">
+                                            <i data-lucide="banknote" class="w-3 h-3"></i>
+                                            Lunas (Cash)
+                                        </span>
                                     @else
                                         -
                                     @endif
@@ -319,7 +325,7 @@
     </div>
 </div>
 
-<div id="branch-debt-modal" class="hidden fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div id="branch-debt-modal" class="hidden fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300" id="branch-debt-modal-box">
         <form id="branch-debt-form" method="POST" enctype="multipart/form-data">
             <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -330,18 +336,49 @@
                 <button type="button" onclick="closeSettleModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-6 space-y-5">
-                <div class="pt-2">
-                    <label class="block text-xs font-black text-slate-700 uppercase mb-2 px-1 text-emerald-600 flex items-center gap-1.5">
+
+                {{-- Metode Pembayaran --}}
+                <div>
+                    <label class="block text-xs font-black text-slate-700 uppercase mb-2 px-1">Metode Pembayaran <span class="text-red-500">*</span></label>
+                    <div class="grid grid-cols-2 gap-3" id="payment-method-toggle">
+                        <label id="method-transfer-label" class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-indigo-500 bg-indigo-50 cursor-pointer transition-all">
+                            <input type="radio" name="payment_method" value="transfer" class="hidden" checked>
+                            <div class="w-5 h-5 rounded-full border-2 border-indigo-500 flex items-center justify-center" id="radio-transfer-dot">
+                                <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-black text-indigo-700">Transfer</div>
+                                <div class="text-[10px] text-indigo-500">Via rekening bank</div>
+                            </div>
+                        </label>
+                        <label id="method-cash-label" class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-slate-200 bg-white cursor-pointer transition-all">
+                            <input type="radio" name="payment_method" value="cash" class="hidden">
+                            <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center" id="radio-cash-dot">
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-300 hidden"></div>
+                            </div>
+                            <div>
+                                <div class="text-xs font-black text-slate-700">Tunai (Cash)</div>
+                                <div class="text-[10px] text-slate-400">Bayar langsung</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Upload Bukti --}}
+                <div class="pt-1">
+                    <label class="block text-xs font-black text-slate-700 uppercase mb-2 px-1 text-emerald-600 flex items-center gap-1.5" id="proof-label">
                         <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                        Upload Bukti Transfer <span class="text-red-500">*</span>
+                        Upload Bukti Transfer <span class="text-red-500" id="proof-required-star">*</span>
+                        <span class="text-slate-400 font-normal normal-case" id="proof-optional-note" style="display:none">(Opsional untuk Cash)</span>
                     </label>
-                    <input type="file" name="payment_proof" id="branch_debt_file_input" required accept="image/jpeg,image/png" 
+                    <input type="file" name="payment_proof" id="branch_debt_file_input" accept="image/jpeg,image/png,application/pdf" 
                         class="w-full text-sm border-2 border-slate-100 p-2 rounded-xl focus:border-red-500 focus:ring-0 transition-all">
                 </div>
 
+                {{-- Rekening Pengirim (sembunyikan jika Cash) --}}
                 <div id="settle-sender-bank-accounts-container" class="hidden mb-4 pb-4 border-b border-slate-100">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 px-1">Pilih Rekening Pengirim (Sumber: <span id="settle-sender-branch-name"></span>)</label>
-                    <select name="sender_bank_account_id" id="settle-sender-bank-accounts-select" required 
+                    <select name="sender_bank_account_id" id="settle-sender-bank-accounts-select"
                         class="w-full text-sm border-2 border-slate-100 p-3 rounded-xl focus:border-red-500 focus:ring-0 transition-all bg-slate-50 font-bold text-slate-800">
                     </select>
 
@@ -361,9 +398,10 @@
                     </div>
                 </div>
 
+                {{-- Rekening Tujuan (sembunyikan jika Cash) --}}
                 <div id="settle-bank-accounts-container" class="hidden">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 px-1">Pilih Rekening Tujuan (<span id="settle-branch-name"></span>)</label>
-                    <select name="bank_account_id" id="settle-bank-accounts-select" required 
+                    <select name="bank_account_id" id="settle-bank-accounts-select"
                         class="w-full text-sm border-2 border-slate-100 p-3 rounded-xl focus:border-red-500 focus:ring-0 transition-all bg-slate-50 font-bold text-slate-800">
                         {{-- Filled by JS --}}
                     </select>
@@ -409,24 +447,74 @@
 
 <script>
     let currentDebtId = null;
+    let _cachedBankAccounts = [];
+    let _cachedSenderBankAccounts = [];
+
+    // ─── Toggle Metode Pembayaran ─────────────────────────────────
+    function setPaymentMethod(method) {
+        const isCash = method === 'cash';
+
+        // Toggle label style
+        document.getElementById('method-transfer-label').className = `flex items-center gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${!isCash ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white'}`;
+        document.getElementById('method-cash-label').className = `flex items-center gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${isCash ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white'}`;
+
+        // Radio dot visual
+        const transferDot = document.getElementById('radio-transfer-dot');
+        const cashDot = document.getElementById('radio-cash-dot');
+        transferDot.className = `w-5 h-5 rounded-full border-2 flex items-center justify-center ${!isCash ? 'border-indigo-500' : 'border-slate-300'}`;
+        transferDot.querySelector('div').className = `w-2.5 h-2.5 rounded-full ${!isCash ? 'bg-indigo-500' : 'bg-slate-300 hidden'}`;
+        cashDot.className = `w-5 h-5 rounded-full border-2 flex items-center justify-center ${isCash ? 'border-emerald-500' : 'border-slate-300'}`;
+        cashDot.querySelector('div').className = `w-2.5 h-2.5 rounded-full ${isCash ? 'bg-emerald-500' : 'bg-slate-300 hidden'}`;
+
+        // Bukti upload: required/optional
+        const fileInput = document.getElementById('branch_debt_file_input');
+        const requiredStar = document.getElementById('proof-required-star');
+        const optionalNote = document.getElementById('proof-optional-note');
+        fileInput.required = !isCash;
+        if (isCash) {
+            requiredStar.style.display = 'none';
+            optionalNote.style.display = '';
+        } else {
+            requiredStar.style.display = '';
+            optionalNote.style.display = 'none';
+        }
+
+        // Tampilkan / sembunyikan rekening
+        const senderContainer = document.getElementById('settle-sender-bank-accounts-container');
+        const destContainer = document.getElementById('settle-bank-accounts-container');
+        if (isCash) {
+            senderContainer.classList.add('hidden');
+            destContainer.classList.add('hidden');
+        } else {
+            senderContainer.classList.remove('hidden');
+            destContainer.classList.remove('hidden');
+        }
+    }
 
     function openSettleModal(id, bankAccounts, branchName, senderBankAccounts, senderBranchName) { 
         currentDebtId = id; 
+        _cachedBankAccounts = bankAccounts;
+        _cachedSenderBankAccounts = senderBankAccounts;
+
         document.getElementById('settle-branch-name').textContent = branchName;
         document.getElementById('settle-sender-branch-name').textContent = senderBranchName;
         
         const select = document.getElementById('settle-bank-accounts-select');
-        const container = document.getElementById('settle-bank-accounts-container');
         const detailContainer = document.getElementById('settle-bank-account-detail');
-        
         const senderSelect = document.getElementById('settle-sender-bank-accounts-select');
-        const senderContainer = document.getElementById('settle-sender-bank-accounts-container');
         const senderDetailContainer = document.getElementById('settle-sender-bank-account-detail');
         
-        detailContainer.classList.add('hidden'); // Reset details
-        container.classList.remove('hidden');    // Selalu tampilkan container
+        detailContainer.classList.add('hidden');
         senderDetailContainer.classList.add('hidden');
-        senderContainer.classList.remove('hidden');
+
+        // Reset metode ke Transfer (default) setiap kali modal dibuka
+        document.querySelector('input[name="payment_method"][value="transfer"]').checked = true;
+        document.querySelector('input[name="payment_method"][value="cash"]').checked = false;
+        setPaymentMethod('transfer');
+
+        // Reset file input & notes
+        document.getElementById('branch_debt_file_input').value = '';
+        document.querySelector('#branch-debt-form textarea[name="notes"]').value = '';
 
         // Populate Destination (Creditor) Accounts
         if (bankAccounts && bankAccounts.length > 0) {
@@ -466,10 +554,18 @@
             document.getElementById('branch-debt-modal-box').classList.remove('scale-95');
             document.getElementById('branch-debt-modal-box').classList.add('scale-100'); 
         }, 10);
+        if (window.lucide) lucide.createIcons({ root: document.getElementById('branch-debt-modal') });
     }
 
     // Listener for bank account detail dynamic update
     document.addEventListener('DOMContentLoaded', function() {
+        // Payment method radio toggle
+        document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                setPaymentMethod(this.value);
+            });
+        });
+
         const select = document.getElementById('settle-bank-accounts-select');
         if(select) {
             select.addEventListener('change', function() {

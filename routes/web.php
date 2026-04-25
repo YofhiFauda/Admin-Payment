@@ -99,7 +99,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/pengajuan/upload', [PengajuanController::class, 'uploadPhoto'])->name('pengajuan.upload');
         Route::post('/pengajuan/store', [PengajuanController::class, 'store'])->name('pengajuan.store');
 
-        // Gudang flow: loading → form → store (no OCR)
+    });
+
+    // ── Gudang flow (Atasan & Owner ONLY) ──────────────────
+    Route::middleware('role:atasan,owner')->group(function () {
         Route::get('/gudang/loading', [GudangController::class, 'loading'])->name('gudang.loading');
         Route::get('/gudang/form', [GudangController::class, 'create'])->name('gudang.form');
         Route::post('/gudang/store', [GudangController::class, 'store'])->name('gudang.store');
@@ -216,26 +219,24 @@ Route::middleware('auth')->group(function () {
 
 
     // ── Price Index ─────────────────────────────────────────────────────
-    // View: semua role (teknisi, admin, atasan, owner)
-    Route::get('/price-index', [PriceIndexController::class, 'index'])->name('price-index.index');
-    // Rate-limited: 60 req/menit — proteksi info harga dari mass scraping
+    // API Check & Lookup: semua role (digunakan di form pengajuan)
     Route::middleware('throttle:60,1')->group(function () {
         Route::get('/api/price-index/lookup', [PriceIndexController::class, 'lookup'])->name('price-index.lookup');
         Route::post('/api/price-index/check', [PriceIndexController::class, 'check'])->name('price-index.check');
 
         // ── Smart Autocomplete — Master Item ──────────────────────────────
-        // GET  /api/items/autocomplete?q=kabel&category=Elektrikal
         Route::get('/api/items/autocomplete', [ItemAutocompleteController::class, 'search'])->name('items.autocomplete');
-        // GET  /api/items/{id}
         Route::get('/api/items/{id}', [ItemAutocompleteController::class, 'show'])->name('items.show');
-        // POST /api/items/create-pending  (buat barang baru menunggu aproval)
         Route::post('/api/items/create-pending', [ItemAutocompleteController::class, 'createPending'])->name('items.create-pending');
     });
 
-    // Manage: Atasan & Owner (buat, edit)
-    Route::middleware('role:atasan,owner')->group(function () {
+    // Halaman Price Index & Management: Owner only
+    Route::middleware('role:owner')->group(function () {
+        Route::get('/price-index', [PriceIndexController::class, 'index'])->name('price-index.index');
         Route::post('/price-index', [PriceIndexController::class, 'store'])->name('price-index.store');
         Route::put('/price-index/{id}', [PriceIndexController::class, 'update'])->name('price-index.update');
+        Route::delete('/price-index/{id}', [PriceIndexController::class, 'destroy'])->name('price-index.destroy');
+        
         Route::get('/price-index/anomalies', [PriceIndexController::class, 'anomalies'])->name('price-index.anomalies');
         Route::post('/price-index/anomalies/bulk-review', [PriceIndexController::class, 'bulkReviewAnomaly'])->name('price-index.anomalies.bulk-review');
         Route::post('/price-index/anomalies/{id}/review', [PriceIndexController::class, 'reviewAnomaly'])->name('price-index.anomalies.review');
@@ -245,11 +246,6 @@ Route::middleware('auth')->group(function () {
         // Analytics Dashboard & CSV Export
         Route::get('/price-index/analytics', [PriceIndexController::class, 'analytics'])->name('price-index.analytics');
         Route::get('/price-index/analytics/export', [PriceIndexController::class, 'exportCsv'])->name('price-index.export-csv');
-    });
-
-    // Delete: Owner only
-    Route::middleware('role:owner')->group(function () {
-        Route::delete('/price-index/{id}', [PriceIndexController::class, 'destroy'])->name('price-index.destroy');
     });
 
 });

@@ -267,6 +267,74 @@ class PriceIndexService
     }
 
     // ════════════════════════════════════════════════════════
+    //  AUTO-ADAPTIVE INCREMENTAL UPDATE
+    // ════════════════════════════════════════════════════════
+    
+    /**
+     * Proses item dari transaksi yang baru di-approve.
+     * Jika harga berada dalam rentang [min, max], update rata-rata (Avg) secara otomatis.
+     */
+    public function processApprovedItem(string $itemName, float $price, ?string $category = null): ?PriceIndex
+    {
+        $priceIndex = PriceIndex::where('item_name', $itemName)->first();
+
+        // 1. Jika Belum Ada Index (Cold Start)
+        if (!$priceIndex) {
+            return PriceIndex::create([
+                'item_name'            => $itemName,
+                'category'             => $category,
+                'min_price'            => $price,
+                'max_price'            => $price,
+                'avg_price'            => $price,
+                'is_manual'            => false,
+                'needs_initial_review' => true,
+                'total_transactions'   => 1,
+                'last_calculated_at'   => now(),
+            ]);
+        }
+
+        // 2. Lock Row untuk mencegah Race Condition saat update rata-rata
+        return DB::transaction(function () use ($priceIndex, $price) {
+            $pi = PriceIndex::where('id', $priceIndex->id)->lockForUpdate()->first();
+
+            // 3. Cek Rentang Harga [Min, Max]
+            // Sesuai request: Update Otomatis selama >harga min dan < harga max
+            // Kita gunakan toleransi inklusif (>= dan <=) untuk kestabilan
+            if ($price >= $pi->min_price && $price <= $pi->max_price) {
+                
+                $oldTotal = $pi->total_transactions ?? 0;
+                $newTotal = $oldTotal + 1;
+                $oldAvg   = $pi->avg_price;
+
+                // Rumus Incremental Moving Average:
+                // new_avg = ((old_avg * n) + new_price) / (n + 1)
+                $newAvg = (($oldAvg * $oldTotal) + $price) / $newTotal;
+
+                $pi->update([
+                    'avg_price'          => round($newAvg, 2),
+                    'total_transactions' => $newTotal,
+                    'last_calculated_at' => now(),
+                ]);
+
+                Log::info('📈 [PriceIndex] Adaptive Avg Updated', [
+                    'item'    => $pi->item_name,
+                    'old_avg' => $oldAvg,
+                    'new_avg' => $newAvg,
+                    'n'       => $newTotal
+                ]);
+            } else {
+                Log::info('⏭️ [PriceIndex] Outside range, skipping auto-update', [
+                    'item'  => $pi->item_name,
+                    'price' => $price,
+                    'range' => "[{$pi->min_price} - {$pi->max_price}]"
+                ]);
+            }
+
+            return $pi;
+        });
+    }
+
+    // ════════════════════════════════════════════════════════
     //  AUTO-CALCULATION DARI HISTORI
     // ════════════════════════════════════════════════════════
 

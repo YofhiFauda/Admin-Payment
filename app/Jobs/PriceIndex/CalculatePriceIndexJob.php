@@ -42,6 +42,7 @@ class CalculatePriceIndexJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly string  $itemName,
+        public readonly float   $price = 0,
         public readonly ?string $category = null
     ) {
         // ✅ TAMBAH: Set queue menggunakan method dari trait
@@ -50,30 +51,21 @@ class CalculatePriceIndexJob implements ShouldQueue, ShouldBeUnique
 
     public function handle(PriceIndexService $service): void
     {
-        // Guard: skip jika sudah di-set manual oleh Owner/Atasan
-        $existing = PriceIndex::where('item_name', $this->itemName)->first();
-        if ($existing?->is_manual) {
-            Log::info('⏭️ [CalculatePriceIndex] Skipped — manual override active', [
-                'item_name'     => $this->itemName,
-                'manual_set_by' => $existing->manual_set_by,
-                'manual_set_at' => $existing->manual_set_at,
-            ]);
+        // Guard: Jika harga 0, lakukan full recalculation saja (fallback)
+        if ($this->price <= 0) {
+            $service->recalculateFromHistory($this->itemName, $this->category);
             return;
         }
 
-        $result = $service->recalculateFromHistory($this->itemName, $this->category);
+        // Panggil logika Auto-Adaptive Update
+        $result = $service->processApprovedItem($this->itemName, $this->price, $this->category);
 
         if ($result) {
-            Log::info('✅ [CalculatePriceIndex] Done', [
+            Log::info('✅ [CalculatePriceIndex] Adaptive Update Done', [
                 'item_name' => $this->itemName,
-                'min'       => $result->min_price,
-                'max'       => $result->max_price,
-                'avg'       => $result->avg_price,
-                'n'         => $result->total_transactions,
-            ]);
-        } else {
-            Log::info('⚠️ [CalculatePriceIndex] Insufficient data, skipped', [
-                'item_name' => $this->itemName,
+                'price'     => $this->price,
+                'new_avg'   => $result->avg_price,
+                'total'     => $result->total_transactions,
             ]);
         }
     }

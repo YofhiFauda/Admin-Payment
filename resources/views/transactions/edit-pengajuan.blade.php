@@ -195,6 +195,10 @@
                 $phpGrandTotal = $phpItemsTotal + ($transaction->dpp_lainnya ?? 0) + ($transaction->tax_amount ?? 0) + ($transaction->biaya_layanan_1 ?? 0);
             @endphp
             
+            @php
+                $isPdf = $transaction->file_path && strtolower(pathinfo($transaction->file_path, PATHINFO_EXTENSION)) === 'pdf';
+            @endphp
+            
             {{-- 1. FOTO REFERENSI --}}
             <div class="mb-8 md:mb-10">
                 <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
@@ -202,13 +206,28 @@
                 </label>
                 
                 @if($transaction->file_path)
-                    <div id="ref-photo-wrapper" tabindex="0" class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors group" title="Klik untuk memperbesar">
-                        <img src="{{ asset('storage/' . $transaction->file_path) }}" class="max-h-48 object-contain rounded-xl" alt="Reference Photo">
+                    <div id="ref-photo-wrapper" 
+                         onclick="window.openImageViewer('{{ asset('storage/' . $transaction->file_path) }}', 'Foto Referensi', {{ $isPdf ? 'true' : 'false' }})"
+                         tabindex="0" 
+                         class="border-2 border-emerald-200 rounded-2xl p-2 bg-slate-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors group" 
+                         title="Klik untuk memperbesar">
+                        
+                        @if($isPdf)
+                            <div class="flex flex-col items-center justify-center py-10 px-6">
+                                <div class="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 mb-3 shadow-sm border border-emerald-200">
+                                    <i data-lucide="file-text" class="w-8 h-8"></i>
+                                </div>
+                                <span class="text-xs font-black text-emerald-700 uppercase tracking-widest text-center">LIHAT DOKUMEN PDF</span>
+                                <span class="text-[10px] text-emerald-400 font-bold mt-1 uppercase text-center truncate max-w-[200px]">{{ basename($transaction->file_path) }}</span>
+                            </div>
+                        @else
+                            <img src="{{ asset('storage/' . $transaction->file_path) }}" class="max-h-48 object-contain rounded-xl" alt="Reference Photo">
+                        @endif
                         
                         {{-- Preview Badge --}}
                         <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-emerald-600"></i>
-                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Preview Foto</span>
+                            <i data-lucide="{{ $isPdf ? 'eye' : 'zoom-in' }}" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{{ $isPdf ? 'Lihat PDF' : 'Preview Foto' }}</span>
                         </div>
                     </div>
                 @else
@@ -354,19 +373,16 @@
                                                     <span class="text-blue-600 font-bold uppercase tracking-wider text-[10px]">📊 Referensi Harga</span>
                                                     <span class="price-ref-source text-blue-400 text-[10px]"></span>
                                                 </div>
-                                                <div class="grid grid-cols-3 gap-2 text-center">
-                                                    <button type="button" class="btn-fill-min bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                                        <span class="block text-[9px] text-green-500 uppercase">Min</span>
-                                                        <span class="price-ref-min">-</span>
+                                                <div class="space-y-2 text-center">
+                                                    <button type="button" class="btn-fill-avg w-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-2 transition text-xs flex items-center justify-between px-4">
+                                                        <span class="text-[10px] text-blue-500 uppercase font-black tracking-widest">Rata-rata (AVG)</span>
+                                                        <span class="price-ref-avg font-black text-sm">-</span>
                                                     </button>
-                                                    <button type="button" class="btn-fill-avg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                                        <span class="block text-[9px] text-blue-500 uppercase">Avg</span>
-                                                        <span class="price-ref-avg">-</span>
-                                                    </button>
-                                                    <button type="button" class="btn-fill-max bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                                        <span class="block text-[9px] text-orange-500 uppercase">Maks</span>
-                                                        <span class="price-ref-max">-</span>
-                                                    </button>
+                                                    {{-- Hidden min/max for JS compatibility if needed --}}
+                                                    <span class="price-ref-min hidden"></span>
+                                                    <span class="price-ref-max hidden"></span>
+                                                    <button type="button" class="btn-fill-min hidden"></button>
+                                                    <button type="button" class="btn-fill-max hidden"></button>
                                                 </div>
                                             </div>
 
@@ -588,31 +604,50 @@
     {{-- IMAGE VIEWER MODAL                                --}}
     {{-- hidden → flex saat dibuka via JS                 --}}
     {{-- ══════════════════════════════════════════════════ --}}
+    {{-- ✅ IMAGE/PDF VIEWER MODAL (Fullscreen Zoom) --}}
     <div id="image-viewer"
-         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-6"
-         role="dialog" aria-modal="true" aria-label="Preview foto referensi">
+         class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[9999] p-4 sm:p-10 overscroll-contain"
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="viewer-title">
 
-        {{-- Card --}}
-        <div class="relative max-w-3xl w-full" id="viewer-card">
+        {{-- Container margin sisi 4 --}}
+        <div class="w-full h-full max-w-4xl bg-white rounded-2xl flex flex-col p-4 sm:p-8 shadow-2xl relative overflow-hidden" id="viewer-card">
 
-            {{-- Tombol X — pojok kanan atas, di luar foto --}}
-            <button id="close-viewer"
-                    type="button"
-                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
-                    aria-label="Tutup preview">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+            {{-- Header & Close Button --}}
+            <div class="flex justify-between items-center shrink-0 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-sm sm:text-base font-black text-slate-800 uppercase tracking-widest" id="viewer-header-title">PREVIEW DOKUMEN</h3>
+                    <p id="viewer-title" class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Klik di luar gambar atau X untuk menutup</p>
+                </div>
+                <button id="close-viewer"
+                        type="button"
+                        onclick="closeImageViewer()"
+                        class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all active:scale-95"
+                        aria-label="Tutup preview">
+                    <i data-lucide="x" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                </button>
+            </div>
 
-            {{-- Gambar --}}
-            <img id="viewer-image"
-                 src=""
-                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
-                 alt="Preview foto referensi" />
+            {{-- Gambar/PDF Wrapper dengan Background Grid/Dots --}}
+            <div class="w-full flex-1 flex justify-center items-center bg-slate-50 rounded-2xl overflow-hidden relative border-2 border-slate-100 p-2 sm:p-4">
+                <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <img id="viewer-image"
+                     src=""
+                     class="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl rounded-lg"
+                     alt="Preview foto referensi" />
 
-            {{-- Hint --}}
-            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
-                Klik di luar gambar atau tekan ESC untuk menutup
-            </p>
+                {{-- PDF Viewer Iframe --}}
+                <iframe id="viewer-pdf" class="hidden relative z-10 w-full h-full rounded-lg border-0" src=""></iframe>
+            </div>
+
+            {{-- Footer for PDF Actions --}}
+            <div id="viewer-footer" class="mt-6 flex justify-center hidden">
+                <a id="viewer-pdf-link" href="#" target="_blank" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    BUKA DI TAB BARU / DOWNLOAD
+                </a>
+            </div>
         </div>
     </div>
 
@@ -723,19 +758,16 @@
                                     <span class="text-blue-600 font-bold uppercase tracking-wider text-[10px]">📊 Referensi Harga</span>
                                     <span class="price-ref-source text-blue-400 text-[10px]"></span>
                                 </div>
-                                <div class="grid grid-cols-3 gap-2 text-center">
-                                    <button type="button" class="btn-fill-min bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-green-500 uppercase">Min</span>
-                                        <span class="price-ref-min">-</span>
+                                <div class="space-y-2 text-center">
+                                    <button type="button" class="btn-fill-avg w-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-2 transition text-xs flex items-center justify-between px-4">
+                                        <span class="text-[10px] text-blue-500 uppercase font-black tracking-widest">Rata-rata (AVG)</span>
+                                        <span class="price-ref-avg font-black text-sm">-</span>
                                     </button>
-                                    <button type="button" class="btn-fill-avg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-blue-500 uppercase">Avg</span>
-                                        <span class="price-ref-avg">-</span>
-                                    </button>
-                                    <button type="button" class="btn-fill-max bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-orange-500 uppercase">Maks</span>
-                                        <span class="price-ref-max">-</span>
-                                    </button>
+                                    {{-- Hidden min/max for JS compatibility --}}
+                                    <span class="price-ref-min hidden"></span>
+                                    <span class="price-ref-max hidden"></span>
+                                    <button type="button" class="btn-fill-min hidden"></button>
+                                    <button type="button" class="btn-fill-max hidden"></button>
                                 </div>
                             </div>
 
@@ -2259,5 +2291,65 @@ document.addEventListener('DOMContentLoaded', function () {
     @if(($isReadOnly ?? false) || ($isAdminOnlyBranch ?? false))
         enforceReadOnly();
     @endif
+
+    // ─── IMAGE/PDF VIEWER LOGIC ────────────────────────
+    window.openImageViewer = function(src, title = null, forcePdf = false) {
+        const viewer = document.getElementById('image-viewer');
+        const vImg   = document.getElementById('viewer-image');
+        const vPdf   = document.getElementById('viewer-pdf');
+        const vTitle = document.getElementById('viewer-header-title');
+        const vFooter = document.getElementById('viewer-footer');
+        const vLink  = document.getElementById('viewer-pdf-link');
+
+        if (!viewer) return;
+
+        // Reset
+        vImg.classList.add('hidden');
+        vPdf.classList.add('hidden');
+        vFooter.classList.add('hidden');
+        vImg.src = '';
+        vPdf.src = '';
+
+        if (title) vTitle.textContent = title.toUpperCase();
+
+        const isPdf = forcePdf || src.toLowerCase().endsWith('.pdf');
+
+        if (isPdf) {
+            vPdf.src = src;
+            vPdf.classList.remove('hidden');
+            vFooter.classList.remove('hidden');
+            vLink.href = src;
+        } else {
+            vImg.src = src;
+            vImg.classList.remove('hidden');
+        }
+
+        viewer.classList.remove('hidden');
+        viewer.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: viewer });
+    };
+
+    window.closeImageViewer = function() {
+        const viewer = document.getElementById('image-viewer');
+        if (!viewer) return;
+
+        viewer.classList.add('hidden');
+        viewer.classList.remove('flex');
+        document.body.style.overflow = '';
+        
+        document.getElementById('viewer-image').src = '';
+        document.getElementById('viewer-pdf').src = '';
+    };
+
+    // Close on click outside or ESC
+    document.getElementById('image-viewer')?.addEventListener('click', (e) => {
+        if (e.target.id === 'image-viewer') window.closeImageViewer();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.closeImageViewer();
+    });
 </script>
 @endpush

@@ -395,19 +395,16 @@
                                     <span class="text-blue-600 font-bold uppercase tracking-wider text-[10px]">📊 Referensi Harga</span>
                                     <span class="price-ref-source text-blue-400 text-[10px]"></span>
                                 </div>
-                                <div class="grid grid-cols-3 gap-2 text-center">
-                                    <button type="button" class="btn-fill-min bg-green-100 hover:bg-green-200 text-green-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-green-500 uppercase">Min</span>
-                                        <span class="price-ref-min">-</span>
+                                <div class="space-y-2 text-center">
+                                    <button type="button" class="btn-fill-avg w-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-2 transition text-xs flex items-center justify-between px-4">
+                                        <span class="text-[10px] text-blue-500 uppercase font-black tracking-widest">Rata-rata (AVG)</span>
+                                        <span class="price-ref-avg font-black text-sm">-</span>
                                     </button>
-                                    <button type="button" class="btn-fill-avg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-blue-500 uppercase">Avg</span>
-                                        <span class="price-ref-avg">-</span>
-                                    </button>
-                                    <button type="button" class="btn-fill-max bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold rounded-lg py-1.5 transition text-[10px]">
-                                        <span class="block text-[9px] text-orange-500 uppercase">Maks</span>
-                                        <span class="price-ref-max">-</span>
-                                    </button>
+                                    {{-- Hidden min/max for JS compatibility --}}
+                                    <span class="price-ref-min hidden"></span>
+                                    <span class="price-ref-max hidden"></span>
+                                    <button type="button" class="btn-fill-min hidden"></button>
+                                    <button type="button" class="btn-fill-max hidden"></button>
                                 </div>
                             </div>
 
