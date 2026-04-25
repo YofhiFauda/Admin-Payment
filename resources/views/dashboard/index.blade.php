@@ -763,7 +763,7 @@ function openPiutangUsahaModal(branchName) {
                     </td>
                     <td class="px-3 py-3 text-right text-xs font-bold text-emerald-600">${t.formatted_amount}</td>
                     <td class="px-5 py-3 text-center">
-                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">Belum Cair</span>
+                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">Belum Lunas</span>
                     </td>
                 </tr>
             `).join('');
@@ -827,7 +827,7 @@ async function loadAllHutangAmounts() {
                 amountEl.innerHTML = `<span class="font-black text-emerald-600">${data.formatted_total}</span>`;
                 btn.classList.add('border-emerald-300');
             } else {
-                amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Cair</span>`;
+                amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Sudah Lunas</span>`;
                 btn.classList.remove('border-emerald-300');
             }
         } catch (e) {}

@@ -130,8 +130,8 @@
                     {{-- Status Filter --}}
                     <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit">
                         <a href="{{ request()->fullUrlWithQuery(['debt_status' => null]) }}" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ !request('debt_status') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">Semua</a>
-                        <a href="{{ request()->fullUrlWithQuery(['debt_status' => 'pending']) }}" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('debt_status') === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">Belum Cair</a>
-                        <a href="{{ request()->fullUrlWithQuery(['debt_status' => 'paid']) }}" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('debt_status') === 'paid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">Sudah Cair</a>
+                        <a href="{{ request()->fullUrlWithQuery(['debt_status' => 'pending']) }}" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('debt_status') === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">Belum Lunas</a>
+                        <a href="{{ request()->fullUrlWithQuery(['debt_status' => 'paid']) }}" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('debt_status') === 'paid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">Sudah Lunas</a>
                     </div>
 
                     {{-- Search & Branch Filter for Branch Debt --}}
@@ -196,7 +196,7 @@
                                 <td class="px-5 py-4 font-bold text-emerald-600">{{ $debt->formatted_amount }}</td>
                                 <td class="px-5 py-4">
                                     <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 text-[12px] font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">
-                                        {{ $debt->status === 'paid' ? 'Sudah Cair' : 'Belum Cair' }}
+                                        {{ $debt->status === 'paid' ? 'Sudah Lunas' : 'Belum Lunas' }}
                                     </span>
                                 </td>
                                 <td class="px-5 py-4 text-center align-top">

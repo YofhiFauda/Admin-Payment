@@ -1610,13 +1610,6 @@ class TransactionController extends Controller
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     /**
      * Export transaksi sebagai Excel (.xlsx) dengan rumus pada kolom kalkulasi.
-     *
-     * Strategi:
-     *  - REMBUSH / GUDANG / ALL : Menggunakan 17 kolom (Format Rembush)
-     *  - PENGAJUAN              : Menggunakan 23 kolom (Format Pengajuan)
-     *
-     * Kolom kalkulasi (Total Estimasi, Grand Total, dll) menggunakan
-     * rumus Excel agar interaktif saat dibuka di Excel/Google Sheets.
      */
     public function export(Request $request)
     {
@@ -1684,7 +1677,7 @@ class TransactionController extends Controller
         $headerFont  = 'FFFFFFFF'; // white
         $altRowBg    = 'FFEFF6FF'; // light blue
         $summaryBg   = 'FFFFE082'; // amber
-        $formulaBg   = 'FFE8F5E9'; // light green — calculated columns
+        $formulaBg   = 'FFE8F5E9'; // light green
         $borderColor = 'FFB0BEC5';
 
         // ── Write Header Row ──────────────────────────
@@ -1714,26 +1707,28 @@ class TransactionController extends Controller
 
         foreach ($query->cursor() as $t) {
             $totalTransactions++;
+            
             $items = is_array($t->items) && count($t->items) > 0 ? $t->items : [[]];
-            $transactionStartRow = $currentRow;
+            $branches = $t->branches;
+            $rowCount = max(count($items), count($branches));
 
-            foreach ($items as $idx => $item) {
-                $isFirstRow = ($idx === 0);
+            for ($i = 0; $i < $rowCount; $i++) {
+                $item = $items[$i] ?? null;
+                $branch = $branches[$i] ?? null;
+                $isFirstRow = ($i === 0);
 
-                $rowData = $this->mapTransactionToRowData($t, $exportFormat, $item, $idx, $isFirstRow);
+                $rowData = $this->mapTransactionToRowData($t, $exportFormat, $item, $branch, $i, $isFirstRow);
 
                 // Write each cell
                 foreach ($rowData as $colIdx => $value) {
                     $col  = Coordinate::stringFromColumnIndex($colIdx + 1);
                     $cell = $col . $currentRow;
 
-                    // Inject Excel formula for calculated columns
                     $heading = $headers[$colIdx] ?? '';
                     if ($this->isCalculatedColumn($heading, $exportFormat)) {
                         $formula = $this->buildFormula($heading, $exportFormat, $currentRow, $isFirstRow);
                         if ($formula) {
                             $sheet->setCellValue($cell, $formula);
-                            // Format as number
                             $sheet->getStyle($cell)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1);
                             $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($formulaBg);
                         } else {
@@ -1747,9 +1742,8 @@ class TransactionController extends Controller
                     }
                 }
 
-                // Alternate row color
+                // Row Styling
                 $rowBg = ($totalTransactions % 2 === 0) ? $altRowBg : 'FFFFFFFF';
-                // Only apply bg to non-formula cells (formula cells already have formulaBg)
                 foreach ($rowData as $colIdx => $value) {
                     $heading = $headers[$colIdx] ?? '';
                     if (!$this->isCalculatedColumn($heading, $exportFormat)) {
@@ -1760,15 +1754,12 @@ class TransactionController extends Controller
                     }
                 }
 
-                // Row border
                 $sheet->getStyle("A{$currentRow}:{$lastCol}{$currentRow}")->getBorders()
                     ->getAllBorders()->setBorderStyle(Border::BORDER_THIN)
                     ->getColor()->setARGB($borderColor);
 
                 $currentRow++;
             }
-
-            // No longer need grandTotalAmounts collection as we sum the column range
         }
 
         $dataLastRow = $currentRow - 1;
@@ -1857,17 +1848,17 @@ class TransactionController extends Controller
     private function getCalcColumnLetters($format): array
     {
         if ($format === 'pengajuan') {
-            // Headers: A=Sumber Dana, B=Cabang Berhutang, C=Invoice, D=tanggal, E=bulan,
-            // F=kategori, G=Nama Vendor, H=Link, I=Merk, J=Tipe/Seri, K=Ukuran, L=Warna,
-            // M=Keterangan, N=Harga Satuan, O=Jumlah, P=Total,
-            // Q=Ongkir, R=Diskon Pengiriman, S=Voucher, T=Biaya Layanan 1, U=Biaya Layanan 2,
-            // V=DPP Lainnya, W=PPN, X=Total Estimasi, Y=Metode Pembelian, Z=status
-            return [['Total', 'Total Estimasi'], 'X']; // Grand Total sums column X (Total Estimasi)
+            // Headers: A=Sumber Dana Cabang, B=Cabang Berhutang, C=Invoice Number, D=Tanggal, E=Bulan,
+            // F=Kategori, G=Nama Vendor, H=Link Rekomendasi, I=Merk, J=Tipe/Seri, K=Ukuran, L=Warna,
+            // M=Keterangan, N=Harga Satuan, O=Jumlah, P=Sub Total,
+            // Q=Ongkir, R=Diskon Pengiriman, S=Voucher Diskon, T=Biaya Layanan 1, U=Biaya Layanan 2,
+            // V=DPP Lainnya, W=PPN, X=Total, Y=Metode Pembelian, Z=Status
+            return [['Sub Total', 'Total'], 'X']; // Grand Total sums column X (Total)
         }
 
-        // G=Metode Pembayaran, H=Nama Barang, I=Qty, J=Satuan, K=Harga Satuan, L=Total,
-        // M=Deskripsi, N=Total Nominal, O=Met. Distribusi, P=Metode Pencairan, Q=status
-        return [['Total'], 'N']; // Grand Total sums column N (Total Nominal)
+        // G=Metode Pembayaran, H=Nama Barang, I=Qty, J=Satuan, K=Harga Satuan, L=Sub Total,
+        // M=Deskripsi, N=Total, O=Metode Distribusi, P=Metode Pencairan, Q=Status
+        return [['Sub Total'], 'N']; // Grand Total sums column N (Total)
     }
 
     /**
@@ -1876,8 +1867,8 @@ class TransactionController extends Controller
     private function isCalculatedColumn(string $heading, string $format): bool
     {
         $calculated = [
-            'pengajuan' => ['Total', 'Total Estimasi'],
-            'rembush'   => ['Total'],
+            'pengajuan' => ['Sub Total', 'Total'],
+            'rembush'   => ['Sub Total'],
         ];
         return in_array($heading, $calculated[$format] ?? []);
     }
@@ -1894,11 +1885,11 @@ class TransactionController extends Controller
     private function buildFormula(string $heading, string $format, int $row, bool $isFirstRow = true): ?string
     {
         if ($format === 'pengajuan') {
-            if ($heading === 'Total') return "=N{$row}*O{$row}";
+            if ($heading === 'Sub Total') return "=N{$row}*O{$row}";
             
-            if ($heading === 'Total Estimasi') {
+            if ($heading === 'Total') {
                 // If it's the first row of a transaction, include adjustments
-                // Total Estimasi (X) = Total (P) + Ongkir (Q) - Diskon (R) - Voucher (S) + Service1 (T) + Service2 (U) + DPP (V) + PPN (W)
+                // Total (X) = Sub Total (P) + Ongkir (Q) - Diskon (R) - Voucher (S) + Service1 (T) + Service2 (U) + DPP (V) + PPN (W)
                 if ($isFirstRow) {
                     return "=P{$row}+Q{$row}-R{$row}-S{$row}+T{$row}+U{$row}+V{$row}+W{$row}";
                 }
@@ -1907,7 +1898,7 @@ class TransactionController extends Controller
             }
         } else {
             // rembush
-            if ($heading === 'Total') return "=I{$row}*K{$row}";
+            if ($heading === 'Sub Total') return "=I{$row}*K{$row}";
         }
         return null;
     }
@@ -1918,9 +1909,9 @@ class TransactionController extends Controller
     private function getCurrencyColumns(string $format): array
     {
         if ($format === 'pengajuan') {
-            return ['Harga Satuan', 'Total', 'Ongkir', 'Diskon Pengiriman', 'Voucher Diskon', 'Biaya Layanan 1', 'Biaya Layanan 2', 'DPP Lainnya', 'PPN', 'Total Estimasi'];
+            return ['Harga Satuan', 'Sub Total', 'Ongkir', 'Diskon Pengiriman', 'Voucher Diskon', 'Biaya Layanan 1', 'Biaya Layanan 2', 'DPP Lainnya', 'PPN', 'Total'];
         }
-        return ['Harga Satuan', 'Total Nominal'];
+        return ['Harga Satuan', 'Total'];
     }
 
     /**
@@ -1933,9 +1924,9 @@ class TransactionController extends Controller
                 'Sumber Dana Cabang',   // A
                 'Cabang Berhutang',     // B
                 'Invoice Number',       // C
-                'tanggal',             // D
-                'bulan',               // E
-                'kategori',            // F
+                'Tanggal',             // D
+                'Bulan',               // E
+                'Kategori',            // F
                 'Nama Vendor',         // G
                 'Link Rekomendasi',    // H
                 'Merk',                // I
@@ -1945,7 +1936,7 @@ class TransactionController extends Controller
                 'Keterangan',          // M
                 'Harga Satuan',        // N
                 'Jumlah',              // O
-                'Total',               // P  ← FORMULA: =N*O
+                'Sub Total',           // P
                 'Ongkir',              // Q
                 'Diskon Pengiriman',   // R
                 'Voucher Diskon',      // S
@@ -1953,31 +1944,31 @@ class TransactionController extends Controller
                 'Biaya Layanan 2',     // U
                 'DPP Lainnya',         // V
                 'PPN',                 // W
-                'Total Estimasi',      // X  ← FORMULA: =P+Q-R-S+T+U+V+W
+                'Total',               // X
                 'Metode Pembelian',    // Y
-                'status',              // Z
+                'Status',              // Z
             ];
         }
 
-        // Default: Rembush format (17 columns)
+        // Default: Rembush format
         return [
             'Cabang',             // A
             'Invoice Number',     // B
-            'tanggal',           // C
-            'bulan',             // D
-            'kategori',          // E
-            'nama vendor',       // F
+            'Tanggal',           // C
+            'Bulan',             // D
+            'Kategori',          // E
+            'Nama Vendor',       // F
             'Metode Pembayaran', // G
             'Nama Barang',       // H
             'Qty',               // I
             'Satuan',            // J
             'Harga Satuan',      // K
-            'Total',             // L  ← FORMULA: =I*K
+            'Sub Total',         // L
             'Deskripsi',         // M
-            'Total Nominal',     // N
+            'Total',             // N
             'Metode Distribusi', // O
             'Metode Pencairan',  // P
-            'status',            // Q
+            'Status',            // Q
         ];
     }
 
@@ -1986,30 +1977,36 @@ class TransactionController extends Controller
      * For calculated columns, we return the raw numeric value as fallback,
      * but the export() method will override with the Excel formula.
      */
-    private function mapTransactionToRowData($t, $format, $item, $idx, bool $isFirstRow): array
+    private function mapTransactionToRowData($t, $format, $item, $branch, $idx, bool $isFirstRow): array
     {
         $dateStr   = $t->date ? $t->date->format('d/m/Y') : '-';
         $monthStr  = $t->date ? $t->date->translatedFormat('F') : '-';
         $payerName = $t->payer->name ?? ($t->reviewer->name ?? '-');
 
         if ($format === 'pengajuan') {
-            $cabangBerhutang = $t->branches
-                ->filter(fn($b) => $b->id != $t->sumber_dana_branch_id)
-                ->pluck('name')
-                ->join(', ');
+            // Logic for "Cabang Berhutang" (Borrowing branches)
+            // If we have a specific branch for this row, check if it's a borrower
+            $borrowerName = '';
+            if ($branch && $branch->id != $t->sumber_dana_branch_id) {
+                $borrowerName = $branch->name;
+            } elseif ($isFirstRow && $t->branches->count() > 1) {
+                // If it's the first row but the branch is the payer, find the first actual borrower if any
+                $firstBorrower = $t->branches->first(fn($b) => $b->id != $t->sumber_dana_branch_id);
+                $borrowerName = $firstBorrower ? $firstBorrower->name : '';
+            }
 
             $specs = $item['specs'] ?? [];
-            $qty   = (float) ($item['quantity'] ?? ($item['qty'] ?? 0));
-            $price = (float) ($item['estimated_price'] ?? ($item['harga_satuan'] ?? 0));
+            $qty   = $item ? (float) ($item['quantity'] ?? ($item['qty'] ?? 0)) : 0;
+            $price = $item ? (float) ($item['estimated_price'] ?? ($item['harga_satuan'] ?? 0)) : 0;
 
             return [
-                $isFirstRow ? ($t->sumberDanaBranch->name ?? '-') : '',  // A
-                $isFirstRow ? ($cabangBerhutang ?: '-') : '',             // B
-                $isFirstRow ? $t->invoice_number : '',                    // C
-                $isFirstRow ? $dateStr : '',                              // D
-                $isFirstRow ? $monthStr : '',                             // E
-                $isFirstRow ? $t->category_label : '',                    // F
-                $item['vendor'] ?? '-',                                   // G
+                ($t->sumberDanaBranch->name ?? '-'),                     // A - Sumber Dana (Repeat)
+                $borrowerName ?: '-',                                     // B - Cabang Berhutang (One per row)
+                $t->invoice_number,                                       // C - Repeat
+                $dateStr,                                                 // D - Repeat
+                $monthStr,                                                // E - Repeat
+                $t->category_label,                                       // F - Repeat
+                $item['vendor'] ?? ($isFirstRow ? ($t->vendor ?? '-') : '-'), // G
                 $item['link'] ?? '-',                                     // H
                 $specs['merk'] ?? '-',                                    // I
                 $specs['tipe'] ?? ($specs['tipe_seri'] ?? '-'),           // J
@@ -2027,34 +2024,35 @@ class TransactionController extends Controller
                 $isFirstRow ? (float) ($t->dpp_lainnya ?? 0) : '',       // V
                 $isFirstRow ? (float) ($t->tax_amount ?? 0) : '',        // W
                 0,                                                        // X  Total Estimasi (overridden by formula)
-                $isFirstRow ? ($t->payment_method === 'cash' ? 'Cash' : ($t->payment_method === 'transfer' ? 'Rekening' : '-')) : '', // Y
-                $isFirstRow ? $t->status_label : '',                      // Z
+                ($t->payment_method === 'cash' ? 'Cash' : ($t->payment_method === 'transfer' ? 'Rekening' : '-')), // Y - Repeat
+                $t->status_label,                                         // Z - Repeat
             ];
         }
 
         // Rembush / Gudang / All format
-        $branchNames = $t->branches->pluck('name')->join(', ');
-        $qty   = (float) ($item['qty'] ?? ($item['quantity'] ?? 0));
-        $price = (float) ($item['harga_satuan'] ?? ($item['estimated_price'] ?? 0));
+        $branchName = $branch ? $branch->name : ($isFirstRow ? $t->branches->pluck('name')->first() : '-');
+        $qty   = $item ? (float) ($item['qty'] ?? ($item['quantity'] ?? 0)) : 0;
+        $price = $item ? (float) ($item['harga_satuan'] ?? ($item['estimated_price'] ?? 0)) : 0;
+        $payMethod = (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method_label);
 
         return [
-            $isFirstRow ? $branchNames : '',                                                         // A
-            $isFirstRow ? $t->invoice_number : '',                                                   // B
-            $isFirstRow ? $dateStr : '',                                                             // C
-            $isFirstRow ? $monthStr : '',                                                            // D
-            $isFirstRow ? $t->category_label : '',                                                   // E
-            $isFirstRow ? ($t->vendor ?? ($t->vendor_name ?? '-')) : '',                            // F
-            $isFirstRow ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method_label) : '', // G
+            $branchName,                                                                             // A - One per row
+            $t->invoice_number,                                                                      // B - Repeat
+            $dateStr,                                                                                // C - Repeat
+            $monthStr,                                                                               // D - Repeat
+            $t->category_label,                                                                      // E - Repeat
+            ($t->vendor ?? ($t->vendor_name ?? '-')),                                                // F - Repeat
+            $payMethod,                                                                              // G - Repeat
             $item['nama_barang'] ?? ($item['customer'] ?? '-'),                                      // H
             $qty,                                                                                    // I  Qty
             $item['satuan'] ?? '-',                                                                  // J
             $price,                                                                                  // K  Harga Satuan
-            $qty * $price,        // L  Total (overridden by formula)
-            $isFirstRow ? ($t->description ?? '-') : '',                                             // M
-            $isFirstRow ? (float) $t->amount : '',                                                   // N  Total Nominal
-            $isFirstRow ? $this->deduceDistributionMethod($t) : '',                                  // O
-            $isFirstRow ? (Transaction::PAYMENT_METHODS[$t->payment_method] ?? $t->payment_method_label) : '', // P
-            $isFirstRow ? $t->status_label : '',                                                     // Q
+            $qty * $price,                                                                           // L  Total
+            ($t->description ?? '-'),                                                                // M - Repeat
+            $isFirstRow ? (float) $t->amount : '',                                                   // N  Total Nominal (Once)
+            $isFirstRow ? $this->deduceDistributionMethod($t) : '',                                  // O - Once
+            $payMethod,                                                                              // P - Repeat (Metode Pencairan)
+            $t->status_label,                                                                        // Q - Repeat
         ];
     }
 

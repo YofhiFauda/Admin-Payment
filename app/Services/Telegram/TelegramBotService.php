@@ -158,7 +158,7 @@ class TelegramBotService
 
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $transaction->submitter->name ?? 'Tidak diketahui';
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
 
         // Nominal values
         $expectedAmount  = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
@@ -234,7 +234,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y H:i');
+        $timestamp     = now()->format('d/m/Y H:i');
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -275,7 +275,7 @@ HTML;
 
         $invoiceNumber  = $transaction->invoice_number;
         $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
-        $timestamp      = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp      = now()->format('d/m/Y - H:i') . ' WIB';
 
         // Get nominals
         $actualAmount   = $transaction->actual_total;
@@ -374,7 +374,7 @@ HTML;
         $kategori      = $transaction->category ?? '-';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
         $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
@@ -459,7 +459,7 @@ HTML;
             $rekening = '-';
         }
         
-        $timestamp = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp = now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
@@ -505,7 +505,7 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
@@ -545,7 +545,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
         
         // Rejector info
         $rejectorName  = $rejector->name;
@@ -831,7 +831,7 @@ HTML;
         $teknisiName   = $transaction?->submitter?->name ?? 'Tidak diketahui';
         $invoiceNumber = $transaction?->invoice_number ?? '-';
         $itemName      = $anomaly->item_name;
-        $timestamp     = now()->setTimezone('Asia/Jakarta')->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
 
         $inputFmt        = 'Rp ' . number_format($anomaly->input_price,         0, ',', '.');
         $refMaxFmt       = 'Rp ' . number_format($anomaly->reference_max_price, 0, ',', '.');
