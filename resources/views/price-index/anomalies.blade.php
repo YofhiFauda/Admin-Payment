@@ -165,7 +165,7 @@
 
                             {{-- Tanggal --}}
                             <td class="px-4 py-3 text-center text-xs text-gray-400">
-                                {{ $anomaly->created_at->setTimezone('Asia/Jakarta')->format('d/m/Y H:i') }}
+                                {{ $anomaly->created_at->translatedFormat('d F Y H:i') }}
                             </td>
 
                             {{-- Aksi --}}
@@ -204,7 +204,7 @@
                                     </div>
                                 @else
                                     <span class="text-xs text-gray-400">
-                                        {{ $anomaly->reviewed_at?->setTimezone('Asia/Jakarta')->format('d/m H:i') ?? '-' }}
+                                        {{ $anomaly->reviewed_at?->translatedFormat('d F H:i') ?? '-' }}
                                     </span>
                                 @endif
                             </td>

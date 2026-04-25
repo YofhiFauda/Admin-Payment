@@ -215,7 +215,7 @@ class OcrNotaController extends Controller
                     'nominal'  => $transaction->confidence,
                 ],
                 'nama_vendor'    => $transaction->vendor ?? $transaction->customer,
-                'tanggal_nota'   => optional($transaction->date)->format('d/m/Y'),
+                'tanggal_nota'   => optional($transaction->date)->translatedFormat('d F Y'),
                 'total_belanja'  => $transaction->amount,
                 'items_json'     => $transaction->items,
             ],

@@ -79,7 +79,7 @@
                 </div>
                 <div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tanggal Input</p>
-                    <p class="font-semibold text-slate-700 mt-1">{{ $salary->created_at->format('d M Y H:i') }}</p>
+                    <p class="font-semibold text-slate-700 mt-1">{{ $salary->created_at->translatedFormat('d F Y H:i') }}</p>
                 </div>
             </div>
         </div>
@@ -163,7 +163,7 @@
             </div>
             <div>
                 <p class="text-xs font-black text-blue-400 uppercase tracking-wider">Tanggal Persetujuan</p>
-                <p class="font-bold text-blue-700 mt-1">{{ $salary->approved_at?->format('d M Y H:i') }}</p>
+                <p class="font-bold text-blue-700 mt-1">{{ $salary->approved_at?->translatedFormat('d F Y H:i') }}</p>
             </div>
         </div>
         @endif
@@ -176,7 +176,7 @@
             </div>
             <div>
                 <p class="text-xs font-black text-green-400 uppercase tracking-wider">Tanggal Bayar</p>
-                <p class="font-bold text-green-700 mt-1">{{ $salary->paid_at?->format('d M Y H:i') }}</p>
+                <p class="font-bold text-green-700 mt-1">{{ $salary->paid_at?->translatedFormat('d F Y H:i') }}</p>
             </div>
         </div>
         @endif

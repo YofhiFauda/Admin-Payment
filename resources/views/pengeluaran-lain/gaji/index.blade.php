@@ -103,7 +103,7 @@
                             <td class="px-5 py-4 text-slate-600 text-xs">
                                 @if($salary->approver)
                                     {{ $salary->approver->name }}<br>
-                                    <span class="text-slate-400">{{ $salary->approved_at?->format('d M Y') }}</span>
+                                    <span class="text-slate-400">{{ $salary->approved_at?->translatedFormat('d F Y') }}</span>
                                 @else
                                     <span class="text-slate-400">—</span>
                                 @endif

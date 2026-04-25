@@ -174,7 +174,7 @@
                             <td class="px-4 py-3 text-center text-gray-500 dark:text-gray-400">{{ number_format($pi->total_transactions) }}</td>
 
                             <td class="px-4 py-3 text-center text-xs text-gray-400">
-                                {{ $pi->last_calculated_at?->format('d/m/Y') ?? '-' }}
+                                {{ $pi->last_calculated_at?->translatedFormat('d F Y') ?? '-' }}
                             </td>
 
                             @if (in_array(auth()->user()->role, ['atasan','owner']))

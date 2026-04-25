@@ -478,8 +478,8 @@ class Transaction extends Model
             'status_label' => $this->status_label,
             'amount' => $this->amount,
             'formatted_amount' => number_format($this->amount ?? 0, 0, ',', '.'),
-            'date' => $this->date ? \Carbon\Carbon::parse($this->date)->format('d M Y') : null,
-            'created_at' => $this->created_at->format('d M Y'),
+            'date' => $this->date ? \Carbon\Carbon::parse($this->date)->translatedFormat('d F Y') : null,
+            'created_at' => $this->created_at->translatedFormat('d F Y'),
             'created_at_search' => $this->created_at->format('d-m-Y Y-m-d'),
             'ai_status' => $this->ai_status,
             'payment_method' => $this->payment_method,
@@ -506,7 +506,7 @@ class Transaction extends Model
             // ✅ Versioning fields for Detail Modal
             'is_edited_by_management' => (bool) $this->is_edited_by_management,
             'revision_count' => $this->revision_count ?? 0,
-            'edited_at' => $this->edited_at ? $this->edited_at->format('d M Y, H:i') : null,
+            'edited_at' => $this->edited_at ? $this->edited_at->translatedFormat('d F Y, H:i') : null,
             'editor_name' => $this->relationLoaded('editor') && $this->editor ? $this->editor->name : null,
             'items' => $this->normalized_items,
             'items_snapshot' => $this->getOriginalVersion(),
@@ -517,7 +517,7 @@ class Transaction extends Model
                 $this->invoice_number . ' ' .
                 ($this->customer ?? '') . ' ' .
                 ($this->vendor ?? '') . ' ' .
-                $this->created_at->format('d M Y d-m-Y Y-m-d')
+                $this->created_at->translatedFormat('d F Y d-m-Y Y-m-d')
             ),
             'has_price_anomaly' => false, // Implement your logic
             'invoice_file_path' => $this->invoice_file_path,
@@ -553,8 +553,8 @@ class Transaction extends Model
             'status_label'          => $this->status_label,
             'amount'                => $this->amount,
             'formatted_amount'      => number_format($this->amount ?? 0, 0, ',', '.'),
-            'date'                  => $this->date ? \Carbon\Carbon::parse($this->date)->format('d M Y') : null,
-            'created_at'            => $createdAt ? $createdAt->format('d M Y') : '-',
+            'date'                  => $this->date ? \Carbon\Carbon::parse($this->date)->translatedFormat('d F Y') : null,
+            'created_at'            => $createdAt ? $createdAt->translatedFormat('d F Y') : '-',
             'ai_status'             => $this->ai_status,
             'upload_id'             => $this->upload_id,
             'submitter_has_telegram'=> (bool) ($this->submitter->telegram_chat_id ?? false),

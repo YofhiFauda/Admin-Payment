@@ -168,7 +168,7 @@
                             <td class="py-2 pr-4 font-medium text-gray-900 dark:text-white">{{ $item->item_name }}</td>
                             <td class="py-2 pr-4 text-gray-500 dark:text-gray-400">{{ $item->category ?? '-' }}</td>
                             <td class="py-2 pr-4 text-right text-gray-700 dark:text-gray-300">Rp {{ number_format($item->min_price, 0, ',', '.') }}</td>
-                            <td class="py-2 text-right text-gray-400 text-xs">{{ $item->created_at->format('d/m/Y') }}</td>
+                            <td class="py-2 text-right text-gray-400 text-xs">{{ $item->created_at->translatedFormat('d F Y') }}</td>
                         </tr>
                     @endforeach
                 </tbody>

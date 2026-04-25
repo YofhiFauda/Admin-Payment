@@ -54,7 +54,7 @@
                         <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
                             Periode <span class="text-rose-500">*</span>
                         </label>
-                        <input type="text" name="periode" value="{{ old('periode', now()->format('F Y')) }}" required
+                        <input type="text" name="periode" value="{{ old('periode', now()->translatedFormat('F Y')) }}" required
                             placeholder="Contoh: Maret 2026"
                             class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition-all font-semibold text-slate-800 placeholder:text-slate-300">
                     </div>

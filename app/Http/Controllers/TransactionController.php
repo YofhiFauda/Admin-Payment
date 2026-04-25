@@ -175,9 +175,9 @@ class TransactionController extends Controller
     {
         $t = Transaction::with(['submitter.bankAccounts', 'reviewer', 'branches', 'editor', 'branchDebts.debtorBranch', 'branchDebts.creditorBranch', 'konfirmator', 'payer'])->findOrFail($id);
 
-        $paymentAt = ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->format('d M Y H:i') : null;
+        $paymentAt = ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->translatedFormat('d F Y H:i') : null;
         if (!$paymentAt && $t->isCompleted() && $t->status === 'completed') {
-            $paymentAt = $t->updated_at->format('d M Y H:i');
+            $paymentAt = $t->updated_at->translatedFormat('d F Y H:i');
         }
 
         $submitterData = null;
@@ -209,7 +209,7 @@ class TransactionController extends Controller
             'actual_total'    => $t->actual_total,
             'selisih'         => $t->selisih,
             'items'           => $t->normalized_items,
-            'date' => $t->date ? \Carbon\Carbon::parse($t->date)->format('d M Y') : null,
+            'date' => $t->date ? \Carbon\Carbon::parse($t->date)->translatedFormat('d F Y') : null,
             'status'          => $t->status,
             'status_label'    => $t->status_label,
             'specs'           => $t->specs,
@@ -223,7 +223,7 @@ class TransactionController extends Controller
             'image_url'       => $t->file_path ? route('transactions.image', $t->id) : null,
             'submitter'       => $submitterData,
             'reviewer'        => $t->reviewer ? ['name' => $t->reviewer->name] : null,
-            'reviewed_at'     => $t->reviewed_at ? $t->reviewed_at->format('d M Y H:i') : null,
+            'reviewed_at'     => $t->reviewed_at ? $t->reviewed_at->translatedFormat('d F Y H:i') : null,
             'rejection_reason'=> $t->rejection_reason,
             'branches'        => $t->branches->map(function($b) use ($t) {
                 $allocAmount = $b->pivot->allocation_amount;
@@ -250,7 +250,7 @@ class TransactionController extends Controller
                 ];
             }),
             'effective_amount' => $t->effective_amount,
-            'created_at'      => $t->created_at->format('d M Y H:i'),
+            'created_at'      => $t->created_at->translatedFormat('d F Y H:i'),
             // Current user context for action buttons
             'user_role'       => Auth::user()->role,
             'can_manage'      => Auth::user()->canManageStatus(),
@@ -258,7 +258,7 @@ class TransactionController extends Controller
             // ✅ Versioning fields untuk Detail Modal
             'is_edited_by_management' => (bool) $t->is_edited_by_management,
             'revision_count'  => $t->revision_count ?? 0,
-            'edited_at'       => $t->edited_at ? $t->edited_at->format('d M Y, H:i') : null,
+            'edited_at'       => $t->edited_at ? $t->edited_at->translatedFormat('d F Y, H:i') : null,
             'editor_name'     => $t->editor ? $t->editor->name : null,
             'items_snapshot'  => $t->items_snapshot, // Original version (frozen)
             // Invoice fields
@@ -283,18 +283,18 @@ class TransactionController extends Controller
                     'amount'              => $debt->amount,
                     'formatted_amount'    => $debt->formatted_amount,
                     'status'              => $debt->status,
-                    'paid_at'             => $debt->paid_at ? $debt->paid_at->format('d M Y H:i') : null,
+                    'paid_at'             => $debt->paid_at ? $debt->paid_at->translatedFormat('d F Y H:i') : null,
                 ];
             }),
             // ✅ Payment History (Riwayat Pembayaran) fields
-            'payment_at'         => ($t->paid_at instanceof \Carbon\Carbon) ? $t->paid_at->format('d M Y H:i') : null,
+            'payment_at'         => ($t->paid_at instanceof \Carbon\Carbon) ? $t->paid_at->translatedFormat('d F Y H:i') : null,
             'paid_by_name'       => $t->payer ? $t->payer->name : ($t->reviewer ? $t->reviewer->name : 'Finance'),
             'paid_by_role'       => $t->payer ? ucfirst($t->payer->role) : ($t->reviewer ? ucfirst($t->reviewer->role) : 'Admin'),
             'recipient_name'     => $t->submitter ? $t->submitter->name : '-',
             'recipient_role'     => $t->submitter ? ucfirst($t->submitter->role) : 'Teknisi',
             'konfirmasi_by_name' => $t->konfirmator ? $t->konfirmator->name : null,
             'konfirmasi_by_role' => ($t->konfirmator && $t->konfirmator->role) ? ucfirst($t->konfirmator->role) : 'Teknisi',
-            'konfirmasi_at'      => ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->format('d M Y H:i') : null,
+            'konfirmasi_at'      => ($t->konfirmasi_at instanceof \Carbon\Carbon) ? $t->konfirmasi_at->translatedFormat('d F Y H:i') : null,
             'payment_proof_url'  => ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path) ? asset('storage/' . ($t->bukti_transfer ?? $t->foto_penyerahan ?? $t->invoice_file_path)) : null,
             'payment_type'       => $t->bukti_transfer ? 'Transfer' : ($t->foto_penyerahan ? 'Tunai' : ($t->invoice_file_path ? 'Invoice' : null)),
             'is_paid'            => (bool)($t->status === 'completed' || $t->status === 'approved' || $t->bukti_transfer || $t->foto_penyerahan || $t->invoice_file_path),
@@ -1498,7 +1498,7 @@ class TransactionController extends Controller
             'formatted_amount' => number_format($t->amount ?? 0, 0, ',', '.'),
             'category' => $t->category,
             'category_label' => $t->category_label,
-            'created_at' => $t->created_at?->format('d M Y') ?? '-',
+            'created_at' => $t->created_at?->translatedFormat('d F Y') ?? '-',
             'submitter_name' => $submitterName,
             'submitter_has_telegram' => $submitterHasTelegram,
             'submitter' => $t->submitter ? [
@@ -1979,7 +1979,7 @@ class TransactionController extends Controller
      */
     private function mapTransactionToRowData($t, $format, $item, $branch, $idx, bool $isFirstRow): array
     {
-        $dateStr   = $t->date ? $t->date->format('d/m/Y') : '-';
+        $dateStr   = $t->date ? $t->date->translatedFormat('d F Y') : '-';
         $monthStr  = $t->date ? $t->date->translatedFormat('F') : '-';
         $payerName = $t->payer->name ?? ($t->reviewer->name ?? '-');
 

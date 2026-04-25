@@ -553,7 +553,7 @@ class PriceIndexController extends Controller
                         $item->max_price,
                         $item->is_manual ? 'Manual' : 'Auto',
                         $item->total_transactions ?? 0,
-                        $item->last_calculated_at?->format('d/m/Y H:i') ?? '-',
+                        $item->last_calculated_at?->translatedFormat('d F Y H:i') ?? '-',
                     ]);
                 }
             });

@@ -80,8 +80,8 @@ class DashboardController extends Controller
         });
 
         // 2b. Tren 6 bulan terakhir per Cabang (Multi-line)
-        $trendMonthsLabels = collect(range(5, 0))->map(fn($offset) => now()->subMonths($offset)->format('Y-m'));
-        $trendLabels = $trendMonthsLabels->map(fn($m) => Carbon::createFromFormat('Y-m', $m)->format('M Y'))->values()->toArray();
+        $trendMonthsLabels = collect(range(5, 0))->map(fn($offset) => now()->subMonths($offset)->translatedFormat('Y-m'));
+        $trendLabels = $trendMonthsLabels->map(fn($m) => Carbon::createFromFormat('Y-m', $m)->translatedFormat('F Y'))->values()->toArray();
         $startDate = now()->subMonths(5)->startOfMonth();
 
         $trendQuery = DB::table('transaction_branches as tb')
@@ -419,7 +419,7 @@ class DashboardController extends Controller
                 'status'           => $t->status,
                 'amount'           => $allocatedAmount,
                 'formatted_amount' => 'Rp ' . number_format($allocatedAmount, 0, ',', '.'),
-                'created_at'       => $t->created_at->format('d M Y'),
+                'created_at'       => $t->created_at->translatedFormat('d F Y'),
                 'category'         => $t->category_label ?: 'Lainnya',
                 'is_inter_branch'  => false,
             ];
@@ -463,7 +463,7 @@ class DashboardController extends Controller
                 'status'           => 'waiting_payment',
                 'amount'           => $debt->amount,
                 'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
-                'created_at'       => $debt->created_at->format('d M Y'),
+                'created_at'       => $debt->created_at->translatedFormat('d F Y'),
                 'category'         => 'Pengajuan Multi-Source',
                 'is_inter_branch'  => true,
             ];
@@ -507,7 +507,7 @@ class DashboardController extends Controller
                 'status'           => 'waiting_payment', // Still unpaid
                 'amount'           => $debt->amount,
                 'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
-                'created_at'       => $debt->created_at->format('d M Y'),
+                'created_at'       => $debt->created_at->translatedFormat('d F Y'),
                 'category'         => 'Pengajuan Multi-Source',
                 'is_inter_branch'  => true,
             ];

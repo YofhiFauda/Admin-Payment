@@ -299,14 +299,14 @@
             <div class="flex items-center gap-0.5 sm:gap-1 md:gap-2 min-w-max border-b border-gray-100">
                 @php
                     $tabs = [
-                        'all'       => ['label' => 'All',      'count' => $stats['count']],
+                        'all'       => ['label' => 'Semua',      'count' => $stats['count']],
                         'pending'   => ['label' => 'Pending',  'count' => $stats['pending']],
                         'auto-reject'     => ['label' => 'Auto Reject', 'count' => $stats['auto_reject'] ?? 0],
-                        'flagged'         => ['label' => 'Flagged',     'count' => $stats['flagged'] ?? 0],
+                        'flagged'         => ['label' => 'Bermasalah',     'count' => $stats['flagged'] ?? 0],
                         'waiting_payment' => ['label' => 'Menunggu Pembayaran', 'count' => $stats['waiting_payment'] ?? 0],
                         'approved'  => ['label' => 'Menunggu Approve Owner', 'count' => $stats['approved'] ?? 0],
-                        'completed' => ['label' => 'Paid',     'count' => $stats['completed']],
-                        'rejected'  => ['label' => 'Rejected', 'count' => $stats['rejected']],
+                        'completed' => ['label' => 'Selesai',     'count' => $stats['completed']],
+                        'rejected'  => ['label' => 'Ditolak', 'count' => $stats['rejected']],
                     ];
                     $currentStatus = request('status', 'all');
                 @endphp
@@ -372,7 +372,7 @@
         {{-- Footer / Pagination --}}
         <div class="p-3 sm:p-4 md:p-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
             <p class="text-[11px] sm:text-xs text-gray-500 font-medium order-2 sm:order-1">
-                Showing <span id="showing-from">0</span> - <span id="showing-to">0</span> of <span id="total-records">0</span> transactions
+                Menampilkan <span id="showing-from">0</span> - <span id="showing-to">0</span> dari <span id="total-records">0</span> transaksi
             </p>
             <div class="flex items-center gap-2 order-1 sm:order-2">
                 @if(auth()->user()->role !== 'teknisi')

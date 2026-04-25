@@ -106,7 +106,7 @@
                                 {{ $user->role }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-sm text-slate-500 font-bold tracking-tight">{{ $user->created_at->format('d M Y') }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-500 font-bold tracking-tight">{{ $user->created_at->translatedFormat('d F Y') }}</td>
                         <td class="px-6 py-4">
                             @php
                                 $canManage = Auth::user()->isOwner() || $user->role === 'teknisi';
@@ -184,7 +184,7 @@
                 <div class="flex items-center justify-between mt-4">
                     <div class="flex items-center gap-1.5">
                         <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span class="text-[10px] text-slate-500 font-black tracking-tight">{{ $user->created_at->format('d M Y') }}</span>
+                        <span class="text-[10px] text-slate-500 font-black tracking-tight">{{ $user->created_at->translatedFormat('d F Y') }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                         @if($user->role === 'teknisi')

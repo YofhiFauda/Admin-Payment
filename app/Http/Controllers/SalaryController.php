@@ -218,7 +218,7 @@ class SalaryController extends Controller
                 $telegram  = app(TelegramBotService::class);
                 $nominal   = 'Rp ' . number_format($salary->total_gaji, 0, ',', '.');
                 $paidBy    = Auth::user()->name;
-                $timestamp = now()->format('d/m/Y H:i');
+                $timestamp = now()->translatedFormat('d F Y H:i');
 
                 $message = <<<HTML
 💸 <b>GAJI ANDA TELAH DIBAYARKAN</b>

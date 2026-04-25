@@ -884,7 +884,7 @@ async function loadAllHutangAmounts() {
         <div>
             <h1 class="text-2xl font-black text-slate-900">Dashboard</h1>
             <p class="text-sm text-slate-500 mt-0.5">
-                {{ now()->format('l, d F Y') }} &bull;
+                {{ now()->translatedFormat('l, d F Y') }} &bull;
                 @if($isAdmin) Menampilkan data seluruh perusahaan
                 @else Menampilkan data Anda
                 @endif
@@ -941,7 +941,7 @@ async function loadAllHutangAmounts() {
                 <div class="min-w-0">
                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Transaksi</p>
                     <p class="text-xl font-black text-slate-900 leading-tight">{{ $totalTransaksi }}</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Bulan {{ now()->format('F Y') }}</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Bulan {{ now()->translatedFormat('F Y') }}</p>
                 </div>
             </div>
         </div>
@@ -1186,7 +1186,7 @@ async function loadAllHutangAmounts() {
                                    class="font-semibold text-slate-800 hover:text-indigo-600 transition-colors block text-xs">
                                     {{ $t->invoice_number }}
                                 </a>
-                                <span class="text-[11px] text-slate-400">{{ $t->created_at->format('d M Y') }}</span>
+                                <span class="text-[11px] text-slate-400">{{ $t->created_at->translatedFormat('d F Y') }}</span>
                             </td>
                             <td class="px-2 py-3 hidden md:table-cell">
                                 <span class="text-slate-700 text-xs">

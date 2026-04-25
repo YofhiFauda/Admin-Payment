@@ -53,7 +53,7 @@
                         @foreach($items as $item)
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="px-5 py-4 font-mono text-xs font-bold">{{ $item->invoice_number }}</td>
-                            <td class="px-5 py-4 font-semibold">{{ $item->tanggal->format('d M Y') }}</td>
+                            <td class="px-5 py-4 font-semibold">{{ $item->tanggal->translatedFormat('d F Y') }}</td>
                             <td class="px-5 py-4">
                                 <div class="font-semibold text-slate-700">{{ $item->rekening_tujuan }}</div>
                                 @if($item->dariBranch) <div class="text-[10px] text-slate-400">Dari: {{ $item->dariBranch->name }}</div> @endif

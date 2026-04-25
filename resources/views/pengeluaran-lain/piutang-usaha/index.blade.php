@@ -77,7 +77,7 @@
                         <tr class="hover:bg-slate-50 transition-colors" id="record-row-{{ $item->id }}">
                             <td class="px-5 py-4"><span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span></td>
                             <td class="px-5 py-4 font-semibold">
-                                {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}
+                                {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d F Y') : $item->tanggal }}
                             </td>
                             <td class="px-5 py-4 font-semibold text-slate-700">{{ $item->branch->name ?? '-' }}</td>
                             <td class="px-5 py-4 font-bold text-slate-800">{{ $item->formatted_nominal }}</td>
@@ -89,7 +89,7 @@
                                             amount: "{{ $item->formatted_nominal }}",
                                             notes: "{{ $item->keterangan ?? '-' }}",
                                             paid_by: "{{ $item->submitter->name ?? '-' }}",
-                                            paid_at: "{{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d M Y') : $item->tanggal }}",
+                                            paid_at: "{{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d F Y') : $item->tanggal }}",
                                             selected_account: null,
                                             all_accounts: [],
                                             sender_branch: "{{ $item->dariBranch->name ?? '-' }}",
@@ -186,7 +186,7 @@
                             <tr class="hover:bg-slate-50 transition-colors {{ $debt->status === 'paid' ? 'opacity-70' : '' }}">
                                 <td class="px-5 py-4 align-top"><span class="font-mono font-bold bg-slate-100 px-2 py-1 rounded-lg">{{ $debt->transaction->invoice_number ?? '-' }}</span></td>
                                 <td class="px-5 py-4 font-bold">
-                                    {{ $debt->created_at->translatedFormat('d M Y') }}
+                                    {{ $debt->created_at->translatedFormat('d F Y') }}
                                 </td>
                                 <td class="px-5 py-4">
                                     <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->creditorBranch->name ?? '-' }}</span> 
@@ -209,7 +209,7 @@
                                                     amount: "{{ $debt->formatted_amount }}",
                                                     notes: "{{ $debt->notes ?? '-' }}",
                                                     paid_by: "{{ $debt->paidBy->name ?? 'System' }}",
-                                                    paid_at: "{{ $debt->paid_at->format('d M Y H:i') }}",
+                                                    paid_at: "{{ $debt->paid_at->translatedFormat('d F Y H:i') }}",
                                                     selected_account: {{ $debt->bankAccount ? json_encode($debt->bankAccount) : 'null' }},
                                                     sender_account: {{ $debt->senderBankAccount ? json_encode($debt->senderBankAccount) : 'null' }},
                                                     all_accounts: {{ json_encode($debt->creditorBranch->bankAccounts) }}
