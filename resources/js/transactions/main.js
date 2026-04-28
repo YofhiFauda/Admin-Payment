@@ -5,6 +5,7 @@ import { initRealtime } from './realtime.js';
 import { Config } from './config.js';
 import './modals-export-excel.js';
 import './form-pengajuan/index.js'; // Form Pengajuan Orchestration
+import './form-rembush/index.js';   // Form Rembush Orchestration
 
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.updateFilterIndicators = updateFilterIndicators;
     window.setDateRange = setDateRange;
     window.deleteTransaction = deleteTransaction;
+    window.confirmDeleteTransaction = confirmDeleteTransaction;
 
     // Filter checkbox change event
     document.querySelectorAll('input[name="branch_id[]"], input[name="category[]"]').forEach(cb => {
@@ -292,10 +294,6 @@ async function deleteTransaction(id) {
         return;
     }
 
-    if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
-        return;
-    }
-
     try {
         if (typeof NProgress !== 'undefined') NProgress.start();
 
@@ -326,5 +324,25 @@ async function deleteTransaction(id) {
         showToast('Terjadi kesalahan saat menghapus transaksi.', 'error');
     } finally {
         if (typeof NProgress !== 'undefined') NProgress.done();
+    }
+}
+
+function confirmDeleteTransaction(id, invoiceNumber) {
+    if (typeof openConfirmModal === 'function') {
+        openConfirmModal('deleteTransactionModal', {
+            title: 'Hapus Transaksi',
+            message: `Apakah Anda yakin ingin menghapus transaksi <strong>${invoiceNumber}</strong> secara permanen? <br><br> <span class="text-xs text-rose-500 font-bold uppercase tracking-wider">Tindakan ini tidak dapat dibatalkan.</span>`,
+            submitText: 'Ya, Hapus',
+            submitColor: 'bg-rose-600 hover:bg-rose-700',
+            icon: 'trash-2',
+            onConfirm: async () => {
+                await deleteTransaction(id);
+            }
+        });
+    } else {
+        // Fallback to browser confirm if modal component fails
+        if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${invoiceNumber}?`)) {
+            deleteTransaction(id);
+        }
     }
 }

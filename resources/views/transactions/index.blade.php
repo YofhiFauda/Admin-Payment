@@ -91,6 +91,9 @@
 
             {{-- BRANCH DEBT SETTLEMENT MODAL --}}
             @include('transactions.partials.modals.branch-debt-modal')
+
+            {{-- DELETE CONFIRMATION MODAL --}}
+            <x-confirm-modal id="deleteTransactionModal" />
         @endpush
 
 @endsection

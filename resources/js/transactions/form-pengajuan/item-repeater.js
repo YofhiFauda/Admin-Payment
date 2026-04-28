@@ -1,5 +1,5 @@
 import { Config } from '../config.js';
-import { formatNumber, unformatNumber } from './helpers.js';
+import { formatNumber, unformatNumber } from '../shared/helpers.js';
 
 export class ItemRepeater {
     constructor(containerSelector, templateSelector, totalInputSelector, globalTotalSelector, onTotalChange) {

@@ -1,7 +1,7 @@
 {{-- ══════════════════════════════════ --}}
 {{-- SUMMARY BILLING --}}
 {{-- ══════════════════════════════════ --}}
-<div id="summary-billing-section" class="bg-[#1a1c23] rounded-[1rem] md:rounded-3xl p-4 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl hidden">
+<div id="summary-billing-section" class="bg-[#1a1c23] rounded-[1rem] md:rounded-3xl p-4 md:p-8 lg:p-10 text-white relative overflow-hidden shadow-xl">
     {{-- Decorative circle --}}
     <div class="absolute -right-20 -top-20 w-64 h-64 bg-white/[0.02] rounded-full pointer-events-none"></div>
 
@@ -42,7 +42,7 @@
                             text-xs md:text-sm uppercase tracking-wider
                             cursor-pointer disabled:cursor-not-allowed
                             flex items-center justify-center gap-2">
-        <span id="submit-text">Kirim Form Transaksi</span>
+        <span id="submit-text">{{ $submitButtonText ?? 'Kirim Form Transaksi' }}</span>
         <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
             viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

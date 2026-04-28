@@ -218,7 +218,7 @@ class RembushController extends Controller
             $technicians = \App\Models\User::where('role', 'teknisi')->with('bankAccounts')->get();
         }
 
-        return view('transactions.form', compact(
+        return view('transactions.form-rembush', compact(
             'branches', 'base64', 'mime', 'uploadId', 'aiData', 'rembushCategories', 'technicians'
         ));
     }

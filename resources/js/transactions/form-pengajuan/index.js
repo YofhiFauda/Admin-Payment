@@ -11,7 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     new Uploader();
 
     // 2. Initialize Branch Distribution
-    const distribution = new BranchDistribution('#form-total-estimated-price', '#summary-submit');
+    const distribution = new BranchDistribution(
+        '#form-total-estimated-price', 
+        '#summary-submit',
+        { isOptional: false, tolerance: 2 }
+    );
 
     // 3. Initialize Item Repeater (pass callback to update distribution when total changes)
     new ItemRepeater(

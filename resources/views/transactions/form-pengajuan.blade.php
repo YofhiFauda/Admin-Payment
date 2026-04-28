@@ -41,7 +41,7 @@
                 {{-- SUMMARY BILLING (FULL WIDTH BLACK CARD) --}}
                 {{-- ══════════════════════════════════ --}}
 
-                @include('transactions.partials.forms.shared.summary-billing')
+                @include('transactions.partials.forms.shared.summary-billing', ['submitButtonText' => 'Ajukan Pembelian'])
 
                 @if($errors->any())
                     <div class="mt-4 bg-red-50 border border-red-100 rounded-xl p-4 hidden" id="fallback-error-msg">
