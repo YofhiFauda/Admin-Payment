@@ -439,7 +439,7 @@
                 <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 scrollbar-hide text-sm">
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-2 overflow-y-auto min-h-0 scrollbar-hide text-sm">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"
@@ -1205,22 +1205,29 @@
                 container.insertAdjacentHTML('beforeend', html);
                 const el = document.getElementById(toastId);
 
+                // Guard: element must exist before trying to animate it
+                if (!el) return;
+
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
 
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        el.classList.remove('opacity-0', 'translate-x-full');
-                        el.classList.add('opacity-100', 'translate-x-0');
+                        // Guard again inside rAF in case element was removed between frames
+                        const animEl = document.getElementById(toastId);
+                        if (!animEl) return;
+                        animEl.classList.remove('opacity-0', 'translate-x-full');
+                        animEl.classList.add('opacity-100', 'translate-x-0');
                     });
                 });
 
                 setTimeout(() => {
-                    if(document.getElementById(toastId)) {
-                        el.classList.remove('opacity-100', 'translate-x-0');
-                        el.classList.add('opacity-0', 'translate-x-full');
-                        setTimeout(() => { if(document.getElementById(toastId)) el.remove() }, 500);
+                    const liveEl = document.getElementById(toastId);
+                    if (liveEl) {
+                        liveEl.classList.remove('opacity-100', 'translate-x-0');
+                        liveEl.classList.add('opacity-0', 'translate-x-full');
+                        setTimeout(() => { const r = document.getElementById(toastId); if(r) r.remove(); }, 500);
                     }
                 }, 6000);
             };
