@@ -57,13 +57,13 @@
                     <div id="v-items-table-container"
                         class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hidden">
                         <table class="w-full text-xs text-left">
-                            <thead class="bg-slate-100/50 text-slate-500 font-bold uppercase tracking-wider">
+                            <thead class="bg-blue-50/50 text-slate-500 font-bold uppercase tracking-wider">
                                 <tr>
                                     <th class="px-3 py-2">Nama Barang</th>
-                                    <th class="px-3 py-2 text-center">Qty</th>
-                                    <th class="px-3 py-2">Satuan</th>
-                                    <th class="px-3 py-2 text-right">Harga Sat.</th>
-                                    <th class="px-3 py-2 text-right">Total</th>
+                                    <th class="px-3 py-2 text-center">QTY</th>
+                                    <th class="px-3 py-2">SATUAN</th>
+                                    <th class="px-3 py-2 text-right">HARGA SAT.</th>
+                                    <th class="px-3 py-2 text-right">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody id="v-items-tbody" class="divide-y divide-slate-100"></tbody>
@@ -90,11 +90,11 @@
                                 id="v-summary-desc"></p>
                         </div>
                         <div id="v-summary-total-wrap"
-                            class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm">
+                            class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 flex flex-col justify-center shadow-sm">
                             <label
-                                class="block text-[10px] font-bold text-blue-800/60 uppercase tracking-wider mb-1">Total
+                                class="block text-[10px] font-bold text-blue-800/60 uppercase tracking-wider mb-1" id="v-summary-total-label">Total
                                 Estimasi</label>
-                            <p class="text-lg md:text-xl font-black text-blue-700 tracking-tight flex items-baseline"
+                            <p class="text-xl md:text-2xl font-black text-blue-700 tracking-tight flex items-baseline"
                                 id="v-summary-total"></p>
                         </div>
                     </div>
@@ -103,7 +103,7 @@
                 <div id="v-branches-wrap" class="hidden">
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Pembagian
                         Cabang</label>
-                    <div class="space-y-2" id="v-branches"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="v-branches"></div>
                 </div>
                 <div id="v-rejection-wrap" class="hidden">
                     <div class="bg-red-50 border border-red-100 rounded-xl p-4">

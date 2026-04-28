@@ -373,7 +373,7 @@ function renderViewModal(d) {
             revisBannerContainer.innerHTML = '';
             revisBannerContainer.classList.add('hidden');
             window._modalVersionData = {
-                original: d.items_snapshot || [],
+                original: (d.items_snapshot && d.items_snapshot.length > 0) ? d.items_snapshot : (d.items || []),
                 management: d.items || [],
                 d: d
             };
@@ -399,15 +399,14 @@ function renderViewModal(d) {
         addField('Nama Vendor', d.customer);
         addField('Tanggal Transaksi', d.date);
         addField('Kategori', d.category_label);
-        addField('Metode Pencairan', d.payment_method_label);
+        addField('Metode Pencairan', d.payment_method_label, true);
         addField('Keterangan', d.description, true);
-        addField('Total Nominal', d.amount ? 'Rp ' + Number(d.amount).toLocaleString('id-ID') : null);
     } else if (d.type === 'gudang') {
         addField('Pembeli', d.submitter?.name || '-');
         addField('Toko / Vendor', d.vendor || '-');
         addField('Tanggal Belanja', d.date);
         addField('Kategori', d.category_label);
-        addField('Metode Bayar', d.payment_method_label);
+        addField('Metode Bayar', d.payment_method_label, true);
         addField('Keterangan', d.description, true);
 
         if ((d.status === 'completed' || d.status === 'waiting_payment') && d.invoice_file_url) {
@@ -572,30 +571,37 @@ function renderViewModal(d) {
     const summaryTotalWrap = document.getElementById('v-summary-total-wrap');
     const summaryTotal = document.getElementById('v-summary-total');
 
-    if (d.type === 'pengajuan' || d.type === 'gudang') {
+    const summaryTotalLabel = document.getElementById('v-summary-total-label');
+    if (d.type === 'pengajuan' || d.type === 'gudang' || d.type === 'rembush') {
         summaryWrap.classList.remove('hidden');
 
-        if (d.items && d.items.length > 0) {
-            if (d.description) {
+        if (summaryTotalLabel) {
+            summaryTotalLabel.textContent = (d.type === 'rembush' || d.type === 'gudang' || d.status === 'completed' || d.status === 'paid') 
+                ? 'Tagihan Pembayaran' 
+                : 'Total Estimasi';
+        }
+
+        if ((d.items && d.items.length > 0) || d.type === 'rembush') {
+            if (d.description && d.type !== 'rembush') {
                 summaryDescWrap.classList.remove('hidden');
                 summaryDescWrap.classList.add('md:col-span-2');
-                summaryTotalWrap.className = 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                summaryTotalWrap.className = 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 flex flex-col justify-center shadow-sm';
                 if (d.type === 'gudang') {
-                    summaryTotalWrap.className = 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    summaryTotalWrap.className = 'bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 flex flex-col justify-center shadow-sm';
                 }
                 summaryDesc.textContent = d.description;
             } else {
                 summaryDescWrap.classList.add('hidden');
-                summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 flex flex-col justify-center shadow-sm';
                 if (d.type === 'gudang') {
-                    summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm';
+                    summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 flex flex-col justify-center shadow-sm';
                 }
             }
         } else {
             summaryDescWrap.classList.add('hidden');
-            summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-col justify-center shadow-sm text-center items-center';
+            summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 flex flex-col justify-center shadow-sm text-center items-center';
             if (d.type === 'gudang') {
-                summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center shadow-sm text-center items-center';
+                summaryTotalWrap.className = 'md:col-span-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 flex flex-col justify-center shadow-sm text-center items-center';
             }
         }
 
@@ -689,11 +695,11 @@ function renderViewModal(d) {
     if (d.branches && d.branches.length > 0) {
         branchesWrap.classList.remove('hidden');
         branchesEl.innerHTML = d.branches.map(b => `
-                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                    <span class="text-sm font-bold text-slate-700">${b.name}</span>
-                    <div class="text-right">
-                        <span class="text-xs font-bold text-slate-500">${b.percent}%</span>
-                        <span class="text-xs text-slate-400 ml-2">(${b.amount})</span>
+                <div class="flex flex-col bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">${b.name}</span>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xs font-bold text-slate-700">${b.percent}%</span>
+                        <span class="text-[10px] text-slate-400">(${b.amount})</span>
                     </div>
                 </div>`).join('');
     } else {
@@ -764,9 +770,12 @@ export function toggleVersionInModal(version) {
 
     if (items && items.length > 0) {
         if (itemsWrap) itemsWrap.classList.remove('hidden');
-        const label = version === 'original'
-            ? '<span class="text-xs text-blue-600 font-bold ml-2">(Versi Pengaju)</span>'
-            : '<span class="text-xs text-emerald-600 font-bold ml-2">(Versi Management)</span>';
+        const isEdited = window._modalVersionData?.d?.is_edited_by_management;
+        const label = isEdited 
+            ? (version === 'original'
+                ? '<span class="text-xs text-blue-600 font-bold ml-2">(Versi Pengaju)</span>'
+                : '<span class="text-xs text-emerald-600 font-bold ml-2">(Versi Management)</span>')
+            : '';
 
         const sectionLabel = itemsWrap?.querySelector('label');
         if (sectionLabel) {
@@ -779,17 +788,11 @@ export function toggleVersionInModal(version) {
         } else if (itemsTbody) {
             itemsTbody.innerHTML = items.map((item, idx) => {
                 const itemName = escapeHtml(item.customer || item.name || item.nama_barang || '-');
-                const canSetRef = window._modalVersionData?.d?.can_manage || window._modalVersionData?.d?.is_owner;
-                const refBtn = canSetRef && itemName !== '-' ? `
-                        <button type="button" onclick="setAsReference('${window._modalVersionData.d.id}', '${itemName}')" class="ml-2 inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[9px] font-bold border border-blue-200 transition-colors">
-                            <i data-lucide="bookmark-plus" class="w-3 h-3"></i> Jadikan Referensi
-                        </button>
-                    ` : '';
 
                 return `
                     <tr class="hover:bg-slate-50/50">
                         <td class="px-3 py-2 text-slate-700 font-medium">
-                            <div class="flex items-center">${itemName}${refBtn}</div>
+                            <div class="flex items-center">${itemName}</div>
                         </td>
                         <td class="px-3 py-2 text-center">${item.quantity || item.qty || '-'}</td>
                         <td class="px-3 py-2">${item.unit || item.satuan || '-'}</td>

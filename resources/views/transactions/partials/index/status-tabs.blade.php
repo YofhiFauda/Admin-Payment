@@ -5,7 +5,7 @@
                 'all' => ['label' => 'Semua', 'count' => $stats['count']],
                 'pending' => ['label' => 'Pending', 'count' => $stats['pending']],
                 'auto-reject' => ['label' => 'Auto Reject', 'count' => $stats['auto_reject'] ?? 0],
-                'flagged' => ['label' => 'Bermasalah', 'count' => $stats['flagged'] ?? 0],
+                'flagged' => ['label' => 'Flagged', 'count' => $stats['flagged'] ?? 0],
                 'waiting_payment' => ['label' => 'Menunggu Pembayaran', 'count' => $stats['waiting_payment'] ?? 0],
                 'approved' => ['label' => 'Menunggu Approve Owner', 'count' => $stats['approved'] ?? 0],
                 'completed' => ['label' => 'Selesai', 'count' => $stats['completed']],
