@@ -1,7 +1,7 @@
 <?php
-
+ 
 namespace App\Http\Controllers;
-
+ 
 use App\Models\Branch;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
@@ -11,33 +11,35 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-
-class GudangController extends Controller
+ 
+class PembelianController extends Controller
 {
     /**
      * Show loading transition before the form.
      */
     public function loading()
     {
-        return view('transactions.gudang-loading');
+        return view('transactions.pembelian-loading');
     }
 
     /**
-     * Show form for new Gudang transaction.
+     * Show form for new Pembelian transaction.
      */
     public function create()
     {
         $branches = Branch::all();
-        // Since the user says "Form tersebut sama seperti Rembush", 
-        // we might want to let them choose a category or just a default one.
-        // Let's grab Rembush categories for now or keep it flexible.
         $categories = TransactionCategory::forRembush()->get();
         
-        return view('transactions.gudang-form', compact('branches', 'categories'));
+        $technicians = collect();
+        if (!Auth::user()->isTeknisi()) {
+            $technicians = \App\Models\User::where('role', 'teknisi')->with('bankAccounts')->get();
+        }
+        
+        return view('transactions.form-pembelian', compact('branches', 'categories', 'technicians'));
     }
 
     /**
-     * Store new Gudang transaction.
+     * Store new Pembelian transaction.
      */
     public function store(Request $request)
     {
@@ -54,11 +56,16 @@ class GudangController extends Controller
             'amount'         => 'required|numeric|min:0',
             'description'    => 'nullable|string|max:2000',
             'payment_method' => 'required|string|in:cash,transfer_teknisi,transfer_penjual',
-            'pengeluaran_siapa' => 'required|string|max:255',
+            'technician_id' => 'nullable|exists:users,id',
+            'technician_bank_account_id' => 'nullable|exists:user_bank_accounts,id',
             'nota'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'branches'       => 'required|array|min:1',
             'branches.*.branch_id' => 'required|exists:branches,id',
             'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',
+            // Parity with Rembush: Validate bank fields if Transfer to Seller
+            'bank_name' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
+            'account_name' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
+            'account_number' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
         ]);
 
         // Validate branch allocation
@@ -82,15 +89,46 @@ class GudangController extends Controller
                 $filePath = $file->storeAs('uploads', $fileName, 'public');
             }
 
-            // Combine descriptions as requested
+            // Determine submitter and description prefix
+            $submittedBy = Auth::id();
+            $technicianName = null;
+            if ($request->technician_id) {
+                $tech = \App\Models\User::find($request->technician_id);
+                if ($tech) {
+                    $submittedBy = $tech->id;
+                    $technicianName = $tech->name;
+                }
+            }
+
+            // Combine descriptions
             $fullDescription = $request->description;
-            if ($request->pengeluaran_siapa) {
-                $prefix = "[Oleh: " . $request->pengeluaran_siapa . "]";
+            if ($technicianName) {
+                $prefix = "[Oleh: " . $technicianName . "]";
                 $fullDescription = $fullDescription ? $prefix . " " . $fullDescription : $prefix;
             }
 
+            // Bank details (specs)
+            $specs = null;
+            if ($request->payment_method === 'transfer_teknisi' && $request->technician_bank_account_id) {
+                $bankAcc = \App\Models\UserBankAccount::find($request->technician_bank_account_id);
+                if ($bankAcc) {
+                    $specs = [
+                        'bank_name'      => strtoupper($bankAcc->bank_name),
+                        'account_name'   => strtoupper($bankAcc->account_name),
+                        'account_number' => $bankAcc->account_number,
+                        'bank_account_id' => $bankAcc->id,
+                    ];
+                }
+            } elseif ($request->payment_method === 'transfer_penjual') {
+                $specs = [
+                    'bank_name'      => strtoupper($request->bank_name),
+                    'account_name'   => strtoupper($request->account_name),
+                    'account_number' => $request->account_number,
+                ];
+            }
+
             $transaction = Transaction::create([
-                'type'           => Transaction::TYPE_GUDANG,
+                'type'           => Transaction::TYPE_GUDANG, // Keep the model constant for now
                 'invoice_number' => $invoiceNumber,
                 'vendor'         => $request->vendor,
                 'category'       => $request->category,
@@ -101,7 +139,9 @@ class GudangController extends Controller
                 'file_path'      => $filePath,
                 'status'         => 'pending', // Label: Review Management
                 'payment_method' => $request->payment_method,
-                'submitted_by'   => Auth::id(),
+                'technician_id'  => $request->technician_id,
+                'specs'          => $specs,
+                'submitted_by'   => $submittedBy,
                 'upload_id'      => $uploadId,
                 'trace_id'       => Transaction::generateTraceId(),
             ]);
@@ -139,11 +179,11 @@ class GudangController extends Controller
 
             DB::commit();
 
-            return redirect()->route('transactions.index')->with('success', 'Belanja Gudang berhasil disimpan dan menunggu Review Management.');
+            return redirect()->route('transactions.index')->with('success', 'Pembelian berhasil disimpan dan menunggu Review Management.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Failed to store Gudang transaction', [
+            Log::error('Failed to store Pembelian transaction', [
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id(),
             ]);

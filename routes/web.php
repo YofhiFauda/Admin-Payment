@@ -1,24 +1,24 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\Api\ItemAutocompleteController;
+use App\Http\Controllers\Api\V1\OcrNotaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BranchBankAccountController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\RembushController;
-use App\Http\Controllers\PengajuanController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\UserBankAccountController;
-use App\Http\Controllers\TransactionCategoryController;
-use App\Http\Controllers\Api\V1\OcrNotaController;
 use App\Http\Controllers\OtherExpenditureController;
-use App\Http\Controllers\SalaryController;
-use App\Http\Controllers\GudangController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\PriceIndexController;
-use App\Http\Controllers\Api\ItemAutocompleteController;
-
+use App\Http\Controllers\RembushController;
+use App\Http\Controllers\SalaryController;
+use App\Http\Controllers\TransactionCategoryController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserBankAccountController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
 // Redirect root: ke dashboard jika login, ke login jika guest
 Route::get('/', function () {
@@ -27,6 +27,7 @@ Route::get('/', function () {
             ? redirect()->route('transactions.create')
             : redirect()->route('dashboard');
     }
+
     return redirect()->route('login');
 });
 
@@ -36,16 +37,16 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 });
 
-
 // routes/web.php — tambah sementara
 Route::get('/debug-session', function () {
     $path = session('pengajuan_file_path');
+
     return [
         'session_path' => $path,
-        'file_exists'  => $path ? Storage::disk('public')->exists($path) : false,
-        'full_url'     => $path ? asset('storage/' . $path) : null,
-        'storage_path' => $path ? storage_path('app/public/' . $path) : null,
-        'real_exists'  => $path ? file_exists(storage_path('app/public/' . $path)) : false,
+        'file_exists' => $path ? Storage::disk('public')->exists($path) : false,
+        'full_url' => $path ? asset('storage/'.$path) : null,
+        'storage_path' => $path ? storage_path('app/public/'.$path) : null,
+        'real_exists' => $path ? file_exists(storage_path('app/public/'.$path)) : false,
     ];
 });
 
@@ -101,11 +102,11 @@ Route::middleware('auth')->group(function () {
 
     });
 
-    // ── Gudang flow (Atasan & Owner ONLY) ──────────────────
+    // ── Pembelian flow (Atasan & Owner ONLY) ──────────────────
     Route::middleware('role:atasan,owner')->group(function () {
-        Route::get('/gudang/loading', [GudangController::class, 'loading'])->name('gudang.loading');
-        Route::get('/gudang/form', [GudangController::class, 'create'])->name('gudang.form');
-        Route::post('/gudang/store', [GudangController::class, 'store'])->name('gudang.store');
+        Route::get('/pembelian/loading', [PembelianController::class, 'loading'])->name('pembelian.loading');
+        Route::get('/pembelian/form', [PembelianController::class, 'create'])->name('pembelian.form');
+        Route::post('/pembelian/store', [PembelianController::class, 'store'])->name('pembelian.store');
     });
 
     // ── Status Management, Edit & Delete (admin, atasan, owner) ──
@@ -114,16 +115,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions/{id}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
         Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::patch('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
-        
+
         // ✅ FIXED: Explicit auth middleware
         Route::post('/transactions/{id}/override', [OcrNotaController::class, 'requestOverride'])
             ->middleware('auth:web')
             ->name('transactions.override');
-        
+
         Route::post('/transactions/{id}/force-approve', [OcrNotaController::class, 'forceApprove'])
             ->middleware('auth:web')
             ->name('transactions.forceApprove');
-        
+
         Route::delete('/transactions/{id}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 
         // ── Hutang Antar Cabang (Branch Debt Settlement) ──
@@ -149,9 +150,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
     });
 
-    //Notifications
+    // Notifications
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
-    Route::get('/notifications',          [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
         ->name('notifications.readAll');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
@@ -177,46 +178,44 @@ Route::middleware('auth')->group(function () {
     Route::delete('/user-bank-accounts/{id}', [UserBankAccountController::class, 'destroy'])->name('user-bank-accounts.destroy');
 
     // ── Branch Bank Accounts ──
-    Route::get('/branch-bank-accounts/{branch_id}', [\App\Http\Controllers\BranchBankAccountController::class, 'index'])->name('branch-bank-accounts.index');
-    Route::post('/branch-bank-accounts', [\App\Http\Controllers\BranchBankAccountController::class, 'store'])->name('branch-bank-accounts.store');
-    Route::put('/branch-bank-accounts/{id}', [\App\Http\Controllers\BranchBankAccountController::class, 'update'])->name('branch-bank-accounts.update');
-    Route::delete('/branch-bank-accounts/{id}', [\App\Http\Controllers\BranchBankAccountController::class, 'destroy'])->name('branch-bank-accounts.destroy');
-
+    Route::get('/branch-bank-accounts/{branch_id}', [BranchBankAccountController::class, 'index'])->name('branch-bank-accounts.index');
+    Route::post('/branch-bank-accounts', [BranchBankAccountController::class, 'store'])->name('branch-bank-accounts.store');
+    Route::put('/branch-bank-accounts/{id}', [BranchBankAccountController::class, 'update'])->name('branch-bank-accounts.update');
+    Route::delete('/branch-bank-accounts/{id}', [BranchBankAccountController::class, 'destroy'])->name('branch-bank-accounts.destroy');
 
     // ── Input Pengeluaran Lain (admin, atasan, owner) ──
     Route::middleware('role:admin,atasan,owner')->prefix('pengeluaran-lain')->name('pengeluaran-lain.')->group(function () {
 
         // Bayar Hutang
-        Route::get('/bayar-hutang',        [OtherExpenditureController::class, 'index'])->name('bayar-hutang.index')->defaults('jenis', 'bayar_hutang');
-        Route::get('/bayar-hutang/create',  [OtherExpenditureController::class, 'create'])->name('bayar-hutang.create')->defaults('jenis', 'bayar_hutang');
-        Route::post('/bayar-hutang',        [OtherExpenditureController::class, 'store'])->name('bayar-hutang.store')->defaults('jenis', 'bayar_hutang');
+        Route::get('/bayar-hutang', [OtherExpenditureController::class, 'index'])->name('bayar-hutang.index')->defaults('jenis', 'bayar_hutang');
+        Route::get('/bayar-hutang/create', [OtherExpenditureController::class, 'create'])->name('bayar-hutang.create')->defaults('jenis', 'bayar_hutang');
+        Route::post('/bayar-hutang', [OtherExpenditureController::class, 'store'])->name('bayar-hutang.store')->defaults('jenis', 'bayar_hutang');
 
         // Piutang Usaha
-        Route::get('/piutang-usaha',        [OtherExpenditureController::class, 'index'])->name('piutang-usaha.index')->defaults('jenis', 'piutang_usaha');
+        Route::get('/piutang-usaha', [OtherExpenditureController::class, 'index'])->name('piutang-usaha.index')->defaults('jenis', 'piutang_usaha');
         Route::get('/piutang-usaha/create', [OtherExpenditureController::class, 'create'])->name('piutang-usaha.create')->defaults('jenis', 'piutang_usaha');
-        Route::post('/piutang-usaha',       [OtherExpenditureController::class, 'store'])->name('piutang-usaha.store')->defaults('jenis', 'piutang_usaha');
+        Route::post('/piutang-usaha', [OtherExpenditureController::class, 'store'])->name('piutang-usaha.store')->defaults('jenis', 'piutang_usaha');
 
         // Prive (atasan, owner ONLY — controller juga guard)
-        Route::get('/prive',        [OtherExpenditureController::class, 'index'])->name('prive.index')->defaults('jenis', 'prive');
+        Route::get('/prive', [OtherExpenditureController::class, 'index'])->name('prive.index')->defaults('jenis', 'prive');
         Route::get('/prive/create', [OtherExpenditureController::class, 'create'])->name('prive.create')->defaults('jenis', 'prive');
-        Route::post('/prive',       [OtherExpenditureController::class, 'store'])->name('prive.store')->defaults('jenis', 'prive');
+        Route::post('/prive', [OtherExpenditureController::class, 'store'])->name('prive.store')->defaults('jenis', 'prive');
 
         // Shared DELETE & IMAGE for Bayar Hutang / Piutang / Prive
-        Route::delete('/record/{id}',       [OtherExpenditureController::class, 'destroy'])->name('record.destroy');
-        Route::get('/record/{id}/image',    [OtherExpenditureController::class, 'image'])->name('record.image');
+        Route::delete('/record/{id}', [OtherExpenditureController::class, 'destroy'])->name('record.destroy');
+        Route::get('/record/{id}/image', [OtherExpenditureController::class, 'image'])->name('record.image');
 
         // Gaji
-        Route::get('/gaji',                 [SalaryController::class, 'index'])->name('gaji.index');
-        Route::get('/gaji/create',          [SalaryController::class, 'create'])->name('gaji.create');
-        Route::post('/gaji',                [SalaryController::class, 'store'])->name('gaji.store');
-        Route::get('/gaji/{id}',            [SalaryController::class, 'show'])->name('gaji.show');
-        Route::get('/gaji/{id}/edit',       [SalaryController::class, 'edit'])->name('gaji.edit');
-        Route::put('/gaji/{id}',            [SalaryController::class, 'update'])->name('gaji.update');
-        Route::post('/gaji/{id}/approve',   [SalaryController::class, 'approve'])->name('gaji.approve');
-        Route::post('/gaji/{id}/pay',       [SalaryController::class, 'pay'])->name('gaji.pay');
-        Route::delete('/gaji/{id}',         [SalaryController::class, 'destroy'])->name('gaji.destroy');
+        Route::get('/gaji', [SalaryController::class, 'index'])->name('gaji.index');
+        Route::get('/gaji/create', [SalaryController::class, 'create'])->name('gaji.create');
+        Route::post('/gaji', [SalaryController::class, 'store'])->name('gaji.store');
+        Route::get('/gaji/{id}', [SalaryController::class, 'show'])->name('gaji.show');
+        Route::get('/gaji/{id}/edit', [SalaryController::class, 'edit'])->name('gaji.edit');
+        Route::put('/gaji/{id}', [SalaryController::class, 'update'])->name('gaji.update');
+        Route::post('/gaji/{id}/approve', [SalaryController::class, 'approve'])->name('gaji.approve');
+        Route::post('/gaji/{id}/pay', [SalaryController::class, 'pay'])->name('gaji.pay');
+        Route::delete('/gaji/{id}', [SalaryController::class, 'destroy'])->name('gaji.destroy');
     });
-
 
     // ── Price Index ─────────────────────────────────────────────────────
     // API Check & Lookup: semua role (digunakan di form pengajuan)
@@ -236,7 +235,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/price-index', [PriceIndexController::class, 'store'])->name('price-index.store');
         Route::put('/price-index/{id}', [PriceIndexController::class, 'update'])->name('price-index.update');
         Route::delete('/price-index/{id}', [PriceIndexController::class, 'destroy'])->name('price-index.destroy');
-        
+
         Route::get('/price-index/anomalies', [PriceIndexController::class, 'anomalies'])->name('price-index.anomalies');
         Route::post('/price-index/anomalies/bulk-review', [PriceIndexController::class, 'bulkReviewAnomaly'])->name('price-index.anomalies.bulk-review');
         Route::post('/price-index/anomalies/{id}/review', [PriceIndexController::class, 'reviewAnomaly'])->name('price-index.anomalies.review');

@@ -11,12 +11,12 @@
         <div class="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
         {{-- Inner Icon --}}
         <div class="absolute inset-0 flex items-center justify-center">
-            <i data-lucide="package" class="w-10 h-10 text-indigo-600 animate-pulse"></i>
+            <i data-lucide="shopping-cart" class="w-10 h-10 text-indigo-600 animate-pulse"></i>
         </div>
     </div>
     
     <div class="text-center stagger-item">
-        <h2 class="text-2xl font-black text-slate-800 tracking-tight mb-2">Menyiapkan Form Belanja</h2>
+        <h2 class="text-2xl font-black text-slate-800 tracking-tight mb-2">Menyiapkan Form Pembelian</h2>
         <p class="text-slate-500 font-medium">Mohon tunggu sebentar, sedang memproses data...</p>
     </div>
 
@@ -39,7 +39,7 @@
 
         // Redirect after delay
         setTimeout(() => {
-            window.location.href = "{{ route('gudang.form') }}";
+            window.location.href = "{{ route('pembelian.form') }}";
         }, 2000);
     });
 </script>

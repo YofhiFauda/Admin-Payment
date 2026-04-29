@@ -172,15 +172,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const rvpCtx = document.getElementById('chartRvP');
     const rembushVal = {{ $rembushTotal }};
     const pengajuanVal = {{ $pengajuanTotal }};
-    const gudangVal = {{ $gudangTotal }};
+    const pembelianVal = {{ $pembelianTotal }};
 
-    if (rvpCtx && (rembushVal + pengajuanVal + gudangVal) > 0) {
+    if (rvpCtx && (rembushVal + pengajuanVal + pembelianVal) > 0) {
         new Chart(rvpCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Rembush', 'Pengajuan', 'Gudang'],
+                labels: ['Rembush', 'Pengajuan', 'Pembelian'],
                 datasets: [{
-                    data: [rembushVal, pengajuanVal, gudangVal],
+                    data: [rembushVal, pengajuanVal, pembelianVal],
                     backgroundColor: ['#6366f1', '#ec4899', '#f59e0b'],
                     borderWidth: 2,
                     borderColor: '#fff',
@@ -654,7 +654,7 @@ function renderHutangRow(t) {
 
 function getStatusBadge(status, type = '', isDebt = false) {
     const map = {
-        'pending':            { cls: type === 'gudang' ? 'badge-gudang' : 'badge-pending',    dot: type === 'gudang' ? 'bg-blue-500' : 'bg-yellow-500',    label: type === 'gudang' ? 'Review' : 'Pending' },
+        'pending':            { cls: type === 'gudang' ? 'badge-pembelian' : 'badge-pending',    dot: type === 'gudang' ? 'bg-blue-500' : 'bg-yellow-500',    label: type === 'gudang' ? 'Review' : 'Pending' },
         'waiting_payment':    { cls: isDebt ? 'badge-debt' : (type === 'gudang' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment'), dot: isDebt ? 'bg-amber-500' : (type === 'gudang' ? 'bg-slate-400' : 'bg-orange-500'), label: 'Belum Bayar' },
         'flagged':            { cls: 'badge-flagged', dot: 'bg-rose-500', label: 'Flagged' },
         'pending_technician': { cls: 'badge-siap-ambil', dot: 'bg-teal-500', label: 'Siap Ambil' },
@@ -859,7 +859,7 @@ async function loadAllHutangAmounts() {
     .badge-fuchsia  { background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; }
     .badge-waiting-payment { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
     .badge-debt     { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
-    .badge-gudang   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-pembelian   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .badge-siap-ambil { background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; }
     .badge-flagged  { background: #fff1f2; color: #be123c; border: 1px solid #ffe4e6; }
     .badge-auto-reject { background: #1f2937; color: #f9fafb; border: 1px solid #111827; }
@@ -1048,7 +1048,7 @@ async function loadAllHutangAmounts() {
                     <i data-lucide="donut" class="w-4 h-4 text-pink-600"></i>
                 </div>
             </div>
-            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
+            @if($rembushTotal + $pengajuanTotal + $pembelianTotal > 0)
                 <div class="flex flex-col sm:flex-row items-center gap-6">
                     <div class="relative w-full sm:w-auto" style="height:220px; min-width:220px;">
                         <canvas id="chartRvP"></canvas>
@@ -1061,9 +1061,9 @@ async function loadAllHutangAmounts() {
                                 <p class="text-xs font-semibold text-slate-500">Rembush</p>
                                 <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($rembushTotal) }}</p>
                             </div>
-                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
+                            @if($rembushTotal + $pengajuanTotal + $pembelianTotal > 0)
                             <span class="text-xs font-bold text-indigo-600">
-                                {{ round($rembushTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
+                                {{ round($rembushTotal / ($rembushTotal + $pengajuanTotal + $pembelianTotal) * 100, 1) }}%
                             </span>
                             @endif
                         </div>
@@ -1074,22 +1074,22 @@ async function loadAllHutangAmounts() {
                                 <p class="text-xs font-semibold text-slate-500">Pengajuan</p>
                                 <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($pengajuanTotal) }}</p>
                             </div>
-                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
+                            @if($rembushTotal + $pengajuanTotal + $pembelianTotal > 0)
                             <span class="text-xs font-bold text-pink-600">
-                                {{ round($pengajuanTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
+                                {{ round($pengajuanTotal / ($rembushTotal + $pengajuanTotal + $pembelianTotal) * 100, 1) }}%
                             </span>
                             @endif
                         </div>
-                        {{-- Gudang --}}
+                        {{-- Pembelian --}}
                         <div class="flex items-center gap-3 p-3 rounded-xl bg-amber-50">
                             <span class="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0"></span>
                             <div class="flex-1">
-                                <p class="text-xs font-semibold text-slate-500">Gudang</p>
-                                <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($gudangTotal) }}</p>
+                                <p class="text-xs font-semibold text-slate-500">Pembelian</p>
+                                <p class="font-bold text-slate-800">{{ \App\Models\Transaction::formatShortRupiah($pembelianTotal) }}</p>
                             </div>
-                            @if($rembushTotal + $pengajuanTotal + $gudangTotal > 0)
+                            @if($rembushTotal + $pengajuanTotal + $pembelianTotal > 0)
                             <span class="text-xs font-bold text-amber-600">
-                                {{ round($gudangTotal / ($rembushTotal + $pengajuanTotal + $gudangTotal) * 100, 1) }}%
+                                {{ round($pembelianTotal / ($rembushTotal + $pengajuanTotal + $pembelianTotal) * 100, 1) }}%
                             </span>
                             @endif
                         </div>
@@ -1208,26 +1208,26 @@ async function loadAllHutangAmounts() {
                                 @php
                                     $status = $t->status;
                                     $label  = $t->status_label;
-                                    $isGudang = $t->type === 'gudang';
+                                    $isPembelian = $t->type === 'gudang';
                                     $isLargePengajuan = $t->type === 'pengajuan' && $t->effective_amount >= 1000000;
 
                                     $badgeClass = match($status) {
-                                        'pending'   => $isGudang ? 'badge-gudang' : 'badge-pending',
+                                        'pending'   => $isPembelian ? 'badge-pembelian' : 'badge-pending',
                                         'approved'  => $isLargePengajuan ? 'badge-fuchsia' : 'badge-approved',
                                         'completed' => 'badge-completed',
                                         'rejected'  => 'badge-rejected',
-                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'badge-debt' : ($isGudang ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment')),
+                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'badge-debt' : ($isPembelian ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment')),
                                         'pending_technician' => 'badge-siap-ambil',
                                         'flagged' => 'badge-flagged',
                                         'auto-reject' => 'badge-auto-reject',
                                         default     => 'bg-slate-100 text-slate-600',
                                     };
                                     $dotColor = match($status) {
-                                        'pending'   => $isGudang ? 'bg-blue-500' : 'bg-yellow-500',
+                                        'pending'   => $isPembelian ? 'bg-blue-500' : 'bg-yellow-500',
                                         'approved'  => $isLargePengajuan ? 'bg-fuchsia-500' : 'bg-purple-500',
                                         'completed' => 'bg-emerald-500',
                                         'rejected'  => 'bg-rose-500',
-                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'bg-amber-500' : ($isGudang ? 'bg-slate-400' : 'bg-orange-500')),
+                                        'waiting_payment' => (str_contains($label, 'Hutang') ? 'bg-amber-500' : ($isPembelian ? 'bg-slate-400' : 'bg-orange-500')),
                                         'pending_technician' => 'bg-teal-500',
                                         'flagged' => 'bg-rose-500',
                                         'auto-reject' => 'bg-slate-400',

@@ -84,6 +84,7 @@ services:
     image: node:22
     container_name: nodeJS
     working_dir: /var/www
+    restart: unless-stopped
     volumes:
       - ./:/var/www
       - /var/www/node_modules

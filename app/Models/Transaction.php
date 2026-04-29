@@ -16,7 +16,7 @@ class Transaction extends Model
     const TYPES = [
         self::TYPE_REMBUSH => 'Rembush',
         self::TYPE_PENGAJUAN => 'Pengajuan',
-        self::TYPE_GUDANG => 'Gudang',
+        self::TYPE_GUDANG => 'Pembelian',
     ];
 
     // ─── Payment Methods (Rembush) ────────────────────
@@ -259,7 +259,7 @@ class Transaction extends Model
     // ─── Type Helpers ─────────────────────────────────
     public function isRembush(): bool { return $this->type === self::TYPE_REMBUSH; }
     public function isPengajuan(): bool { return $this->type === self::TYPE_PENGAJUAN; }
-    public function isGudang(): bool { return $this->type === self::TYPE_GUDANG; }
+    public function isPembelian(): bool { return $this->type === self::TYPE_GUDANG; }
 
     public function getTypeLabelAttribute(): string
     {
@@ -293,8 +293,8 @@ class Transaction extends Model
                     return 'Menunggu Pelunasan';
                 }
 
-                if ($this->isGudang()) {
-                    return 'Pembelanjaan Belum di bayar';
+                if ($this->isPembelian()) {
+                    return 'Pembelian Belum di bayar';
                 }
 
                 return 'Menunggu Pembayaran';
@@ -309,7 +309,7 @@ class Transaction extends Model
             return 'Menunggu Pembayaran';
         }
 
-        if ($this->isGudang()) {
+        if ($this->isPembelian()) {
             if ($this->status === 'pending') {
                 return 'Review Management';
             }

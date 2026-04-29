@@ -790,8 +790,8 @@ class TransactionController extends Controller
                         $newStatus = 'waiting_payment';
                     }
                 }
-            } elseif ($transaction->isGudang()) {
-                // GUDANG LOGIC
+            } elseif ($transaction->isPembelian()) {
+                // PEMBELIAN LOGIC
                 // Approval moves to 'waiting_payment' (Pembelanjaan Belum di bayar)
                 if ($newStatus === 'approved') {
                     $newStatus = 'waiting_payment';
@@ -1501,7 +1501,7 @@ class TransactionController extends Controller
         $typeLabels = [
             'rembush' => 'Reimbursement',
             'pengajuan' => 'Pengajuan', 
-            'gudang' => 'Belanja Gudang'
+            'gudang' => 'Belanja Pembelian'
         ];
 
         $paymentLabels = [
@@ -1562,7 +1562,7 @@ class TransactionController extends Controller
     // Helper methods (same as before)
    private function getTypeLabel($type)
     {
-        return ['rembush' => 'Reimbursement', 'pengajuan' => 'Pengajuan', 'gudang' => 'Belanja Gudang'][$type] ?? $type;
+        return ['rembush' => 'Reimbursement', 'pengajuan' => 'Pengajuan', 'gudang' => 'Belanja Pembelian'][$type] ?? $type;
     }
 
     private function getStatusLabel($status, $type = null)
@@ -2059,7 +2059,7 @@ class TransactionController extends Controller
             ];
         }
 
-        // Rembush / Gudang / All format
+        // Rembush / Pembelian / All format
         $branchName = $branch ? $branch->name : ($isFirstRow ? $t->branches->pluck('name')->first() : '-');
         $qty   = $item ? (float) ($item['qty'] ?? ($item['quantity'] ?? 0)) : 0;
         $price = $item ? (float) ($item['harga_satuan'] ?? ($item['estimated_price'] ?? 0)) : 0;

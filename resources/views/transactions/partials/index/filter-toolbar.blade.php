@@ -103,7 +103,7 @@
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
                 class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
-                <i data-lucide="package" class="w-3 h-3 inline mr-1"></i>Gudang
+                <i data-lucide="package" class="w-3 h-3 inline mr-1"></i>Pembelian
             </a>
         </div>
     </div>
@@ -170,7 +170,7 @@
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
                 class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
-                <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Gudang
+                <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Pembelian
             </a>
         </div>
     </div>
@@ -235,7 +235,7 @@
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
                 class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
-                <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Gudang
+                <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Pembelian
             </a>
         </div>
     </div>
@@ -243,117 +243,116 @@
     @if(auth()->user()->role !== 'teknisi')
         <!-- SINGLETON POPOVERS: Shared by all layouts (Fixed Positioning) -->
         <div id="popover-container">
-            <!-- Branch Popover -->
-            <div id="menu-filter-branch"
-                class="filter-popover hidden fixed w-full md:w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div class="relative mb-3">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
-                    <input type="text" placeholder="Cari cabang..."
-                        class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
+    <div id="menu-filter-branch"
+        class="filter-popover hidden absolute w-full md:w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div class="relative mb-3">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
+            <input type="text" placeholder="Cari cabang..."
+                class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
+        </div>
+        <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="branch-list">
+            @foreach($branches as $b)
+                <label
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
+                    
+                    <div class="flex items-center justify-center relative w-4 h-4">
+                        <input type="checkbox" name="branch_id[]" value="{{ $b->id }}"
+                            class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-20">
+                        <div
+                            class="absolute inset-0 w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all z-0">
+                        </div>
+                        <i data-lucide="check"
+                            class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity z-10 pointer-events-none"></i>
+                    </div>
+
+                    <span
+                        class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $b->name }}</span>
+                </label>
+            @endforeach
+        </div>
+    </div>
+
+    <div id="menu-filter-category"
+        class="filter-popover hidden absolute w-full md:w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div class="relative mb-3">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
+            <input type="text" placeholder="Cari kategori..."
+                class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
+        </div>
+        <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="category-list">
+            @foreach($categories as $key => $val)
+                <label
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
+                    
+                    <div class="flex items-center justify-center relative w-4 h-4">
+                        <input type="checkbox" name="category[]" value="{{ $key }}"
+                            class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-20">
+                        <div
+                            class="absolute inset-0 w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all z-0">
+                        </div>
+                        <i data-lucide="check"
+                            class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity z-10 pointer-events-none"></i>
+                    </div>
+
+                    <span
+                        class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $val }}</span>
+                </label>
+            @endforeach
+        </div>
+    </div>
+
+    <div id="menu-filter-date"
+        class="filter-popover hidden absolute bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 min-w-min w-full md:w-auto">
+        <div class="w-full md:w-40 bg-slate-50 p-2.5 flex flex-col gap-1 shrink-0">
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="today">Hari Ini</button>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="yesterday">Kemarin</button>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="last7">7 Hari Terakhir</button>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="last30">30 Hari Terakhir</button>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="thisMonth">Bulan Ini</button>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
+                data-range="lastMonth">Bulan Lalu</button>
+            <div class="h-px bg-slate-200/60 my-1 mx-2"></div>
+            <button type="button"
+                class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-bold text-left bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                data-range="custom">Custom Tanggal</button>
+        </div>
+        <div class="p-4 flex-1 flex flex-col gap-4 bg-white md:w-[360px]">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="group">
+                    <label
+                        class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">DARI
+                        TANGGAL</label>
+                    <input type="date" id="filter-start-date"
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                 </div>
-                <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="branch-list">
-                    @foreach($branches as $b)
-                        <label
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
-                            <div class="flex items-center justify-center relative w-4 h-4">
-                                <input type="checkbox" name="branch_id[]" value="{{ $b->id }}"
-                                    class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-10">
-                                <div
-                                    class="w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all flex items-center justify-center">
-                                    <i data-lucide="check"
-                                        class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></i>
-                                </div>
-                            </div>
-                            <span
-                                class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $b->name }}</span>
-                        </label>
-                    @endforeach
+                <div class="group">
+                    <label
+                        class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">SAMPAI
+                        TANGGAL</label>
+                    <input type="date" id="filter-end-date"
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                 </div>
             </div>
-
-            <!-- Category Popover -->
-            <div id="menu-filter-category"
-                class="filter-popover hidden fixed w-full md:w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div class="relative mb-3">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400"></i>
-                    <input type="text" placeholder="Cari kategori..."
-                        class="popover-search w-full pl-8 pr-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-slate-400">
-                </div>
-                <div class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1" id="category-list">
-                    @foreach($categories as $key => $val)
-                        <label
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer group transition-all text-sm select-none hover:bg-slate-50 [&:has(input:checked)]:bg-blue-50 [&:has(input:checked)]:ring-1 [&:has(input:checked)]:ring-blue-200">
-                            <div class="flex items-center justify-center relative w-4 h-4">
-                                <input type="checkbox" name="category[]" value="{{ $key }}"
-                                    class="peer absolute w-full h-full opacity-0 cursor-pointer filter-checkbox z-10">
-                                <div
-                                    class="w-4 h-4 rounded border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-all flex items-center justify-center">
-                                    <i data-lucide="check"
-                                        class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></i>
-                                </div>
-                            </div>
-                            <span
-                                class="text-xs font-bold text-slate-600 group-hover:text-slate-900 peer-checked:text-blue-700 transition-colors leading-none truncate">{{ $val }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-
-            <!-- Date Popover -->
-            <div id="menu-filter-date"
-                class="filter-popover hidden fixed bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 min-w-min w-full md:w-auto">
-                <!-- Presets -->
-                <div class="w-full md:w-40 bg-slate-50 p-2.5 flex flex-col gap-1 shrink-0">
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="today">Hari Ini</button>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="yesterday">Kemarin</button>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="last7">7 Hari Terakhir</button>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="last30">30 Hari Terakhir</button>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="thisMonth">Bulan Ini</button>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-semibold text-left text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all"
-                        data-range="lastMonth">Bulan Lalu</button>
-                    <div class="h-px bg-slate-200/60 my-1 mx-2"></div>
-                    <button type="button"
-                        class="date-preset-btn px-3 py-2.5 rounded-xl text-xs font-bold text-left bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                        data-range="custom">Custom Tanggal</button>
-                </div>
-                <!-- Custom Range -->
-                <div class="p-4 flex-1 flex flex-col gap-4 bg-white md:w-[360px]">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="group">
-                            <label
-                                class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">DARI
-                                TANGGAL</label>
-                            <input type="date" id="filter-start-date"
-                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
-                        </div>
-                        <div class="group">
-                            <label
-                                class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 ml-1 group-focus-within:text-blue-500 transition-colors">SAMPAI
-                                TANGGAL</label>
-                            <input type="date" id="filter-end-date"
-                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="button" id="btn-cancel-date"
-                            class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-all active:scale-95">Batal</button>
-                        <button type="button" id="btn-apply-date"
-                            class="flex-[2] py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-                            disabled>Terapkan Filter</button>
-                    </div>
-                </div>
+            <div class="flex gap-2">
+                <button type="button" id="btn-cancel-date"
+                    class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-all active:scale-95">Batal</button>
+                <button type="button" id="btn-apply-date"
+                    class="flex-[2] py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                    disabled>Terapkan Filter</button>
             </div>
         </div>
+    </div>
+</div>
     @endif
 </div>

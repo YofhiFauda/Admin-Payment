@@ -21,6 +21,11 @@ export function unformatNumber(str) {
 }
 
 /**
+ * Alias for unformatNumber
+ */
+export const parseNumber = unformatNumber;
+
+/**
  * Format angka menjadi format Rupiah lengkap
  * Contoh: 1500000 → "Rp 1.500.000"
  */
@@ -39,3 +44,8 @@ export function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * Alias for escapeHtml
+ */
+export const esc = escapeHtml;

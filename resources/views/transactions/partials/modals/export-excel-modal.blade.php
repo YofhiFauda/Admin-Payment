@@ -94,7 +94,7 @@
                         <input type="radio" name="export_type" value="gudang" class="sr-only">
                         <div class="px-2 py-2.5 rounded-xl text-xs font-bold text-center transition-all border-2 border-slate-200 bg-white text-slate-500 hover:border-amber-400"
                             data-type="gudang">
-                            Gudang
+                            Pembelian
                         </div>
                     </label>
                 </div>

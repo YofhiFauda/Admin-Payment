@@ -10,12 +10,11 @@
             <div>
                 <label
                     class="block text-[10px] md:text-xs font-bold text-emerald-700 uppercase mb-2 tracking-wider">Pilih
-                    Teknisi <span class="text-red-500">*</span></label>
+                    Teknisi <span class="text-emerald-600/50 font-normal normal-case">(Opsional)</span></label>
                 <div class="relative">
-                    <select name="technician_id" id="technician_id" required
+                    <select name="technician_id" id="technician_id"
                         class="w-full appearance-none bg-white border border-emerald-200 rounded-xl p-3 text-xs md:text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-300 outline-none transition-all">
-                        <option value="" disabled {{ old('technician_id') ? '' : 'selected' }}>-- Pilih
-                            Teknisi --</option>
+                        <option value="" {{ old('technician_id') ? '' : 'selected' }}>-- Atas Nama Sendiri (Default) --</option>
                         @foreach($technicians as $tech)
                             <option value="{{ $tech->id }}" {{ old('technician_id') == $tech->id ? 'selected' : '' }} data-accounts='@json($tech->bankAccounts)'>
                                 {{ $tech->name }}
@@ -33,6 +32,7 @@
                     Teknisi (Untuk Transfer)</label>
                 <div class="relative">
                     <select name="technician_bank_account_id" id="technician_bank_account_id"
+                        data-old="{{ old('technician_bank_account_id') }}"
                         class="w-full appearance-none bg-white border border-emerald-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-300 outline-none transition-all">
                         <option value="">-- Pilih Rekening (Opsional) --</option>
                     </select>

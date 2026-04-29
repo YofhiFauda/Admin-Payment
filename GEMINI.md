@@ -39,7 +39,12 @@ An internal financial management system for **WHUSNET** to manage reimbursements
     - **Manual Override:** Allows management to set fixed reference prices with an audit trail, while the system continues to track "calculated" values in the background.
     - **Reset to Auto:** One-click feature to revert manual overrides back to system-calculated market prices.
     - **Anomaly Detection:** Real-time flagging of transactions that exceed market price thresholds (Low, Medium, Critical severity).
-- **Gudang Module:** Internal warehouse purchase recording. Optimized for speed: Bypasses mandatory Telegram registration for submitters and skips AI verification (OCR) for payment proofs.
+- **Pembelian (Warehouse) Module:** Internal warehouse purchase recording. Optimized for speed: 
+    - **UI Alignment:** Layout aligned with Rembushment module, featuring advanced Drag & Drop photo uploads with instant preview/viewer.
+    - **Otoritas Pembelian:** Supports optional "On Behalf Of" selection via a searchable technician dropdown. If selected, it automatically integrates with the technician's bank accounts for seamless transfer processing (Rekening Teknisi).
+    - **Payment Parity:** Includes dynamic bank information fields for "Transfer ke Penjual" and synchronized technician bank selection for "Transfer ke Teknisi", matching the Rembushment module's workflow.
+    - **Speed:** Bypasses mandatory Telegram registration for submitters and skips AI verification (OCR) for payment proofs.
+- **Optional "On Behalf Of" (Rembush & Pembelian):** Both forms allow management to either submit under their own name or select a technician from a dropdown. This field is optional; leaving it empty defaults the transaction to the current user.
 - **Financial Modules:**
     - **Other Expenditures:** Prefix `PL-` (Payable, Receivable, Prive). Now supports real-time multi-branch filtering, invoice search, and direct management of inter-branch debts.
     - **Salary Records:** Prefix `GP-` (Automated calculation of base pay, bonuses, and deductions).
@@ -73,7 +78,7 @@ An internal financial management system for **WHUSNET** to manage reimbursements
 - `app/Models/`:
     - `Transaction`: Core logic for Rembush/Pengajuan/Gudang & Versioning.
     - `BranchDebt`: Tracks inter-unit financial obligations. Fields: `status` (`pending`|`paid`), `payment_method` (`transfer`|`cash`), `payment_proof` (nullable for cash), `bank_account_id` / `sender_bank_account_id` (nullable for cash).
-    - `GudangController`: Handles internal warehouse expenditure flow.
+    - `PembelianController` (formerly Gudang): Handles internal warehouse expenditure flow.
     - `OtherExpenditure` & `SalaryRecord`: Extended financial modules.
 - `resources/js/`: Contains `SearchEngine` logic for real-time list filtering.
 - `routes/api.php`: Webhook endpoints (n8n, Telegram) protected by `n8n.secret`.

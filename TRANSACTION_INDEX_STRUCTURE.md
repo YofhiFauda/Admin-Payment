@@ -89,13 +89,19 @@ resources/
 │       │   ├── item-repeater.js     # Logic Item & Price Index
 │       │   └── distribution.js      # Bridge ke shared/distribution.js
 │       │
-│       └── form-rembush/            <-- Scoped Rembush
-│           ├── index.js             # Orchestrator Rembush
-│           ├── uploader.js          # Logic Photo & OCR Preview
-│           ├── item-repeater.js     # Logic Item & Subtotal
-│           ├── technician.js        # Logic Rekening Teknisi
-│           ├── payment-method.js    # Logic Info Pembayaran (Bank Vendor)
-│           └── distribution.js      # Bridge ke shared/distribution.js
+│       ├── form-rembush/            <-- Scoped Rembush
+│       │   ├── index.js             # Orchestrator Rembush
+│       │   ├── uploader.js          # Logic Photo & OCR Preview
+│       │   ├── item-repeater.js     # Logic Item & Subtotal
+│       │   ├── technician.js        # Logic Rekening Teknisi
+│       │   ├── payment-method.js    # Logic Info Pembayaran (Bank Vendor)
+│       │   └── distribution.js      # Bridge ke shared/distribution.js
+│       │
+│       └── form-pembelian/                <-- Modul baru untuk Pembelian
+│           ├── index.js                   # Orchestrator: Inisialisasi modul
+│           ├── uploader.js                # Logic: Preview file nota (Advanced Drag & Drop)
+│           ├── item-repeater.js           # Logic: Baris barang & total otomatis
+│           └── distribution.js            # Bridge: Logika pembagian cabang
 │
 └── views/
     └── transactions/
@@ -114,12 +120,19 @@ resources/
                 │   ├── item-repeater.blade.php
                 │   └── item-template.blade.php
                 │
-                └── rembush/         <-- SPECIFIC UI
-                    ├── header.blade.php
-                    ├── technician-section.blade.php
-                    ├── main-info.blade.php
-                    ├── item-repeater.blade.php
-                    └── item-template.blade.php
+                ├── rembush/         <-- SPECIFIC UI
+                │   ├── header.blade.php
+                │   ├── technician-section.blade.php
+                │   ├── main-info.blade.php
+                │   ├── item-repeater.blade.php
+                │   └── item-template.blade.php
+                │
+                └── pembelian/             <-- Partial khusus Pembelian
+                    ├── header.blade.php   # Judul halaman & deskripsi
+                    ├── management-section.blade.php # Otoritas: Dropdown Teknisi (Opsional)
+                    ├── main-info.blade.php # Tgl, Kategori, Vendor, Metode
+                    ├── item-repeater.blade.php # Container tabel & mobile cards
+                    └── item-template.blade.php # Template baris untuk JS
 ```
 
 ## 📄 Deskripsi File (JavaScript)
@@ -129,10 +142,10 @@ resources/
 | **index.js** | Orchestrator utama yang menginisialisasi semua modul. Menangani AI Autofill dan validasi final sebelum submit. |
 | **shared/distribution.js** | **Core Logic**. Menghitung alokasi biaya antar cabang dengan dukungan toleransi selisih dan validasi 100%. |
 | **shared/helpers.js** | Fungsi utilitas standar untuk pemformatan mata uang dan sanitasi input. |
-| **uploader.js** | Mengelola upload, preview foto, dan integrasi dengan modal viewer. |
+| **uploader.js** | Mengelola upload, preview foto (Advanced Drag & Drop), dan integrasi dengan modal viewer. |
 | **item-repeater.js** | Menangani baris barang dinamis. Versi Pengajuan mendukung *Price Index*, versi Rembush mendukung *OCR Mapping*. |
-| **technician.js** | (Khusus Rembush) Mengelola pemilihan teknisi dan auto-load daftar rekening bank terkait. |
-| **payment-method.js** | (Khusus Rembush) Menangani visibilitas informasi bank vendor berdasarkan metode pembayaran yang dipilih. |
+| **technician.js** | (Rembush & Pembelian) Mengelola pemilihan teknisi dan auto-load daftar rekening bank terkait. |
+| **payment-method.js** | (Rembush & Pembelian) Menangani visibilitas informasi bank vendor berdasarkan metode pembayaran yang dipilih. |
 | **distribution.js (Local)** | Bertindak sebagai **Bridge** ke core logic di `shared/`, memungkinkan kustomisasi parameter (seperti `tolerance` dan `isOptional`) per tipe form. |
 
 ## 📄 Deskripsi File (Blade Partials)
@@ -143,12 +156,14 @@ resources/
 *   **summary-billing.blade.php**: Black card ringkasan total dan rincian penagihan cabang.
 
 ### 📂 Form-Specific
-*   **technician-section.blade.php**: (Rembush) Input "Atas Nama Teknisi" untuk admin.
-*   **main-info.blade.php**: (Rembush) Field Vendor, Tanggal, Kategori, dan Metode Pencairan.
+*   **technician-section.blade.php**: (Rembush) Input "Atas Nama Teknisi" via dropdown (Opsional).
+*   **management-section.blade.php**: (Pembelian) Input "Otoritas Pembelian" via dropdown (Opsional).
+*   **main-info.blade.php**: (Rembush & Pembelian) Field Vendor, Tanggal, Kategori, dan Metode Pembayaran.
 *   **item-template.blade.php**: Struktur HTML (Template Tag) untuk render baris barang secara dinamis via JS.
 
 ## 🚀 Key Improvements
-1. **DRY Principle**: Logika distribusi yang kompleks dipusatkan di satu tempat (`shared/`).
-2. **Feature Parity**: Tetap mempertahankan perilaku unik (Rembush: Cabang Opsional, Pengajuan: Cabang Wajib).
-3. **Clean Imports**: Menggunakan ES6 Modules untuk ketergantungan antar file yang jelas.
-4. **Maintenance Friendly**: Memperbaiki bug di sistem distribusi akan otomatis memperbaiki kedua form sekaligus.
+1. **DRY Principle**: Logika distribusi dan manajemen teknisi dipusatkan di satu tempat (`shared/` dan shared logic `technician.js`).
+2. **Feature Parity**: Pembelian kini memiliki fitur visual (Drag & Drop) dan fungsional (Technician Dropdown) yang setara dengan Rembushment.
+3. **Flexible Authority**: Fitur "Atas Nama" dibuat opsional di semua form. Jika kosong, sistem otomatis mencatat atas nama penginput sendiri.
+4. **Clean Imports**: Menggunakan ES6 Modules untuk ketergantungan antar file yang jelas.
+5. **Maintenance Friendly**: Perubahan pada logika rekening bank atau UI foto akan terupdate secara konsisten di seluruh modul transaksi.

@@ -110,7 +110,7 @@ export const Config = {
             prefix: 'UP-'
         },
         gudang: {
-            label: 'Gudang',
+            label: 'Pembelian',
             color: 'bg-amber-50 text-amber-600 border-amber-100',
             icon: 'package',
             prefix: 'UP-'

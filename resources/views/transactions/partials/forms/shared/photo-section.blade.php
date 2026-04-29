@@ -61,7 +61,7 @@
         <div id="photo-upload-container"
             class="border-2 border-dashed border-slate-200 rounded-2xl p-8 md:p-12 bg-slate-50/50 hover:bg-slate-50 hover:border-emerald-300 transition-all cursor-pointer relative group flex flex-col items-center justify-center">
 
-            <input type="file" name="reference_photo" id="reference_photo" accept="image/*,application/pdf"
+            <input type="file" name="{{ $inputName ?? 'reference_photo' }}" id="{{ $inputName ?? 'reference_photo' }}" accept="image/*,application/pdf"
                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
 
             <div id="photo-placeholder" class="text-center flex flex-col items-center pointer-events-none">
