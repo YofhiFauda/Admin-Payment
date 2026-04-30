@@ -7,6 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const pengajuanForm = document.getElementById('pengajuan-form');
     if (!pengajuanForm) return;
 
+    // ✅ FIX: Skip if this is edit page (has inline script)
+    // Edit page has its own inline script implementation
+    const isEditPage = pengajuanForm.action.includes('/transactions/') && pengajuanForm.method.toUpperCase() === 'POST' && pengajuanForm.querySelector('input[name="_method"][value="PUT"]');
+    if (isEditPage) {
+        console.log('[form-pengajuan/index.js] Skipping initialization for edit page (using inline script)');
+        return;
+    }
+
     // 1. Initialize Uploader & Image Viewer
     new Uploader();
 
@@ -23,7 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
         '#item-template',
         '#form-total-estimated-price',
         '#total-estimate-global',
-        () => distribution.renderDistribution() // Re-render distribution when totals change
+        () => {
+            // ✅ FIX: Use updateValues() instead of renderDistribution()
+            // This prevents input loss when user is typing
+            if (distribution.selectedBranches && distribution.selectedBranches.length > 0) {
+                distribution.updateValues();
+            }
+        }
     );
 
     // Form Submission & Validation Fixes

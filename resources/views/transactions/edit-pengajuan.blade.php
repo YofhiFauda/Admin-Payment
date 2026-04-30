@@ -13,8 +13,10 @@
                class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i>
             </a>
-            <div>
-                <h2 class="text-lg md:text-xl font-extrabold text-slate-800">Edit Pengajuan Beli</h2>
+            <div class="flex-1">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="text-lg md:text-xl font-extrabold text-slate-800">Edit Pengajuan Beli</h2>
+                </div>
                 <p class="text-xs md:text-sm text-slate-400 mt-1">
                     Perbarui data pengajuan — Ref: <span class="font-bold text-teal-600">{{ $transaction->invoice_number }}</span>
                 </p>
@@ -90,7 +92,7 @@
                                 @if($isSettlement ?? false)
                                     Peninjauan Transaksi (Fase Pelunasan)
                                 @elseif($isAdminOnlyBranch ?? false)
-                                    Peninjauan Transaksi (Mode Admin)
+                                    Peninjauan Transaksi (Mode Admin — Edit Terbatas)
                                 @else
                                     Pengajuan Telah Direvisi oleh Management
                                 @endif
@@ -258,6 +260,9 @@
                 </div>
 
                 <div id="items-container" class="space-y-6">
+                    @if(!$transaction->hasBeenEditedByManagement() && !Auth::user()->isAdmin())
+                    {{-- Only pre-render items via PHP when version switcher is NOT active --}}
+                    {{-- When version switcher is active, JS renderVersion() handles rendering --}}
                     @foreach($itemsToRender as $index => $item)
                         @php
                             $errPrefix = "items." . $index . ".";
@@ -417,6 +422,7 @@
                             </div>
                         </div>
                     @endforeach
+                    @endif {{-- end: !hasBeenEditedByManagement && !isAdmin --}}
                 </div>
                 
                 {{-- Global Total Estimate (Replaces the specific sidebar) --}}
@@ -881,6 +887,33 @@
         z-index: 1;
     }
     
+    /* ✅ UI: Item Highlight — newly added or recently edited items */
+    @keyframes item-highlight-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+        70%  { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .item-card.item-newly-added {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+        animation: item-highlight-pulse 1.5s ease-out;
+    }
+
+    .item-card.item-newly-added .item-header {
+        background-color: #ecfdf5 !important;
+        border-bottom-color: #a7f3d0 !important;
+    }
+
+    @keyframes item-edited-flash {
+        0%   { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3); }
+        100% { border-color: #e2e8f0; box-shadow: none; }
+    }
+
+    .item-card.item-just-edited {
+        animation: item-edited-flash 2s ease-out forwards;
+    }
+
     /* Read-only mode untuk versi pengaju & Admin restricted */
     .version-readonly .item-body input,
     .version-readonly .item-body select,
@@ -1061,8 +1094,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     @php
         $itemCount = count($itemsToRender);
+        // When version switcher is active (management edited or admin), JS handles rendering
+        // so PHP renders 0 items → itemCounter starts at 0
+        $jsItemCount = ($transaction->hasBeenEditedByManagement() || Auth::user()->isAdmin()) ? 0 : $itemCount;
     @endphp
-    let itemCounter = {{ $itemCount }};
+    let itemCounter = {{ $jsItemCount }};
 
     // ───────────────────────────────────────────────────
     // POPULATE SELECTED BRANCHES (Crucial for first render)
@@ -1171,10 +1207,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 priceHid.value = raw;
                 updateGlobalTotal();
                 triggerPriceCheck(card);
+                // ✅ UI: Highlight edited item
+                highlightEditedItem(card);
             });
             priceDisp.addEventListener('blur', () => checkPriceAnomaly(card));
         }
-        if(qtyInput) qtyInput.addEventListener('input', updateGlobalTotal);
+        if(qtyInput) {
+            qtyInput.addEventListener('input', () => {
+                updateGlobalTotal();
+                // ✅ UI: Highlight edited item
+                highlightEditedItem(card);
+            });
+        }
 
         if(customerInput) {
             // ─── Autocomplete Logic ───
@@ -1396,6 +1440,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if(numBox) numBox.textContent = idx + 1;
         });
     }
+
+    // ✅ UI: Highlight item that was just edited
+    function highlightEditedItem(card) {
+        if (!card) return;
+        // Don't re-trigger if already newly-added (stronger highlight)
+        if (card.classList.contains('item-newly-added')) return;
+        card.classList.remove('item-just-edited');
+        // Force reflow to restart animation
+        void card.offsetWidth;
+        card.classList.add('item-just-edited');
+        // Clean up class after animation completes
+        setTimeout(() => card.classList.remove('item-just-edited'), 2500);
+    }
     
     function updateRemoveButtons() {
         const cards = itemsContainer.querySelectorAll('.item-card');
@@ -1436,6 +1493,10 @@ document.addEventListener('DOMContentLoaded', function () {
         updateRemoveButtons();
         
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: newCard });
+
+        // ✅ UI: Highlight newly added item
+        newCard.classList.add('item-newly-added');
+        setTimeout(() => newCard.classList.remove('item-newly-added'), 3000);
         
         setTimeout(() => {
             const input = newCard.querySelector('.input-customer');
@@ -1650,9 +1711,17 @@ document.addEventListener('DOMContentLoaded', function () {
             updateHiddenInputs();
             updateSummaryList();
             validateAndSubmit();
+
+            // ✅ FIX: Always show summary section when branches are selected
+            if (summarySection) {
+                summarySection.classList.remove('hidden');
+                summarySection.style.display = 'block';
+            }
             
             // Re-enforce read-only state for Admin/Read-Only modes
-            if (typeof enforceReadOnly === 'function') enforceReadOnly();
+            // NOTE: Only enforce on items section, NOT on distribution section
+            // to prevent disabling freshly-rendered distribution inputs
+            if (typeof enforceReadOnly === 'function') enforceReadOnly(true);
         }
 
 
@@ -1930,7 +1999,8 @@ document.addEventListener('DOMContentLoaded', function () {
             updateRemoveButtons();
 
             // Re-enforce read-only state for Admin/Read-Only modes
-            if (typeof enforceReadOnly === 'function') enforceReadOnly();
+            // Pass skipDistribution=true to avoid disabling freshly-rendered distribution inputs
+            if (typeof enforceReadOnly === 'function') enforceReadOnly(true);
         }
         
         // ───────────────────────────────────────────────────
@@ -2110,8 +2180,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Admin dan role lain: default ke management version untuk langsung lihat hasil
         // ───────────────────────────────────────────────────
         const defaultVersion = managementItems.length > 0 ? 'management' : 'original';
+        // ✅ FIX: Always call renderVersion here since PHP rendered 0 items
+        // (PHP skips rendering when hasBeenEditedByManagement or isAdmin)
         renderVersion(defaultVersion);
-
         // Update active button state sesuai default
         if (defaultVersion === 'management') {
             document.querySelectorAll('.version-toggle-btn').forEach(b => {
@@ -2201,7 +2272,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // READ-ONLY MODE: Disable all form inputs
     // (Triggered when isReadOnly = true via Blade)
     // ═══════════════════════════════════════
-    function enforceReadOnly() {
+    function enforceReadOnly(skipDistribution = false) {
         const form = document.getElementById('pengajuan-form');
         if (!form) return;
 
@@ -2238,6 +2309,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     el.style.opacity = '1';
                     el.style.filter = 'grayscale(0)';
                     return;
+                }
+                
+                // ✅ FIX: When called from renderDistribution (skipDistribution=true),
+                // skip locking distribution-related elements to prevent them from being
+                // disabled right after being freshly rendered
+                if (skipDistribution) {
+                    const isInDistSection = el.closest('#branch-pills-container') || el.closest('#distribution-list');
+                    if (isInDistSection) return;
                 }
             }
 

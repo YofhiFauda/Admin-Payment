@@ -333,14 +333,15 @@ class TransactionController extends Controller
         // 1. Lock Phase: Status Completed or Menunggu Pelunasan (ALL ROLES are Read-Only)
         $isLocked = ($isCompleted || $isSettlement);
         
-        // 2. Admin Limited Mode: Admin role, Status Menunggu Pembayaran, and NOT Locked
-        $isAdminOnlyBranch = $user->isAdmin() && $isWaitingPayment && !$isLocked;
+        // 2. Admin Limited Mode: Admin role can ONLY edit Cabang & tipe distribusi
+        //    This applies to ALL non-locked statuses for Admin
+        $isAdminOnlyBranch = $user->isAdmin() && !$isLocked;
 
         // 3. General Read-Only: 
         // - True if Locked (Settlement/Completed)
-        // - True if Admin and in Waiting Payment (to trigger JS restrictions)
+        // - True if Admin (to trigger JS restrictions — Admin always has limited access)
         // - Management (Owner/Atasan) is NOT read-only if not locked.
-        $isReadOnly = $isLocked || ($user->isAdmin() && $isWaitingPayment);
+        $isReadOnly = $isLocked || $user->isAdmin();
 
         // ✅ Calculate item count based on transaction type
         if ($transaction->isPengajuan()) {

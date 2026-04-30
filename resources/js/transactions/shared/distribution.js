@@ -148,7 +148,7 @@ export class BranchDistribution {
             }
 
             const rowHtml = `
-            <div class="flex justify-between items-center text-xs md:text-sm bg-white p-3 rounded-xl border border-slate-50">
+            <div class="flex justify-between items-center text-xs md:text-sm bg-white p-3 rounded-xl border border-slate-50" data-branch-index="${idx}">
                 <span class="text-slate-600 font-medium flex items-center gap-2">
                     <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
                     ${branch.name}
@@ -161,6 +161,55 @@ export class BranchDistribution {
 
         const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
         if(this.summaryMethod) this.summaryMethod.textContent = 'METODE: ' + (methodLabels[this.currentMethod] || '-');
+
+        this.updateHiddenInputs();
+        this.updateSummaryList();
+        this.validateAndSubmit();
+    }
+
+    /**
+     * ✅ FIX: Update distribution values without full re-render
+     * This prevents input loss when user is typing
+     */
+    updateValues() {
+        if (!this.distributionList || this.selectedBranches.length === 0) return;
+
+        const totalAmount = parseInt(this.formTotalInput?.value) || 0;
+
+        this.selectedBranches.forEach((branch, idx) => {
+            // Recalculate values based on method
+            if (this.currentMethod === 'equal') {
+                branch.percent = parseFloat((100 / this.selectedBranches.length).toFixed(2));
+                branch.value = totalAmount > 0 ? Math.round(totalAmount / this.selectedBranches.length) : 0;
+            } else if (this.currentMethod === 'percent') {
+                branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+            } else if (this.currentMethod === 'manual') {
+                branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
+            }
+
+            // Update DOM directly without innerHTML
+            const row = this.distributionList.querySelector(`[data-branch-index="${idx}"]`);
+            if (!row) return;
+
+            // For equal method: update both value and percent displays
+            if (this.currentMethod === 'equal') {
+                const valueDisplay = row.querySelector('.font-bold.text-emerald-600');
+                if (valueDisplay) {
+                    valueDisplay.textContent = 'Rp ' + formatNumber(branch.value);
+                }
+            }
+
+            // For percent method: update value display (input stays as is)
+            if (this.currentMethod === 'percent') {
+                const valueDisplay = row.querySelector('.text-emerald-500');
+                if (valueDisplay) {
+                    valueDisplay.textContent = 'Rp ' + formatNumber(branch.value);
+                }
+            }
+
+            // For manual method: percent is calculated, no need to update input
+            // (user is typing in the input, don't override it)
+        });
 
         this.updateHiddenInputs();
         this.updateSummaryList();
