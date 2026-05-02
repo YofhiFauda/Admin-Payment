@@ -1,5 +1,5 @@
 <!-- DESKTOP: Responsive Layout (1024px to 1439px: 2 Rows, >= 1440px: 1 Row) -->
-<div class="hidden lg:flex flex-wrap min-[1510px]:flex-nowrap items-center gap-3 md:gap-4 lg:gap-3">
+<div class="show-on-laptop flex flex-wrap min-[1510px]:flex-nowrap items-center gap-3 md:gap-4 lg:gap-3">
     {{-- <div class="hidden lg:flex flex-wrap min-[1440px]:flex-nowrap items-center gap-3 md:gap-4 lg:gap-3"> --}}
 
         <!-- Group 1: Search, Multi Cabang, Multi Kategori, Date Range Picker -->
@@ -109,7 +109,7 @@
     </div>
 
     <!-- TABLET: 3 Rows Layout (md to lg screens) -->
-    <div class="hidden md:flex lg:hidden flex-col gap-3">
+    <div class="hide-on-laptop hidden md:flex flex-col gap-3">
         <!-- Row 1: Search + Date -->
         <div class="flex gap-3">
             <div class="relative flex-1 group">
@@ -136,7 +136,7 @@
 
         @if(auth()->user()->role !== 'teknisi')
             <!-- Row 2: Branch and Category -->
-            <div class="flex gap-3">
+            <div class="flex gap-3 mt-2">
                 <button type="button"
                     class="js-filter-branch-btn filter-trigger flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-white text-slate-500 border-2 border-slate-200 hover:border-blue-300 group"
                     data-target="menu-filter-branch">

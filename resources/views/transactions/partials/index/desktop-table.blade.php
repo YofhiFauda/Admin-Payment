@@ -1,16 +1,16 @@
 {{-- Table Desktop View --}}
 
-<div class="hidden md:block overflow-x-auto">
-    <table class="w-full text-left border-collapse">
+<div class="show-on-laptop overflow-x-auto">
+    <table class="w-full text-left border-collapse table-compact">
         <thead>
             <tr
                 class="border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-semibold bg-gray-50/50 whitespace-nowrap">
-                <th class="px-5 py-4 text-center w-10 hidden xl:table-cell">No.</th>
+                <th class="px-5 py-4 text-center w-10 hidden min-[1780px]:table-cell">No.</th>
                 <th class="px-5 py-4">Nama Pengaju</th>
                 <th class="px-5 py-4">Jenis</th>
-                <th class="px-5 py-4 hidden lg:table-cell">Kategori</th>
+                <th class="px-5 py-4 hidden min-[1440px]:table-cell">Kategori</th>
                 <th class="px-5 py-4">Status</th>
-                <th class="px-5 py-4 hidden xl:table-cell">Tanggal</th>
+                <th class="px-5 py-4 hidden min-[1580px]:table-cell">Tanggal</th>
                 <th class="px-5 py-4">Nominal</th>
                 <th class="px-5 py-4 text-center">Tindakan</th>
             </tr>

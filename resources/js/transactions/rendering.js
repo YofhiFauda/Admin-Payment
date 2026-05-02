@@ -269,7 +269,7 @@ export function generateDesktopRow(t, rowNum = '') {
 
     return `
             <tr class="hover:bg-blue-50/30 transition-all duration-200 group">
-                <td class="px-5 py-4 text-center hidden xl:table-cell"><span class="text-xs font-bold text-slate-400">${rowNum}</span></td>
+                <td class="px-5 py-4 text-center hidden min-[1780px]:table-cell"><span class="text-xs font-bold text-slate-400">${rowNum}</span></td>
                 <td class="px-5 py-4">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
@@ -296,7 +296,7 @@ export function generateDesktopRow(t, rowNum = '') {
         }
                     </div>
                 </td>
-                <td class="px-5 py-4 text-gray-700 font-medium text-xs whitespace-nowrap hidden lg:table-cell">${t.category_label}</td>
+                <td class="px-5 py-4 text-gray-700 font-medium text-xs whitespace-nowrap hidden min-[1440px]:table-cell">${t.category_label}</td>
                 <td class="px-5 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${color}">
@@ -307,7 +307,7 @@ export function generateDesktopRow(t, rowNum = '') {
                         ${inlineActionsHtml}
                     </div>
                 </td>
-                <td class="px-5 py-4 text-gray-500 font-medium text-xs whitespace-nowrap hidden xl:table-cell">${t.created_at}</td>
+                <td class="px-5 py-4 text-gray-500 font-medium text-xs whitespace-nowrap hidden min-[1580px]:table-cell">${t.created_at}</td>
                 <td class="px-5 py-4 font-bold text-gray-900 whitespace-nowrap">Rp ${t.formatted_amount}</td>
                 <td class="px-5 py-4 whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">

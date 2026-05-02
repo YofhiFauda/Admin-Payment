@@ -28,6 +28,30 @@
                 width: 100%;
             }
         }
+
+        /* ── Responsive Display Logic ── */
+        /* Desktop (>= 1280px) */
+        @media (min-width: 1280px) {
+            .show-on-laptop { display: block !important; }
+            .show-on-laptop.flex { display: flex !important; }
+            .hide-on-laptop { display: none !important; }
+        }
+
+        /* Tablet & Mobile (< 1280px) */
+        @media (max-width: 1279px) {
+            .show-on-laptop { display: none !important; }
+            .hide-on-laptop { display: block !important; }
+            .hide-on-laptop.flex { display: flex !important; }
+            .hide-on-laptop.divide-y { display: block !important; }
+        }
+
+        /* ── Progressive Table Optimization (1280px - 1780px) ── */
+        @media (min-width: 1280px) and (max-width: 1580px) {
+            .table-compact td, .table-compact th {
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+            }
+        }
     </style>
     {{-- Main Content Card --}}
     <div class="bg-white shadow-sm border border-gray-100">
