@@ -1254,9 +1254,9 @@
             // ── Listener untuk NOTIFIKASI SYSTEM (Real-time Toasts & Database Sync) ──
             window.Echo.private(`notifications.${userId}`)
                 .listen('.notification.received', (e) => {
-                    console.log('🔔 Notification Received:', e);
+                    console.log('🔔 [NOTIF] Notification Received:', e);
 
-                    // Update badge counter
+                    // Update badge counter realtime
                     updateNotificationBadge();
 
                     // Determine colors based on type

@@ -350,8 +350,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Bind initial buttons
     bindPendingButtons();
 
-    // Silent auto-refresh pending list every 15 seconds
-    setInterval(refreshPendingList, 15000);
+    // ─── REALTIME: Listen for transaction updates via Reverb ──────────
+    if (typeof window.Echo !== 'undefined') {
+        window.Echo.private('transactions')
+            .listen('.transaction.updated', (e) => {
+                console.log('🔔 [DASHBOARD] Transaction Updated:', e);
+                // Refresh pending list when transaction status changes
+                refreshPendingList();
+            });
+        console.log('📡 [DASHBOARD] Echo listener initialized for pending list');
+    }
     @endif
 
     // ─── Silent Auto-refresh: Branch Cost Breakdown ──────────────────
@@ -432,8 +440,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (startInput) startInput.addEventListener('change', refresh);
         if (endInput)   endInput.addEventListener('change', refresh);
 
-        // Silent auto-refresh every 30 seconds
-        setInterval(silentRefreshBranchCost, 30000);
+        // ─── REALTIME: Listen for transaction updates via Reverb ──────────
+        if (typeof window.Echo !== 'undefined') {
+            window.Echo.private('transactions')
+                .listen('.transaction.updated', (e) => {
+                    console.log('🔔 [DASHBOARD] Transaction Updated (Branch Cost):', e);
+                    // Refresh branch cost breakdown when transaction changes
+                    silentRefreshBranchCost();
+                    // Also refresh hutang amounts if function exists
+                    if (typeof loadAllHutangAmounts === 'function') {
+                        loadAllHutangAmounts();
+                    }
+                });
+            console.log('📡 [DASHBOARD] Echo listener initialized for branch cost breakdown');
+        }
     })();
     @endif
 
