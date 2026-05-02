@@ -14,7 +14,7 @@
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <div class="w-12 h-12 rounded-2xl bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                     <i data-lucide="user-plus" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
@@ -128,7 +128,7 @@
                     Batal
                 </a>
                 <button type="submit" id="submitBtn"
-                        class="flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all active:scale-[0.98] min-w-[200px]">
+                        class="flex items-center justify-center gap-2 px-8 py-3.5 bg-linear-to-r from-sky-600 to-sky-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-sky-500/30 hover:shadow-2xl hover:shadow-sky-500/40 hover:-translate-y-0.5 transition-all active:scale-[0.98] min-w-[200px]">
                     <span id="btnText" class="flex items-center gap-2">
                         <i data-lucide="user-plus" class="w-5 h-5"></i>
                         Daftarkan Pengguna

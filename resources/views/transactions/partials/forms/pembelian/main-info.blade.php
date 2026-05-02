@@ -1,7 +1,7 @@
 {{-- ══════════════════════════════════════════════════ --}}
 {{-- INFORMASI UTAMA: PEMBELIAN                       --}}
 {{-- ══════════════════════════════════════════════════ --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 mb-8 md:mb-10">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-8 md:mb-10">
     
     {{-- Tanggal --}}
     <div>
@@ -25,8 +25,16 @@
         </div>
     </div>
 
+    {{-- Vendor --}}
+    <div>
+        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Toko / Vendor (Opsional)</label>
+        <input type="text" name="vendor" id="vendor" value="{{ old('vendor') }}"
+            placeholder="Misal: Toko Bangunan Jaya"
+            class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all" />
+    </div>
+
     {{-- Metode Pembayaran --}}
-    <div class="md:col-span-2">
+    <div>
         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Metode Pembayaran</label>
         <div class="relative">
             <select name="payment_method" id="payment_method" required
@@ -41,7 +49,7 @@
 
     {{-- Form Rekening/E-Wallet khusus Transfer Penjual (Parity with Rembush) --}}
     <div id="bank_details_section"
-        class="md:col-span-4 hidden bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 md:p-5 mt-2">
+        class="md:col-span-2 hidden bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 md:p-5 mt-2">
         <div class="flex items-center gap-2 mb-4">
             <i data-lucide="landmark" class="w-4 h-4 text-blue-500"></i>
             <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider">Informasi Rekening / E-Wallet Penjual</h4>
@@ -66,18 +74,12 @@
         </div>
     </div>
 
-    {{-- Vendor --}}
-    <div class="md:col-span-4">
-        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Toko / Vendor (Opsional)</label>
-        <input type="text" name="vendor" id="vendor" value="{{ old('vendor') }}"
-            placeholder="Misal: Toko Bangunan Jaya"
-            class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all" />
-    </div>
-
     {{-- Keterangan --}}
-    <div class="md:col-span-4">
+    <div class="md:col-span-2">
         <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Keterangan Tambahan</label>
         <textarea name="description" id="description" rows="2" placeholder="Detail pembelian..."
             class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none resize-none transition-all">{{ old('description') }}</textarea>
     </div>
 </div>
+
+

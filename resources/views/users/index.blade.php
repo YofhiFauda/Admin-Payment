@@ -3,13 +3,13 @@
 @section('page-title', 'Kelola Pengguna')
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+<div class="bg-white shadow-sm border border-slate-200 overflow-hidden">
     {{-- Card Header & Toolbar --}}
     <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/30">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             {{-- Left: Stats & Title --}}
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <div class="w-12 h-12 rounded-2xl bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                     <i data-lucide="users" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
@@ -51,7 +51,7 @@
                 <div class="w-px h-8 bg-slate-200 hidden sm:block mx-1"></div>
 
                 <a href="{{ route('users.create') }}"
-                   class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
+                   class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-linear-to-r from-sky-600 to-sky-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-sky-600/20 hover:shadow-xl hover:shadow-sky-500/30 transition-all active:scale-[0.98]">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     <span class="sm:hidden lg:inline">Tambah Pengguna</span>
                     <span class="hidden sm:inline lg:hidden">Tambah</span>
@@ -81,7 +81,7 @@
                         <td class="px-6 py-4 text-sm text-slate-400 font-bold tracking-tight">{{ $users->firstItem() + $index }}</td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-sm font-black flex-shrink-0 group-hover:scale-110 transition-transform">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/10 border border-blue-100 flex items-center justify-center text-blue-600 text-sm font-black flex-shrink-0 group-hover:scale-110 transition-transform">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
                                 <div>
@@ -161,7 +161,7 @@
             <div class="p-4 active:bg-slate-50 transition-colors" id="user-card-{{ $user->id }}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-base font-black flex-shrink-0">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600/10 to-blue-600/10 border border-blue-100 flex items-center justify-center text-blue-600 text-base font-black flex-shrink-0">
                             {{ strtoupper(substr($user->name, 0, 1)) }}
                         </div>
                         <div class="min-w-0">

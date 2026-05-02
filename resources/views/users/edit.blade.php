@@ -14,7 +14,7 @@
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <div class="w-12 h-12 rounded-2xl bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                     <i data-lucide="user-cog" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
@@ -91,7 +91,7 @@
                     Batal
                 </a>
                 <button type="submit"
-                        class="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
+                        class="px-6 py-2.5 bg-linear-to-r from-sky-600 to-sky-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
                     <i data-lucide="save" class="w-4 h-4 inline mr-1"></i> Simpan Perubahan
                 </button>
             </div>

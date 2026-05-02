@@ -405,7 +405,7 @@
                 
                 {{-- 1. Brand / Logo --}}
                 <div class="flex items-center gap-2 sm:gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
+                    <div class="w-8 h-8 rounded-lg bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-md shrink-0">
                         <i data-lucide="receipt" class="w-4 h-4 text-white"></i>
                     </div>
                     <span class="font-bold text-lg sm:text-xl text-slate-800 tracking-tight hidden xs:block">FinanceOps</span>
@@ -488,7 +488,7 @@
                                     <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                         class="w-12 h-12 rounded-full object-cover border-2 border-white shadow">
                                 @else
-                                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -552,31 +552,31 @@
             transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
             <div class="p-4 flex items-center gap-3 border-b border-slate-100 financeops-logo-container">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-md shrink-0">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
                 <h1 class="font-bold text-lg text-slate-800 financeops-text">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 px-4 md:px-6 py-6 space-y-2 overflow-y-auto min-h-0 scrollbar-hide text-xs sm:text-sm">
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-2 overflow-y-auto min-h-0 custom-scrollbar text-xs sm:text-sm">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
                     {{ request()->routeIs('dashboard') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
                 </a>
 
                 <a href="{{ route('transactions.create') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Rembush</span>
                 </a>
 
                 @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                 <a href="{{ route('pembelian.loading') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Pembelian</span>
                 </a>
                 @endif
@@ -588,7 +588,7 @@
                 @endphp
                 <div>
                     <button id="pengeluaran-lain-toggle" onclick="togglePengeluaranLain()"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
                         {{ $isPengeluaranLain ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-600' }}">
                         <i data-lucide="wallet" class="w-5 h-5 flex-shrink-0"></i>
                         <span class="flex-1 text-left sidebar-text">Input Pengeluaran Lain</span>
@@ -596,24 +596,24 @@
                     </button>
                     <div id="pengeluaran-lain-menu" class="mt-1 ml-4 pl-4 border-l-2 border-slate-200 space-y-1 {{ $isPengeluaranLain ? '' : 'hidden' }}">
                         <a href="{{ route('pengeluaran-lain.bayar-hutang.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/bayar-hutang*') ? 'bg-red-50 text-red-600' : 'hover:bg-slate-100 text-slate-600' }}">
                             <i data-lucide="credit-card" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Bayar Hutang</span>
                         </a>
                         <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/piutang-usaha*') ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 text-slate-600' }}">
                             <i data-lucide="trending-up" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Piutang Usaha</span>
                         </a>
                         @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                         <a href="{{ route('pengeluaran-lain.prive.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/prive*') ? 'bg-purple-50 text-purple-600' : 'hover:bg-slate-100 text-slate-600' }}">
                             <i data-lucide="user-check" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Prive</span>
                         </a>
                         @endif
                         <a href="{{ route('pengeluaran-lain.gaji.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/gaji*') ? 'bg-green-50 text-green-600' : 'hover:bg-slate-100 text-slate-600' }}">
                             <i data-lucide="banknote" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Gaji</span>
                         </a>
@@ -622,48 +622,48 @@
                 @endif
 
                 <a href="{{ route('transactions.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="clock" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Daftar Transaksi</span>
                 </a>
 
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2 mt-4">Administrasi</p>
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Pengguna</span>
                 </a>
 
                 <a href="{{ route('branches.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="building-2" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Cabang</span>
                 </a>
 
                 <a href="{{ route('transaction-categories.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="tags" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Kategori</span>
                 </a>
 
                 @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bookmark" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Referensi Harga</span>
                 </a>
                 @endif
 
                 <a href="{{ route('activity-logs.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Log Aktivitas</span>
                 </a>
 
                 <a href="{{ route('notifications.index') }}" 
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative
-                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative shrink-0
+                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bell" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Notifikasi</span>
                     <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>
@@ -682,7 +682,7 @@
                             <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                 class="w-9 h-9 rounded-full object-cover border-2 border-white shadow">
                         @else
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                            <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         @endif
@@ -726,7 +726,7 @@
                         <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                             class="w-9 h-9 rounded-full object-cover shrink-0">
                     @else
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0">
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
                     @endif

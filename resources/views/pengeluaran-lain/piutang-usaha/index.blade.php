@@ -8,7 +8,7 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg bg-linear-to-r from-sky-600 to-sky-600">
                 <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
             </div>
             <div>
