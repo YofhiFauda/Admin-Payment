@@ -206,6 +206,15 @@
                 visibility: visible;
                 opacity: 1;
             }
+
+            /* ── Stacking Context for Tooltips ── */
+            #desktop-tbody tr {
+                position: relative;
+            }
+            #desktop-tbody tr:hover {
+                z-index: 50;
+                background-color: rgba(59, 130, 246, 0.05);
+            }
         </style>
 @endsection
 

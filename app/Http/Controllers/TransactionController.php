@@ -1312,7 +1312,7 @@ class TransactionController extends Controller
                 'created_at', 'submitted_by',
                 'has_price_anomaly',
                 'ai_status', 'upload_id', 'confidence',
-                'payment_method', 'rejection_reason', 'specs'
+                'payment_method', 'rejection_reason', 'specs', 'items'
             ]);
 
         // Role-based filtering
@@ -1401,7 +1401,7 @@ class TransactionController extends Controller
                 'ai_status', 'upload_id', 'confidence',
                 'payment_method', 'rejection_reason', 'specs',
                 // ✅ Payment proof fields (required by status_label & frontend)
-                'invoice_file_path', 'bukti_transfer', 'foto_penyerahan',
+                'invoice_file_path', 'bukti_transfer', 'foto_penyerahan', 'items'
             ]);
 
         // Role-based filtering
@@ -1549,6 +1549,7 @@ class TransactionController extends Controller
             'invoice_file_path' => $t->invoice_file_path,
             'bukti_transfer'    => $t->bukti_transfer,
             'foto_penyerahan'   => $t->foto_penyerahan,
+            'items'             => $t->normalized_items,
             // ✅ Search text optimized
             'search_text' => strtolower(implode(' ', array_filter([
                 $t->invoice_number ?? '',

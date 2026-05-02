@@ -28,53 +28,119 @@
         /* Sidebar Collapse Animations & Styles */
         @media (min-width: 768px) {
             #mobile-sidebar {
-                transition: width 0.3s ease-in-out;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: width;
             }
             #mobile-sidebar.sidebar-collapsed {
                 width: 88px !important;
             }
+
+            /* Smoothly hide text labels */
+            .sidebar-text, 
+            .financeops-text,
+            .profile-details,
+            #pengeluaran-lain-chevron,
+            #sidebarProfileChevron,
+            #mobile-sidebar nav p.text-xs {
+                transition: opacity 0.3s ease, transform 0.3s ease, width 0.3s ease, margin 0.3s ease;
+                opacity: 1;
+                transform: translateX(0);
+                white-space: nowrap;
+                display: inline-block;
+            }
+
             #mobile-sidebar.sidebar-collapsed .sidebar-text,
-            #mobile-sidebar.sidebar-collapsed .text-xs.font-semibold.text-slate-400.uppercase {
-                display: none !important;
-            }
-            #mobile-sidebar.sidebar-collapsed a,
-            #mobile-sidebar.sidebar-collapsed button#pengeluaran-lain-toggle {
-                justify-content: center !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                gap: 0 !important;
-            }
-            #mobile-sidebar.sidebar-collapsed i[data-lucide] {
-                margin: 0 !important;
-            }
-            #mobile-sidebar.sidebar-collapsed h1.financeops-text,
-            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-chevron,
+            #mobile-sidebar.sidebar-collapsed .financeops-text,
             #mobile-sidebar.sidebar-collapsed .profile-details,
-            #mobile-sidebar.sidebar-collapsed #sidebarProfileChevron {
-                display: none !important;
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-chevron,
+            #mobile-sidebar.sidebar-collapsed #sidebarProfileChevron,
+            #mobile-sidebar.sidebar-collapsed nav p.text-xs {
+                opacity: 0;
+                transform: translateX(-10px);
+                width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                pointer-events: none;
+                overflow: hidden;
+                flex: 0 0 0 !important; /* Force flex-1 to collapse */
             }
-            #mobile-sidebar.sidebar-collapsed .financeops-logo-container {
-                justify-content: center !important;
+
+            /* Adjust nav items layout */
+            #mobile-sidebar nav {
+                transition: padding 0.3s ease;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            #mobile-sidebar.sidebar-collapsed nav {
                 padding-left: 0 !important;
                 padding-right: 0 !important;
-                gap: 0 !important;
+                align-items: center;
             }
-            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu {
-                padding-left: 0 !important;
-                margin-left: 0 !important;
-                border: none !important;
+
+            #mobile-sidebar nav a, 
+            #mobile-sidebar button#pengeluaran-lain-toggle {
+                transition: all 0.3s ease;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
             }
-            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu a {
-                padding: 12px 0 !important;
-            }
+
+            #mobile-sidebar.sidebar-collapsed a,
+            #mobile-sidebar.sidebar-collapsed button#pengeluaran-lain-toggle,
             #mobile-sidebar.sidebar-collapsed #sidebarProfileBtn {
                 justify-content: center !important;
-                padding: 12px 0 !important;
+                padding: 0 !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: 48px;
+                height: 48px;
+                gap: 0 !important;
+                border-radius: 12px;
             }
+
+            #mobile-sidebar.sidebar-collapsed .financeops-logo-container {
+                justify-content: center !important;
+                padding: 1rem 0 !important;
+                gap: 0 !important;
+            }
+
+            #mobile-sidebar.sidebar-collapsed i[data-lucide] {
+                margin: 0 !important;
+                transition: transform 0.3s ease;
+                width: 20px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+
+            /* Special handling for pengeluaran lain menu */
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu {
+                padding: 0 !important;
+                margin: 4px 0 8px 0 !important;
+                border: none !important;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+            }
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu a {
+                width: 40px;
+                height: 40px;
+                padding: 0 !important;
+                justify-content: center;
+                margin: 0 !important;
+            }
+
             #mobile-sidebar.sidebar-collapsed .notif-badge-sidebar {
                 position: absolute;
-                top: 8px;
-                right: 28px;
+                top: 4px;
+                right: 4px;
+                transform: scale(0.75);
+                min-width: 18px;
+                height: 18px;
+                font-size: 9px;
             }
         }
     </style>
@@ -497,20 +563,20 @@
 
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('dashboard') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('dashboard') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
                 </a>
 
                 <a href="{{ route('transactions.create') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.create') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Rembush</span>
                 </a>
 
                 @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                 <a href="{{ route('pembelian.loading') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('pembelian.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Pembelian</span>
                 </a>
                 @endif
@@ -557,7 +623,7 @@
 
                 <a href="{{ route('transactions.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="clock" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Daftar Transaksi</span>
                 </a>
 
@@ -565,39 +631,39 @@
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Pengguna</span>
                 </a>
 
                 <a href="{{ route('branches.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('branches.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="building-2" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Cabang</span>
                 </a>
 
                 <a href="{{ route('transaction-categories.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transaction-categories.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="tags" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Kategori</span>
                 </a>
 
                 @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('price-index.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bookmark" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Referensi Harga</span>
                 </a>
                 @endif
 
                 <a href="{{ route('activity-logs.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Log Aktivitas</span>
                 </a>
 
                 <a href="{{ route('notifications.index') }}" 
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative
-                    {{ request()->routeIs('notifications.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-500 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bell" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Notifikasi</span>
                     <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>

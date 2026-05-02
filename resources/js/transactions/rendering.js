@@ -1,8 +1,19 @@
 import { Config, userRole, canManage, isOwner, isAdmin } from './config.js';
+import { formatNumber } from './utils.js';
 
 // Helper: Branch Tags Rendering
-export function renderBranchTags(branches, maxVisible = 2) {
+export function renderBranchTags(branches, maxVisible = 2, index = null) {
     if (!branches || branches.length === 0) return '';
+    const isTopRow = index !== null && index !== '' && parseInt(index) <= 3;
+    
+    const positionClasses = isTopRow 
+        ? 'top-full mt-2 translate-y-[-4px]' 
+        : 'bottom-full mb-2 translate-y-[4px]';
+    
+    const arrowClasses = isTopRow
+        ? 'bottom-full -mb-1 border-b-4 border-b-slate-900'
+        : 'top-full -mt-1 border-4 border-t-slate-900';
+
     const icon = '<i data-lucide="git-branch" class="w-2.5 h-2.5 mr-0.5"></i>';
     const visibleTags = branches.slice(0, maxVisible).map(b =>
         `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${icon} ${escapeHtml(b)}</span>`
@@ -24,7 +35,7 @@ export function renderBranchTags(branches, maxVisible = 2) {
                     +${remaining}
                 </span>
                 <!-- Tooltip Premium -->
-                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 opacity-0 invisible group-hover/branch:opacity-100 group-hover/branch:visible transition-all duration-200 z-[100] pointer-events-none">
+                <div class="absolute left-1/2 -translate-x-1/2 w-48 opacity-0 invisible group-hover/branch:opacity-100 group-hover/branch:visible transition-all duration-200 z-[100] pointer-events-none transform group-hover/branch:translate-y-0 ${positionClasses}">
                     <div class="bg-slate-900 text-white p-2.5 rounded-xl shadow-2xl border border-white/10 backdrop-blur-md">
                         <div class="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-white/10">
                             <i data-lucide="git-branch" class="w-3 h-3 text-blue-400"></i>
@@ -35,9 +46,64 @@ export function renderBranchTags(branches, maxVisible = 2) {
                         </div>
                     </div>
                     <!-- Arrow -->
-                    <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
+                    <div class="absolute left-1/2 -translate-x-1/2 border-x-4 border-x-transparent ${arrowClasses}"></div>
                 </div>
             </div>`;
+}
+
+// Helper: Items Tooltip Rendering
+export function renderItemsTooltip(items, index = null) {
+    if (!items || !Array.isArray(items) || items.length === 0) return '';
+
+    const isTopRow = index !== null && index !== '' && parseInt(index) <= 3;
+    
+    const positionClasses = isTopRow 
+        ? 'top-full mt-3 translate-y-[-8px]' 
+        : 'bottom-full mb-3 translate-y-[8px]';
+    
+    const arrowClasses = isTopRow
+        ? 'bottom-full -mb-1.5 border-b-[6px] border-b-slate-900/95'
+        : 'top-full -mt-1.5 border-t-[6px] border-t-slate-900/95';
+
+    const itemsHtml = items.map(item => {
+        const name = item.customer || item.nama_barang || item.nama || 'Item';
+        const qty = parseFloat(item.quantity || item.qty || 1);
+        const price = parseFloat(item.estimated_price || item.harga_satuan || 0);
+        const total = qty * price;
+
+        return `
+            <div class="flex items-start justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[11px] font-bold text-white truncate" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+                    <div class="text-[10px] text-gray-400 font-medium">${qty} x Rp ${formatNumber(price)}</div>
+                </div>
+                <div class="text-[11px] font-black text-emerald-400 shrink-0">Rp ${formatNumber(total)}</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="relative inline-block group/items">
+            <span class="cursor-help p-1 rounded-md hover:bg-slate-100 hover:text-amber-500 transition-colors inline-flex">
+                <i data-lucide="info" class="w-4.5 h-4.5 text-amber-500 group-hover/items:text-blue-500 transition-colors"></i>
+            </span>
+            <!-- Tooltip Premium -->
+            <div class="absolute left-1/2 -translate-x-1/2 w-64 opacity-0 invisible group-hover/items:opacity-100 group-hover/items:visible transition-all duration-300 z-[110] pointer-events-none transform group-hover/items:translate-y-0 ${positionClasses}">
+                <div class="bg-slate-900/95 backdrop-blur-xl p-3 rounded-2xl shadow-2xl border border-white/10 ring-1 ring-black/50">
+                    <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-white/10">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span class="text-[10px] font-black text-gray-400 tracking-widest uppercase">Rincian Barang</span>
+                        </div>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 bg-white/5 text-white/40 rounded-full">${items.length} Item</span>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                        ${itemsHtml}
+                    </div>
+                </div>
+                <!-- Arrow -->
+                <div class="absolute left-1/2 -translate-x-1/2 border-x-[6px] border-x-transparent ${arrowClasses}"></div>
+            </div>
+        </div>`;
 }
 
 // Helper: Escape HTML
@@ -278,7 +344,7 @@ export function generateDesktopRow(t, rowNum = '') {
                         <div>
                             <div class="font-bold text-gray-900">${t.submitter_name || '-'}</div>
                             <div class="text-[11px] text-gray-400 font-medium">${t.invoice_number}</div>
-                            ${t.branches && t.branches.length > 0 ? `<div class="flex items-center gap-1 mt-1 flex-wrap">${renderBranchTags(t.branches, 2)}</div>` : ''}
+                            ${t.branches && t.branches.length > 0 ? `<div class="flex items-center gap-1 mt-1 flex-wrap">${renderBranchTags(t.branches, 2, rowNum)}</div>` : ''}
                         </div>
                     </div>
                 </td>
@@ -308,7 +374,12 @@ export function generateDesktopRow(t, rowNum = '') {
                     </div>
                 </td>
                 <td class="px-5 py-4 text-gray-500 font-medium text-xs whitespace-nowrap hidden min-[1580px]:table-cell">${t.created_at}</td>
-                <td class="px-5 py-4 font-bold text-gray-900 whitespace-nowrap">Rp ${t.formatted_amount}</td>
+                <td class="px-5 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-900">Rp ${t.formatted_amount}</span>
+                        ${renderItemsTooltip(t.items, rowNum)}
+                    </div>
+                </td>
                 <td class="px-5 py-4 whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                         <button type="button" onclick="openViewModal(${t.id})" title="Lihat Detail"
