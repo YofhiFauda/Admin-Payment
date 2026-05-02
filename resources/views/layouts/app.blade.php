@@ -24,6 +24,59 @@
             from { opacity: 0; margin-top: 8px; }
             to { opacity: 1; margin-top: 0; }
         }
+
+        /* Sidebar Collapse Animations & Styles */
+        @media (min-width: 768px) {
+            #mobile-sidebar {
+                transition: width 0.3s ease-in-out;
+            }
+            #mobile-sidebar.sidebar-collapsed {
+                width: 88px !important;
+            }
+            #mobile-sidebar.sidebar-collapsed .sidebar-text,
+            #mobile-sidebar.sidebar-collapsed .text-xs.font-semibold.text-slate-400.uppercase {
+                display: none !important;
+            }
+            #mobile-sidebar.sidebar-collapsed a,
+            #mobile-sidebar.sidebar-collapsed button#pengeluaran-lain-toggle {
+                justify-content: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                gap: 0 !important;
+            }
+            #mobile-sidebar.sidebar-collapsed i[data-lucide] {
+                margin: 0 !important;
+            }
+            #mobile-sidebar.sidebar-collapsed h1.financeops-text,
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-chevron,
+            #mobile-sidebar.sidebar-collapsed .profile-details,
+            #mobile-sidebar.sidebar-collapsed #sidebarProfileChevron {
+                display: none !important;
+            }
+            #mobile-sidebar.sidebar-collapsed .financeops-logo-container {
+                justify-content: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                gap: 0 !important;
+            }
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu {
+                padding-left: 0 !important;
+                margin-left: 0 !important;
+                border: none !important;
+            }
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu a {
+                padding: 12px 0 !important;
+            }
+            #mobile-sidebar.sidebar-collapsed #sidebarProfileBtn {
+                justify-content: center !important;
+                padding: 12px 0 !important;
+            }
+            #mobile-sidebar.sidebar-collapsed .notif-badge-sidebar {
+                position: absolute;
+                top: 8px;
+                right: 28px;
+            }
+        }
     </style>
     
     <style>
@@ -432,11 +485,11 @@
             text-slate-700 flex flex-col shrink-0 z-50 
             transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
-            <div class="p-4 flex items-center gap-3 border-b border-slate-100">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+            <div class="p-4 flex items-center gap-3 border-b border-slate-100 financeops-logo-container">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
-                <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
+                <h1 class="font-bold text-lg text-slate-800 financeops-text">FinanceOps</h1>
             </div>
 
             <nav class="flex-1 px-4 md:px-6 py-6 space-y-2 overflow-y-auto min-h-0 scrollbar-hide text-xs sm:text-sm">
@@ -445,20 +498,20 @@
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('dashboard') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="home" class="w-4 h-4"></i> Dashboard
+                    <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
                 </a>
 
                 <a href="{{ route('transactions.create') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transactions.create') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
+                    <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Rembush</span>
                 </a>
 
                 @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                 <a href="{{ route('pembelian.loading') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('pembelian.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="package" class="w-4 h-4"></i> Input Pembelian
+                    <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Pembelian</span>
                 </a>
                 @endif
 
@@ -471,32 +524,32 @@
                     <button id="pengeluaran-lain-toggle" onclick="togglePengeluaranLain()"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                         {{ $isPengeluaranLain ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-600' }}">
-                        <i data-lucide="wallet" class="w-4 h-4 flex-shrink-0"></i>
-                        <span class="flex-1 text-left">Input Pengeluaran Lain</span>
-                        <i data-lucide="chevron-down" id="pengeluaran-lain-chevron" class="w-4 h-4 transition-transform duration-200 {{ $isPengeluaranLain ? 'rotate-180' : '' }}"></i>
+                        <i data-lucide="wallet" class="w-5 h-5 flex-shrink-0"></i>
+                        <span class="flex-1 text-left sidebar-text">Input Pengeluaran Lain</span>
+                        <i data-lucide="chevron-down" id="pengeluaran-lain-chevron" class="w-5 h-5 shrink-0 transition-transform duration-200 {{ $isPengeluaranLain ? 'rotate-180' : '' }}"></i>
                     </button>
                     <div id="pengeluaran-lain-menu" class="mt-1 ml-4 pl-4 border-l-2 border-slate-200 space-y-1 {{ $isPengeluaranLain ? '' : 'hidden' }}">
                         <a href="{{ route('pengeluaran-lain.bayar-hutang.index') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                             {{ request()->is('pengeluaran-lain/bayar-hutang*') ? 'bg-red-50 text-red-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="credit-card" class="w-4 h-4 flex-shrink-0"></i> Bayar Hutang
+                            <i data-lucide="credit-card" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Bayar Hutang</span>
                         </a>
                         <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                             {{ request()->is('pengeluaran-lain/piutang-usaha*') ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="trending-up" class="w-4 h-4 flex-shrink-0"></i> Piutang Usaha
+                            <i data-lucide="trending-up" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Piutang Usaha</span>
                         </a>
                         @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                         <a href="{{ route('pengeluaran-lain.prive.index') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                             {{ request()->is('pengeluaran-lain/prive*') ? 'bg-purple-50 text-purple-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="user-check" class="w-4 h-4 flex-shrink-0"></i> Prive
+                            <i data-lucide="user-check" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Prive</span>
                         </a>
                         @endif
                         <a href="{{ route('pengeluaran-lain.gaji.index') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                             {{ request()->is('pengeluaran-lain/gaji*') ? 'bg-green-50 text-green-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="banknote" class="w-4 h-4 flex-shrink-0"></i> Gaji
+                            <i data-lucide="banknote" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Gaji</span>
                         </a>
                     </div>
                 </div>
@@ -505,47 +558,47 @@
                 <a href="{{ route('transactions.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transactions.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
+                    <i data-lucide="clock" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Daftar Transaksi</span>
                 </a>
 
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Administrasi</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2 mt-4">Administrasi</p>
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="users" class="w-4 h-4"></i> Kelola Pengguna
+                    <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Pengguna</span>
                 </a>
 
                 <a href="{{ route('branches.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('branches.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="building-2" class="w-4 h-4"></i> Kelola Cabang
+                    <i data-lucide="building-2" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Cabang</span>
                 </a>
 
                 <a href="{{ route('transaction-categories.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('transaction-categories.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="tags" class="w-4 h-4"></i> Kelola Kategori
+                    <i data-lucide="tags" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Kategori</span>
                 </a>
 
                 @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('price-index.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="bookmark" class="w-4 h-4"></i> Referensi Harga
+                    <i data-lucide="bookmark" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Referensi Harga</span>
                 </a>
                 @endif
 
                 <a href="{{ route('activity-logs.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
                     {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="file-text" class="w-4 h-4"></i> Log Aktivitas
+                    <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Log Aktivitas</span>
                 </a>
 
                 <a href="{{ route('notifications.index') }}" 
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative
                     {{ request()->routeIs('notifications.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
+                    <i data-lucide="bell" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Notifikasi</span>
                     <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>
                 @endif
@@ -611,7 +664,7 @@
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
                     @endif
-                    <div class="flex-1 min-w-0 text-left">
+                    <div class="flex-1 min-w-0 text-left profile-details">
                         <p class="font-bold text-slate-800 text-sm leading-tight truncate">{{ Auth::user()->name }}</p>
                         <p class="text-xs text-slate-500 truncate mt-0.5">{{ ucfirst(Auth::user()->role) }}</p>
                     </div>
@@ -621,33 +674,51 @@
         </aside>
 
         @php
-            $hideHeaderOnPc = request()->routeIs('transactions.create') 
-                || request()->routeIs('notifications.index') 
-                || request()->routeIs('activity-logs.index') 
-                || request()->routeIs('transactions.confirm')
-                || request()->routeIs('transaction-categories.index');
+            $hideHeaderOnPc = false; // Always show header on PC now for Breadcrumbs and sidebar toggle
         @endphp
 
         <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden page-enter">
-            @if($hideHeaderOnPc)
-                {{-- Mobile-only: minimal bar with just hamburger --}}
-                <div class="md:hidden bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 py-3 border-b border-gray-100 shrink-0">
-                    <button onclick="toggleMobileSidebar()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                        <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
+            <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center border-b border-gray-100 shrink-0">
+                <div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                    {{-- Mobile Sidebar Toggle --}}
+                    <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
-                </div>
-            @else
-                <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center border-b border-gray-100 shrink-0">
-                    <div class="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-                        <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                            <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
-                        </button>
-                        <h2 class="text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate">
+                    {{-- Desktop Sidebar Toggle --}}
+                    <button onclick="toggleDesktopSidebar()" class="hidden md:flex p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+
+                    <div class="flex items-center min-w-0 flex-1">
+                        {{-- Breadcrumb for Desktop --}}
+                        <nav class="hidden md:flex text-sm font-medium text-slate-500" aria-label="Breadcrumb">
+                            <ol class="inline-flex items-center space-x-1 md:space-x-2">
+                                <li class="inline-flex items-center">
+                                    <a href="{{ route('dashboard') }}" class="inline-flex items-center hover:text-indigo-600 transition-colors text-xs">
+                                        <i data-lucide="home" class="w-4 h-4 mr-1.5"></i>
+                                        Home
+                                    </a>
+                                </li>
+                                @hasSection('breadcrumb')
+                                    @yield('breadcrumb')
+                                @else
+                                    <li>
+                                        <div class="flex items-center">
+                                            <i data-lucide="chevron-right" class="w-4 h-4 mx-1.5 text-slate-400"></i>
+                                            <span class="text-slate-800 font-reguler text-xs">@yield('page-title', 'Halaman')</span>
+                                        </div>
+                                    </li>
+                                @endif
+                            </ol>
+                        </nav>
+                        
+                        {{-- Page Title for Mobile --}}
+                        <h2 class="md:hidden text-lg font-bold text-slate-900 tracking-tight truncate">
                             @yield('page-title', '')
                         </h2>
                     </div>
-                </header>
-            @endif
+                </div>
+            </header>
 
             {{-- <div class="flex-1 overflow-y-auto lg:p-6"> --}}
             <div class="flex-1 overflow-y-auto scrollbar-hide">
@@ -873,15 +944,36 @@
         document.body.style.overflow = sidebar.classList.contains('-translate-x-full') ? '' : 'hidden';
     }
 
+    function toggleDesktopSidebar() {
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (!sidebar) return;
+        sidebar.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('sidebar-collapsed'));
+    }
+
     function togglePengeluaranLain() {
         const menu    = document.getElementById('pengeluaran-lain-menu');
         const chevron = document.getElementById('pengeluaran-lain-chevron');
         if (!menu) return;
+        
+        // If sidebar is collapsed, expanding this menu might look weird, so let's uncollapse sidebar first if needed
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (sidebar && sidebar.classList.contains('sidebar-collapsed') && window.innerWidth >= 768) {
+            toggleDesktopSidebar();
+        }
+
         menu.classList.toggle('hidden');
         chevron && chevron.classList.toggle('rotate-180');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (sidebar && localStorage.getItem('sidebar-collapsed') === 'true') {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.add('sidebar-collapsed');
+            }
+        }
+
         if(typeof NProgress !== 'undefined'){
             NProgress.configure({ showSpinner: false, minimum: 0.1 });
             NProgress.done();

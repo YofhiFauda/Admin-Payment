@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Anomali Harga — Price Index')
+@section('page-title', 'Anomali Harga — Price Index')
 
 @section('content')
 <div class="space-y-6 p-6">
