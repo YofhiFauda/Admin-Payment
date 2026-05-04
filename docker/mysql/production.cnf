@@ -1,0 +1,67 @@
+# ═══════════════════════════════════════════════════════════════════
+#  MySQL Production Configuration
+#  Optimized for performance
+# ═══════════════════════════════════════════════════════════════════
+
+[mysqld]
+# General
+default_authentication_plugin = mysql_native_password
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Connection
+max_connections = 200
+max_connect_errors = 100
+connect_timeout = 10
+wait_timeout = 600
+interactive_timeout = 600
+
+# Thread cache
+thread_cache_size = 16
+thread_stack = 256K
+
+# Table cache
+table_open_cache = 4000
+table_definition_cache = 2000
+
+# Query cache (disabled in MySQL 8.0, use Redis instead)
+# query_cache_type = 0
+
+# Temporary tables
+tmp_table_size = 64M
+max_heap_table_size = 64M
+
+# InnoDB settings
+innodb_buffer_pool_size = 1G
+innodb_log_file_size = 256M
+innodb_log_buffer_size = 16M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+innodb_file_per_table = 1
+innodb_open_files = 400
+innodb_io_capacity = 400
+innodb_io_capacity_max = 2000
+
+# Binary logging (for replication and point-in-time recovery)
+log_bin = /var/lib/mysql/mysql-bin
+binlog_format = ROW
+binlog_expire_logs_seconds = 604800
+max_binlog_size = 100M
+
+# Slow query log
+slow_query_log = 1
+slow_query_log_file = /var/lib/mysql/slow-query.log
+long_query_time = 2
+log_queries_not_using_indexes = 1
+
+# Error log
+log_error = /var/lib/mysql/error.log
+
+# General log (disable in production for performance)
+general_log = 0
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4

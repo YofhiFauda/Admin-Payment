@@ -1,0 +1,365 @@
+name: Deploy to Production (Zero Downtime)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ─────────────────────────────────────────
+  #  Test & Build
+  # ─────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testing
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, json, bcmath, pdo_mysql, redis, gd, zip
+          coverage: none
+      
+      - name: Copy .env
+        run: |
+          cp .env.example .env
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=root/' .env
+          sed -i 's/REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+      
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      
+      - name: Generate application key
+        run: php artisan key:generate
+      
+      - name: Run migrations
+        run: php artisan migrate --force
+      
+      - name: Run tests
+        run: php artisan test
+      
+      - name: Security audit
+        run: composer audit
+
+  # ─────────────────────────────────────────
+  #  Build & Push Docker Image
+  # ─────────────────────────────────────────
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_ENV=production
+
+  # ─────────────────────────────────────────
+  #  Deploy to Production (ZERO DOWNTIME)
+  # ─────────────────────────────────────────
+  deploy:
+    name: Deploy to Server (Zero Downtime)
+    runs-on: ubuntu-latest
+    needs: build
+    environment: 
+      name: production
+      url: https://yourdomain.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Create deployment directory
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p /var/www/admin-payment /var/www/admin-payment/backups"
+      
+      - name: Copy deployment files
+        run: |
+          scp docker-compose.prod.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/admin-payment/docker-compose.yml
+          scp -r docker ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/admin-payment/
+      
+      - name: Copy .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" | ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "cat > /var/www/admin-payment/.env"
+      
+      - name: Deploy application (Zero Downtime)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            cd /var/www/admin-payment
+            
+            # Load environment variables
+            export $(cat .env | grep -v '^#' | xargs)
+            
+            # Login to GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Set image version
+            export APP_VERSION=${{ github.sha }}
+            
+            echo "🚀 Starting zero-downtime deployment..."
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 1: Pull new images (while old containers still running)
+            # ═══════════════════════════════════════════════════════════
+            echo "📦 Pulling new Docker images..."
+            docker-compose pull
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 2: Backup database (while old containers still running)
+            # ═══════════════════════════════════════════════════════════
+            echo "💾 Backing up database..."
+            if docker ps | grep -q whusnet-db; then
+              docker-compose exec -T db mysqldump -u root -p"${DB_PASSWORD}" ${DB_DATABASE} | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz || echo "⚠️  Backup failed, continuing..."
+            fi
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 3: Start new app container with different name
+            # ═══════════════════════════════════════════════════════════
+            echo "🔄 Starting new app container..."
+            docker-compose up -d --no-deps --scale app=2 --no-recreate app
+            
+            # Wait for new container to be healthy
+            echo "⏳ Waiting for new container to be healthy..."
+            sleep 30
+            
+            NEW_CONTAINER=$(docker ps --filter "name=whusnet-app" --format "{{.Names}}" | tail -n 1)
+            echo "New container: $NEW_CONTAINER"
+            
+            # Health check on new container
+            for i in {1..30}; do
+              if docker exec $NEW_CONTAINER php artisan list > /dev/null 2>&1; then
+                echo "✅ New container is healthy"
+                break
+              fi
+              echo "⏳ Waiting for new container... ($i/30)"
+              sleep 2
+            done
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 4: Run migrations on new container
+            # ═══════════════════════════════════════════════════════════
+            echo "🗄️  Running migrations..."
+            docker exec $NEW_CONTAINER php artisan migrate --force
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 5: Cache configs on new container
+            # ═══════════════════════════════════════════════════════════
+            echo "⚡ Caching configurations..."
+            docker exec $NEW_CONTAINER php artisan config:cache
+            docker exec $NEW_CONTAINER php artisan route:cache
+            docker exec $NEW_CONTAINER php artisan view:cache
+            docker exec $NEW_CONTAINER php artisan event:cache
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 6: Update NGINX to point to new container
+            # ═══════════════════════════════════════════════════════════
+            echo "🔄 Updating NGINX configuration..."
+            docker-compose up -d --no-deps --force-recreate nginx
+            
+            # Wait for NGINX to be ready
+            sleep 5
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 7: Health check via NGINX
+            # ═══════════════════════════════════════════════════════════
+            echo "🏥 Running health checks..."
+            for i in {1..10}; do
+              if curl -f http://localhost/ping > /dev/null 2>&1; then
+                echo "✅ Health check passed"
+                break
+              fi
+              echo "⏳ Waiting for health check... ($i/10)"
+              sleep 3
+            done
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 8: Stop old app container
+            # ═══════════════════════════════════════════════════════════
+            echo "🛑 Stopping old container..."
+            OLD_CONTAINER=$(docker ps --filter "name=whusnet-app" --format "{{.Names}}" | head -n 1)
+            if [ "$OLD_CONTAINER" != "$NEW_CONTAINER" ]; then
+              docker stop $OLD_CONTAINER
+              docker rm $OLD_CONTAINER
+              echo "✅ Old container removed: $OLD_CONTAINER"
+            fi
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 9: Scale back to 1 app container
+            # ═══════════════════════════════════════════════════════════
+            echo "📊 Scaling back to 1 app container..."
+            docker-compose up -d --no-deps --scale app=1 app
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 10: Update other services (Horizon, Reverb, Scheduler)
+            # ═══════════════════════════════════════════════════════════
+            echo "🔄 Updating background services..."
+            docker-compose up -d --no-deps horizon reverb scheduler
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 11: Cleanup old images
+            # ═══════════════════════════════════════════════════════════
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+            
+            # ═══════════════════════════════════════════════════════════
+            #  STEP 12: Final health check
+            # ═══════════════════════════════════════════════════════════
+            echo "🏥 Final health check..."
+            if curl -f http://localhost/health > /dev/null 2>&1; then
+              echo "✅ Deployment completed successfully!"
+            else
+              echo "❌ Health check failed!"
+              exit 1
+            fi
+            
+            # Show running containers
+            echo "📊 Running containers:"
+            docker-compose ps
+            
+          ENDSSH
+      
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f https://yourdomain.com/health || exit 1
+      
+      - name: Notify deployment success
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "✅ Zero-downtime deployment successful",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  {"title": "Environment", "value": "Production", "short": true},
+                  {"title": "Version", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Deployed by", "value": "${{ github.actor }}", "short": true},
+                  {"title": "Downtime", "value": "0 seconds", "short": true}
+                ]
+              }]
+            }'
+      
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "❌ Zero-downtime deployment failed",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  {"title": "Environment", "value": "Production", "short": true},
+                  {"title": "Version", "value": "${{ github.sha }}", "short": true},
+                  {"title": "Deployed by", "value": "${{ github.actor }}", "short": true}
+                ]
+              }]
+            }'
+
+  # ─────────────────────────────────────────
+  #  Rollback (Manual)
+  # ─────────────────────────────────────────
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Rollback to previous version
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd /var/www/admin-payment
+            ./rollback.sh
+          EOF

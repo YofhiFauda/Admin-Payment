@@ -161,6 +161,52 @@ class PriceIndexController extends Controller
     }
 
     /**
+     * ✅ Update AVG Manual (Override)
+     * Endpoint khusus untuk set/update avg_price_manual
+     */
+    public function updateAvgManual(Request $request, int $id)
+    {
+        $priceIndex = PriceIndex::findOrFail($id);
+
+        $request->validate([
+            'avg_price_manual' => 'nullable|numeric|min:0',
+            'manual_reason'    => 'nullable|string|max:500',
+        ]);
+
+        $oldAvgManual = $priceIndex->avg_price_manual;
+        $newAvgManual = $request->filled('avg_price_manual') ? $request->avg_price_manual : null;
+
+        $priceIndex->update([
+            'avg_price_manual' => $newAvgManual,
+            'manual_set_by'    => Auth::id(),
+            'manual_set_at'    => now(),
+            'manual_reason'    => $request->input('manual_reason', 'Update AVG Manual'),
+        ]);
+
+        Log::info('✏️ [PriceIndex] AVG Manual Updated', [
+            'price_index_id'   => $priceIndex->id,
+            'item_name'        => $priceIndex->item_name,
+            'by_user_id'       => Auth::id(),
+            'old_avg_manual'   => $oldAvgManual,
+            'new_avg_manual'   => $newAvgManual,
+            'avg_auto'         => $priceIndex->avg_price,
+            'reason'           => $request->input('manual_reason'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $newAvgManual 
+                ? 'Harga AVG Manual berhasil diset.' 
+                : 'Harga AVG Manual dihapus, kembali menggunakan AVG otomatis.',
+            'data' => [
+                'avg_price'        => $priceIndex->avg_price,
+                'avg_price_manual' => $priceIndex->avg_price_manual,
+                'effective_avg'    => $priceIndex->getEffectiveAvgPrice(),
+            ]
+        ]);
+    }
+
+    /**
      * ✅ Togle kembali ke mode Auto
      */
     public function resetToAuto(int $id)
@@ -362,18 +408,21 @@ class PriceIndexController extends Controller
         }
 
         return response()->json([
-            'found'     => true,
-            'id'        => $priceIndex->id,
-            'item_name' => $priceIndex->item_name,
-            'unit'      => $priceIndex->unit,
-            'min_price' => $priceIndex->min_price,
-            'max_price' => $priceIndex->max_price,
-            'avg_price' => $priceIndex->avg_price,
-            'is_manual' => $priceIndex->is_manual,
-            'formatted' => [
+            'found'            => true,
+            'id'               => $priceIndex->id,
+            'item_name'        => $priceIndex->item_name,
+            'unit'             => $priceIndex->unit,
+            'min_price'        => $priceIndex->min_price,
+            'max_price'        => $priceIndex->max_price,
+            'avg_price'        => $priceIndex->getEffectiveAvgPrice(), // ✅ Gunakan effective
+            'avg_price_auto'   => $priceIndex->avg_price,
+            'avg_price_manual' => $priceIndex->avg_price_manual,
+            'is_avg_manual'    => $priceIndex->isAvgManual(),
+            'is_manual'        => $priceIndex->is_manual,
+            'formatted'        => [
                 'min' => $priceIndex->formatted_min,
                 'max' => $priceIndex->formatted_max,
-                'avg' => $priceIndex->formatted_avg,
+                'avg' => $priceIndex->formatted_avg, // Sudah menggunakan effective
             ],
         ]);
     }
@@ -426,7 +475,10 @@ class PriceIndexController extends Controller
             'unit'             => $priceIndex->unit,
             'min_price'        => $priceIndex->min_price,
             'max_price'        => $priceIndex->max_price,
-            'avg_price'        => $priceIndex->avg_price,
+            'avg_price'        => $priceIndex->getEffectiveAvgPrice(), // ✅ Gunakan effective
+            'avg_price_auto'   => $priceIndex->avg_price,
+            'avg_price_manual' => $priceIndex->avg_price_manual,
+            'is_avg_manual'    => $priceIndex->isAvgManual(),
             'is_manual'        => $priceIndex->is_manual,
             'is_anomaly'       => $isAnomaly,
             'severity'         => $severity,
@@ -435,7 +487,7 @@ class PriceIndexController extends Controller
             'formatted'        => [
                 'min' => $priceIndex->formatted_min,
                 'max' => $priceIndex->formatted_max,
-                'avg' => $priceIndex->formatted_avg,
+                'avg' => $priceIndex->formatted_avg, // Sudah menggunakan effective
             ],
         ]);
     }

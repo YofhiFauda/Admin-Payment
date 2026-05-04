@@ -151,6 +151,10 @@ export function closeImageViewer() {
     }, 200);
 }
 
+// Expose functions to global scope for onclick handlers
+window.openImageViewer = openImageViewer;
+window.closeImageViewer = closeImageViewer;
+
 // ─── View Modal & Render Details ────────────────────────────────
 export function openViewModal(id) {
     currentTransactionId = id;
@@ -462,12 +466,14 @@ function renderPengajuanFields(d) {
                             <div class="text-sm font-bold text-slate-700">Rp ${Number(d.biaya_layanan_2 || 0).toLocaleString('id-ID')}</div>
                         </div>
                     </div>
+                    ${d.invoice_file_url ? `
                     <div class="mt-3">
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">File Invoice</label>
                         <a href="${d.invoice_file_url}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-teal-600 hover:bg-teal-50 transition-colors">
                             <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Lihat Invoice
                         </a>
                     </div>
+                    ` : ''}
                 </div>`;
     }
     return html;
@@ -854,29 +860,48 @@ export function toggleVersionInModal(version) {
 
         const actionWrap1 = document.getElementById('v-pay-step1-action-wrap');
         if (actionWrap1) {
+            let buttonsHTML = '';
+            
+            // Tombol Lihat Bukti Transfer/Cash
             if (hist.payment_type === 'Transfer' && hist.payment_proof_url) {
-                actionWrap1.innerHTML = `
-                        <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Pembayaran')" 
-                            class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
-                            <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                            LIHAT BUKTI
-                        </button>
-                    `;
+                buttonsHTML += `
+                    <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Pembayaran')" 
+                        class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        LIHAT BUKTI
+                    </button>
+                `;
             } else if (hist.payment_type === 'Tunai' && hist.payment_proof_url) {
-                actionWrap1.innerHTML = `
-                        <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Penyerahan')" 
-                            class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
-                            <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                            LIHAT BUKTI
-                        </button>
-                    `;
+                buttonsHTML += `
+                    <button type="button" onclick="openImageViewer('${hist.payment_proof_url}', 'Bukti Penyerahan')" 
+                        class="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all uppercase tracking-widest">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        LIHAT BUKTI
+                    </button>
+                `;
             } else if (hist.payment_type === 'Tunai') {
-                actionWrap1.innerHTML = `
-                        <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-100 uppercase tracking-widest">
-                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-slate-400"></i>
-                            Selesai
-                        </div>
-                    `;
+                buttonsHTML += `
+                    <div class="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-100 uppercase tracking-widest">
+                        <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-slate-400"></i>
+                        Selesai
+                    </div>
+                `;
+            }
+            
+            // Tombol Lihat Invoice (untuk pengajuan)
+            if (hist.type === 'pengajuan' && hist.invoice_file_url) {
+                buttonsHTML += `
+                    <button type="button" onclick="openImageViewer('${hist.invoice_file_url}', 'Invoice Pengajuan')" 
+                        class="flex items-center gap-1.5 text-[10px] font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-100 hover:bg-teal-100 transition-all uppercase tracking-widest">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                        LIHAT INVOICE
+                    </button>
+                `;
+            }
+            
+            // Wrap buttons in flex container if there are multiple buttons
+            if (buttonsHTML) {
+                actionWrap1.innerHTML = `<div class="flex flex-wrap gap-2">${buttonsHTML}</div>`;
             } else {
                 actionWrap1.innerHTML = '';
             }

@@ -22,7 +22,7 @@
 
     {{-- Progress Bar --}}
     <div class="w-64 h-1.5 bg-slate-100 rounded-full mt-8 overflow-hidden">
-        <div id="progress-bar" class="h-full bg-linear-to-r from-sky-600 to-sky-600 w-0 transition-all duration-[2000ms] ease-out"></div>
+        <div id="progress-bar" class="h-full bg-linear-to-r from-sky-600 to-sky-500 w-0 transition-all duration-[2000ms] ease-out"></div>
     </div>
 </div>
 

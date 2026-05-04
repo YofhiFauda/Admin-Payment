@@ -366,8 +366,8 @@ function openPaymentModal(id) {
         document.getElementById('payment_method_select').required = true;
         document.getElementById('payment-modal-title').textContent = 'Upload Pembayaran Invoice';
         paymentFileInput.name = 'invoice_file';
-        paymentFileInput.required = true;
-        if(paymentLabel) paymentLabel.innerHTML = 'Unggah Foto Invoice <span class="text-red-500">*</span>';
+        paymentFileInput.required = false; // Foto invoice bersifat opsional
+        if(paymentLabel) paymentLabel.innerHTML = 'Unggah Foto Invoice (Opsional)';
 
         document.getElementById('p_catatan').disabled = false;
         ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
@@ -380,7 +380,7 @@ function openPaymentModal(id) {
         paymentFileInput.required = isTransfer;
         if (paymentLabel) {
             paymentLabel.innerHTML = isTransfer
-                ? 'Unggah Foto / Screenshot <span class="text-red-500">*</span>'
+                ? 'Unggah Foto / Screenshot <span class="text-red-500"></span>'
                 : 'Unggah Foto / Screenshot <span class="text-slate-400 font-normal">(Opsional)</span>';
         }
 
@@ -659,12 +659,29 @@ function renderPaymentModalDetails(d) {
                         const card = document.getElementById('sd_card_' + id);
                         const amountInput = document.getElementById('sd_amount_' + id);
                         const branchInput = document.getElementById('sd_branch_' + id);
-                        const alloc = parseInt(this.dataset.alloc);
+                        
+                        // ✅ PERBAIKAN: Hitung total alokasi dengan biaya tambahan
+                        const allocFromDB = parseInt(this.dataset.alloc);
+                        const percent = parseFloat(this.dataset.percent);
+                        
+                        // Hitung biaya tambahan saat ini
+                        const ongkir = unformatNumber(document.getElementById('p_ongkir')?.value || "0");
+                        const diskon = unformatNumber(document.getElementById('p_diskon_pengiriman')?.value || "0");
+                        const voucher = unformatNumber(document.getElementById('p_voucher_diskon')?.value || "0");
+                        const dppLainnya = unformatNumber(document.getElementById('p_dpp_lainnya')?.value || "0");
+                        const taxAmt = unformatNumber(document.getElementById('p_tax_amount')?.value || "0");
+                        const layanan1 = unformatNumber(document.getElementById('p_biaya_layanan_1')?.value || "0");
+                        const layanan2 = unformatNumber(document.getElementById('p_biaya_layanan_2')?.value || "0");
+                        const additionalCosts = ongkir + dppLainnya + taxAmt + layanan1 + layanan2 - diskon - voucher;
+                        
+                        // Bagian biaya tambahan untuk cabang ini
+                        const additionalShare = Math.round((additionalCosts * percent) / 100);
+                        const totalAlloc = allocFromDB + additionalShare;
 
                         if (this.checked) {
                             amountInput.disabled = false;
                             branchInput.disabled = false;
-                            amountInput.value = formatNumber(alloc);
+                            amountInput.value = formatNumber(totalAlloc); // ✅ Auto-fill dengan total yang benar
                             amountInput.required = true;
                             card.classList.remove('border-slate-100');
                             card.classList.add('border-teal-500', 'bg-teal-50/10');
@@ -718,7 +735,9 @@ function calculateSumberDanaTotal(baseTotal) {
     const layanan1 = unformatNumber(document.getElementById('p_biaya_layanan_1')?.value || "0");
     const layanan2 = unformatNumber(document.getElementById('p_biaya_layanan_2')?.value || "0");
 
-    const finalTotalTarget = baseTotal + ongkir + dppLainnya + taxAmt + layanan1 + layanan2 - diskon - voucher;
+    // ✅ Total biaya tambahan (selain baseTotal dari pengajuan)
+    const additionalCosts = ongkir + dppLainnya + taxAmt + layanan1 + layanan2 - diskon - voucher;
+    const finalTotalTarget = baseTotal + additionalCosts;
 
     totalEl.classList.remove('hidden');
 
@@ -731,13 +750,40 @@ function calculateSumberDanaTotal(baseTotal) {
         const id = cb.value;
         const name = cb.dataset.name;
         const percent = parseFloat(cb.dataset.percent);
-
-        const alloc = Math.round((finalTotalTarget * percent) / 100);
+        
+        // ✅ PERBAIKAN: Gunakan allocation_amount asli dari Form Pengajuan
+        const allocFromDB = parseInt(cb.dataset.alloc);
+        
+        // ✅ Distribusikan biaya tambahan secara proporsional
+        const additionalShare = Math.round((additionalCosts * percent) / 100);
+        
+        // ✅ Total alokasi = Alokasi asli + Bagian biaya tambahan
+        const alloc = allocFromDB + additionalShare;
+        
         const statusEl = document.getElementById('sd_status_' + id);
         const labelEl = document.querySelector(`label[for="sd_check_${id}"] div.text-slate-400`);
 
+        // ✅ Update label dengan breakdown yang jelas
         if (labelEl) {
-            labelEl.textContent = `Alokasi: Rp ${alloc.toLocaleString('id-ID')} (${percent}%)`;
+            if (additionalCosts !== 0) {
+                const additionalLabel = additionalShare >= 0 
+                    ? `+ Biaya Tambahan: Rp ${additionalShare.toLocaleString('id-ID')}`
+                    : `- Potongan: Rp ${Math.abs(additionalShare).toLocaleString('id-ID')}`;
+                
+                labelEl.innerHTML = `
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">
+                        Alokasi Pengajuan: Rp ${allocFromDB.toLocaleString('id-ID')} (${percent}%)
+                    </span>
+                    <span class="block text-[9px] font-bold ${additionalShare >= 0 ? 'text-teal-500' : 'text-amber-500'} mt-0.5 leading-tight">
+                        ${additionalLabel}
+                    </span>
+                    <span class="block text-[9px] font-black text-slate-600 mt-0.5 leading-tight">
+                        Total: Rp ${alloc.toLocaleString('id-ID')}
+                    </span>
+                `;
+            } else {
+                labelEl.textContent = `Alokasi: Rp ${allocFromDB.toLocaleString('id-ID')} (${percent}%)`;
+            }
         }
 
         branches[id] = { id, name, alloc };
@@ -753,15 +799,15 @@ function calculateSumberDanaTotal(baseTotal) {
                 statusEl.classList.remove('hidden');
             } else if (paid < alloc) {
                 debtors[id] = alloc - paid;
-                statusEl.innerHTML = `<span class="text-red-500">- Kurang bayar Rp ${(alloc - paid).toLocaleString('id-ID')} (Berhutang)</span>`;
-                statusEl.classList.remove('hidden');
+                // Warning "Kurang bayar (Berhutang)" dihilangkan
+                statusEl.classList.add('hidden');
             } else {
                 statusEl.classList.add('hidden');
             }
         } else {
             debtors[id] = alloc;
-            statusEl.innerHTML = `<span class="text-red-500">- Kurang bayar Rp ${alloc.toLocaleString('id-ID')} (Berhutang)</span>`;
-            statusEl.classList.remove('hidden');
+            // Warning "Kurang bayar (Berhutang)" dihilangkan
+            statusEl.classList.add('hidden');
         }
     });
 

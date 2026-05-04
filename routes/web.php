@@ -235,6 +235,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/price-index', [PriceIndexController::class, 'store'])->name('price-index.store');
         Route::put('/price-index/{id}', [PriceIndexController::class, 'update'])->name('price-index.update');
         Route::delete('/price-index/{id}', [PriceIndexController::class, 'destroy'])->name('price-index.destroy');
+        Route::post('/price-index/{id}/update-avg-manual', [PriceIndexController::class, 'updateAvgManual'])->name('price-index.update-avg-manual');
 
         Route::get('/price-index/anomalies', [PriceIndexController::class, 'anomalies'])->name('price-index.anomalies');
         Route::post('/price-index/anomalies/bulk-review', [PriceIndexController::class, 'bulkReviewAnomaly'])->name('price-index.anomalies.bulk-review');

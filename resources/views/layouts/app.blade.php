@@ -405,7 +405,7 @@
                 
                 {{-- 1. Brand / Logo --}}
                 <div class="flex items-center gap-2 sm:gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-md shrink-0">
+                    <div class="w-8 h-8 rounded-lg bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center shadow-md shrink-0">
                         <i data-lucide="receipt" class="w-4 h-4 text-white"></i>
                     </div>
                     <span class="font-bold text-lg sm:text-xl text-slate-800 tracking-tight hidden xs:block">FinanceOps</span>
@@ -488,7 +488,7 @@
                                     <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                         class="w-12 h-12 rounded-full object-cover border-2 border-white shadow">
                                 @else
-                                    <div class="w-12 h-12 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -552,7 +552,7 @@
             transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
             <div class="p-4 flex items-center gap-3 border-b border-slate-100 financeops-logo-container">
-                <div class="w-10 h-10 rounded-xl bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center shadow-md shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center shadow-md shrink-0">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
                 <h1 class="font-bold text-lg text-slate-800 financeops-text">FinanceOps</h1>
@@ -563,20 +563,20 @@
 
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('dashboard') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('dashboard') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
                 </a>
 
                 <a href="{{ route('transactions.create') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Rembush</span>
                 </a>
 
                 @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                 <a href="{{ route('pembelian.loading') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Pembelian</span>
                 </a>
                 @endif
@@ -623,7 +623,7 @@
 
                 <a href="{{ route('transactions.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="clock" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Daftar Transaksi</span>
                 </a>
 
@@ -631,39 +631,39 @@
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Pengguna</span>
                 </a>
 
                 <a href="{{ route('branches.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="building-2" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Cabang</span>
                 </a>
 
                 <a href="{{ route('transaction-categories.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="tags" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Kategori</span>
                 </a>
 
                 @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bookmark" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Referensi Harga</span>
                 </a>
                 @endif
 
                 <a href="{{ route('activity-logs.index') }}"
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
-                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Log Aktivitas</span>
                 </a>
 
                 <a href="{{ route('notifications.index') }}" 
                     class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative shrink-0
-                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-600 to-sky-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                     <i data-lucide="bell" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Notifikasi</span>
                     <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>
@@ -682,7 +682,7 @@
                             <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                 class="w-9 h-9 rounded-full object-cover border-2 border-white shadow">
                         @else
-                            <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0">
+                            <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold shrink-0">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         @endif
@@ -726,7 +726,7 @@
                         <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                             class="w-9 h-9 rounded-full object-cover shrink-0">
                     @else
-                        <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold shrink-0">
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
                     @endif

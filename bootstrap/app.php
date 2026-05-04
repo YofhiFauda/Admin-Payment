@@ -10,6 +10,12 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // Load health check routes
+            if (file_exists(__DIR__.'/../routes/health.php')) {
+                require __DIR__.'/../routes/health.php';
+            }
+        },
     )
     ->withBroadcasting(
         __DIR__.'/../routes/channels.php',
@@ -27,4 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withProviders([
+        \App\Providers\PulseServiceProvider::class,
+    ])
+    ->create();

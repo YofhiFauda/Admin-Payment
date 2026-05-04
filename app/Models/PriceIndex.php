@@ -17,6 +17,7 @@ class PriceIndex extends Model
         'min_price',
         'max_price',
         'avg_price',
+        'avg_price_manual',       // ✅ Harga AVG manual (override)
         'is_manual',
         'manual_set_by',
         'manual_set_at',
@@ -35,6 +36,7 @@ class PriceIndex extends Model
             'min_price'             => 'float',
             'max_price'             => 'float',
             'avg_price'             => 'float',
+            'avg_price_manual'      => 'float',
             'is_manual'             => 'boolean',
             'needs_initial_review'  => 'boolean',
             'manual_set_at'         => 'datetime',
@@ -106,6 +108,23 @@ class PriceIndex extends Model
     // ─── Helpers ──────────────────────────────────────────
 
     /**
+     * Dapatkan harga AVG yang efektif (prioritas manual, fallback ke otomatis).
+     * Logika: Jika avg_price_manual ada → gunakan manual, jika tidak → gunakan avg_price otomatis
+     */
+    public function getEffectiveAvgPrice(): float
+    {
+        return $this->avg_price_manual ?? $this->avg_price;
+    }
+
+    /**
+     * Cek apakah AVG menggunakan nilai manual
+     */
+    public function isAvgManual(): bool
+    {
+        return $this->avg_price_manual !== null;
+    }
+
+    /**
      * Format harga min/max/avg untuk tampilan.
      */
     public function getFormattedMinAttribute(): string
@@ -120,11 +139,15 @@ class PriceIndex extends Model
 
     public function getFormattedAvgAttribute(): string
     {
-        return 'Rp ' . number_format($this->avg_price, 0, ',', '.');
+        $effectiveAvg = $this->getEffectiveAvgPrice();
+        return 'Rp ' . number_format($effectiveAvg, 0, ',', '.');
     }
 
     public function getSourceLabelAttribute(): string
     {
+        if ($this->isAvgManual()) {
+            return 'Manual (AVG)';
+        }
         return $this->is_manual ? 'Manual' : 'Auto';
     }
 

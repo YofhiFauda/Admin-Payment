@@ -252,7 +252,7 @@ class OcrNotaController extends Controller
         $request->replace($input);
 
         $validator = Validator::make($request->all(), [
-            'invoice_file'       => 'required|file|image|max:5120',
+            'invoice_file'       => 'nullable|file|image|max:5120', // Foto invoice bersifat opsional
             'transaksi_id'       => 'required|string',
             'diskon_pengiriman'  => 'nullable|numeric|min:0',
             'ongkir'             => 'nullable|numeric|min:0',
@@ -330,8 +330,11 @@ class OcrNotaController extends Controller
             }
         }
 
-        // Store the file
-        $path = $request->file('invoice_file')->store('invoices', 'public');
+        // Store the file (jika ada)
+        $path = null;
+        if ($request->hasFile('invoice_file')) {
+            $path = $request->file('invoice_file')->store('invoices', 'public');
+        }
 
         // ═══════════════════════════════════════════════════════════
         //  1. Persist Transaction Changes (Amount, Fees, Proof) First

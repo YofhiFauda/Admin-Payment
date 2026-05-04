@@ -80,7 +80,7 @@
                     <input type="file" name="file" id="payment_file_input" required accept=".jpg,.jpeg,.png,.pdf"
                         class="w-full border border-cyan-200 rounded-xl p-2 text-sm outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 transition-all cursor-pointer bg-white">
                     <p class="mt-1 text-[11px] text-slate-400 font-medium" id="payment-modal-help">Format: JPG, PNG,
-                        PDF. Max 2MB.</p>
+                        PDF. Max 5MB.</p>
 
                     {{-- Real-time File Preview --}}
                     <div id="payment-file-preview"

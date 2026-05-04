@@ -273,6 +273,11 @@ class PriceIndexService
     /**
      * Proses item dari transaksi yang baru di-approve.
      * Jika harga berada dalam rentang [min, max], update rata-rata (Avg) secara otomatis.
+     * 
+     * LOGIKA BARU:
+     * - avg_price SELALU dihitung otomatis dari transaksi yang masuk dalam range [min, max]
+     * - avg_price_manual adalah override manual (jika ada)
+     * - Saat ditampilkan, gunakan avg_price_manual jika ada, jika tidak gunakan avg_price
      */
     public function processApprovedItem(string $itemName, float $price, ?string $category = null): ?PriceIndex
     {
@@ -286,6 +291,7 @@ class PriceIndexService
                 'min_price'            => $price,
                 'max_price'            => $price,
                 'avg_price'            => $price,
+                'avg_price_manual'     => null, // Tidak ada manual override
                 'is_manual'            => false,
                 'needs_initial_review' => true,
                 'total_transactions'   => 1,
@@ -298,8 +304,7 @@ class PriceIndexService
             $pi = PriceIndex::where('id', $priceIndex->id)->lockForUpdate()->first();
 
             // 3. Cek Rentang Harga [Min, Max]
-            // Sesuai request: Update Otomatis selama >harga min dan < harga max
-            // Kita gunakan toleransi inklusif (>= dan <=) untuk kestabilan
+            // Update AVG otomatis HANYA jika harga dalam range
             if ($price >= $pi->min_price && $price <= $pi->max_price) {
                 
                 $oldTotal = $pi->total_transactions ?? 0;
@@ -310,17 +315,20 @@ class PriceIndexService
                 // new_avg = ((old_avg * n) + new_price) / (n + 1)
                 $newAvg = (($oldAvg * $oldTotal) + $price) / $newTotal;
 
+                // ✅ PENTING: Update avg_price (otomatis), JANGAN sentuh avg_price_manual
                 $pi->update([
                     'avg_price'          => round($newAvg, 2),
                     'total_transactions' => $newTotal,
                     'last_calculated_at' => now(),
+                    // avg_price_manual tetap tidak berubah (null atau nilai manual sebelumnya)
                 ]);
 
-                Log::info('📈 [PriceIndex] Adaptive Avg Updated', [
-                    'item'    => $pi->item_name,
-                    'old_avg' => $oldAvg,
-                    'new_avg' => $newAvg,
-                    'n'       => $newTotal
+                Log::info('📈 [PriceIndex] Adaptive Avg Updated (Auto)', [
+                    'item'         => $pi->item_name,
+                    'old_avg_auto' => $oldAvg,
+                    'new_avg_auto' => $newAvg,
+                    'avg_manual'   => $pi->avg_price_manual ? 'Set (tidak berubah)' : 'Tidak ada',
+                    'n'            => $newTotal
                 ]);
             } else {
                 Log::info('⏭️ [PriceIndex] Outside range, skipping auto-update', [
@@ -382,6 +390,7 @@ class PriceIndexService
 
         if ($priceIndex && $priceIndex->is_manual) {
             // Jika manual, kita tetep update info "Calculated" tapi jangan sentuh active prices
+            // avg_price_manual juga tidak disentuh
             $priceIndex->update($updateData);
             return $priceIndex;
         }
@@ -391,14 +400,16 @@ class PriceIndexService
             $updateData['max_price'] = $maxPrice;
             $updateData['avg_price'] = round($avgPrice, 2);
             $updateData['is_manual'] = false;
+            // ✅ PENTING: JANGAN update avg_price_manual, biarkan tetap (null atau nilai manual)
             
             $priceIndex->update($updateData);
         } else {
             $createData = array_merge([
-                'item_name' => $itemName,
-                'category'  => $category,
-                'unit'      => 'pcs',
-                'is_manual' => false,
+                'item_name'        => $itemName,
+                'category'         => $category,
+                'unit'             => 'pcs',
+                'is_manual'        => false,
+                'avg_price_manual' => null, // Tidak ada manual override saat create baru
             ], $updateData);
 
             // Karena data baru (auto), copy calculated ke active
