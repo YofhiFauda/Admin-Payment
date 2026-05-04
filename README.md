@@ -618,7 +618,91 @@ php artisan price-index:recalculate --mode=full         # Recalc semua item non-
 npm run dev                              # Vite dev server
 npm run build                            # Build assets untuk production
 composer dev                             # Jalankan server + queue + vite sekaligus
+
+# ── PR Validation ───────────────────────────────────────
+./scripts/check-pr-ready.sh              # Check apakah code siap untuk PR
+./vendor/bin/pint                        # Auto-fix code style
+./vendor/bin/pint --test                 # Check code style tanpa fix
+php artisan test --coverage --min=80     # Run tests dengan minimum 80% coverage
+composer audit                           # Security audit untuk PHP dependencies
+npm audit --audit-level=moderate         # Security audit untuk Node dependencies
 ```
+
+---
+
+## 🔍 Pull Request Guidelines
+
+Sebelum membuat Pull Request, pastikan code Anda lolos semua validation checks:
+
+### Quick Check
+```bash
+# Jalankan PR readiness checker
+./scripts/check-pr-ready.sh
+```
+
+### Manual Checks
+
+1. **Code Style** - Pastikan code mengikuti Laravel Pint standards
+   ```bash
+   ./vendor/bin/pint --test
+   ```
+
+2. **Tests** - Semua tests harus pass dengan coverage ≥ 80%
+   ```bash
+   php artisan test --coverage --min=80
+   ```
+
+3. **Debug Statements** - Hapus semua debug code
+   ```bash
+   # Check untuk dd(), dump(), var_dump(), console.log()
+   git diff origin/main | grep -E "(dd\(|dump\(|var_dump\(|console\.log\()"
+   ```
+
+4. **Security** - Tidak ada credentials atau sensitive data
+   ```bash
+   composer audit
+   npm audit --audit-level=moderate
+   ```
+
+### PR Title Format
+
+Gunakan **Semantic Commit** format:
+
+```
+<type>: <description>
+
+atau
+
+<type>(<scope>): <description>
+```
+
+**Valid Types:**
+- `feat` - Fitur baru
+- `fix` - Bug fix
+- `docs` - Dokumentasi
+- `refactor` - Code refactoring
+- `perf` - Performance improvements
+- `test` - Menambah tests
+- `chore` - Maintenance tasks
+
+**Contoh:**
+```
+✅ feat: add price anomaly detection
+✅ fix(auth): resolve login redirect issue
+✅ docs: update deployment guide
+✅ refactor(services): optimize price index calculation
+
+❌ Added new feature
+❌ Fixed bug
+❌ Update
+```
+
+### Troubleshooting PR Validation
+
+Jika PR validation gagal, lihat:
+- 📋 **[Troubleshooting PR Validation](TROUBLESHOOTING_PR_VALIDATION.md)** - Solusi lengkap untuk semua PR validation errors
+
+---
 
 ---
 
