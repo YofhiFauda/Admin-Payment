@@ -11,26 +11,26 @@
 ### 👋 New to the Project?
 Start here:
 1. 📖 [README.md](README.md) - Project overview
-2. ⚡ [QUICK_START.md](#) - 5-minute setup guide *(Coming Soon)*
+2. ⚡ [QUICK_START.md](docs/getting-started/QUICK_START.md) - 5-minute setup guide
 3. 🎯 [FIRST_TRANSACTION.md](#) - Your first transaction walkthrough *(Coming Soon)*
 
 ### 👨‍💻 Developer?
 Essential reads:
-1. 🏗️ [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) - System architecture
-2. 🗄️ [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database structure
-3. 🔧 [backend_documentation_v1.0.md](backend_documentation_v1.0.md) - Backend logic
-4. 🤝 [CONTRIBUTING.md](#) - How to contribute *(Coming Soon)*
+1. 🏗️ [ARCHITECTURE_DIAGRAM.md](docs/architecture/ARCHITECTURE_DIAGRAM.md) - System architecture
+2. 🗄️ [DATABASE_SCHEMA.md](docs/architecture/DATABASE_SCHEMA.md) - Database structure
+3. 🔧 [backend_documentation_v1.0.md](docs/backend/backend_documentation_v1.0.md) - Backend logic
+4. 🤝 [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) - How to contribute
 
 ### 🚢 DevOps/Deployment?
 Deployment guides:
-1. 🐳 [DOCKER_PRODUCTION_GUIDE.md](DOCKER_PRODUCTION_GUIDE.md) - Docker setup
-2. 🔄 [CICD_GITHUB_ACTIONS_GUIDE.md](CICD_GITHUB_ACTIONS_GUIDE.md) - CI/CD pipeline
-3. ⚡ [SETUP_DOCKER_CICD_QUICKSTART.md](SETUP_DOCKER_CICD_QUICKSTART.md) - Quick setup
-4. ✅ [PRODUCTION_READINESS_CHECKLIST.md](PRODUCTION_READINESS_CHECKLIST.md) - Pre-deployment
+1. 🐳 [DOCKER_PRODUCTION_GUIDE.md](docs/deployment/DOCKER_PRODUCTION_GUIDE.md) - Docker setup
+2. 🔄 [CICD_GITHUB_ACTIONS_GUIDE.md](docs/deployment/CICD_GITHUB_ACTIONS_GUIDE.md) - CI/CD pipeline
+3. ⚡ [SETUP_DOCKER_CICD_QUICKSTART.md](docs/deployment/SETUP_DOCKER_CICD_QUICKSTART.md) - Quick setup
+4. ✅ [PRODUCTION_READINESS_CHECKLIST.md](docs/deployment/PRODUCTION_READINESS_CHECKLIST.md) - Pre-deployment
 
 ### 🔒 Security Team?
 Security documentation:
-1. 🛡️ [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) - Security checklist
+1. 🛡️ [SECURITY_CHECKLIST.md](docs/security/SECURITY_CHECKLIST.md) - Security checklist
 2. 🔐 [SECURITY.md](#) - Security overview *(Coming Soon)*
 
 ---
@@ -42,7 +42,7 @@ Security documentation:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [README.md](README.md) | ✅ Complete | Main project documentation |
-| [QUICK_START.md](#) | 🔴 Missing | 5-minute setup guide |
+| [QUICK_START.md](docs/getting-started/QUICK_START.md) | ✅ Complete | 5-minute setup guide |
 | [INSTALLATION.md](#) | 🔴 Missing | Detailed installation steps |
 | [CONFIGURATION.md](#) | 🔴 Missing | Environment configuration |
 | [FIRST_TRANSACTION.md](#) | 🔴 Missing | First transaction walkthrough |
@@ -53,11 +53,12 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) | ✅ Complete | Polling vs Reverb architecture |
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | ✅ Complete | Complete database schema with ER diagram |
-| [backend_documentation_v1.0.md](backend_documentation_v1.0.md) | ✅ Complete | Backend architecture & business logic |
-| [system_architecture_analysis.md](system_architecture_analysis.md) | ✅ Complete | System architecture analysis |
-| [TECHNOLOGY_DECISIONS.md](#) | 🔴 Missing | Architecture Decision Records (ADR) |
+| [ARCHITECTURE_DIAGRAM.md](docs/architecture/ARCHITECTURE_DIAGRAM.md) | ✅ Complete | Polling vs Reverb architecture |
+| [DATABASE_SCHEMA.md](docs/architecture/DATABASE_SCHEMA.md) | ✅ Complete | Complete database schema with ER diagram |
+| [backend_documentation_v1.0.md](docs/backend/backend_documentation_v1.0.md) | ✅ Complete | Backend architecture & business logic |
+| [system_architecture_analysis.md](docs/architecture/system_architecture_analysis.md) | ✅ Complete | System architecture analysis |
+| [TRANSACTION_INDEX_STRUCTURE.md](docs/architecture/TRANSACTION_INDEX_STRUCTURE.md) | ✅ Complete | Transaction indexing structure |
+| [FLOW_DIAGRAMS.md](docs/architecture/FLOW_DIAGRAMS.md) | ✅ Complete | System flow diagrams |
 
 ---
 
@@ -65,7 +66,7 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [api_documentation_v4.5.md](api_documentation_v4.5.md) | ✅ Complete | API endpoints & integration |
+| [api_documentation_v4.5.md](docs/api/api_documentation_v4.5.md) | ✅ Complete | API endpoints & integration |
 | [Scramble API Docs](http://localhost:8000/docs/api) | ✅ Live | Interactive API documentation |
 | [API_AUTHENTICATION.md](#) | 🔴 Missing | Authentication details |
 | [API_ERRORS.md](#) | 🔴 Missing | Error codes & handling |
@@ -77,7 +78,7 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [backend_documentation_v1.0.md](backend_documentation_v1.0.md) | ✅ Complete | Backend overview |
+| [backend_documentation_v1.0.md](docs/backend/backend_documentation_v1.0.md) | ✅ Complete | Backend overview |
 | [BUSINESS_LOGIC.md](#) | 🔴 Missing | Detailed business flows |
 | [SERVICES.md](#) | 🔴 Missing | Service layer documentation |
 | [JOBS_QUEUES.md](#) | 🔴 Missing | Background processing |
@@ -89,7 +90,7 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [frontend_documentation_v1.0.md](frontend_documentation_v1.0.md) | 🟡 Partial | Frontend overview (needs expansion) |
+| [frontend_documentation_v1.0.md](docs/frontend/frontend_documentation_v1.0.md) | 🟡 Partial | Frontend overview (needs expansion) |
 | [BLADE_COMPONENTS.md](#) | 🔴 Missing | Blade component structure |
 | [JAVASCRIPT_PATTERNS.md](#) | 🔴 Missing | JavaScript conventions |
 | [AJAX_CONVENTIONS.md](#) | 🔴 Missing | AJAX patterns |
@@ -101,12 +102,12 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [Flow Rembush.md](Flow%20Rembush.md) | ✅ Complete | Rembush (Reimbursement) flow |
-| [PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md](PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md) | ✅ Complete | Pengajuan (Purchase Request) system |
-| [PRICE_INDEX_DOCS.md](PRICE_INDEX_DOCS.md) | ✅ Complete | Price Index & anomaly detection |
-| [BRANCH_DEBT_MANAGEMENT.md](#) | 🔴 Missing | Inter-branch debt management |
-| [OCR_INTEGRATION.md](#) | 🔴 Missing | OCR & AI integration details |
-| [REALTIME_MIGRATION_REPORT.md](REALTIME_MIGRATION_REPORT.md) | ✅ Complete | Real-time notification migration |
+| [Flow Rembush.md](docs/features/Flow%20Rembush.md) | ✅ Complete | Rembush (Reimbursement) flow |
+| [PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md](docs/features/PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md) | ✅ Complete | Pengajuan (Purchase Request) system |
+| [PRICE_INDEX_DOCS.md](docs/features/PRICE_INDEX_DOCS.md) | ✅ Complete | Price Index & anomaly detection |
+| [REALTIME_MIGRATION_REPORT.md](docs/features/REALTIME_MIGRATION_REPORT.md) | ✅ Complete | Real-time notification migration |
+| [FLOWCHARTS.md](docs/features/FLOWCHARTS.md) | ✅ Complete | System flowcharts |
+| [GEMINI.md](docs/features/GEMINI.md) | ✅ Complete | Gemini AI integration |
 
 ---
 
@@ -114,13 +115,12 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [DOCKER_PRODUCTION_GUIDE.md](DOCKER_PRODUCTION_GUIDE.md) | ✅ Complete | Docker production setup |
-| [CICD_GITHUB_ACTIONS_GUIDE.md](CICD_GITHUB_ACTIONS_GUIDE.md) | ✅ Complete | CI/CD with GitHub Actions |
-| [SETUP_DOCKER_CICD_QUICKSTART.md](SETUP_DOCKER_CICD_QUICKSTART.md) | ✅ Complete | Quick setup guide (30 min) |
-| [PRODUCTION_READINESS_CHECKLIST.md](PRODUCTION_READINESS_CHECKLIST.md) | ✅ Complete | Pre-deployment checklist |
-| [PRODUCTION_DEPLOYMENT_SUMMARY.md](PRODUCTION_DEPLOYMENT_SUMMARY.md) | ✅ Complete | Deployment summary |
-| [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | ✅ Complete | Step-by-step deployment |
-| [ROLLBACK_PROCEDURES.md](#) | 🔴 Missing | Rollback procedures |
+| [DOCKER_PRODUCTION_GUIDE.md](docs/deployment/DOCKER_PRODUCTION_GUIDE.md) | ✅ Complete | Docker production setup |
+| [CICD_GITHUB_ACTIONS_GUIDE.md](docs/deployment/CICD_GITHUB_ACTIONS_GUIDE.md) | ✅ Complete | CI/CD with GitHub Actions |
+| [SETUP_DOCKER_CICD_QUICKSTART.md](docs/deployment/SETUP_DOCKER_CICD_QUICKSTART.md) | ✅ Complete | Quick setup guide (30 min) |
+| [PRODUCTION_READINESS_CHECKLIST.md](docs/deployment/PRODUCTION_READINESS_CHECKLIST.md) | ✅ Complete | Pre-deployment checklist |
+| [PRODUCTION_DEPLOYMENT_SUMMARY.md](docs/deployment/PRODUCTION_DEPLOYMENT_SUMMARY.md) | ✅ Complete | Deployment summary |
+| [DEPLOYMENT_CHECKLIST.md](docs/deployment/DEPLOYMENT_CHECKLIST.md) | ✅ Complete | Step-by-step deployment |
 
 ---
 
@@ -128,13 +128,12 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [monitoring-setup.md](monitoring-setup.md) | 🟡 Partial | Monitoring setup (needs expansion) |
-| [LOGGING_COMPLETE_SOLUTION.md](LOGGING_COMPLETE_SOLUTION.md) | ✅ Complete | Logging solution |
-| [PULSE_LOG_VIEWER_SETUP.md](PULSE_LOG_VIEWER_SETUP.md) | ✅ Complete | Pulse & Log Viewer setup |
-| [TELESCOPE_PRODUCTION_GUIDE.md](TELESCOPE_PRODUCTION_GUIDE.md) | ✅ Complete | Telescope for debugging |
-| [BACKUP_RECOVERY.md](#) | 🔴 Missing | Backup & recovery procedures |
-| [PERFORMANCE_OPTIMIZATION.md](PERFORMANCE_OPTIMIZATION.md) | 🟡 Partial | Performance tuning (needs update) |
-| [TROUBLESHOOTING.md](#) | 🔴 Missing | Common issues & solutions |
+| [TROUBLESHOOTING.md](docs/operations/TROUBLESHOOTING.md) | ✅ Complete | Common issues & solutions |
+| [monitoring-setup.md](docs/operations/monitoring-setup.md) | 🟡 Partial | Monitoring setup (needs expansion) |
+| [LOGGING_COMPLETE_SOLUTION.md](docs/operations/LOGGING_COMPLETE_SOLUTION.md) | ✅ Complete | Logging solution |
+| [PULSE_LOG_VIEWER_SETUP.md](docs/operations/PULSE_LOG_VIEWER_SETUP.md) | ✅ Complete | Pulse & Log Viewer setup |
+| [TELESCOPE_PRODUCTION_GUIDE.md](docs/operations/TELESCOPE_PRODUCTION_GUIDE.md) | ✅ Complete | Telescope for debugging |
+| [PERFORMANCE_OPTIMIZATION.md](docs/operations/PERFORMANCE_OPTIMIZATION.md) | 🟡 Partial | Performance tuning (needs update) |
 
 ---
 
@@ -142,11 +141,8 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) | ✅ Complete | Security checklist |
+| [SECURITY_CHECKLIST.md](docs/security/SECURITY_CHECKLIST.md) | ✅ Complete | Security checklist |
 | [SECURITY.md](#) | 🔴 Missing | Security overview & best practices |
-| [AUTHENTICATION.md](#) | 🔴 Missing | Authentication details |
-| [AUTHORIZATION.md](#) | 🔴 Missing | RBAC & authorization |
-| [DATA_PROTECTION.md](#) | 🔴 Missing | Data protection & privacy |
 
 ---
 
@@ -154,11 +150,9 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [TESTING_REALTIME_GUIDE.md](TESTING_REALTIME_GUIDE.md) | ✅ Complete | Real-time features testing |
-| [TESTING_GUIDE_PEMBAGIAN_BIAYA.md](TESTING_GUIDE_PEMBAGIAN_BIAYA.md) | ✅ Complete | Cost allocation testing |
+| [TESTING_REALTIME_GUIDE.md](docs/testing/TESTING_REALTIME_GUIDE.md) | ✅ Complete | Real-time features testing |
+| [TESTING_GUIDE_PEMBAGIAN_BIAYA.md](docs/testing/TESTING_GUIDE_PEMBAGIAN_BIAYA.md) | ✅ Complete | Cost allocation testing |
 | [TESTING.md](#) | 🔴 Missing | Overall testing strategy |
-| [UNIT_TESTING.md](#) | 🔴 Missing | Unit testing guide |
-| [FEATURE_TESTING.md](#) | 🔴 Missing | Feature testing guide |
 
 ---
 
@@ -166,11 +160,9 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [CONTRIBUTING.md](#) | 🔴 Missing | Contribution guidelines |
-| [CODE_STYLE.md](#) | 🔴 Missing | Code style guide |
-| [GIT_WORKFLOW.md](#) | 🔴 Missing | Git workflow & branching |
-| [PR_TEMPLATE.md](#) | 🔴 Missing | Pull request template |
-| [CODE_REVIEW_CHECKLIST.md](#) | 🔴 Missing | Code review checklist |
+| [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) | ✅ Complete | Contribution guidelines |
+| [CODE_STYLE.md](docs/contributing/CONTRIBUTING.md#coding-standards) | ✅ Complete | Code style guide (in CONTRIBUTING) |
+| [GIT_WORKFLOW.md](docs/contributing/CONTRIBUTING.md#development-workflow) | ✅ Complete | Git workflow (in CONTRIBUTING) |
 
 ---
 
@@ -178,11 +170,11 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [CHANGELOG.md](#) | 🔴 Missing | Version history & changes |
+| [CHANGELOG.md](docs/reference/CHANGELOG.md) | ✅ Complete | Version history & changes |
+| [QUICK_REFERENCE.md](docs/reference/QUICK_REFERENCE.md) | ✅ Complete | Quick command reference |
+| [TECHNICAL_AUDIT_AND_ROADMAP.md](docs/reference/TECHNICAL_AUDIT_AND_ROADMAP.md) | ✅ Complete | Technical audit & roadmap |
 | [FAQ.md](#) | 🔴 Missing | Frequently asked questions |
 | [GLOSSARY.md](#) | 🔴 Missing | Terminology & definitions |
-| [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | ✅ Complete | Quick command reference |
-| [MIGRATION_GUIDES.md](#) | 🔴 Missing | Version upgrade guides |
 
 ---
 
@@ -190,29 +182,28 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [admin_payment_analysis.md](admin_payment_analysis.md) | ✅ Complete | Payment analysis |
-| [ANALISA_REALTIME.md](ANALISA_REALTIME.md) | ✅ Complete | Real-time analysis |
-| [ANALISIS_PEMBAGIAN_BIAYA_PENGAJUAN.md](ANALISIS_PEMBAGIAN_BIAYA_PENGAJUAN.md) | ✅ Complete | Cost allocation analysis |
-| [ANALISIS_SPA_VS_MPA.md](ANALISIS_SPA_VS_MPA.md) | ✅ Complete | SPA vs MPA analysis |
-| [ANALYSIS_INSIGHTS.md](ANALYSIS_INSIGHTS.md) | ✅ Complete | System insights |
-| [TECHNICAL_AUDIT_AND_ROADMAP.md](TECHNICAL_AUDIT_AND_ROADMAP.md) | ✅ Complete | Technical audit & roadmap |
+| [admin_payment_analysis.md](docs/analysis/admin_payment_analysis.md) | ✅ Complete | Payment analysis |
+| [ANALISA_REALTIME.md](docs/analysis/ANALISA_REALTIME.md) | ✅ Complete | Real-time analysis |
+| [ANALISIS_PEMBAGIAN_BIAYA_PENGAJUAN.md](docs/analysis/ANALISIS_PEMBAGIAN_BIAYA_PENGAJUAN.md) | ✅ Complete | Cost allocation analysis |
+| [ANALISIS_SPA_VS_MPA.md](docs/analysis/ANALISIS_SPA_VS_MPA.md) | ✅ Complete | SPA vs MPA analysis |
+| [ANALYSIS_INSIGHTS.md](docs/analysis/ANALYSIS_INSIGHTS.md) | ✅ Complete | System insights |
 
 ---
 
 ## 📈 Documentation Status Overview
 
 ### Statistics
-- ✅ **Complete:** 28 documents
+- ✅ **Complete:** 32 documents
 - 🟡 **Partial:** 4 documents
-- 🔴 **Missing:** 30 documents
+- 🔴 **Missing:** 26 documents
 - **Total:** 62 documents
 
 ### Completion Rate
-- **Current:** 45% (28/62)
+- **Current:** 52% (32/62)
 - **Target:** 100%
 
 ### Priority Breakdown
-- 🔴 **High Priority:** 10 documents
+- 🔴 **High Priority:** 6 documents
 - 🟡 **Medium Priority:** 12 documents
 - 🟢 **Low Priority:** 8 documents
 
@@ -220,26 +211,29 @@ Security documentation:
 
 ## 🎯 Documentation Roadmap
 
-### Phase 1: Critical (Weeks 1-2) 🔴
-- [ ] QUICK_START.md
-- [ ] CONTRIBUTING.md
-- [ ] CHANGELOG.md
-- [ ] SECURITY.md
-- [ ] Reorganize README.md
+### Phase 1: Critical (Weeks 1-2) ✅ DONE
+- [x] QUICK_START.md
+- [x] CONTRIBUTING.md
+- [x] CHANGELOG.md
+- [x] TROUBLESHOOTING.md
+- [x] Reorganize folder structure
 
 ### Phase 2: Important (Weeks 3-4) 🟡
-- [ ] TROUBLESHOOTING.md
-- [ ] TESTING.md
+- [ ] SECURITY.md (expand)
+- [ ] TESTING.md (comprehensive)
 - [ ] FRONTEND_DOCUMENTATION.md (expand)
 - [ ] MONITORING.md (expand)
 - [ ] BACKUP_RECOVERY.md
-
-### Phase 3: Nice to Have (Weeks 5-6) 🟢
 - [ ] FAQ.md
 - [ ] GLOSSARY.md
+
+### Phase 3: Nice to Have (Weeks 5-6) 🟢
 - [ ] API_ERRORS.md
 - [ ] MIGRATION_GUIDES.md
-- [ ] Reorganize docs/ folder structure
+- [ ] UNIT_TESTING.md
+- [ ] FEATURE_TESTING.md
+- [ ] Video tutorials
+- [ ] Interactive examples
 
 ---
 

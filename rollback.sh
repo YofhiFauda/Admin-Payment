@@ -1,171 +1,90 @@
 #!/bin/bash
 
 # ═══════════════════════════════════════════════════════════════════
-#  WHUSNET Admin Payment - Rollback Script
-#  Emergency rollback to previous version
+#  Rollback Script - WHUSNET Admin Payment
+#  Rollback to previous Docker image version
 # ═══════════════════════════════════════════════════════════════════
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+DEPLOY_PATH="/var/www/admin-payment"
+REGISTRY="ghcr.io"
+IMAGE_NAME="${REGISTRY}/$(basename $(git config --get remote.origin.url) .git)"
 
-# Configuration
-BACKUP_DIR="./backups"
+cd "${DEPLOY_PATH}"
 
-# Functions
-log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-}
+echo "⏪ Starting rollback process..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
+# Load environment variables
+set -a
+source .env
+set +a
 
-log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
+# Get current running image
+CURRENT_IMAGE=$(docker inspect whusnet-app --format='{{.Config.Image}}' 2>/dev/null || echo "none")
+echo "📦 Current image: ${CURRENT_IMAGE}"
 
-log_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
+# Get list of available images (excluding latest)
+echo ""
+echo "Available versions:"
+docker images "${IMAGE_NAME}" --format "table {{.Tag}}\t{{.CreatedAt}}" | grep -v latest | head -n 5
 
-# Confirm rollback
-confirm_rollback() {
-    echo ""
-    log_warning "⚠️  WARNING: This will rollback to the previous version"
-    echo ""
-    read -p "Are you sure you want to continue? (yes/no): " -r
-    echo ""
-    
-    if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
-        log_info "Rollback cancelled"
-        exit 0
-    fi
-}
+# Get previous image (second in list, first is current)
+PREVIOUS_TAG=$(docker images "${IMAGE_NAME}" --format "{{.Tag}}" | grep -v latest | head -n 2 | tail -n 1)
 
-# Find latest backup
-find_latest_backup() {
-    LATEST_DB_BACKUP=$(ls -t ${BACKUP_DIR}/db_backup_*.sql.gz 2>/dev/null | head -n 1)
-    LATEST_CODE_BACKUP=$(ls -t ${BACKUP_DIR}/code_backup_*.tar.gz 2>/dev/null | head -n 1)
-    
-    if [ -z "$LATEST_DB_BACKUP" ] || [ -z "$LATEST_CODE_BACKUP" ]; then
-        log_error "No backups found in $BACKUP_DIR"
-        exit 1
-    fi
-    
-    log_info "Found database backup: $LATEST_DB_BACKUP"
-    log_info "Found code backup: $LATEST_CODE_BACKUP"
-}
+if [ -z "${PREVIOUS_TAG}" ]; then
+  echo ""
+  echo "❌ No previous image found for rollback"
+  echo "Available images:"
+  docker images "${IMAGE_NAME}"
+  exit 1
+fi
 
-# Restore database
-restore_database() {
-    log_info "Restoring database from backup..."
-    
-    DB_NAME=$(grep DB_DATABASE .env | cut -d '=' -f2)
-    DB_USER=$(grep DB_USERNAME .env | cut -d '=' -f2)
-    DB_PASS=$(grep DB_PASSWORD .env | cut -d '=' -f2)
-    DB_HOST=$(grep DB_HOST .env | cut -d '=' -f2)
-    
-    # Create a backup of current state before restore
-    EMERGENCY_BACKUP="${BACKUP_DIR}/emergency_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
-    mysqldump -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" | gzip > "$EMERGENCY_BACKUP"
-    log_success "Created emergency backup: $EMERGENCY_BACKUP"
-    
-    # Restore from backup
-    gunzip < "$LATEST_DB_BACKUP" | mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME"
-    
-    log_success "Database restored"
-}
+echo ""
+echo "🎯 Target rollback version: ${PREVIOUS_TAG}"
+echo ""
+read -p "Continue with rollback? (yes/no): " -r
+echo
 
-# Restore code
-restore_code() {
-    log_info "Restoring code from backup..."
-    
-    # Extract backup
-    tar -xzf "$LATEST_CODE_BACKUP"
-    
-    log_success "Code restored"
-}
+if [[ ! $REPLY =~ ^[Yy]es$ ]]; then
+  echo "❌ Rollback cancelled"
+  exit 1
+fi
 
-# Main rollback
-main() {
-    log_info "⏪ Starting rollback at $(date)"
-    echo ""
-    
-    # Confirm
-    confirm_rollback
-    
-    # Find backups
-    find_latest_backup
-    
-    echo ""
-    log_info "🔧 Putting application in maintenance mode..."
-    php artisan down --render="errors::503"
-    log_success "Maintenance mode enabled"
-    
-    echo ""
-    log_info "📦 Restoring code..."
-    restore_code
-    
-    echo ""
-    log_info "📦 Installing dependencies..."
-    composer install --no-dev --optimize-autoloader --no-interaction
-    log_success "Dependencies installed"
-    
-    echo ""
-    log_info "🗄️  Restoring database..."
-    read -p "Do you want to restore the database? (yes/no): " -r
-    echo ""
-    
-    if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
-        restore_database
-    else
-        log_warning "Database restore skipped"
-    fi
-    
-    echo ""
-    log_info "🗑️  Clearing caches..."
-    php artisan cache:clear
-    php artisan config:clear
-    php artisan route:clear
-    php artisan view:clear
-    log_success "Caches cleared"
-    
-    echo ""
-    log_info "⚡ Optimizing application..."
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
-    log_success "Application optimized"
-    
-    echo ""
-    log_info "🔄 Restarting services..."
-    
-    if command -v docker-compose &> /dev/null; then
-        docker-compose restart app horizon reverb
-        log_success "Services restarted"
-    else
-        log_warning "Docker not found, skipping container restart"
-    fi
-    
-    echo ""
-    log_info "✨ Bringing application back online..."
-    php artisan up
-    log_success "Application is now live"
-    
-    echo ""
-    log_success "🎉 Rollback completed at $(date)"
-    echo ""
-    log_warning "⚠️  Please verify the application is working correctly"
-    echo ""
-}
+# Set version to rollback to
+export APP_VERSION="${PREVIOUS_TAG}"
 
-# Run main function
-main
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔄 Pulling previous image..."
+docker-compose pull app horizon reverb scheduler
 
-exit 0
+echo ""
+echo "🔄 Restarting services with previous version..."
+docker-compose up -d --force-recreate app horizon reverb scheduler nginx
+
+echo ""
+echo "⏳ Waiting for services to be ready..."
+sleep 15
+
+echo ""
+echo "🏥 Running health checks..."
+if docker-compose exec -T app php artisan list > /dev/null 2>&1; then
+  echo "✅ Health check passed"
+else
+  echo "❌ Health check failed"
+  echo ""
+  echo "📋 Recent logs:"
+  docker-compose logs --tail 50 app
+  exit 1
+fi
+
+echo ""
+echo "✅ Rollback completed successfully!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Current status:"
+docker-compose ps
+
+echo ""
+echo "📦 Current image:"
+docker inspect whusnet-app --format='{{.Config.Image}}'
