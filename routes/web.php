@@ -19,6 +19,70 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+
+// ═══════════════════════════════════════════════════════════════════
+//  Health Check Endpoints (for CI/CD & Monitoring)
+// ═══════════════════════════════════════════════════════════════════
+
+// Basic ping endpoint (no dependencies)
+Route::get('/ping', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+    ], 200);
+});
+
+// Detailed health check (checks all dependencies)
+Route::get('/health', function () {
+    $health = [
+        'status' => 'healthy',
+        'timestamp' => now()->toIso8601String(),
+        'checks' => [],
+    ];
+
+    try {
+        // Check database connection
+        DB::connection()->getPdo();
+        $health['checks']['database'] = 'ok';
+    } catch (\Exception $e) {
+        $health['status'] = 'unhealthy';
+        $health['checks']['database'] = 'failed: '.$e->getMessage();
+    }
+
+    try {
+        // Check Redis connection
+        Cache::store('redis')->get('health-check-'.time());
+        $health['checks']['redis'] = 'ok';
+    } catch (\Exception $e) {
+        $health['status'] = 'unhealthy';
+        $health['checks']['redis'] = 'failed: '.$e->getMessage();
+    }
+
+    try {
+        // Check storage writable
+        $testFile = storage_path('logs/health-check-'.time().'.tmp');
+        file_put_contents($testFile, 'test');
+        unlink($testFile);
+        $health['checks']['storage'] = 'ok';
+    } catch (\Exception $e) {
+        $health['status'] = 'unhealthy';
+        $health['checks']['storage'] = 'failed: '.$e->getMessage();
+    }
+
+    // Check queue (Horizon)
+    try {
+        $horizonStatus = \Illuminate\Support\Facades\Artisan::call('horizon:status');
+        $health['checks']['horizon'] = $horizonStatus === 0 ? 'running' : 'stopped';
+    } catch (\Exception $e) {
+        $health['checks']['horizon'] = 'unknown';
+    }
+
+    $statusCode = $health['status'] === 'healthy' ? 200 : 503;
+
+    return response()->json($health, $statusCode);
+});
 
 // Redirect root: ke dashboard jika login, ke login jika guest
 Route::get('/', function () {

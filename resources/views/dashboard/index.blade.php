@@ -920,7 +920,7 @@ async function loadAllHutangAmounts() {
         {{-- Total Pengeluaran --}}
         <div class="dash-card p-5">
             <div class="flex items-start gap-4">
-                <div class="metric-icon bg-linear-to-r from-sky-600 to-sky-600 shadow-lg shadow-indigo-500/30">
+                <div class="metric-icon bg-linear-to-r from-sky-600 to-sky-500 shadow-lg shadow-indigo-500/30">
                     <i data-lucide="trending-up" class="w-5 h-5 text-white"></i>
                 </div>
                 <div class="min-w-0">
