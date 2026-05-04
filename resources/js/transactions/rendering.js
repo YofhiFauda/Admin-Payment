@@ -1,5 +1,5 @@
 import { Config, userRole, canManage, isOwner, isAdmin } from './config.js';
-import { formatNumber } from './utils.js';
+import { formatNumber, getActiveSearchValue } from './utils.js';
 
 // Helper: Branch Tags Rendering
 export function renderBranchTags(branches, maxVisible = 2, index = null) {
@@ -483,7 +483,7 @@ export function renderDesktopTable(data, startIndex = 0) {
     if (data.length === 0) {
         tbody.innerHTML = '';
         noResults?.classList.remove('hidden');
-        const query = document.getElementById('instant-search')?.value || '';
+        const query = getActiveSearchValue();
         const elQuery = document.getElementById('no-result-query');
         if (elQuery) elQuery.textContent = query;
     } else {
@@ -504,7 +504,7 @@ export function renderMobileCards(data, startIndex = 0) {
     if (data.length === 0) {
         container.innerHTML = '';
         noResults?.classList.remove('hidden');
-        const query = document.getElementById('instant-search')?.value || '';
+        const query = getActiveSearchValue();
         const elQuery = document.getElementById('mobile-no-result-query');
         if (elQuery) elQuery.textContent = query;
     } else {

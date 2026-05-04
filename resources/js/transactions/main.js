@@ -3,7 +3,7 @@ import { initModals } from "./modals.js";
 import { initPaymentHandlers } from "./payment.js";
 import { initRealtime } from "./realtime.js";
 import { Config } from "./config.js";
-import { setAsReference } from "./utils.js";
+import { setAsReference, syncSearchInputs } from "./utils.js";
 import "./modals-export-excel.js";
 import "./form-pengajuan/index.js"; // Form Pengajuan Orchestration
 import "./form-rembush/index.js"; // Form Rembush Orchestration
@@ -131,18 +131,45 @@ document.addEventListener("DOMContentLoaded", function () {
         SearchEngine.init();
     });
 
-    // Instant search with debounce
-    const searchInput = document.getElementById("instant-search");
-    if (searchInput) {
-        searchInput.addEventListener("input", function () {
-            SearchEngine.search(this.value.trim());
-        });
-    }
+    // Instant search with synchronization across all layouts
+    const searchInputs = document.querySelectorAll(".search-input-sync");
+    const searchClearBtns = document.querySelectorAll(".search-clear, #search-clear");
 
-    if (searchInput && searchInput.value.trim() !== "") {
-        const searchClearBtn = document.getElementById("search-clear");
-        searchClearBtn?.classList.remove("hidden");
-    }
+    searchInputs.forEach(input => {
+        // Initial state for clear button
+        if (input.value.trim() !== "") {
+            const container = input.closest(".relative");
+            container?.querySelector(".search-clear, #search-clear")?.classList.remove("hidden");
+        }
+
+        input.addEventListener("input", function () {
+            const val = this.value.trim();
+            
+            // Sync all other search inputs
+            syncSearchInputs(val);
+
+            // Toggle clear buttons
+            searchClearBtns.forEach(btn => {
+                btn.classList.toggle("hidden", val === "");
+            });
+
+            // Trigger search
+            SearchEngine.search(val);
+        });
+    });
+
+    // Clear search functionality
+    searchClearBtns.forEach(btn => {
+        btn.addEventListener("click", function() {
+            syncSearchInputs("");
+            searchClearBtns.forEach(b => b.classList.add("hidden"));
+            SearchEngine.search("");
+            
+            // Refocus the nearest input
+            const input = this.closest(".relative")?.querySelector(".search-input-sync");
+            input?.focus();
+        });
+    });
 
     // Initialize the Search Engine
     if (document.getElementById("search-results-container")) {
