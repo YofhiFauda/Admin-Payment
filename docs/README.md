@@ -19,8 +19,8 @@ docs/
 ├── security/            # Security guidelines
 ├── testing/             # Testing guides
 ├── contributing/        # Contribution guidelines
-├── code-review/         # Code review process & guidelines
-└── reference/           # Reference materials
+├── reference/           # Reference materials
+└── analysis/            # System analysis & reports
 ```
 
 ---
@@ -50,7 +50,6 @@ Deployment guides:
 ### 🔒 Security Team?
 Security documentation:
 1. [Security Checklist](security/SECURITY_CHECKLIST.md) - Security guidelines
-2. [Security Overview](security/SECURITY.md) - Security best practices *(Coming Soon)*
 
 ---
 
@@ -58,8 +57,6 @@ Security documentation:
 
 ### 🎯 Getting Started
 - [Quick Start Guide](getting-started/QUICK_START.md) - 5-minute setup
-- [Installation Guide](getting-started/INSTALLATION.md) - Detailed installation *(Coming Soon)*
-- [Configuration Guide](getting-started/CONFIGURATION.md) - Environment setup *(Coming Soon)*
 
 ### 🏗️ Architecture & Design
 - [Database Schema](architecture/DATABASE_SCHEMA.md) - Complete database structure
@@ -101,47 +98,51 @@ Security documentation:
 
 ### 🔒 Security
 - [Security Checklist](security/SECURITY_CHECKLIST.md) - Security guidelines
-- [Security Overview](security/SECURITY.md) - Security best practices *(Coming Soon)*
 
 ### 🧪 Testing
 - [Testing Real-time Features](testing/TESTING_REALTIME_GUIDE.md) - Real-time testing
 - [Testing Cost Allocation](testing/TESTING_GUIDE_PEMBAGIAN_BIAYA.md) - Cost allocation testing
-- [Testing Guide](testing/TESTING.md) - Overall testing strategy *(Coming Soon)*
 
 ### 🤝 Contributing
 - [Contributing Guide](contributing/CONTRIBUTING.md) - How to contribute
 - [Code Style Guide](contributing/CONTRIBUTING.md#coding-standards) - Coding standards
 - [Git Workflow](contributing/CONTRIBUTING.md#development-workflow) - Git workflow
 
-### 📋 Code Review
-- [Code Review Overview](code-review/README.md) - Code review documentation
-- [Code Review Setup](code-review/CODE_REVIEW_SETUP.md) - Complete setup guide
-- [Code Review Guidelines](code-review/CODE_REVIEW_GUIDELINES.md) - Review process
-- [Quick Reference](code-review/CODE_REVIEW_QUICK_REFERENCE.md) - Quick commands
-- [Branch Protection](code-review/BRANCH_PROTECTION_SETUP.md) - Branch protection setup
+### 📋 Code Review (GitHub Configuration)
+- [Code Review Setup](../.github/CODE_REVIEW_SETUP.md) - Complete setup guide
+- [Code Review Guidelines](../.github/CODE_REVIEW_GUIDELINES.md) - Review process
+- [Quick Reference](../.github/CODE_REVIEW_QUICK_REFERENCE.md) - Quick commands
+- [Branch Protection](../.github/BRANCH_PROTECTION_SETUP.md) - Branch protection setup
+- [CODEOWNERS](../.github/CODEOWNERS) - Automatic reviewer assignment
+- [Pull Request Template](../.github/pull_request_template.md) - PR template
 
 ### 📖 Reference
 - [Changelog](reference/CHANGELOG.md) - Version history
 - [Quick Reference](reference/QUICK_REFERENCE.md) - Command reference
 - [Technical Audit](reference/TECHNICAL_AUDIT_AND_ROADMAP.md) - Technical audit & roadmap
-- [FAQ](reference/FAQ.md) - Frequently asked questions *(Coming Soon)*
-- [Glossary](reference/GLOSSARY.md) - Terminology *(Coming Soon)*
+
+### 📊 Analysis & Reports
+- [Admin Payment Analysis](analysis/admin_payment_analysis.md) - Payment analysis
+- [Real-time Analysis](analysis/ANALISA_REALTIME.md) - Real-time analysis
+- [Cost Allocation Analysis](analysis/ANALISIS_PEMBAGIAN_BIAYA_PENGAJUAN.md) - Cost allocation analysis
+- [SPA vs MPA Analysis](analysis/ANALISIS_SPA_VS_MPA.md) - SPA vs MPA analysis
+- [System Insights](analysis/ANALYSIS_INSIGHTS.md) - System insights
 
 ---
 
 ## 📊 Documentation Status
 
 ### Statistics
-- ✅ **Complete:** 37 documents
+- ✅ **Complete:** 32 documents
 - 🟡 **Partial:** 4 documents
-- 🔴 **Missing:** 26 documents
-- **Total:** 67 documents
-- **Completion Rate:** 55%
+- 🔴 **Missing:** 8 documents
+- **Total:** 44 documents
+- **Completion Rate:** 73%
 
 ### Priority Breakdown
-- 🔴 **High Priority:** 6 remaining
-- 🟡 **Medium Priority:** 12 remaining
-- 🟢 **Low Priority:** 8 remaining
+- 🔴 **High Priority:** 3 remaining
+- 🟡 **Medium Priority:** 3 remaining
+- 🟢 **Low Priority:** 2 remaining
 
 ---
 
@@ -155,8 +156,8 @@ Security documentation:
 - [x] Reorganize folder structure
 
 ### Phase 2: Important (Weeks 3-4)
-- [ ] SECURITY.md (expanded)
-- [ ] TESTING.md (comprehensive)
+- [ ] SECURITY.md (comprehensive security guide)
+- [ ] TESTING.md (overall testing strategy)
 - [ ] FRONTEND_DOCUMENTATION.md (expanded)
 - [ ] MONITORING.md (expanded)
 - [ ] BACKUP_RECOVERY.md
@@ -165,7 +166,6 @@ Security documentation:
 - [ ] FAQ.md
 - [ ] GLOSSARY.md
 - [ ] API_ERRORS.md
-- [ ] MIGRATION_GUIDES.md
 
 ---
 

@@ -420,17 +420,17 @@
                     <div class="hidden sm:flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
                         <a href="{{ route('transactions.create') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
-                            {{ request()->routeIs('transactions.create') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
+                            {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="file-up" class="w-4 h-4"></i> Input Transaksi
                         </a>
                         <a href="{{ route('transactions.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors
-                            {{ request()->routeIs('transactions.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
+                            {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
                         </a>
                         <a href="{{ route('notifications.index') }}"
                             class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors relative
-                            {{ request()->routeIs('notifications.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50' }}">
+                            {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white' : 'text-slate-600 hover:bg-slate-50' }}">
                             <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
                             <span id="notif-count-desktop" class="notif-badge badge-hidden">0</span>
                         </a>
@@ -440,25 +440,25 @@
                     <div class="flex sm:hidden items-center gap-0.5 mr-0">
                         <a href="{{ route('transactions.create') }}"
                             class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
-                            {{ request()->routeIs('transactions.create') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
+                            {{ request()->routeIs('transactions.create') ? 'text-sky-600 bg-sky-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="file-up" class="w-4.5 h-4.5"></i>
                             @if(request()->routeIs('transactions.create'))
-                                <span class="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></span>
+                                <span class="absolute bottom-1 w-1 h-1 bg-blue-600 rounded-full"></span>
                             @endif
                         </a>
 
                         <a href="{{ route('transactions.index') }}"
                             class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
-                            {{ request()->routeIs('transactions.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
+                            {{ request()->routeIs('transactions.index') ? 'text-sky-600 bg-sky-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="clock" class="w-4.5 h-4.5"></i>
                              @if(request()->routeIs('transactions.index'))
-                                <span class="absolute bottom-1 w-1 h-1 bg-indigo-600 rounded-full"></span>
+                                <span class="absolute bottom-1 w-1 h-1 bg-blue-600 rounded-full"></span>
                             @endif
                         </a>
 
                         <a href="{{ route('notifications.index') }}" 
                             class="flex flex-col items-center justify-center w-9 h-9 rounded-xl transition-colors relative
-                            {{ request()->routeIs('notifications.index') ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100' }}">
+                            {{ request()->routeIs('notifications.index') ? 'text-sky-600 bg-sky-50' : 'text-slate-500 hover:bg-slate-100' }}">
                             <i data-lucide="bell" class="w-4.5 h-4.5"></i>
                             <span id="notif-count-mobile" class="notif-badge-mobile badge-hidden">0</span>
                         </a>
@@ -474,7 +474,7 @@
                                 <p class="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Teknisi</p>
                             </div>
                             
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-inner text-xs border-2 border-white">
+                            <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold shadow-inner text-xs border-2 border-white">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         </button>
