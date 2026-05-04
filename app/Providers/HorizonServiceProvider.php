@@ -35,11 +35,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function ($user) {
-            // ✅ GANTI dengan logika autentikasi Anda
-            // Contoh: hanya user dengan email tertentu
-            return in_array($user->email, [
-                'superadmin@whusnet.com',
-            ]);
+            return app()->environment('local') || in_array($user->role, ['owner', 'admin', 'atasan']);
         });
     }
 }

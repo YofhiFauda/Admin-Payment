@@ -40,15 +40,20 @@
                             <td class="px-6 py-5 text-center">
                                 @php
                                     $actionColors = [
-                                        'approve' => 'bg-emerald-50 text-emerald-600 border-emerald-100',
-                                        'reject'  => 'bg-rose-50 text-rose-600 border-rose-100',
-                                        'edit'    => 'bg-blue-50 text-blue-600 border-blue-100',
-                                        'submit'  => 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                                        'approve'        => 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                                        'reject'         => 'bg-rose-50 text-rose-600 border-rose-100',
+                                        'edit'           => 'bg-blue-50 text-blue-600 border-blue-100',
+                                        'submit'         => 'bg-indigo-50 text-indigo-600 border-indigo-100',
+                                        'force_approve'  => 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                                        'upload_payment' => 'bg-blue-50 text-blue-600 border-blue-100',
+                                        'reject_payment' => 'bg-rose-50 text-rose-600 border-rose-100',
+                                        'delete'         => 'bg-red-50 text-red-600 border-red-100',
                                     ];
                                     $colorClass = $actionColors[strtolower($log->action)] ?? 'bg-slate-50 text-slate-600 border-slate-100';
+                                    $displayAction = str_replace('_', ' ', $log->action);
                                 @endphp
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border {{ $colorClass }}">
-                                    {{ ucfirst($log->action) }}
+                                    {{ $displayAction }}
                                 </span>
                             </td>
                             <td class="px-6 py-5">

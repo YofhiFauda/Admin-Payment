@@ -2,6 +2,22 @@
 
 > Sistem manajemen keuangan internal untuk **WHUSNET** — mengelola transaksi rembush (reimbursement) & pengajuan pembelian, dengan fitur **OCR otomatis** menggunakan AI (Gemini via n8n), alur approval multi-level, serta dashboard analitik real-time.
 
+**Version:** 4.5.0 | **Laravel:** 12 | **PHP:** 8.4 | **Last Updated:** 4 Mei 2026
+
+[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen)](DOCUMENTATION_INDEX.md)
+[![License](https://img.shields.io/badge/license-Internal-blue)]()
+[![Status](https://img.shields.io/badge/status-production-success)]()
+
+---
+
+## 🚀 Quick Links
+
+- 📖 **[Documentation Index](DOCUMENTATION_INDEX.md)** - Central hub untuk semua dokumentasi
+- ⚡ **[Quick Start (5 min)](docs/getting-started/QUICK_START.md)** - Setup cepat untuk development
+- 🤝 **[Contributing Guide](docs/contributing/CONTRIBUTING.md)** - Panduan kontribusi
+- 🔧 **[Troubleshooting](docs/operations/TROUBLESHOOTING.md)** - Solusi masalah umum
+- 📝 **[Changelog](docs/reference/CHANGELOG.md)** - Version history
+
 ---
 
 ## 📋 Daftar Isi
@@ -19,6 +35,7 @@
 - [API Endpoints](#-api-endpoints)
 - [Event & Notifikasi](#-event--notifikasi)
 - [Perintah Berguna](#-perintah-berguna)
+- [📚 Dokumentasi Lengkap](#-dokumentasi-lengkap)
 
 ---
 
@@ -26,16 +43,29 @@
 
 | Fitur | Deskripsi |
 |---|---|
-| **Rembush (Reimbursement)** | Upload nota → OCR otomatis via AI → review & approval |
-| **Pengajuan Pembelian** | Form pengajuan barang/jasa tanpa OCR, langsung submit |
-| **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API |
-| **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete, ≥ Rp 1.000.000 perlu approval Owner |
-| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang, dan daftar transaksi pending |
-| **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi |
-| **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR |
-| **Activity Log** | Pencatatan semua aktivitas pengguna (create, approve, reject, dll.) |
-| **Manajemen User** | CRUD pengguna dengan 4 role berbeda dan hak akses hierarkis |
-| **Search & Filter** | Pencarian dan filter transaksi berdasarkan status, tipe, cabang, bulan, tahun |
+| **Rembush (Reimbursement)** | Flow otomatis: Upload nota → 4-Layer Security (Duplikat, Tanggal, AI, Payment Verification) → Auto-fill data → Submit. |
+| **Pengajuan Pembelian** | Sistem **Dual-Version** (Teknisi vs Management). Mendukung perbandingan versi, snapshot items, dan alokasi cabang manual. |
+| **Gudang (Warehouse)** | Modul internal untuk pencatatan belanja gudang. Alur cepat: Tanpa OCR/Telegram, status langsung `completed` setelah bukti upload. |
+| **OCR AI (Gemini)** | Ekstraksi data dari foto nota secara otomatis via n8n + Gemini API dengan parameter confidence. |
+| **Multi-Level Approval** | Transaksi < Rp 1.000.000 auto-complete (jika disetujui Admin), ≥ Rp 1.000.000 perlu approval Owner. |
+| **Dual-Version System** | Melacak perubahan data antara input asli Teknisi dan hasil revisi Management untuk audit trail yang transparan. |
+| **Edit Protection** | Proteksi otomatis: Transaksi dengan status `completed` tidak dapat diedit oleh peran apapun (termasuk Owner). |
+| **Dashboard Analitik** | Statistik transaksi, rincian biaya per cabang, dan monitoring real-time **Hutang & Piutang Antar Cabang** via AJAX widgets. |
+| **Alokasi Cabang** | Distribusi biaya transaksi ke beberapa cabang dengan persentase alokasi (Equal, Percentage, atau Manual). |
+| **Hutang Antar Cabang** | Pelunasan hutang antar-unit dengan fitur upload bukti transfer dan catatan pelunasan otomatis. |
+| **Prive (Withdrawal)** | Pencatatan pengambilan dana pribadi owner dengan tracking sumber dana cabang dan bukti transfer. |
+| **Kelola Kategori** | Sistem manajemen kategori dinamis untuk Rembush & Pengajuan dengan antarmuka **Glass Admin** modern. |
+| **Rekening Cabang** | Manajemen rekening bank/e-wallet untuk tiap cabang dengan kontrol akses ketat (Owner full-access, Atasan & Admin read-only). |
+| **Notifikasi Real-time** | Notifikasi via WebSocket (Laravel Reverb) untuk update status transaksi & OCR. |
+| **Bypass AI Control** | Fitur **Override** (untuk memulihkan auto-reject) dan **Force Approve** (untuk memulihkan flagged nominal). |
+| **Telegram Bot Sync** | Notifikasi real-time, konfirmasi pembayaran cash, dan alert selisih nominal langsung ke Telegram. |
+| **Activity Log & Audit** | Audit trail lengkap untuk setiap aksi dan laporan kebocoran dana bulanan via PaymentDiscrepancyAudit. |
+| **Responsive UI** | Antarmuka *mobile-first* dengan modal rincian transaksi komprehensif dan toggle perbandingan versi. |
+| **Price Index System** | Referensi harga belanja otomatis dengan filter outlier (IQR), deteksi anomali real-time (AJAX), dan penanganan **Cold Start** untuk barang baru. |
+| **Hybrid Search** | Menjamin performa dengan switch otomatis antara Client-Side (< 5k data) dan Server-Side (≥ 5k data). |
+| **API Documentation** | Dokumentasi API interaktif dan otomatis menggunakan **Scramble** (OpenAPI/Swagger). |
+
+
 
 ---
 
@@ -43,15 +73,19 @@
 
 ### Backend
 - **PHP 8.4** + **Laravel 12**
+- **Scramble** — Automated API documentation (OpenAPI 3.1)
+
 - **MySQL 8.0** — Database utama
 - **Redis 7.2** — Cache, session, queue, rate limiter, ID generator
 - **Laravel Horizon** — Monitoring & manajemen queue worker
 - **Laravel Reverb** — WebSocket server untuk notifikasi real-time
 
 ### Frontend
-- **Blade Templates** — Server-side rendering
-- **Vite** — Asset bundler (CSS/JS)
-- **JavaScript** — AJAX interactions, real-time polling
+- **Blade Templates** — Server-side rendering dengan logic role-based.
+- **Tailwind CSS v4** — Modern utility-first CSS framework.
+- **Vite** — Asset bundling & HMR.
+- **Vanilla JS & Axios** — AJAX interactions & real-time UI synchronization.
+
 
 ### Infrastructure
 - **Docker** & **Docker Compose** — Containerized deployment
@@ -65,41 +99,86 @@
 
 ## 🏗 Arsitektur Sistem
 
+```mermaid
+graph TD
+    A[Frontend/User] -->|Upload| B(Laravel API /v1/nota/upload)
+    B -->|Dispatch Job| C{Redis Queue}
+    C -->|Trigger| D[n8n Workflow]
+    
+    subgraph n8n_Logic [Security & AI Extraction]
+        D1[Layer 1: Duplicate Detection] --> D2[Layer 2: Date Logic Check]
+        D2 --> D3[Layer 3: Gemini AI Extraction]
+        D3 --> D4[Layer 4: Payment Verification]
+    end
+    
+    D --> n8n_Logic
+    D4 -->|Callback| E[Laravel API /ai/auto-fill]
+    E -->|Broadcast| F[Laravel Reverb WS]
+    F -->|Real-time UI| A
+    E -->|Notify| G[Telegram / Push Notif]
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                        Docker Network                          │
-│                                                                │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐                  │
-│  │  Nginx   │───▶│ Laravel  │───▶│  MySQL   │                  │
-│  │ :8000    │    │ PHP-FPM  │    │ :3306    │                  │
-│  └──────────┘    │ :9000    │    └──────────┘                  │
-│                  └────┬─────┘                                  │
-│                       │                                        │
-│              ┌────────┼────────┐                               │
-│              ▼        ▼        ▼                               │
-│        ┌──────────┐ ┌──────┐ ┌──────────┐                     │
-│        │ Horizon  │ │Redis │ │ Reverb   │                     │
-│        │ (Queue)  │ │:6379 │ │ (WS)     │                     │
-│        └──────────┘ └──────┘ │ :8081    │                     │
-│                              └──────────┘                     │
-│  ┌──────────┐    ┌──────────┐                                  │
-│  │ Node.js  │    │Scheduler │                                  │
-│  │ (Vite)   │    │ (Cron)   │                                  │
-│  │ :3000    │    └──────────┘                                  │
-│  └──────────┘                                                  │
-│                                                                │
-│  ┌──────────────┐                                              │
-│  │ phpMyAdmin   │                                              │
-│  │ :8080        │                                              │
-│  └──────────────┘                                              │
-└────────────────────────────────────────────────────────────────┘
-                         │
-                         ▼  (Webhook)
-                   ┌──────────┐
-                   │   n8n    │──▶ Google Gemini AI
-                   │ (Cloud)  │
-                   └──────────┘
-```
+
+---
+
+## 🔄 Alur Kerja (Workflows)
+
+### 1. Rembush (OCR Flow)
+1. **Upload**: User upload foto nota.
+2. **Security Check (L1 & L2)**: Sistem mengecek duplikasi hash file dan validitas tanggal (maks 2 hari).
+3. **AI Extraction (L3)**: Gemini mengekstrak Vendor, Item, dan Nominal. User melengkapi kategori & alokasi cabang.
+4. **Approval**: Admin/Atasan menyetujui. Jika nominal ≥ 1 Jt, memerlukan approval Owner.
+5. **Payment**: Admin upload bukti bayar (Transfer/Cash).
+6. **Verification (L4)**: 
+   - **Transfer**: AI mengecek nominal struk vs transaksi. Jika selisih, status menjadi `flagged`.
+   - **Cash**: Teknisi konfirmasi terima uang via Telegram Bot.
+
+### 2. Pengajuan (Dual-Version Flow)
+1. **Input**: Teknisi input detail pengajuan. Sistem menyimpan **snapshot original**.
+2. **Management Review**: Owner/Atasan dapat merevisi item/nominal. Sistem menandai `is_edited_by_management = true`.
+3. **Transparency**: Semua user dapat melihat perbandingan antara "Versi Pengaju" dan "Versi Management" melalui toggle di modal detail.
+4. **Payment holding**: Transaksi beralih ke `waiting_payment` setelah disetujui. Saat invoice diupload, status akan tetap `waiting_payment` jika terdapat cabang yang masih berhutang (inter-unit debt).
+5. **Finalization**: Status otomatis menjadi `completed` hanya setelah invoice terunggah DAN seluruh hutang antar cabang telah dilunaskan. Pengeditan kini dikunci total.
+
+### 3. Gudang (Internal Flow)
+1. **Input**: Staff internal (Admin/Owner) input belanja gudang.
+2. **Review Management**: Persetujuan oleh Management. Status menjadi `pending` -> `waiting_payment`.
+3. **Payment**: Upload bukti bayar (Tanpa OCR).
+4. **Finalization**: Status langsung menjadi `completed` tanpa perlu konfirmasi Telegram teknisi.
+
+---
+
+## 🛡️ OCR & Security Layers
+
+Sistem menerapkan **4-Layer Verification** untuk menjamin validitas keuangan:
+1. **Layer 1 (Duplicate)**: Pengecekan MD5 hash file nota di Redis/DB untuk mencegah nota ganda.
+2. **Layer 2 (Date Logic)**: Nota berumur > 2 hari kalender otomatis berstatus `auto-reject` (dapat di-*override* oleh Admin/Owner).
+3. **Layer 3 (AI Extraction)**: Gemini Pro mengekstrak data dengan parameter `confidence`. Status `low-confidence` memerlukan review manual.
+4. **Layer 4 (Payment Audit)**: Verifikasi nominal pada struk transfer. Jika tidak cocok, transaksi di-*flag* dan memerlukan *Force Approve* dengan alasan tertulis.
+
+---
+
+## 🔍 Hybrid Search Logic
+
+Sistem pencarian transaksi dirancang untuk performa optimal pada berbagai skala data:
+1. **Threshold**: 5.000 records benchmark.
+2. **Mode Client-Side (< 5k)**: Seluruh data dimuat ke frontend (lean version) untuk pencarian instan tanpa latency server.
+3. **Mode Server-Side (≥ 5k)**: Sistem beralih ke paginasi database standar untuk menjaga penggunaan memori browser tetap rendah.
+4. **Auto-Adaptive**: Setiap pemuatan halaman melakukan pengecekan jumlah data via `/transactions/count` untuk menentukan mode terbaik secara otomatis.
+
+---
+
+---
+
+## 🤖 Integrasi Telegram
+
+Bot Telegram digunakan sebagai jembatan komunikasi real-time:
+- **Teknisi**: Menerima notifikasi pembayaran cash dan tombol **✅ Konfirmasi Terima**.
+- **Admin/Owner**: Menerima alert **🚨 Selisih Nominal** atau **⛔ Auto-Reject**.
+- **Owner**: Menerima notifikasi untuk **Force Approve** pada transaksi yang di-flag.
+- **Broadcast**: Pengiriman pesan ke seluruh staf atau role tertentu.
+
+---
+
 
 ### Docker Services
 
@@ -176,8 +255,10 @@ php artisan db:seed
 | Layanan | URL |
 |---|---|
 | Aplikasi | http://localhost:8000 |
+| API Documentation | http://localhost:8000/docs/api |
 | phpMyAdmin | http://localhost:8080 |
 | Horizon Dashboard | http://localhost:8000/horizon |
+
 
 ---
 
@@ -242,6 +323,7 @@ Admin-Payment/
 │   │   │   ├── AuthController.php             # Login / Logout
 │   │   │   ├── BranchController.php           # CRUD Cabang
 │   │   │   ├── DashboardController.php        # Dashboard & analytics
+│   │   │   ├── GudangController.php           # Alur belanja gudang (internal)
 │   │   │   ├── NotificationController.php     # Notifikasi
 │   │   │   ├── PengajuanController.php        # Alur pengajuan
 │   │   │   ├── RembushController.php          # Alur rembush + OCR
@@ -276,7 +358,7 @@ Admin-Payment/
 │       ├── dashboard/                         # Dashboard & analytics
 │       ├── layouts/                           # Layout utama
 │       ├── notifications/                     # Halaman notifikasi
-│       ├── transactions/                      # Halaman transaksi (8 views)
+│       ├── transactions/                      # Halaman transaksi (8 views + gudang-form)
 │       └── users/                             # Manajemen pengguna
 ├── routes/
 │   ├── api.php                                # API routes (OCR callback)
@@ -294,19 +376,18 @@ Admin-Payment/
 
 Terdapat 4 peran pengguna dengan hak akses hierarkis:
 
-| Role | Dashboard | Input Transaksi | Approve / Reject | Kelola User | Kelola Cabang |
+| Role | Dashboard | Input Transaksi | Edit Pengajuan | Approval | Kelola Cabang |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Teknisi** | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Atasan** | ✅ | ❌ | ✅ (< 1 Jt auto) | ✅ (Teknisi saja) | ✅ |
-| **Owner** | ✅ | ✅ | ✅ (Semua nominal) | ✅ (Semua role) | ✅ |
+| **Admin** | ✅ | ✅ | ✅ (Limited Edit) | ✅ (< 1 Jt) | ✅ |
+| **Atasan** | ✅ | ✅ (Gudang/PR) | ✅ (Full Edit) | ✅ (< 1 Jt) | ✅ |
+| **Owner** | ✅ | ✅ | ✅ (Full Edit) | ✅ (Semua) | ✅ |
 
-### Detail Akses
+### Detail Akses Khusus
 
-- **Teknisi**: Hanya bisa membuat transaksi (Rembush/Pengajuan) dan melihat riwayat transaksinya sendiri. Diarahkan langsung ke halaman input setelah login.
-- **Admin**: Akses penuh ke dashboard, approve/reject transaksi, mengelola user (hanya Teknisi), dan mengelola cabang.
-- **Atasan**: Sama seperti Admin, tetapi tidak bisa input transaksi.
-- **Owner**: Akses penuh ke semua fitur. Satu-satunya role yang bisa approve transaksi ≥ Rp 1.000.000 dan mengelola semua role.
+- **Admin Limited Edit**: Admin dapat mengakses halaman edit Pengajuan dalam status `waiting_payment` untuk mengelola **Pembagian Cabang** dan **Metode Distribusi**. Bidang finansial (Item, Harga, DPP, PPN) tetap terkunci (Read-only).
+- **Settlement Lockout**: Jika transaksi memasuki fase pelunasan (`isSettlementPhase`), seluruh akses edit akan dikunci total untuk SEMUA role, termasuk Owner.
+- **Edit Protection**: Jika status transaksi adalah `completed`, tombol edit akan disembunyikan untuk SEMUA role guna menjaga integritas audit.
 
 ---
 
@@ -321,7 +402,7 @@ Terdapat 4 peran pengguna dengan hak akses hierarkis:
 ### 2. 📊 Dashboard (`DashboardController`)
 
 - **Statistik Transaksi**: Total transaksi, total pending, total disetujui, total ditolak
-- **Rincian Biaya per Cabang**: Breakdown biaya per cabang dengan filter bulan/tahun (AJAX)
+- **Rincian Biaya per Cabang**: Breakdown biaya per cabang dengan filter bulan/tahun (AJAX) dan fitur interaktif **Hutang Rembush** (menampilkan list transaksi pending/waiting payment per cabang).
 - **Daftar Transaksi Pending**: Tabel transaksi yang menunggu approval (AJAX refresh)
 
 ### 3. 💰 Transaksi Rembush (`RembushController`)
@@ -364,7 +445,14 @@ Alur pengajuan tanpa OCR:
 - Owner bisa mengelola semua role
 - Tidak dapat menghapus akun sendiri
 
-### 8. 🔔 Notifikasi (`NotificationController`)
+### 8. 📁 Kelola Kategori (`TransactionCategoryController`)
+
+- **Manajemen Dinamis**: CRUD kategori untuk tipe Rembush dan Pengajuan.
+- **Toggle Status**: Aktifkan/Nonaktifkan kategori tanpa menghapus data historis.
+- **UI Modern**: Desain Glassmorphism dengan statistik ringkasan dan pencarian real-time.
+- **Sync Otomatis**: Kategori yang aktif langsung muncul di form Rembush & Pengajuan.
+
+### 9. 🔔 Notifikasi (`NotificationController`)
 
 - Notifikasi in-app menggunakan Laravel Notification system
 - Filter berdasarkan tipe (OCR status, transaction status)
@@ -372,10 +460,19 @@ Alur pengajuan tanpa OCR:
 - Hapus notifikasi (satuan atau semua)
 - Badge unread count via AJAX polling
 
-### 9. 📜 Activity Log (`ActivityLogController`)
+### 10. 📜 Activity Log (`ActivityLogController`)
 
 - Mencatat semua aktivitas user: create, update, approve, reject, delete
 - Menyimpan referensi ke user dan transaksi terkait
+
+### 11. 🧮 Price Index & Deteksi Anomali (`PriceIndexController`)
+
+Sistem untuk menjaga efisiensi anggaran belanja:
+- **Auto-Calculated**: Menghitung harga Min/Max/Avg berdasarkan riwayat transaksi yang disetujui.
+- **Outlier Filtering**: Menggunakan algoritma **IQR (Interquartile Range)** untuk membuang data harga yang tidak wajar dari kalkulasi.
+- **Real-time Detection**: Memperingatkan user jika harga yang diinput pada Pengajuan melebihi referensi maksimal.
+- **Anomaly Hub**: Dashboard khusus untuk Owner mereview pelanggaran harga (Critical/Medium/Low).
+- **Manual Lock**: Owner dapat mengunci harga referensi secara manual untuk kestabilan kebijakan.
 
 ---
 
@@ -383,32 +480,49 @@ Alur pengajuan tanpa OCR:
 
 ### Status Lifecycle
 
-```
-                    ┌─────────────┐
-                    │   PENDING   │ ← Status awal saat submit
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              ▼                         ▼
-     ┌────────────────┐        ┌──────────────┐
-     │   APPROVED     │        │   REJECTED   │
-     │ (≥ Rp 1 Jt)   │        │              │
-     └───────┬────────┘        └──────────────┘
-             │
-             ▼ (Owner final approve)
-     ┌────────────────┐
-     │   COMPLETED    │ ← juga langsung dari pending jika < Rp 1 Jt
-     └────────────────┘
+```mermaid
+graph TD
+    A[Pending] -->|Reject| B[Rejected]
+    A -->|< 1jt Approve| C[Waiting Payment]
+    A -->|>= 1jt Approve| D[Approved]
+    D -->|Owner Approve| C
+    C -->|Upload Invoice| E{Has Branch Debt?}
+    E -->|Yes| C
+    E -->|No| F[Completed]
+    C -->|Settle Final Debt| F
 ```
 
 ### Alur Approval
 
-1. **Transaksi < Rp 1.000.000**: Admin/Atasan approve → langsung `completed` ✅
-2. **Transaksi ≥ Rp 1.000.000**: Admin/Atasan approve → `approved` (menunggu Owner) → Owner approve → `completed` ✅
+1. **Gate Approval**:
+   - **Transaksi < Rp 1.000.000**: Admin/Atasan approve → `waiting_payment`.
+   - **Transaksi ≥ Rp 1.000.000**: Admin/Atasan approve → `approved` (menunggu Owner) → Owner approve → `waiting_payment`.
+2. **Payment & Debt Flow**:
+   - **Invoice Uploaded**: Jika ada hutang antar cabang, status tetap `waiting_payment`.
+   - **Debt Settled**: Transaksi otomatis `completed` saat hutang terakhir dilunaskan (dan invoice sudah ada).
+
+---
+
+## 🌐 API Documentation (Scramble)
+
+Proyek ini menggunakan **Scramble** untuk menghasilkan dokumentasi API secara otomatis. Dokumentasi ini mengikuti standar **OpenAPI 3.1** dan dapat diakses melalui antarmuka interaktif.
+
+- **Interactive UI**: [http://localhost:8000/docs/api](http://localhost:8000/docs/api)
+- **OpenAPI Spec (JSON)**: [http://localhost:8000/docs/api.json](http://localhost:8000/docs/api.json)
+
+> [!TIP]
+> Dokumentasi ini diperbarui secara otomatis setiap ada perubahan pada route atau controller. Pastikan untuk menambahkan type-hinting pada method controller untuk hasil dokumentasi yang lebih akurat.
+
+### 🔄 Primary vs Legacy Endpoints
+Dalam dokumentasi API, Anda akan menemukan beberapa endpoint yang ditandai sebagai **Primary** atau **Legacy**:
+- **Primary**: Endpoint standar terbaru yang direkomendasikan untuk semua integrasi baru. Memiliki penamaan yang benar dan konsisten.
+- **Legacy**: Endpoint lama yang dipertahankan untuk **backward compatibility**. Endpoint ini mungkin memiliki typo yang sudah diperbaiki di versi primary (misal: `/ai/auto-fil`) atau struktur URL lama. Keduanya menjalankan logic yang sama di backend.
+
 
 ---
 
 ## 🌐 API Endpoints
+
 
 ### Web Routes (`routes/web.php`)
 
@@ -420,6 +534,7 @@ Alur pengajuan tanpa OCR:
 | `GET` | `/dashboard` | `DashboardController@index` | Auth |
 | `GET` | `/dashboard/branch-cost-data` | `DashboardController@branchCostData` | Auth |
 | `GET` | `/dashboard/pending-list-data` | `DashboardController@pendingListData` | Auth |
+| `GET` | `/dashboard/branch-hutang` | `DashboardController@branchHutangData` | Auth |
 | `GET` | `/transactions` | `TransactionController@index` | Auth |
 | `GET` | `/transactions/{id}/detail` | `TransactionController@show` | Auth |
 | `GET` | `/transactions/{id}/detail-json` | `TransactionController@detailJson` | Auth |
@@ -432,12 +547,15 @@ Alur pengajuan tanpa OCR:
 | `GET` | `/pengajuan/form` | `PengajuanController@showForm` | Teknisi, Admin, Owner |
 | `POST` | `/pengajuan/upload` | `PengajuanController@uploadPhoto` | Teknisi, Admin, Owner |
 | `POST` | `/pengajuan/store` | `PengajuanController@store` | Teknisi, Admin, Owner |
+| `GET` | `/gudang/form` | `GudangController@showForm` | Admin, Owner |
+| `POST` | `/gudang/store` | `GudangController@store` | Admin, Owner |
 | `GET` | `/transactions/{id}/edit` | `TransactionController@edit` | Admin, Atasan, Owner |
 | `PUT` | `/transactions/{id}` | `TransactionController@update` | Admin, Atasan, Owner |
 | `PATCH` | `/transactions/{id}/status` | `TransactionController@updateStatus` | Admin, Atasan, Owner |
 | `DELETE` | `/transactions/{id}` | `TransactionController@destroy` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/users/*` | `UserController` | Admin, Atasan, Owner |
 | `GET/POST/...` | `/branches/*` | `BranchController` | Admin, Atasan, Owner |
+| `GET/POST/...` | `/branch-bank-accounts/*` | `BranchBankAccountController` | Admin, Atasan, Owner (Mutasi hanya Owner) |
 | `GET` | `/activity-logs` | `ActivityLogController@index` | Admin, Atasan, Owner |
 | `GET/POST/DELETE` | `/notifications/*` | `NotificationController` | Auth |
 
@@ -492,11 +610,99 @@ php artisan queue:work                   # Jalankan queue worker
 php artisan horizon                      # Jalankan Horizon
 php artisan reverb:start                 # Jalankan WebSocket server
 
+# ── Price Index ─────────────────────────────────────────
+php artisan price-index:recalculate --mode=incremental  # Recalc item dengan transaksi baru (daily)
+php artisan price-index:recalculate --mode=full         # Recalc semua item non-manual (weekly)
+
 # ── Development ─────────────────────────────────────────
 npm run dev                              # Vite dev server
 npm run build                            # Build assets untuk production
 composer dev                             # Jalankan server + queue + vite sekaligus
+
+# ── PR Validation ───────────────────────────────────────
+./scripts/check-pr-ready.sh              # Check apakah code siap untuk PR
+./vendor/bin/pint                        # Auto-fix code style
+./vendor/bin/pint --test                 # Check code style tanpa fix
+php artisan test --coverage --min=80     # Run tests dengan minimum 80% coverage
+composer audit                           # Security audit untuk PHP dependencies
+npm audit --audit-level=moderate         # Security audit untuk Node dependencies
 ```
+
+---
+
+## 🔍 Pull Request Guidelines
+
+Sebelum membuat Pull Request, pastikan code Anda lolos semua validation checks:
+
+### Quick Check
+```bash
+# Jalankan PR readiness checker
+./scripts/check-pr-ready.sh
+```
+
+### Manual Checks
+
+1. **Code Style** - Pastikan code mengikuti Laravel Pint standards
+   ```bash
+   ./vendor/bin/pint --test
+   ```
+
+2. **Tests** - Semua tests harus pass dengan coverage ≥ 80%
+   ```bash
+   php artisan test --coverage --min=80
+   ```
+
+3. **Debug Statements** - Hapus semua debug code
+   ```bash
+   # Check untuk dd(), dump(), var_dump(), console.log()
+   git diff origin/main | grep -E "(dd\(|dump\(|var_dump\(|console\.log\()"
+   ```
+
+4. **Security** - Tidak ada credentials atau sensitive data
+   ```bash
+   composer audit
+   npm audit --audit-level=moderate
+   ```
+
+### PR Title Format
+
+Gunakan **Semantic Commit** format:
+
+```
+<type>: <description>
+
+atau
+
+<type>(<scope>): <description>
+```
+
+**Valid Types:**
+- `feat` - Fitur baru
+- `fix` - Bug fix
+- `docs` - Dokumentasi
+- `refactor` - Code refactoring
+- `perf` - Performance improvements
+- `test` - Menambah tests
+- `chore` - Maintenance tasks
+
+**Contoh:**
+```
+✅ feat: add price anomaly detection
+✅ fix(auth): resolve login redirect issue
+✅ docs: update deployment guide
+✅ refactor(services): optimize price index calculation
+
+❌ Added new feature
+❌ Fixed bug
+❌ Update
+```
+
+### Troubleshooting PR Validation
+
+Jika PR validation gagal, lihat:
+- 📋 **[Troubleshooting PR Validation](TROUBLESHOOTING_PR_VALIDATION.md)** - Solusi lengkap untuk semua PR validation errors
+
+---
 
 ---
 
@@ -511,7 +717,7 @@ users
 └── created_at, updated_at
 
 transactions
-├── id, type (rembush/pengajuan)
+├── id, type (rembush/pengajuan/gudang)
 ├── invoice_number, upload_id, trace_id
 ├── customer, category, description
 ├── amount, payment_method, items (JSON)
@@ -519,7 +725,12 @@ transactions
 ├── submitted_by → users.id
 ├── reviewed_by → users.id, reviewed_at, rejection_reason
 ├── ai_status, confidence
-├── vendor, specs (JSON), quantity, estimated_price, purchase_reason
+├── vendor, specs (JSON), quantity, estimated_price
+└── created_at, updated_at
+
+transaction_categories
+├── id, name, type (rembush/pengajuan)
+├── is_active, color_code
 └── created_at, updated_at
 
 branches
@@ -560,6 +771,79 @@ Sistem menggunakan Redis untuk menghasilkan ID sequential yang atomic dan aman d
 
 ---
 
+## 📚 Dokumentasi Lengkap
+
+Untuk dokumentasi yang lebih detail, silakan lihat:
+
+### 📖 Core Documentation
+- 📑 **[Documentation Index](DOCUMENTATION_INDEX.md)** - Central hub untuk semua dokumentasi
+- 📊 **[Analisis Dokumentasi](ANALISIS_DOKUMENTASI.md)** - Gap analysis & roadmap dokumentasi
+
+### 🏗️ Architecture & Design
+- 🗺️ **[Visual Flowcharts](FLOWCHARTS.md)** - Diagram Mermaid lengkap untuk semua alur sistem
+- 🏛️ **[Architecture Diagram](ARCHITECTURE_DIAGRAM.md)** - Perbandingan Polling vs Reverb
+- 🗄️ **[Database Schema](DATABASE_SCHEMA.md)** - ER Diagram & struktur database lengkap
+- ⚙️ **[Backend Documentation](backend_documentation_v1.0.md)** - Arsitektur mendalam dan logika bisnis
+
+### ⚙️ Features & Modules
+- 🧮 **[Price Index System](PRICE_INDEX_DOCS.md)** - Sistem referensi harga, anomali, dan IQR logic
+- 🎯 **[Price Index AVG System](PRICE_INDEX_AVG_SYSTEM.md)** - Dual-Mode AVG (Auto vs Manual) - Quick Reference
+- 📝 **[Implementasi AVG Manual](IMPLEMENTASI_AVG_MANUAL.md)** - Detail implementasi fitur AVG Manual
+- 📋 **[Pengajuan Specification](PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md)** - Sistem Dual-Version dan proteksi edit
+- 💰 **[Rembush Flow Detail](Flow%20Rembush.md)** - Alur reimbursement dan integrasi AI
+- 🔄 **[Realtime Migration](REALTIME_MIGRATION_REPORT.md)** - Migrasi ke Laravel Reverb
+
+### 🌐 API Documentation
+- 📡 **[API Documentation v4.5](api_documentation_v4.5.md)** - Webhook n8n, Telegram, dan Endpoint Flow
+- 🚀 **[API Interactive Docs](http://localhost:8000/docs/api)** - Dokumentasi API real-time via Scramble
+
+### 🚀 Deployment & Operations
+- 🐳 **[Docker Production Guide](DOCKER_PRODUCTION_GUIDE.md)** - Setup Docker untuk production
+- 🔄 **[CI/CD Guide](CICD_GITHUB_ACTIONS_GUIDE.md)** - GitHub Actions pipeline
+- ⚡ **[Quick Setup (30 min)](SETUP_DOCKER_CICD_QUICKSTART.md)** - Setup cepat Docker & CI/CD
+- ✅ **[Production Checklist](PRODUCTION_READINESS_CHECKLIST.md)** - Pre-deployment checklist
+- 🔒 **[Security Checklist](SECURITY_CHECKLIST.md)** - Security best practices
+
+### 📊 Monitoring & Logging
+- 📈 **[Monitoring Setup](monitoring-setup.md)** - Setup monitoring tools
+- 📝 **[Logging Solution](LOGGING_COMPLETE_SOLUTION.md)** - Logging strategy lengkap
+- 🔍 **[Pulse & Log Viewer](PULSE_LOG_VIEWER_SETUP.md)** - Setup Pulse & Log Viewer
+- 🔭 **[Telescope Guide](TELESCOPE_PRODUCTION_GUIDE.md)** - Debugging dengan Telescope
+
+### 🧪 Testing
+- 🧪 **[Testing Realtime](TESTING_REALTIME_GUIDE.md)** - Testing fitur real-time
+- 💰 **[Testing Pembagian Biaya](TESTING_GUIDE_PEMBAGIAN_BIAYA.md)** - Testing cost allocation
+
+### 📖 Reference
+- 📚 **[Quick Reference](QUICK_REFERENCE.md)** - Command reference cepat
+- 📊 **[Technical Audit](TECHNICAL_AUDIT_AND_ROADMAP.md)** - Audit teknis & roadmap
+
+---
+
+## 🤝 Contributing
+
+Tertarik untuk berkontribusi? Silakan baca:
+- 📝 **[Contributing Guide](#)** *(Coming Soon)*
+- 🎨 **[Code Style Guide](#)** *(Coming Soon)*
+- 🔀 **[Git Workflow](#)** *(Coming Soon)*
+
+---
+
 ## 📝 Lisensi
 
 Project ini dikembangkan secara internal untuk **WHUSNET**.
+
+---
+
+## 📞 Support
+
+Untuk pertanyaan atau bantuan:
+- 📧 Email: [support@whusnet.com]
+- 💬 Slack: [#admin-payment-support]
+- 📖 Documentation: [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+
+---
+
+**Last Updated:** 4 Mei 2026  
+**Version:** 4.5  
+**Maintainer:** WHUSNET Development Team

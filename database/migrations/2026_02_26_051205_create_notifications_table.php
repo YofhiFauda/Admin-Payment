@@ -21,6 +21,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['notifiable_id', 'notifiable_type', 'read_at']);
+            $table->index('read_at'); // for filtering unread
         });
     }
 

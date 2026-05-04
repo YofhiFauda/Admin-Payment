@@ -28,7 +28,7 @@ class GeminiRateLimiter
 {
     // Redis keys
     private const KEY_WINDOW    = 'gemini:rpm:window';
-    private const KEY_COOLDOWN  = 'gemini:cooldown:global';
+    private const KEY_COOLDOWN  = 'gemini:global:lock';
     private const KEY_SLOT      = 'gemini:slot:';
     private const KEY_QUEUE_CNT = 'gemini:queue:count';
     private const KEY_LAST_429  = 'gemini:last429';

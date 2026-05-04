@@ -3,18 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\BranchDebt;
+use App\Models\BranchReceivable;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use \Illuminate\Database\Eloquent\Model;
 class DashboardController extends Controller
 {
     public function index()
     {
+        ini_set('memory_limit', '256M');
         $user    = Auth::user();
+
+        // Check if user is technician, they cannot access dashboard
+        if ($user->isTeknisi()) {
+            return redirect()->route('transactions.create');
+        }
+
         $isAdmin = $user->canManageStatus(); // admin, atasan, owner
         $userId  = $user->id;
 
@@ -29,7 +38,7 @@ class DashboardController extends Controller
             return $q;
         };
 
-        $thisMonth = function () use ($base) {
+        $thisMonth = function () use ($base) { 
             return $base()->whereMonth('created_at', now()->month)
                           ->whereYear('created_at', now()->year);
         };
@@ -37,19 +46,15 @@ class DashboardController extends Controller
         // ─────────────────────────────────────────────
         // 1. KEY METRICS (bulan ini)
         // ─────────────────────────────────────────────
-        $totalPengeluaran = (clone $thisMonth())
-            ->whereIn('status', ['approved', 'completed'])
-            ->sum(DB::raw('COALESCE(amount, 0) + COALESCE(estimated_price, 0)'));
-
-        // More precise: use effective_amount logic per row
+        // 44: More precise: use database-level SUM to avoid memory exhaustion
         $totalPengeluaranRaw = (clone $thisMonth())
             ->whereIn('status', ['approved', 'completed'])
-            ->get()
-            ->sum(fn($t) => $t->effective_amount);
+            ->sum('amount');
 
         $pendingCount = (clone $thisMonth())->where('status', 'pending')->count();
-        $pendingTotal = (clone $thisMonth())->where('status', 'pending')->get()
-                        ->sum(fn($t) => $t->effective_amount);
+        $pendingTotal = (clone $thisMonth())
+            ->where('status', 'pending')
+            ->sum(DB::raw('COALESCE(amount, estimated_price, 0)'));
 
         $totalTransaksi = (clone $thisMonth())->count();
 
@@ -59,44 +64,65 @@ class DashboardController extends Controller
         // 2. CHART DATA
         // ─────────────────────────────────────────────
 
-        // 2a. Per kategori (rembush category + pengajuan purchase_reason)
-        $byCategory = (clone $base())
+        // 2a. Per kategori (optimized SQL grouping)
+        $byCategoryData = (clone $base())
             ->whereIn('status', ['approved', 'completed'])
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
-            ->get()
-            ->groupBy(function ($t) {
-                if ($t->type === 'rembush') {
-                    return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                }
-                return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
-            })
-            ->map(fn($grp) => $grp->sum(fn($t) => $t->effective_amount))
-            ->sortByDesc(fn($v) => $v)
-            ->take(8);
+            ->groupBy('category')
+            ->select('category', DB::raw('SUM(amount) as total'))
+            ->orderByDesc('total')
+            ->take(8)
+            ->get();
 
-        // 2b. Tren 6 bulan terakhir
-        $trendMonths = collect(range(5, 0))->map(function ($offset) use ($base) {
-            $month = now()->subMonths($offset);
-            $total = (clone $base())
-                ->whereIn('status', ['approved', 'completed'])
-                ->whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
-                ->get()
-                ->sum(fn($t) => $t->effective_amount);
-            return [
-                'label' => $month->format('M Y'),
-                'value' => $total,
-            ];
+        $byCategory = $byCategoryData->pluck('total', 'category')->mapWithKeys(function ($total, $cat) {
+            return [\App\Models\TransactionCategory::resolveLabel($cat, 'rembush') => (float) $total];
         });
 
-        // 2c. Rembush vs Pengajuan (bulan ini, all statuses)
-        $rembushTotal = (clone $thisMonth())->where('type', 'rembush')
-            ->whereIn('status', ['approved', 'completed'])->get()
-            ->sum(fn($t) => $t->effective_amount);
-        $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')
-            ->whereIn('status', ['approved', 'completed'])->get()
-            ->sum(fn($t) => $t->effective_amount);
+        // 2b. Tren 6 bulan terakhir per Cabang (Multi-line)
+        $trendMonthsLabels = collect(range(5, 0))->map(fn($offset) => now()->subMonths($offset)->translatedFormat('Y-m'));
+        $trendLabels = $trendMonthsLabels->map(fn($m) => Carbon::createFromFormat('Y-m', $m)->translatedFormat('F Y'))->values()->toArray();
+        $startDate = now()->subMonths(5)->startOfMonth();
+
+        $trendQuery = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->whereIn('transactions.status', ['approved', 'completed'])
+            ->where('transactions.created_at', '>=', $startDate);
+
+        if (!$isAdmin) {
+            $trendQuery->where('transactions.submitted_by', $userId);
+        }
+
+        $trendDataRaw = $trendQuery->select(
+                'branches.name as branch_name',
+                DB::raw('DATE_FORMAT(transactions.created_at, "%Y-%m") as month_key'),
+                DB::raw('SUM(tb.allocation_amount) as total')
+            )
+            ->groupBy('branches.name', 'month_key')
+            ->get();
+
+        $branchTrends = [];
+        foreach ($trendDataRaw as $row) {
+            $branchTrends[$row->branch_name][$row->month_key] = (float) $row->total;
+        }
+
+        $trendDatasets = [];
+        foreach ($branchTrends as $branchName => $monthlyData) {
+            $data = [];
+            foreach ($trendMonthsLabels as $monthKey) {
+                $data[] = $monthlyData[$monthKey] ?? 0;
+            }
+            $trendDatasets[] = [
+                'label' => $branchName,
+                'data' => $data,
+            ];
+        }
+
+        // 2c. Perbandingan Tipe Transaksi (optimized database sum)
+        $rembushTotal  = (clone $thisMonth())->where('type', 'rembush')->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $pembelianTotal = (clone $thisMonth())->where('type', 'gudang')->whereIn('status', ['approved', 'completed'])->sum('amount');
 
         // 2d. Per Branch (hanya admin/atasan/owner, karena butuh pivot)
         $byBranch = collect();
@@ -139,7 +165,7 @@ class DashboardController extends Controller
         // 4. RECENT TRANSACTIONS
         // ─────────────────────────────────────────────
         $recentTransactions = (clone $base())
-            ->with(['submitter'])
+            ->with(['submitter', 'branches'])
             ->latest()
             ->take(10)
             ->get();
@@ -174,36 +200,51 @@ class DashboardController extends Controller
         // ─────────────────────────────────────────────
         // 6. BRANCH COST BREAKDOWN (admin only)
         // ─────────────────────────────────────────────
+        $startDate = request('start_date');
+        $endDate   = request('end_date');
+
         $branchCostBreakdown = collect();
         if ($isAdmin) {
-            $branchCostBreakdown = Branch::whereHas('transactions', function ($q) {
-                $q->whereIn('status', ['approved', 'completed'])
-                  ->whereMonth('transactions.created_at', now()->month)
-                  ->whereYear('transactions.created_at', now()->year);
-            })
-            ->with(['transactions' => function ($q) {
-                $q->whereIn('status', ['approved', 'completed'])
-                  ->whereMonth('transactions.created_at', now()->month)
-                  ->whereYear('transactions.created_at', now()->year);
-            }])
-            ->orderBy('name')
-            ->get()
-            ->map(function ($branch) {
-                $categories = $branch->transactions->groupBy(function ($t) {
-                    if ($t->type === 'rembush') {
-                        return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                    }
-                    return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
-                })->map(function ($group) {
-                    return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
-                })->sortByDesc(fn($v) => $v);
+            $startDateObj = $startDate ? Carbon::parse($startDate)->startOfDay() : null;
+            $endDateObj   = $endDate ? Carbon::parse($endDate)->endOfDay() : null;
+
+            $costData = DB::table('transaction_branches as tb')
+                ->join('branches', 'branches.id', '=', 'tb.branch_id')
+                ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+                ->whereIn('transactions.status', ['approved', 'completed'])
+                ->when($startDateObj && $endDateObj, function($q) use ($startDateObj, $endDateObj) {
+                    $q->whereBetween('transactions.created_at', [$startDateObj, $endDateObj]);
+                })
+                ->when($startDateObj && !$endDateObj, function($q) use ($startDateObj) {
+                    $q->whereDate('transactions.created_at', '>=', $startDateObj);
+                })
+                ->when(!$startDateObj && $endDateObj, function($q) use ($endDateObj) {
+                    $q->whereDate('transactions.created_at', '<=', $endDateObj);
+                })
+                ->when(!$startDateObj && !$endDateObj, function($q) {
+                    $q->whereMonth('transactions.created_at', now()->month)
+                      ->whereYear('transactions.created_at', now()->year);
+                })
+                ->select(
+                    'branches.name as branch_name',
+                    'transactions.category',
+                    'transactions.type',
+                    DB::raw('SUM(tb.allocation_amount) as total_amount')
+                )
+                ->groupBy('branch_name', 'category', 'type')
+                ->get();
+
+            $branchCostBreakdown = $costData->groupBy('branch_name')->map(function ($items, $branchName) {
+                $categories = $items->groupBy(function($item) {
+                     return \App\Models\TransactionCategory::resolveLabel($item->category, $item->type);
+                })->map(fn($group) => $group->sum('total_amount'))->sortByDesc(fn($v) => $v);
 
                 return (object) [
-                    'name'       => $branch->name,
+                    'name'       => $branchName,
                     'categories' => $categories,
                     'total'      => $categories->sum(),
                 ];
-            });
+            })->values();
         }
 
         return view('dashboard.index', compact(
@@ -216,9 +257,11 @@ class DashboardController extends Controller
             'rejectedCount',
             // Charts
             'byCategory',
-            'trendMonths',
+            'trendLabels',
+            'trendDatasets',
             'rembushTotal',
             'pengajuanTotal',
+            'pembelianTotal',
             'byBranch',
             // Tables
             'pendingTransactions',
@@ -241,37 +284,53 @@ class DashboardController extends Controller
             return response()->json(['html' => '', 'count' => 0]);
         }
 
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+
+        // Fallback to current month if no range given
         $month = (int) $request->input('month', now()->month);
         $year  = (int) $request->input('year', now()->year);
 
-        $branchCostBreakdown = Branch::whereHas('transactions', function ($q) use ($month, $year) {
-            $q->whereIn('status', ['approved', 'completed'])
-              ->whereMonth('transactions.created_at', $month)
-              ->whereYear('transactions.created_at', $year);
-        })
-        ->with(['transactions' => function ($q) use ($month, $year) {
-            $q->whereIn('status', ['approved', 'completed'])
-              ->whereMonth('transactions.created_at', $month)
-              ->whereYear('transactions.created_at', $year);
-        }])
-        ->orderBy('name')
-        ->get()
-        ->map(function ($branch) {
-            $categories = $branch->transactions->groupBy(function ($t) {
-                if ($t->type === 'rembush') {
-                    return Transaction::CATEGORIES[$t->category] ?? $t->category ?? 'Lainnya';
-                }
-                return Transaction::PURCHASE_REASONS[$t->purchase_reason] ?? $t->purchase_reason ?? 'Pengajuan';
-            })->map(function ($group) {
-                return $group->sum(fn($t) => $t->pivot->allocation_amount ?? $t->effective_amount);
-            })->sortByDesc(fn($v) => $v);
+        $startDateObj = $startDate ? Carbon::parse($startDate)->startOfDay() : null;
+        $endDateObj   = $endDate ? Carbon::parse($endDate)->endOfDay() : null;
+
+        $costData = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->whereIn('transactions.status', ['approved', 'completed'])
+            ->when($startDateObj && $endDateObj, function($q) use ($startDateObj, $endDateObj) {
+                $q->whereBetween('transactions.created_at', [$startDateObj, $endDateObj]);
+            })
+            ->when($startDateObj && !$endDateObj, function($q) use ($startDateObj) {
+                $q->whereDate('transactions.created_at', '>=', $startDateObj);
+            })
+            ->when(!$startDateObj && $endDateObj, function($q) use ($endDateObj) {
+                $q->whereDate('transactions.created_at', '<=', $endDateObj);
+            })
+            ->when(!$startDateObj && !$endDateObj, function($q) use ($month, $year) {
+                $q->whereMonth('transactions.created_at', $month)
+                  ->whereYear('transactions.created_at', $year);
+            })
+            ->select(
+                'branches.name as branch_name',
+                'transactions.category',
+                'transactions.type',
+                DB::raw('SUM(tb.allocation_amount) as total_amount')
+            )
+            ->groupBy('branch_name', 'category', 'type')
+            ->get();
+
+        $branchCostBreakdown = $costData->groupBy('branch_name')->map(function ($items, $branchName) {
+            $categories = $items->groupBy(function($item) {
+                 return \App\Models\TransactionCategory::resolveLabel($item->category, $item->type);
+            })->map(fn($group) => $group->sum('total_amount'))->sortByDesc(fn($v) => $v);
 
             return (object) [
-                'name'       => $branch->name,
+                'name'       => $branchName,
                 'categories' => $categories,
                 'total'      => $categories->sum(),
             ];
-        });
+        })->values();
 
         $html = view('dashboard._branch-cost-cards', compact('branchCostBreakdown'))->render();
 
@@ -316,5 +375,220 @@ class DashboardController extends Controller
             'count'        => $pendingTransactions->count(),
             'totalPending' => $totalPending,
         ]);
+    }
+
+    /**
+     * AJAX endpoint: returns pending/unresolved rembush transactions for a branch
+     */
+    public function branchHutangData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_hutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
+        // Statuses considered as "hutang" (unresolved rembush)
+        $hutangStatuses = ['pending', 'waiting_payment', 'flagged', 'pending_technician', 'approved'];
+
+        $transactions = Transaction::with(['submitter', 'branches'])
+            ->where('type', 'rembush')
+            ->whereIn('status', $hutangStatuses)
+            ->whereHas('branches', function ($q) use ($branchName) {
+                $q->where('branches.name', $branchName);
+            })
+            ->latest()
+            ->get();
+
+        $data = $transactions->map(function ($t) use ($branchName) {
+            $branch = $t->branches->firstWhere('name', $branchName);
+            if ($branch) {
+                $allocatedAmount = ($branch->pivot->allocation_amount > 0)
+                    ? $branch->pivot->allocation_amount
+                    : (int) round(($t->effective_amount * ($branch->pivot->allocation_percent ?? 100)) / 100);
+            } else {
+                $allocatedAmount = $t->effective_amount;
+            }
+
+            return [
+                'id'               => $t->id,
+                'type_label'       => 'Hutang Rembush',
+                'invoice_number'   => $t->invoice_number,
+                'submitter_name'   => $t->submitter->name ?? '-',
+                'status'           => $t->status,
+                'amount'           => $allocatedAmount,
+                'formatted_amount' => 'Rp ' . number_format($allocatedAmount, 0, ',', '.'),
+                'created_at'       => $t->created_at->translatedFormat('d F Y'),
+                'category'         => $t->category_label ?: 'Lainnya',
+                'is_inter_branch'  => false,
+            ];
+        });
+
+        $totalHutang = $data->sum('amount');
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_hutang'    => $totalHutang,
+            'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: returns Hutang Usaha (Inter-Branch Debts where this branch is Debtor)
+     */
+    public function branchInterBranchDebtData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_hutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
+        $branchDebts = \App\Models\BranchDebt::with(['transaction', 'creditorBranch'])
+            ->whereHas('debtorBranch', function($q) use ($branchName) {
+                $q->where('name', $branchName);
+            })
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        $data = $branchDebts->map(function ($debt) {
+            return [
+                'id'               => $debt->id,
+                'type_label'       => 'Hutang ke Cab. ' . $debt->creditorBranch->name,
+                'invoice_number'   => $debt->transaction->invoice_number ?? '-',
+                'submitter_name'   => 'Antar Cabang',
+                'status'           => 'waiting_payment',
+                'amount'           => $debt->amount,
+                'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
+                'created_at'       => $debt->created_at->translatedFormat('d F Y'),
+                'category'         => 'Pengajuan Multi-Source',
+                'is_inter_branch'  => true,
+            ];
+        });
+
+        $totalHutang = $data->sum('amount');
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_hutang'    => $totalHutang,
+            'formatted_total' => 'Rp ' . number_format($totalHutang, 0, ',', '.'),
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: returns Piutang Usaha (Inter-Branch receivables where this branch is Creditor)
+     */
+    public function branchInterBranchReceivableData(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['transactions' => [], 'total_piutang' => 0]);
+        }
+
+        $branchName = $request->input('branch_name', '');
+
+        $receivables = \App\Models\BranchDebt::with(['transaction', 'debtorBranch'])
+            ->whereHas('creditorBranch', function($q) use ($branchName) {
+                $q->where('name', $branchName);
+            })
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        $data = $receivables->map(function ($debt) {
+            return [
+                'id'               => $debt->id,
+                'type_label'       => 'Piutang di Cab. ' . $debt->debtorBranch->name,
+                'invoice_number'   => $debt->transaction->invoice_number ?? '-',
+                'submitter_name'   => 'Antar Cabang',
+                'status'           => 'waiting_payment', // Still unpaid
+                'amount'           => $debt->amount,
+                'formatted_amount' => 'Rp ' . number_format($debt->amount, 0, ',', '.'),
+                'created_at'       => $debt->created_at->translatedFormat('d F Y'),
+                'category'         => 'Pengajuan Multi-Source',
+                'is_inter_branch'  => true,
+            ];
+        });
+
+        $totalPiutang = $data->sum('amount');
+
+        return response()->json([
+            'transactions'    => $data,
+            'total_piutang'   => $totalPiutang,
+            'formatted_total' => 'Rp ' . number_format($totalPiutang, 0, ',', '.'),
+        ]);
+    }
+    /**
+     * AJAX endpoint: returns Rembush, Debt, and Receivable stats for ALL branches in one go.
+     * This prevents the N+1 AJAX request problem that causes 504 timeouts.
+     */
+    public function batchBranchStats()
+    {
+        $user = Auth::user();
+        if (!$user->canManageStatus()) {
+            return response()->json(['branches' => []]);
+        }
+
+        $branches = Branch::all();
+        $hutangStatuses = ['pending', 'waiting_payment', 'flagged', 'pending_technician', 'approved'];
+
+        // 1. Fetch Rembush Hutang (Grouped by Branch)
+        $rembushData = DB::table('transaction_branches as tb')
+            ->join('branches', 'branches.id', '=', 'tb.branch_id')
+            ->join('transactions', 'transactions.id', '=', 'tb.transaction_id')
+            ->where('transactions.type', 'rembush')
+            ->whereIn('transactions.status', $hutangStatuses)
+            ->select('branches.name', DB::raw('SUM(tb.allocation_amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        // 2. Fetch Hutang Usaha (Inter-branch Debts where branch is Debtor)
+        $debtData = BranchDebt::where('status', 'pending')
+            ->join('branches', 'branches.id', '=', 'branch_debts.debtor_branch_id')
+            ->select('branches.name', DB::raw('SUM(amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        // 3. Fetch Piutang Usaha (Inter-branch Receivables where branch is Creditor)
+        $receivableData = BranchDebt::where('status', 'pending')
+            ->join('branches', 'branches.id', '=', 'branch_debts.creditor_branch_id')
+            ->select('branches.name', DB::raw('SUM(amount) as total'))
+            ->groupBy('branches.name')
+            ->get()
+            ->pluck('total', 'name');
+
+        $result = [];
+        foreach ($branches as $branch) {
+            $name = $branch->name;
+            
+            $rembushTotal = (int) ($rembushData[$name] ?? 0);
+            $debtTotal    = (int) ($debtData[$name] ?? 0);
+            $recvTotal    = (int) ($receivableData[$name] ?? 0);
+
+            $result[$name] = [
+                'rembush' => [
+                    'total'     => $rembushTotal,
+                    'formatted' => 'Rp ' . number_format($rembushTotal, 0, ',', '.'),
+                    'is_lunas'  => $rembushTotal <= 0
+                ],
+                'debt' => [
+                    'total'     => $debtTotal,
+                    'formatted' => 'Rp ' . number_format($debtTotal, 0, ',', '.'),
+                    'is_lunas'  => $debtTotal <= 0
+                ],
+                'receivable' => [
+                    'total'     => $recvTotal,
+                    'formatted' => 'Rp ' . number_format($recvTotal, 0, ',', '.'),
+                    'is_lunas'  => $recvTotal <= 0
+                ]
+            ];
+        }
+
+        return response()->json(['branches' => $result]);
     }
 }

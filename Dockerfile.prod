@@ -1,43 +1,71 @@
 ## ═══════════════════════════════════════════════════════════════════
 ##  Dockerfile.prod — WHUSNET Admin Payment
-##  Multi-stage Clean + Production Ready
+##  Production-optimized multi-stage build
 ## ═══════════════════════════════════════════════════════════════════
 
-# 1. Composer Build Stage
-FROM composer:latest AS vendor
+# ─────────────────────────────────────────
+#  Stage 1: Composer Dependencies
+# ─────────────────────────────────────────
+FROM composer:2.9.7 AS composer
+
 WORKDIR /app
-COPY database/ database/
+
+# Copy composer files
 COPY composer.json composer.lock ./
+
+# Install production dependencies (no dev packages)
 RUN composer install \
-    --ignore-platform-reqs \
+    --no-dev \
     --no-interaction \
-    --no-plugins \
+    --no-progress \
     --no-scripts \
     --prefer-dist \
-    --no-dev \
     --optimize-autoloader
 
-# 2. Node Build Stage (Frontend Assets)
-FROM node:20 AS frontend
+# ─────────────────────────────────────────
+#  Stage 2: Node.js Build
+# ─────────────────────────────────────────
+FROM node:22-alpine AS node
+
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --production=false
+
+# Copy source files
 COPY . .
+
+# Build assets
 RUN npm run build
 
-# 3. Final Production Stage
-FROM php:8.4-fpm
+# ─────────────────────────────────────────
+#  Stage 3: Production PHP-FPM
+# ─────────────────────────────────────────
+FROM php:8.4-fpm-alpine AS production
 
-# Install system dependencies & PHP extensions
-RUN apt-get update && apt-get install -y \
+# Install system dependencies (Alpine packages)
+RUN apk add --no-cache \
+    bash \
     curl \
     libpng-dev \
-    libonig-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    freetype-dev \
+    oniguruma-dev \
     libxml2-dev \
-    libicu-dev \
+    icu-dev \
     libzip-dev \
     zip \
     unzip \
+    autoconf \
+    gcc \
+    g++ \
+    make \
+    mysql-client \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-configure intl \
     && docker-php-ext-install \
         pdo_mysql \
@@ -51,40 +79,60 @@ RUN apt-get update && apt-get install -y \
         opcache \
     && pecl install redis \
     && docker-php-ext-enable redis opcache \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && apk del autoconf gcc g++ make \
+    && rm -rf /var/cache/apk/* /tmp/*
 
-# OPcache Configuration
-RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.interned_strings_buffer=16" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.save_comments=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini \
-    && echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+# Copy PHP configuration
+COPY docker/php/production.ini /usr/local/etc/php/conf.d/production.ini
+COPY docker/php-fpm/production.conf /usr/local/etc/php-fpm.d/zz-production.conf
+
+# Install Composer
+COPY --from=composer:2.9.7 /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www
 
-# Copy all application files
-COPY . .
+# Copy application files
+COPY --chown=www-data:www-data . /var/www
 
-# Copy vendor dependencies from vendor stage
-COPY --from=vendor /app/vendor/ /var/www/vendor/
+# Copy vendor from composer stage
+COPY --from=composer --chown=www-data:www-data /app/vendor /var/www/vendor
 
-# Copy built frontend assets from frontend stage
-COPY --from=frontend /app/public/build/ /var/www/public/build/
+# Copy built assets from node stage
+COPY --from=node --chown=www-data:www-data /app/public/build /var/www/public/build
 
-# Ensure Laravel caching and optimization runs during build
-# Creates necessary files that may be missing, then caches
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache \
-    && php artisan event:cache
+# Create necessary directories
+RUN mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Fix permissions
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Remove unnecessary files
+RUN rm -rf \
+    tests \
+    .git \
+    .github \
+    .env.example \
+    .editorconfig \
+    .gitignore \
+    .gitattributes \
+    node_modules \
+    package*.json \
+    vite.config.js \
+    tailwind.config.js \
+    postcss.config.js
+
+# Switch to www-data user
+USER www-data
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD php artisan list || exit 1
 
 EXPOSE 9000
+
 CMD ["php-fpm"]

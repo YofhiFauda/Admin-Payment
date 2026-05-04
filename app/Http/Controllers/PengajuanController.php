@@ -4,33 +4,176 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Transaction;
+use App\Models\TransactionCategory;
 use App\Services\IdGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\PriceIndex\PriceIndexService;
+use App\Jobs\PriceIndex\SendPriceAnomalyNotificationJob;
 
 class PengajuanController extends Controller
 {
+
+
+
+
+    /**
+     * ✅ OPTIMIZED: Server-side search dengan pagination
+     */
+    public function searchTransactions(Request $request)
+    {
+        $perPage = $request->input('per_page', 20);
+        $page = $request->input('page', 1);
+        $search = $request->input('search', '');
+        $status = $request->input('status', 'all');
+        $type = $request->input('type', 'all');
+        $category = $request->input('category', 'all');
+        $branchId = $request->input('branch_id', 'all');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        
+        // Cache key berdasarkan semua filter
+        $cacheKey = "transactions_search_" . md5(json_encode($request->all()));
+        
+        $result = Cache::remember($cacheKey, 300, function () use ($request, $perPage, $search, $status, $type, $category, $branchId, $startDate, $endDate) {
+            $query = Transaction::query()
+                ->with(['submitter.bankAccounts', 'reviewer', 'branches'])
+                ->select([
+                    'id', 'invoice_number', 'customer', 'vendor', 'type', 'category',
+                    'status', 'amount', 'date', 'created_at', 'updated_at', 
+                    'submitted_by', 'ai_status', 'confidence', 'upload_id',
+                    'payment_method', 'specs', 'rejection_reason'
+                ]);
+
+            // Teknisi filter
+            if (auth()->user()->isTeknisi()) {
+                $query->where('submitted_by', auth()->id());
+            }
+
+            // Search query - OPTIMIZED dengan FULLTEXT atau LIKE
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('invoice_number', 'LIKE', "%{$search}%")
+                      ->orWhere('customer', 'LIKE', "%{$search}%")
+                      ->orWhere('vendor', 'LIKE', "%{$search}%")
+                      ->orWhereHas('submitter', function ($sub) use ($search) {
+                          $sub->where('name', 'LIKE', "%{$search}%");
+                      });
+                });
+            }
+
+            // Status filter
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            // Type filter
+            if ($type !== 'all') {
+                $query->where('type', $type);
+            }
+
+            // Category filter
+            if ($category !== 'all') {
+                $query->where('category', $category);
+            }
+
+            // Branch filter
+            if ($branchId !== 'all') {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
+            }
+
+            // Date range
+            if ($startDate) {
+                $query->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('created_at', '<=', $endDate);
+            }
+
+            // Execute dengan pagination
+            $paginated = $query->latest()->paginate($perPage);
+            
+            // Format data untuk frontend
+            $items = $paginated->getCollection()->map(function (Transaction $t) {
+                return $t->toSearchArray();
+            });
+
+            return [
+                'data' => $items,
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+    /**
+     * ✅ NEW: Get transaction stats (for status tabs)
+     */
+    public function getTransactionStats(Request $request)
+    {
+        $cacheKey = "tx_stats_" . auth()->id() . "_" . md5(json_encode($request->except('_')));
+        
+        $stats = Cache::remember($cacheKey, 300, function () use ($request) {
+            $query = Transaction::query();
+
+            if (auth()->user()->isTeknisi()) {
+                $query->where('submitted_by', auth()->id());
+            }
+
+            // Apply same filters as search
+            if ($type = $request->input('type')) {
+                if ($type !== 'all') $query->where('type', $type);
+            }
+            if ($category = $request->input('category')) {
+                if ($category !== 'all') $query->where('category', $category);
+            }
+            if ($branchId = $request->input('branch_id')) {
+                if ($branchId !== 'all') {
+                    $query->whereHas('branches', fn($q) => $q->where('branches.id', $branchId));
+                }
+            }
+            if ($start = $request->input('start_date')) {
+                $query->whereDate('created_at', '>=', $start);
+            }
+            if ($end = $request->input('end_date')) {
+                $query->whereDate('created_at', '<=', $end);
+            }
+
+            return [
+                'count' => (clone $query)->count(),
+                'pending' => (clone $query)->where('status', 'pending')->count(),
+                'approved' => (clone $query)->where('status', 'approved')->count(),
+                'completed' => (clone $query)->where('status', 'completed')->count(),
+                'rejected' => (clone $query)->where('status', 'rejected')->count(),
+                'auto_reject' => (clone $query)->where('status', 'auto-reject')->count(),
+                'waiting_payment' => (clone $query)->where('status', 'waiting_payment')->count(),
+                'flagged' => (clone $query)->where('status', 'flagged')->count(),
+            ];
+        });
+
+        return response()->json($stats);
+    }
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  FORM — Pengajuan form (no OCR)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     public function showForm()
     {
-        $uploadId = session('pengajuan_upload_id');
-        $filePath = session('pengajuan_file_path');
-        $base64   = session('pengajuan_file_base64');  // ← Ambil base64
-        $mime     = session('pengajuan_file_mime');     // ← Ambil mime
-        
-        // Fallback jika file tidak exist di disk
-        if ($filePath && !Storage::disk('public')->exists($filePath)) {
-            $filePath = null;
-        }
-        
         $branches = Branch::all();
-        return view('transactions.form-pengajuan', compact('filePath', 'branches'));
+        $pengajuanCategories = TransactionCategory::forPengajuan()->active()->get();
+
+        return view('transactions.form-pengajuan', compact('branches', 'pengajuanCategories'));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,7 +183,7 @@ class PengajuanController extends Controller
     public function uploadPhoto(Request $request)
     {
         $request->validate([
-            'file' => 'required|image|mimes:jpg,jpeg,png|max:1024',
+            'file' => 'required|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $file = $request->file('file');
@@ -75,35 +218,51 @@ class PengajuanController extends Controller
 
     public function store(Request $request)
     {
-        $uploadFilePath = session('pengajuan_file_path');
-        $uploadId       = session('pengajuan_upload_id');
-        // Derive invoice number from the SAME sequence used for upload_id
-        $seq            = session('pengajuan_seq');
-        $invoiceNumber  = $seq
-            ? IdGeneratorService::buildInvoiceNumber((int) $seq)
-            : IdGeneratorService::nextInvoiceNumber(); // fallback if no upload happened
-
+        $role = Auth::user()->role;
+        
         $request->validate([
-            'customer'        => 'required|string|max:255',  // Nama barang/jasa
-            'vendor'          => 'nullable|string|max:255',
-            'specs'           => 'nullable|array',
-            'specs.merk'      => 'nullable|string|max:255',
-            'specs.tipe'      => 'nullable|string|max:255',
-            'specs.ukuran'    => 'nullable|string|max:255',
-            'specs.warna'     => 'nullable|string|max:255',
-            'quantity'        => 'required|integer|min:1',
-            'estimated_price' => 'required|numeric|min:1',
-            'purchase_reason' => 'required|string|in:' . implode(',', array_keys(Transaction::PURCHASE_REASONS)),
-            'branches'        => 'nullable|array',
-            'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
-            'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
-            'branches.*.allocation_amount' => 'nullable|numeric|min:0',
+            'type'                              => 'required|in:pengajuan',
+            'file'                              => 'nullable|mimes:jpg,jpeg,png,pdf|max:5120',
+            'items'                             => 'required|array|min:1',
+            'items.*.customer'                  => 'required|string|max:255',
+            'items.*.category'                  => ['required', 'string', function($attr, $val, $fail) {
+                $exists = \App\Models\TransactionCategory::where('name', $val)
+                    ->where('type', 'pengajuan')
+                    ->where('is_active', true)
+                    ->exists();
+                if (!$exists) $fail('Alasan/Kategori tidak valid.');
+            }],
+            'items.*.estimated_price'           => 'required|integer|min:0',
+            'items.*.quantity'                  => 'required|integer|min:1',
+            'branches'                          => 'nullable|array',
+            'branches.*.branch_id'              => 'required_with:branches|exists:branches,id',
+            'branches.*.allocation_percent'     => 'required_with:branches|numeric|min:0|max:100',
+            'branches.*.allocation_amount'      => 'nullable|numeric|min:0',
+            'global_notes'                      => 'nullable|string|max:2000',
+            'estimated_price'                   => 'nullable|numeric|min:0',
+            'dpp_lainnya'                       => 'nullable|integer|min:0',
+            'tax_amount'                        => 'nullable|integer|min:0',
+            'biaya_layanan_1'                   => 'nullable|integer|min:0',
+        ], [
+            'items.*.link.url' => 'Terdapat Link/Referensi Barang yang tidak valid. Pastikan formatnya benar (contoh: https://...).',
+            'items.*.customer.required' => 'Nama Barang/Jasa pada salah satu daftar barang wajib diisi.',
+            'items.*.quantity.required' => 'Jumlah barang wajib diisi.',
+            'items.*.estimated_price.required' => 'Estimasi harga satuan wajib diisi.',
+            'estimated_price.min' => 'Total estimasi biaya harus lebih dari 0.',
         ]);
 
-        // File sudah final di path 'pengajuan/' (tidak perlu dipindah)
-        $permanentPath = null;
-        if ($uploadFilePath && Storage::disk('public')->exists($uploadFilePath)) {
-            $permanentPath = $uploadFilePath; // already in permanent location
+        // Generate identifiers
+        $seq = IdGeneratorService::nextSequence();
+        $uploadId = IdGeneratorService::buildUploadId($seq);
+        $invoiceNumber = IdGeneratorService::buildInvoiceNumber((int) $seq);
+
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $extension = $file->getClientOriginalExtension();
+            $fileName   = $uploadId . '.' . $extension;   // UP-20260302-00002.jpeg
+            Storage::disk('public')->put($fileName, file_get_contents($file));
+            $filePath = $fileName;
         }
 
         // Validate branch allocation if provided
@@ -122,20 +281,67 @@ class PengajuanController extends Controller
         DB::beginTransaction();
 
         try {
-            // $filePath sudah di-set dari session oleh uploadPhoto()
-            // dengan nama UP-YYYYMMDD-XXXXX — tidak perlu upload ulang di sini
-            $filePath = $permanentPath;
+            $matchingService = app(\App\Services\PriceIndex\ItemMatchingService::class);
+            $items = array_map(function ($item) use ($matchingService) {
+                // Standarisasi: Cari ID jika tidak ada, & bersihkan string
+                $rawCustomer = trim(preg_replace('/\s+/', ' ', $item['customer'] ?? ''));
+                $masterItemId = $item['master_item_id'] ?? null;
+                $categoryId = $item['category'] ?? null;
+
+                if (empty($masterItemId) && !empty($rawCustomer)) {
+                    // Jika dari frontend sengaja bypass Autocomplete, cari best match
+                    $bestMatch = $matchingService->findBestMatch($rawCustomer, $categoryId);
+                    if ($bestMatch) {
+                        $masterItemId = $bestMatch->id;
+                    } else {
+                        // Jika benar-benar baru, otomatis create as pending_approval
+                        $newItem = $matchingService->createPendingItem($rawCustomer, $categoryId, Auth::id());
+                        $masterItemId = $newItem->id;
+                    }
+                }
+
+                // Timpa nama barang dengan nama Master Catalog (Mencegah Typo / Bypass)
+                if (!empty($masterItemId)) {
+                    $master = \App\Models\MasterItem::find($masterItemId);
+                    if ($master) {
+                        $rawCustomer = $master->display_name;
+                    }
+                }
+
+                return [
+                    'master_item_id'  => $masterItemId,
+                    'customer'        => $rawCustomer,
+                    'vendor'          => $item['vendor']          ?? '',
+                    'link'            => $item['link']            ?? '',
+                    'category'        => $categoryId,  // unified field
+                    'description'     => $item['description']     ?? '',
+                    'specs'           => $item['specs']           ?? [],
+                    'estimated_price' => intval($item['estimated_price'] ?? 0),
+                    'quantity'        => intval($item['quantity']        ?? 1),
+                ];
+            }, $request->items);
+
+            $dppLainnya = intval($request->dpp_lainnya ?? 0);
+            $ppn = intval($request->tax_amount ?? 0);
+            $layanan1 = intval($request->biaya_layanan_1 ?? 0);
+
+            $totalAmount = collect($items)->sum(function($item) {
+                return ($item['estimated_price'] ?? 0) * ($item['quantity'] ?? 1);
+            }) + $dppLainnya + $ppn + $layanan1;
 
             $transaction = Transaction::create([
                 'type'            => Transaction::TYPE_PENGAJUAN,
                 'invoice_number'  => $invoiceNumber,
-                'customer'        => $request->customer,  // nama barang/jasa
-                'vendor'          => $request->vendor,
-                'specs'           => $request->specs,
-                'quantity'        => $request->quantity,
-                'estimated_price' => $request->estimated_price,
-                'purchase_reason' => $request->purchase_reason,
-                'amount'          => $request->estimated_price * $request->quantity,
+                'customer'        => $items[0]['customer'] ?? 'Multiple Items',
+                'vendor'          => $items[0]['vendor'] ?? null,
+                'link'            => $items[0]['link'] ?? null,
+                'category'        => $items[0]['category'] ?? null,
+                'description'     => $request->global_notes,
+                'amount'          => $totalAmount,
+                'dpp_lainnya'     => $dppLainnya,
+                'tax_amount'      => $ppn,
+                'biaya_layanan_1' => $layanan1,
+                'items'           => $items,
                 'file_path'       => $filePath,
                 'date'            => now()->format('Y-m-d'),
                 'status'          => 'pending',
@@ -144,31 +350,55 @@ class PengajuanController extends Controller
                 'submitted_by'    => Auth::id(),
             ]);
 
+
+            // ✅ SNAPSHOT data asli pengaju (immutable)
+            $transaction->items_snapshot = $transaction->items;
+            $transaction->save();
+
             // Attach branches if provided
             if ($request->branches && count($request->branches) > 0) {
                 $effectiveAmount = $transaction->amount;
+                $branchAttachData = [];
+                $totalAllocated = 0;
+                
                 foreach ($request->branches as $branchData) {
                     $allocPercent = floatval($branchData['allocation_percent']);
                     // Selalu hitung ulang di backend berdasarkan persen untuk akurasi
                     $allocAmount = intval(round(($effectiveAmount * $allocPercent) / 100));
+                    $totalAllocated += $allocAmount;
 
-                    $transaction->branches()->attach($branchData['branch_id'], [
+                    $branchAttachData[] = [
+                        'id'                 => $branchData['branch_id'],
                         'allocation_percent' => $allocPercent,
                         'allocation_amount'  => $allocAmount,
+                    ];
+                }
+                
+                // Absorb difference in last branch to ensure sum equals exactly $effectiveAmount
+                $diff = $effectiveAmount - $totalAllocated;
+                if (count($branchAttachData) > 0 && $diff != 0) {
+                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
+                }
+
+                foreach ($branchAttachData as $branch) {
+                    $transaction->branches()->attach($branch['id'], [
+                        'allocation_percent' => $branch['allocation_percent'],
+                        'allocation_amount'  => $branch['allocation_amount'],
                     ]);
                 }
             }
 
+            // ✅ PRICE INDEX — Deteksi Anomali Harga
+            $priceIndexService = app(PriceIndexService::class);
+            $anomalies = $priceIndexService->detectForTransaction($transaction);
+
+            // Jika ada anomali → dispatch job notifikasi Telegram ke Owner
+            foreach ($anomalies as $anomaly) {
+                dispatch(new SendPriceAnomalyNotificationJob($anomaly->id));
+            }
+
             broadcast(new \App\Events\TransactionCreated($transaction));
             DB::commit();
-
-            session()->forget([
-                'pengajuan_seq',
-                'pengajuan_upload_id',
-                'pengajuan_file_path',
-                'pengajuan_file_base64',   // ← ADDED
-                'pengajuan_file_mime',     // ← ADDED
-            ]);
 
             return redirect()->route('transactions.confirm', $transaction->id);
 

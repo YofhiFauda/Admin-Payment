@@ -3,10 +3,12 @@
 @section('page-title', 'Edit Reimbursement')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12">
+    <div class="max-w-8xl mx-auto">
+    {{-- <div class="max-w-8xl mx-auto px-1 md:px-6 lg:px-8 py-1 lg:py-12"> --}}
 
         {{-- Form Container --}}
-        <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10">
+        <div class="bg-white shadow-sm border border-slate-100 p-3 pt-6 md:p-8 lg:p-10">
+        {{-- <div class="bg-white rounded-[1rem] md:rounded-[2rem] shadow-sm border border-slate-100 p-3 md:p-8 lg:p-10"> --}}
             
             {{-- Header --}}
             <div class="mb-8 md:mb-10 flex items-center gap-4">
@@ -29,8 +31,14 @@
                 @if($transaction->file_path)
                 <div class="mb-8 md:mb-10">
                     <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">Foto Nota</label>
-                    <div class="border-2 border-slate-200 rounded-2xl p-2 bg-slate-50/50 flex justify-center relative overflow-hidden group">
-                        <img src="{{ route('transactions.image', $transaction->id) }}" class="w-auto h-48 md:h-64 object-contain rounded-xl shadow-sm relative z-10" />
+                    <div id="ref-photo-wrapper" tabindex="0" class="border-2 border-emerald-200 rounded-2xl p-2 bg-emerald-50/50 flex justify-center relative overflow-hidden cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors group" title="Klik untuk memperbesar">
+                        <img src="{{ route('transactions.image', $transaction->id) }}" class="max-h-48 md:max-h-64 object-contain rounded-xl shadow-sm relative z-10" alt="Foto Nota" />
+                        
+                        {{-- Preview Badge --}}
+                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg flex items-center gap-1.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                            <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Preview Foto</span>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -58,8 +66,8 @@
                             <select name="category" id="category" required
                                 class="w-full appearance-none bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 pr-10 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all">
                                 <option value="" disabled>Pilih kategori...</option>
-                                @foreach(\App\Models\Transaction::CATEGORIES as $key => $label)
-                                    <option value="{{ $key }}" {{ old('category', $transaction->category) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                @foreach($rembushCategories as $cat)
+                                    <option value="{{ $cat->name }}" {{ old('category', $transaction->category) == $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
                                 @endforeach
                             </select>
                             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
@@ -78,6 +86,36 @@
                                 @endforeach
                             </select>
                             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    {{-- Form Rekening/E-Wallet khusus Transfer Penjual --}}
+                    <div id="bank_details_section" class="md:col-span-2 hidden bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 md:p-5 mt-2">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i data-lucide="landmark" class="w-4 h-4 text-blue-500"></i>
+                            <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider">Informasi Rekening / E-Wallet Penjual</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nama Bank / E-Wallet <span class="text-red-500">*</span></label>
+                                <input type="text" name="bank_name" id="bank_name" placeholder="Misal: BCA, OVO" 
+                                    value="{{ old('bank_name', $transaction->specs['bank_name'] ?? '') }}"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Atas Nama Rekening <span class="text-red-500">*</span></label>
+                                <input type="text" name="account_name" id="account_name" placeholder="Atas nama" 
+                                    value="{{ old('account_name', $transaction->specs['account_name'] ?? '') }}"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
+                            </div>
+                            <div>
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span class="text-red-500">*</span></label>
+                                <input type="text" name="account_number" id="account_number" placeholder="Nomor rekening / No HP" 
+                                    value="{{ old('account_number', $transaction->specs['account_number'] ?? '') }}"
+                                    inputmode="numeric"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                    class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white" />
+                            </div>
                         </div>
                     </div>
 
@@ -213,6 +251,38 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- IMAGE VIEWER MODAL                                --}}
+    {{-- hidden → flex saat dibuka via JS                 --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    <div id="image-viewer"
+         class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-[9999] p-6"
+         role="dialog" aria-modal="true" aria-label="Preview foto nota">
+
+        {{-- Card --}}
+        <div class="relative max-w-3xl w-full" id="viewer-card">
+
+            {{-- Tombol X — pojok kanan atas, di luar foto --}}
+            <button id="close-viewer"
+                    type="button"
+                    class="absolute -top-4 -right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-lg text-slate-600 hover:text-red-500 hover:scale-110 transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
+                    aria-label="Tutup preview">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            {{-- Gambar --}}
+            <img id="viewer-image"
+                 src=""
+                 class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-2"
+                 alt="Preview foto nota" />
+
+            {{-- Hint --}}
+            <p class="text-center text-white/40 text-[10px] mt-3 font-medium tracking-wide select-none">
+                Klik di luar gambar atau tekan ESC untuk menutup
+            </p>
         </div>
     </div>
 
@@ -607,14 +677,27 @@
         // ─────────────────────────────────────────────
         function validateAndToggleSubmit() {
             let isValid = true;
+            const totalAllocated = selectedBranches.reduce((s, b) => s + (parseFloat(b.value) || 0), 0);
 
-            if (selectedBranches.length > 0 && currentMethod === 'percent') {
-                const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
-                if (Math.abs(totalPct - 100) > 0.5) {
+            if (selectedBranches.length > 0) {
+                // 1. Check total nominal balance (Anti-manipulation)
+                if (totalAmount > 0 && Math.abs(totalAllocated - totalAmount) > 2) {
                     isValid = false;
                     if (percentWarning) {
-                        percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
+                        percentWarning.textContent = `⚠ Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`;
                         percentWarning.classList.remove('hidden');
+                    }
+                } else if (currentMethod === 'percent') {
+                    // 2. Check percent if in percent mode
+                    const totalPct = selectedBranches.reduce((s, b) => s + (parseFloat(b.percent) || 0), 0);
+                    if (Math.abs(totalPct - 100) > 0.5) {
+                        isValid = false;
+                        if (percentWarning) {
+                            percentWarning.textContent = `⚠ Total persen ${totalPct.toFixed(1)}% — harus 100%`;
+                            percentWarning.classList.remove('hidden');
+                        }
+                    } else {
+                        if (percentWarning) percentWarning.classList.add('hidden');
                     }
                 } else {
                     if (percentWarning) percentWarning.classList.add('hidden');
@@ -642,6 +725,63 @@
             document.getElementById('submit-text').textContent = 'Memproses...';
             document.getElementById('submit-spinner').classList.remove('hidden');
         });
+
+        // ─────────────────────────────────────────────
+        // PAYMENT METHOD — Show hide bank section
+        // ─────────────────────────────────────────────
+        const paymentMethodSelect = document.getElementById('payment_method');
+        const bankDetailsSection  = document.getElementById('bank_details_section');
+
+        function toggleBankDetails() {
+            if (paymentMethodSelect.value === 'transfer_penjual') {
+                bankDetailsSection.classList.remove('hidden');
+            } else {
+                bankDetailsSection.classList.add('hidden');
+            }
+        }
+
+        paymentMethodSelect.addEventListener('change', toggleBankDetails);
+        toggleBankDetails(); // Initial call
+
+        // ─────────────────────────────────────────────
+        // IMAGE VIEWER MODAL
+        // ─────────────────────────────────────────────
+        const imageViewer  = document.getElementById('image-viewer');
+        const viewerImage  = document.getElementById('viewer-image');
+        const closeViewer  = document.getElementById('close-viewer');
+        const refWrapper   = document.getElementById('ref-photo-wrapper');
+
+        function openViewer(src) {
+            viewerImage.src = src;
+            imageViewer.classList.remove('hidden');
+            imageViewer.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewerFn() {
+            imageViewer.classList.add('hidden');
+            imageViewer.classList.remove('flex');
+            document.body.style.overflow = '';
+            setTimeout(() => { viewerImage.src = ''; }, 200);
+        }
+
+        if (refWrapper) {
+            refWrapper.addEventListener('click', function () {
+                const img = this.querySelector('img');
+                if (img) openViewer(img.src);
+            });
+            // Handle keyboard enter/space to open preview
+            refWrapper.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const img = this.querySelector('img');
+                    if (img) openViewer(img.src);
+                }
+            });
+        }
+        if (closeViewer) { closeViewer.addEventListener('click', function(e) { e.stopPropagation(); closeViewerFn(); }); }
+        if (imageViewer) { imageViewer.addEventListener('click', function(e) { if (e.target === imageViewer) closeViewerFn(); }); }
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !imageViewer.classList.contains('hidden')) closeViewerFn(); });
 
         // ─────────────────────────────────────────────
         // INIT

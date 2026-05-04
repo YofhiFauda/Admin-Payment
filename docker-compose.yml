@@ -17,6 +17,7 @@ services:
       sh -c "composer install --no-interaction --optimize-autoloader && php-fpm"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -34,9 +35,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "php artisan list || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 20s
+      timeout: 30s
+      retries: 15
+      start_period: 120s
     networks:
       - app_network
 
@@ -79,9 +81,10 @@ services:
   #  NODE.JS
   # ─────────────────────────────────────────
   node:
-    image: node:20
+    image: node:22
     container_name: nodeJS
     working_dir: /var/www
+    restart: unless-stopped
     volumes:
       - ./:/var/www
       - /var/www/node_modules
@@ -118,9 +121,17 @@ services:
     restart: unless-stopped
     working_dir: /var/www
     command: >
-      sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && php artisan horizon"
+      sh -c "
+        echo '⏳ Waiting for vendor...';
+        while [ ! -f vendor/autoload.php ]; do 
+          sleep 2; 
+        done && 
+        echo '✅ Starting Horizon...' && 
+        php artisan horizon
+      "
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -168,7 +179,8 @@ services:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
   # ─────────────────────────────────────────
   #  ✅ REVERB — WebSocket Server
@@ -186,6 +198,7 @@ services:
       - "8081:8081"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -218,6 +231,7 @@ services:
       sh -c "until [ -f vendor/autoload.php ]; do echo 'Waiting for vendor...'; sleep 2; done && while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
     volumes:
       - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:

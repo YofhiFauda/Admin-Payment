@@ -49,7 +49,7 @@ class BranchController extends Controller
             'name.max'      => 'Nama cabang maksimal 100 karakter.',
         ]);
 
-        $branch->update(['name' => trim($request->name)]);
+        $branch->update(['name' => strtoupper(trim($request->name))]);
 
         if ($request->expectsJson()) {
             return response()->json([

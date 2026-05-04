@@ -67,6 +67,10 @@ class NotificationController extends Controller
         $notification = Auth::user()->notifications()->findOrFail($id);
         $notification->delete();
         
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Notifikasi dihapus']);
+        }
+
         return back()->with('success', 'Notifikasi dihapus');
     }
 
@@ -74,6 +78,10 @@ class NotificationController extends Controller
     {
         Auth::user()->notifications()->delete();
         
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Semua notifikasi berhasil dihapus']);
+        }
+
         return back()->with('success', 'Semua notifikasi berhasil dihapus');
     }
 

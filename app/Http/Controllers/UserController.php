@@ -90,7 +90,6 @@ class UserController extends Controller
         }
 
         $availableRoles = $this->getAvailableRoles();
-
         return view('users.edit', compact('user', 'availableRoles'));
     }
 
@@ -123,7 +122,7 @@ class UserController extends Controller
             'role.in'            => 'Role tidak valid.',
         ]);
 
-        $user->name  = $validated['name'];
+        $user->name  = ucwords(strtolower(trim($validated['name'])));
         $user->email = $validated['email'];
         $user->role  = $validated['role'];
 
@@ -155,6 +154,13 @@ class UserController extends Controller
 
         $name = $user->name;
         $user->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Pengguna {$name} berhasil dihapus."
+            ]);
+        }
 
         return redirect()->route('users.index')
             ->with('notification', "Pengguna {$name} berhasil dihapus.");

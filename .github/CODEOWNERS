@@ -1,0 +1,150 @@
+# CODEOWNERS - Automatic reviewer assignment
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ═══════════════════════════════════════════════════════════════
+#  Global Owners
+# ═══════════════════════════════════════════════════════════════
+# These owners will be requested for review when someone opens a PR
+# unless a later match takes precedence
+
+* @your-org/core-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Backend Code
+# ═══════════════════════════════════════════════════════════════
+
+# Controllers
+/app/Http/Controllers/ @your-org/backend-team
+
+# Models & Database
+/app/Models/ @your-org/backend-team @your-org/database-team
+/database/ @your-org/backend-team @your-org/database-team
+
+# Services & Business Logic
+/app/Services/ @your-org/backend-team
+/app/Jobs/ @your-org/backend-team
+/app/Events/ @your-org/backend-team
+
+# API Controllers
+/app/Http/Controllers/Api/ @your-org/api-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Frontend Code
+# ═══════════════════════════════════════════════════════════════
+
+/resources/views/ @your-org/frontend-team
+/resources/js/ @your-org/frontend-team
+/resources/css/ @your-org/frontend-team
+/public/ @your-org/frontend-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Infrastructure & DevOps
+# ═══════════════════════════════════════════════════════════════
+
+# Docker
+/docker/ @your-org/devops-team
+/Dockerfile* @your-org/devops-team
+/docker-compose*.yml @your-org/devops-team
+
+# CI/CD
+/.github/workflows/ @your-org/devops-team
+/.github/actions/ @your-org/devops-team
+
+# Deployment Scripts
+/deploy*.sh @your-org/devops-team
+/rollback*.sh @your-org/devops-team
+
+# Server Configuration
+/nginx/ @your-org/devops-team
+/apache/ @your-org/devops-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Configuration Files
+# ═══════════════════════════════════════════════════════════════
+
+# Environment & Config
+/.env.example @your-org/devops-team @your-org/backend-team
+/.env.production.example @your-org/devops-team
+/config/ @your-org/backend-team
+
+# Composer & Dependencies
+/composer.json @your-org/backend-team
+/composer.lock @your-org/backend-team
+/package.json @your-org/frontend-team
+/package-lock.json @your-org/frontend-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Security & Authentication
+# ═══════════════════════════════════════════════════════════════
+
+/app/Http/Middleware/ @your-org/security-team @your-org/backend-team
+/app/Http/Controllers/AuthController.php @your-org/security-team @your-org/backend-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Testing
+# ═══════════════════════════════════════════════════════════════
+
+/tests/ @your-org/qa-team
+/phpunit.xml @your-org/qa-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Documentation
+# ═══════════════════════════════════════════════════════════════
+
+*.md @your-org/documentation-team
+/docs/ @your-org/documentation-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Specific Features
+# ═══════════════════════════════════════════════════════════════
+
+# OCR Feature
+/app/Services/OCR/ @your-org/ai-team
+/app/Http/Controllers/Api/V1/OcrNotaController.php @your-org/ai-team
+
+# Price Index Feature
+/app/Services/PriceIndex/ @your-org/analytics-team
+/app/Jobs/PriceIndex/ @your-org/analytics-team
+
+# Telegram Integration
+/app/Services/Telegram/ @your-org/integration-team
+/app/Http/Controllers/Api/TelegramWebhookController.php @your-org/integration-team
+
+# Payment & Financial
+/app/Http/Controllers/PembelianController.php @your-org/finance-team
+/app/Http/Controllers/RembushController.php @your-org/finance-team
+/app/Http/Controllers/SalaryController.php @your-org/finance-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Critical Files (Require Multiple Approvals)
+# ═══════════════════════════════════════════════════════════════
+
+# Production Environment
+/.env.production.example @your-org/devops-team @your-org/security-team @your-org/tech-lead
+
+# Production Deployment
+/.github/workflows/deploy-production*.yml @your-org/devops-team @your-org/tech-lead
+
+# Database Migrations (Production Impact)
+/database/migrations/*_create_*.php @your-org/database-team @your-org/tech-lead
+/database/migrations/*_drop_*.php @your-org/database-team @your-org/tech-lead @your-org/security-team
+
+# Security Configuration
+/config/auth.php @your-org/security-team @your-org/tech-lead
+/config/cors.php @your-org/security-team @your-org/backend-team
+
+# ═══════════════════════════════════════════════════════════════
+#  Notes
+# ═══════════════════════════════════════════════════════════════
+# 
+# How to use:
+# 1. Replace @your-org/team-name with actual GitHub team handles
+# 2. Or use individual usernames like @username
+# 3. Teams must have read access to the repository
+# 4. More specific paths override general ones
+# 5. Multiple owners can be specified (all will be requested)
+#
+# Example with real usernames:
+# /app/Models/ @john-doe @jane-smith
+# /database/ @db-admin @john-doe
+#

@@ -15,6 +15,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'telegram_chat_id',
     ];
 
     protected $hidden = [
@@ -61,5 +62,10 @@ class User extends Authenticatable
     public function transactions()
     {
         return $this->hasMany(Transaction::class, 'submitted_by');
+    }
+
+    public function bankAccounts()
+    {
+        return $this->hasMany(UserBankAccount::class);
     }
 }

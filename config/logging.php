@@ -52,24 +52,78 @@ return [
 
     'channels' => [
 
+        // ═══════════════════════════════════════════════════════════════
+        // PRODUCTION STACK - Multi-channel dengan filtering
+        // ═══════════════════════════════════════════════════════════════
+        
+        'stack' => [
+            'driver' => 'stack',
+            'channels' => explode(',', (string) env('LOG_STACK', 'daily')),
+            'ignore_exceptions' => false,
+        ],
+
+        // ═══════════════════════════════════════════════════════════════
+        // CUSTOM CHANNELS - Feature-specific logs
+        // ═══════════════════════════════════════════════════════════════
+        
         'ocr' => [
-            'driver' => 'single',
+            'driver' => 'daily',
             'path' => storage_path('logs/ocr.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('LOG_LEVEL_OCR', 'info'),
+            'days' => 14,
             'replace_placeholders' => true,
         ],
         
         'ai_autofill' => [
-            'driver' => 'single',
+            'driver' => 'daily',
             'path' => storage_path('logs/ai-autofill.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 14,
             'replace_placeholders' => true,
         ],
 
-        'stack' => [
-            'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
-            'ignore_exceptions' => false,
+        'queue' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/queue.log'),
+            'level' => env('LOG_LEVEL_QUEUE', 'info'),
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'notice',
+            'days' => 90, // Compliance requirement
+            'replace_placeholders' => true,
+        ],
+
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 365, // 1 year retention
+            'replace_placeholders' => true,
+        ],
+
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance.log'),
+            'level' => 'warning',
+            'days' => 7,
+            'replace_placeholders' => true,
+        ],
+
+        // ═══════════════════════════════════════════════════════════════
+        // ERROR LOGS - Hanya error & critical
+        // ═══════════════════════════════════════════════════════════════
+        
+        'error' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/error.log'),
+            'level' => 'error',
+            'days' => 90, // Simpan lebih lama untuk error
+            'replace_placeholders' => true,
         ],
 
         'single' => [
@@ -82,18 +136,21 @@ return [
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'level' => env('LOG_LEVEL', 'warning'), // warning di production, debug di local
+            'days' => env('LOG_DAILY_DAYS', 30),
             'replace_placeholders' => true,
+            'permission' => 0664,
+            'locking' => false, // Disable untuk performa
         ],
 
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
-            'username' => env('LOG_SLACK_USERNAME', 'Laravel Log'),
-            'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
-            'level' => env('LOG_LEVEL', 'critical'),
+            'username' => env('LOG_SLACK_USERNAME', 'WHUSNET Alert'),
+            'emoji' => env('LOG_SLACK_EMOJI', ':rotating_light:'),
+            'level' => env('LOG_SLACK_LEVEL', 'critical'),
             'replace_placeholders' => true,
+            'context' => true, // Include context data
         ],
 
         'papertrail' => [
