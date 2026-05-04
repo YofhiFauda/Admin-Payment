@@ -38,6 +38,9 @@ jobs:
             ci
             chore
             revert
+            release
+            testing
+            beta
           requireScope: false
       
       - name: Check PR size
