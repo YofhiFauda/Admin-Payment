@@ -169,10 +169,10 @@ Security documentation:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [CODE_REVIEW_SETUP.md](docs/code-review/CODE_REVIEW_SETUP.md) | ✅ Complete | Complete code review system setup |
-| [CODE_REVIEW_GUIDELINES.md](docs/code-review/CODE_REVIEW_GUIDELINES.md) | ✅ Complete | Detailed code review guidelines |
-| [CODE_REVIEW_QUICK_REFERENCE.md](docs/code-review/CODE_REVIEW_QUICK_REFERENCE.md) | ✅ Complete | Quick reference for code review |
-| [BRANCH_PROTECTION_SETUP.md](docs/code-review/BRANCH_PROTECTION_SETUP.md) | ✅ Complete | Branch protection configuration |
+| [CODE_REVIEW_SETUP.md](.github/CODE_REVIEW_SETUP.md) | ✅ Complete | Complete code review system setup |
+| [CODE_REVIEW_GUIDELINES.md](.github/CODE_REVIEW_GUIDELINES.md) | ✅ Complete | Detailed code review guidelines |
+| [CODE_REVIEW_QUICK_REFERENCE.md](.github/CODE_REVIEW_QUICK_REFERENCE.md) | ✅ Complete | Quick reference for code review |
+| [BRANCH_PROTECTION_SETUP.md](.github/BRANCH_PROTECTION_SETUP.md) | ✅ Complete | Branch protection configuration |
 
 #### GitHub Configuration
 
@@ -266,10 +266,10 @@ Security documentation:
 4. Review feature-specific documentation
 
 ### For Contributors
-1. Read [CONTRIBUTING.md](#) *(Coming Soon)*
-2. Review [CODE_STYLE.md](#) *(Coming Soon)*
-3. Check [GIT_WORKFLOW.md](#) *(Coming Soon)*
-4. Follow [PR_TEMPLATE.md](#) *(Coming Soon)*
+1. Read [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md)
+2. Review [CODE_STYLE.md](docs/contributing/CONTRIBUTING.md#coding-standards)
+3. Check [GIT_WORKFLOW.md](docs/contributing/CONTRIBUTING.md#development-workflow)
+4. Follow [PR_TEMPLATE.md](.github/pull_request_template.md)
 
 ### For DevOps
 1. Start with deployment guides
@@ -279,8 +279,8 @@ Security documentation:
 
 ### For Stakeholders
 1. Read [README.md](README.md) for overview
-2. Check [CHANGELOG.md](#) for updates *(Coming Soon)*
-3. Review [TECHNICAL_AUDIT_AND_ROADMAP.md](TECHNICAL_AUDIT_AND_ROADMAP.md)
+2. Check [CHANGELOG.md](docs/reference/CHANGELOG.md) for updates
+3. Review [TECHNICAL_AUDIT_AND_ROADMAP.md](docs/reference/TECHNICAL_AUDIT_AND_ROADMAP.md)
 
 ---
 
@@ -299,7 +299,7 @@ All documentation should follow:
 ## 🤝 Contributing to Documentation
 
 Found an error or want to improve documentation?
-1. Check [CONTRIBUTING.md](#) *(Coming Soon)*
+1. Check [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md)
 2. Create a branch: `docs/improve-[topic]`
 3. Make your changes
 4. Submit a pull request
