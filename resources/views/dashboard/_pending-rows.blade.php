@@ -7,7 +7,7 @@
         </a>
         <span class="text-xs text-slate-400">
             {{ $t->submitter->name ?? '-' }} &bull;
-            {{ $t->type === 'rembush' ? 'Rembush' : 'Pengajuan' }}
+            {{ $t->type_label }}
             @if($t->status === 'approved')
                 <span class="ml-1 px-1.5 py-0.5 rounded-md bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 text-[10px] font-bold border">Menunggu Owner</span>
             @endif

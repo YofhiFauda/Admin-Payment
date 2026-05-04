@@ -122,7 +122,7 @@ class DashboardController extends Controller
         // 2c. Perbandingan Tipe Transaksi (optimized database sum)
         $rembushTotal  = (clone $thisMonth())->where('type', 'rembush')->whereIn('status', ['approved', 'completed'])->sum('amount');
         $pengajuanTotal = (clone $thisMonth())->where('type', 'pengajuan')->whereIn('status', ['approved', 'completed'])->sum('amount');
-        $gudangTotal    = (clone $thisMonth())->where('type', 'gudang')->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $pembelianTotal = (clone $thisMonth())->where('type', 'gudang')->whereIn('status', ['approved', 'completed'])->sum('amount');
 
         // 2d. Per Branch (hanya admin/atasan/owner, karena butuh pivot)
         $byBranch = collect();
@@ -261,7 +261,7 @@ class DashboardController extends Controller
             'trendDatasets',
             'rembushTotal',
             'pengajuanTotal',
-            'gudangTotal',
+            'pembelianTotal',
             'byBranch',
             // Tables
             'pendingTransactions',

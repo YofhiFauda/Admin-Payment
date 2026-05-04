@@ -44,8 +44,8 @@ RUN echo "pm.max_children = 20" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
     && echo "pm.min_spare_servers = 5" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
     && echo "pm.max_spare_servers = 10" >> /usr/local/etc/php-fpm.d/zz-docker.conf
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Install Composer (latest version with security fixes)
+COPY --from=composer:2.9.7 /usr/bin/composer /usr/bin/composer
 
 # Custom PHP settings
 COPY ./docker/php/local.ini /usr/local/etc/php/conf.d/local.ini

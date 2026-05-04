@@ -3,36 +3,36 @@
 @section('page-title', 'Kelola Pengguna')
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+<div class="bg-white shadow-sm border border-slate-200 overflow-hidden">
     {{-- Card Header & Toolbar --}}
     <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/30">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             {{-- Left: Stats & Title --}}
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                    <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                    <i data-lucide="users" class="w-6 h-6 md:w-7 md:h-7 text-white"></i>
                 </div>
-                <div>
-                    <h1 class="text-lg font-black text-slate-900 leading-tight">Daftar Pengguna</h1>
-                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">Total {{ $users->total() }} pengguna terdaftar</p>
+                <div class="min-w-0">
+                    <h1 class="text-lg md:text-xl font-black text-slate-900 leading-tight truncate">Daftar Pengguna</h1>
+                    <p class="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">Total {{ $users->total() }} pengguna terdaftar</p>
                 </div>
             </div>
 
             {{-- Right: Actions --}}
-            <div class="flex flex-col sm:flex-row items-center gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {{-- Search & Filter Form --}}
-                <form method="GET" action="{{ route('users.index') }}" class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <form method="GET" action="{{ route('users.index') }}" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
                     {{-- Search --}}
-                    <div class="relative w-full sm:w-64">
+                    <div class="relative flex-1 sm:min-w-[240px] xl:min-w-[320px]">
                         <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
                         <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama atau email..."
-                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all">
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 outline-none transition-all">
                     </div>
 
                     {{-- Role Filter --}}
-                    <div class="relative w-full sm:w-auto">
+                    <div class="relative shrink-0">
                         <select name="role" onchange="this.form.submit()"
-                                class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all appearance-none pr-10">
+                                class="w-full sm:w-auto pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 outline-none transition-all appearance-none cursor-pointer">
                             <option value="">Semua Role</option>
                             <option value="teknisi" {{ request('role') === 'teknisi' ? 'selected' : '' }}>Teknisi</option>
                             <option value="admin" {{ request('role') === 'admin' ? 'selected' : '' }}>Admin</option>
@@ -43,18 +43,18 @@
                     </div>
 
                     <button type="submit"
-                            class="w-full sm:w-auto px-5 py-2.5 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors shadow-sm">
+                            class="hidden sm:block px-5 py-2.5 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors shadow-sm active:scale-[0.98]">
                         Cari
                     </button>
                 </form>
 
-                <div class="w-px h-8 bg-slate-200 hidden sm:block mx-1"></div>
+                <div class="hidden lg:block w-px h-8 bg-slate-200 mx-1"></div>
 
                 <a href="{{ route('users.create') }}"
-                   class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all active:scale-[0.98]">
+                   class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-linear-to-r from-sky-600 to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-sky-600/20 hover:shadow-xl hover:shadow-sky-500/30 transition-all active:scale-[0.98]">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
-                    <span class="sm:hidden lg:inline">Tambah Pengguna</span>
-                    <span class="hidden sm:inline lg:hidden">Tambah</span>
+                    <span class="sm:hidden xl:inline">Tambah Pengguna</span>
+                    <span class="hidden sm:inline xl:hidden">Tambah</span>
                 </a>
             </div>
         </div>
@@ -63,16 +63,16 @@
     {{-- Content Area --}}
     <div class="overflow-hidden">
         {{-- Desktop Table --}}
-        <div class="hidden md:block">
+        <div class="hidden lg:block overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
                     <tr class="bg-slate-50/50 border-b border-slate-100">
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Pengguna</th>
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Email</th>
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Akses / Role</th>
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Terdaftar</th>
-                        <th class="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Tindakan</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-12">#</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Pengguna</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hidden lg:table-cell">Email</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Akses / Role</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hidden xl:table-cell">Terdaftar</th>
+                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Tindakan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50">
@@ -81,18 +81,19 @@
                         <td class="px-6 py-4 text-sm text-slate-400 font-bold tracking-tight">{{ $users->firstItem() + $index }}</td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-sm font-black flex-shrink-0 group-hover:scale-110 transition-transform">
+                                <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/10 border border-blue-100 flex items-center justify-center text-blue-600 text-xs md:text-sm font-black flex-shrink-0 group-hover:scale-110 transition-transform">
                                     {{ strtoupper(substr($user->name, 0, 1)) }}
                                 </div>
-                                <div>
-                                    <span class="block text-sm font-bold text-slate-800">{{ $user->name }}</span>
+                                <div class="min-w-0">
+                                    <span class="block text-sm font-bold text-slate-800 truncate">{{ $user->name }}</span>
+                                    <span class="block text-[10px] font-bold text-slate-400 lg:hidden truncate">{{ $user->email }}</span>
                                     @if($user->id === auth()->id())
-                                        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Anda</span>
+                                        <span class="text-[9px] font-black text-sky-500 uppercase tracking-widest bg-sky-50 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Anda</span>
                                     @endif
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-sm text-slate-600 font-bold">{{ $user->email }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600 font-bold hidden lg:table-cell">{{ $user->email }}</td>
                         <td class="px-6 py-4">
                             @php
                                 $roleColors = [
@@ -102,11 +103,11 @@
                                     'teknisi' => 'bg-slate-50 text-slate-700 border-slate-200',
                                 ];
                             @endphp
-                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                            <span class="inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
                                 {{ $user->role }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-sm text-slate-500 font-bold tracking-tight">{{ $user->created_at->translatedFormat('d F Y') }}</td>
+                        <td class="px-6 py-4 text-sm text-slate-500 font-bold tracking-tight hidden xl:table-cell">{{ $user->created_at->translatedFormat('d F Y') }}</td>
                         <td class="px-6 py-4">
                             @php
                                 $canManage = Auth::user()->isOwner() || $user->role === 'teknisi';
@@ -155,18 +156,26 @@
             </table>
         </div>
 
-        {{-- Mobile Card List --}}
-        <div class="md:hidden divide-y divide-slate-100">
+        {{-- Mobile & Tablet Card List --}}
+        <div class="lg:hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:gap-4 p-4">
             @forelse($users as $user)
-            <div class="p-4 active:bg-slate-50 transition-colors" id="user-card-{{ $user->id }}">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-base font-black flex-shrink-0">
+            <div class="py-5 md:p-6 md:bg-slate-50/50 md:rounded-2xl md:border md:border-slate-100 flex flex-col gap-4 relative overflow-hidden group" id="user-card-{{ $user->id }}">
+                {{-- Decorative background --}}
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-slate-50 rounded-full opacity-0 group-active:opacity-100 transition-opacity"></div>
+                
+                <div class="relative flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <div class="w-12 h-12 rounded-2xl bg-linear-to-br from-sky-600/10 to-sky-600/5 border border-sky-100 flex items-center justify-center text-sky-600 text-lg font-black shrink-0 shadow-sm">
                             {{ strtoupper(substr($user->name, 0, 1)) }}
                         </div>
                         <div class="min-w-0">
-                            <p class="text-sm font-black text-slate-800 truncate">{{ $user->name }}</p>
-                            <p class="text-xs text-slate-500 font-bold truncate">{{ $user->email }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-black text-slate-800 truncate">{{ $user->name }}</p>
+                                @if($user->id === auth()->id())
+                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]"></span>
+                                @endif
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-bold truncate mt-0.5">{{ $user->email }}</p>
                         </div>
                     </div>
                     @php
@@ -177,40 +186,50 @@
                             'teknisi' => 'bg-slate-50 text-slate-700 border-slate-200',
                         ];
                     @endphp
-                    <span class="inline-flex px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }} flex-shrink-0">
+                    <span class="inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border {{ $roleColors[$user->role] ?? 'bg-slate-50 text-slate-600 border-slate-200' }} shrink-0">
                         {{ $user->role }}
                     </span>
                 </div>
-                <div class="flex items-center justify-between mt-4">
-                    <div class="flex items-center gap-1.5">
-                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span class="text-[10px] text-slate-500 font-black tracking-tight">{{ $user->created_at->translatedFormat('d F Y') }}</span>
+
+                <div class="relative flex items-center justify-between mt-auto pt-4 border-t border-slate-100/50">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-300"></i>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Terdaftar</span>
+                        </div>
+                        <span class="text-[11px] text-slate-600 font-black ml-5">{{ $user->created_at->translatedFormat('d M Y') }}</span>
                     </div>
+                    
                     <div class="flex items-center gap-2">
                         @if($user->role === 'teknisi')
                         <button type="button" onclick="openBankAccountsModal({{ $user->id }})"
-                                class="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 active:scale-90 transition-transform">
-                            <i data-lucide="credit-card" class="w-4 h-4"></i>
+                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 active:scale-90 transition-all border border-sky-100/50">
+                            <i data-lucide="credit-card" class="w-4.5 h-4.5"></i>
                         </button>
                         @endif
+                        
                         @if(Auth::user()->isOwner() || $user->role === 'teknisi')
                             <a href="{{ route('users.edit', $user->id) }}"
-                               class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:scale-90 transition-transform">
-                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                               class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 active:scale-90 transition-all border border-slate-200/50">
+                                <i data-lucide="pencil" class="w-4.5 h-4.5"></i>
                             </a>
                             @if($user->id !== auth()->id())
                                 <button type="button"
                                         onclick="confirmDelete({{ $user->id }}, '{{ addslashes($user->name) }}')"
-                                        class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 active:scale-90 transition-transform">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        class="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 active:scale-90 transition-all border border-red-100/50">
+                                    <i data-lucide="trash-2" class="w-4.5 h-4.5"></i>
                                 </button>
                             @endif
+                        @else
+                            <div class="px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                                <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest">Locked</span>
+                            </div>
                         @endif
                     </div>
                 </div>
             </div>
             @empty
-            <div class="p-12 text-center">
+            <div class="p-12 text-center col-span-full">
                 <p class="text-sm font-bold text-slate-400 italic">Belum ada pengguna terdaftar</p>
             </div>
             @endforelse

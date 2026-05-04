@@ -252,7 +252,7 @@ class OcrNotaController extends Controller
         $request->replace($input);
 
         $validator = Validator::make($request->all(), [
-            'invoice_file'       => 'required|file|image|max:5120',
+            'invoice_file'       => 'nullable|file|image|max:5120', // Foto invoice bersifat opsional
             'transaksi_id'       => 'required|string',
             'diskon_pengiriman'  => 'nullable|numeric|min:0',
             'ongkir'             => 'nullable|numeric|min:0',
@@ -330,8 +330,11 @@ class OcrNotaController extends Controller
             }
         }
 
-        // Store the file
-        $path = $request->file('invoice_file')->store('invoices', 'public');
+        // Store the file (jika ada)
+        $path = null;
+        if ($request->hasFile('invoice_file')) {
+            $path = $request->file('invoice_file')->store('invoices', 'public');
+        }
 
         // ═══════════════════════════════════════════════════════════
         //  1. Persist Transaction Changes (Amount, Fees, Proof) First
@@ -531,7 +534,7 @@ class OcrNotaController extends Controller
             ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
             ->firstOrFail();
 
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Gudang/Internal)
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Pembelian/Internal)
         if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
             return response()->json([
                 'success' => false,
@@ -551,11 +554,11 @@ class OcrNotaController extends Controller
             ? $request->file($fileInput)->store('payments/cash', 'public') 
             : null;
 
-        $isGudang = $transaction->type === 'gudang';
+        $isPembelian = $transaction->type === 'gudang';
 
         $transaction->update([
             'foto_penyerahan' => $path,
-            'status'          => $isGudang ? 'completed' : 'pending_technician',
+            'status'          => $isPembelian ? 'completed' : 'pending_technician',
             'paid_by'         => auth()->id(),
             'paid_at'         => now(),
             'description'     => $request->catatan,
@@ -586,7 +589,7 @@ class OcrNotaController extends Controller
 
         // ═══════════════════════════════════════════════════════════
         //  🔔 TELEGRAM #1: KIRIM NOTIFIKASI CASH KE TEKNISI
-        //  (Lewati untuk Gudang/Internal)
+        //  (Lewati untuk Pembelian/Internal)
         // ═══════════════════════════════════════════════════════════
         if ($transaction->type !== 'gudang') {
             try {
@@ -646,12 +649,12 @@ class OcrNotaController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => $isGudang ? 'Bukti penyerahan diterima. Transaksi Selesai.' : 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
+            'message'       => $isPembelian ? 'Bukti penyerahan diterima. Transaksi Selesai.' : 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
             'upload_id'     => $transaction->upload_id,
             'transaksi_id'  => $transaction->id,
             'pembayaran_id' => $transaction->id,
-            'status'        => $isGudang ? 'completed' : 'pending_technician',
-            'status_label'  => $isGudang ? 'Selesai' : 'Menunggu Konfirmasi Teknisi',
+            'status'        => $isPembelian ? 'completed' : 'pending_technician',
+            'status_label'  => $isPembelian ? 'Selesai' : 'Menunggu Konfirmasi Teknisi',
         ], 202);
     }
 
@@ -775,7 +778,7 @@ class OcrNotaController extends Controller
             ->with('submitter')
             ->firstOrFail();
 
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Gudang/Internal)
+        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Pembelian/Internal)
         if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
             return response()->json([
                 'success' => false,
@@ -829,11 +832,11 @@ class OcrNotaController extends Controller
 
         $expectedTotal = $request->expected_nominal + ($request->kode_unik ?? 0) + ($request->biaya_admin ?? 0);
 
-        $isGudang = $transaction->type === 'gudang';
+        $isPembelian = $transaction->type === 'gudang';
 
         $transaction->update([
             'bukti_transfer' => $path,
-            'status'         => $isGudang ? 'completed' : 'Sedang Diverifikasi AI',
+            'status'         => $isPembelian ? 'completed' : 'Sedang Diverifikasi AI',
             'expected_total' => $expectedTotal,
             'paid_by'        => auth()->id(),
             'paid_at'        => now(),
@@ -856,9 +859,9 @@ class OcrNotaController extends Controller
         ]);
 
         // ═══════════════════════════════════════════════════════════
-        //  🔔 TELEGRAM #3: n8n OCR bukti transfer (Lewati untuk Gudang)
+        //  🔔 TELEGRAM #3: n8n OCR bukti transfer (Lewati untuk Pembelian)
         // ═══════════════════════════════════════════════════════════
-        if (!$isGudang) {
+        if (!$isPembelian) {
             $n8nUrl = trim(config('services.n8n.webhook_url') ?? env('N8N_WEBHOOK'));
             if ($n8nUrl) {
                 try {
@@ -917,12 +920,12 @@ class OcrNotaController extends Controller
 
         return response()->json([
             'success'        => true,
-            'message'        => $isGudang ? 'Bukti transfer diterima. Transaksi Selesai.' : 'Bukti transfer diterima. AI sedang memverifikasi nominal.',
+            'message'        => $isPembelian ? 'Bukti transfer diterima. Transaksi Selesai.' : 'Bukti transfer diterima. AI sedang memverifikasi nominal.',
             'upload_id'      => $transaction->upload_id,
             'transaksi_id'   => $transaction->id,
             'pembayaran_id'  => $transaction->id,
             'expected_total' => $expectedTotal,
-            'status'         => $isGudang ? 'completed' : 'Sedang Diverifikasi AI',
+            'status'         => $isPembelian ? 'completed' : 'Sedang Diverifikasi AI',
             'detail'         => [
                 'nominal'     => (float) $request->expected_nominal,
                 'kode_unik'   => (float) ($request->kode_unik ?? 0),

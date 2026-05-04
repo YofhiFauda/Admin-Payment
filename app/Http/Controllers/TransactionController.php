@@ -333,14 +333,15 @@ class TransactionController extends Controller
         // 1. Lock Phase: Status Completed or Menunggu Pelunasan (ALL ROLES are Read-Only)
         $isLocked = ($isCompleted || $isSettlement);
         
-        // 2. Admin Limited Mode: Admin role, Status Menunggu Pembayaran, and NOT Locked
-        $isAdminOnlyBranch = $user->isAdmin() && $isWaitingPayment && !$isLocked;
+        // 2. Admin Limited Mode: Admin role can ONLY edit Cabang & tipe distribusi
+        //    This applies to ALL non-locked statuses for Admin
+        $isAdminOnlyBranch = $user->isAdmin() && !$isLocked;
 
         // 3. General Read-Only: 
         // - True if Locked (Settlement/Completed)
-        // - True if Admin and in Waiting Payment (to trigger JS restrictions)
+        // - True if Admin (to trigger JS restrictions — Admin always has limited access)
         // - Management (Owner/Atasan) is NOT read-only if not locked.
-        $isReadOnly = $isLocked || ($user->isAdmin() && $isWaitingPayment);
+        $isReadOnly = $isLocked || $user->isAdmin();
 
         // ✅ Calculate item count based on transaction type
         if ($transaction->isPengajuan()) {
@@ -790,8 +791,8 @@ class TransactionController extends Controller
                         $newStatus = 'waiting_payment';
                     }
                 }
-            } elseif ($transaction->isGudang()) {
-                // GUDANG LOGIC
+            } elseif ($transaction->isPembelian()) {
+                // PEMBELIAN LOGIC
                 // Approval moves to 'waiting_payment' (Pembelanjaan Belum di bayar)
                 if ($newStatus === 'approved') {
                     $newStatus = 'waiting_payment';
@@ -1311,7 +1312,7 @@ class TransactionController extends Controller
                 'created_at', 'submitted_by',
                 'has_price_anomaly',
                 'ai_status', 'upload_id', 'confidence',
-                'payment_method', 'rejection_reason', 'specs'
+                'payment_method', 'rejection_reason', 'specs', 'items'
             ]);
 
         // Role-based filtering
@@ -1400,7 +1401,7 @@ class TransactionController extends Controller
                 'ai_status', 'upload_id', 'confidence',
                 'payment_method', 'rejection_reason', 'specs',
                 // ✅ Payment proof fields (required by status_label & frontend)
-                'invoice_file_path', 'bukti_transfer', 'foto_penyerahan',
+                'invoice_file_path', 'bukti_transfer', 'foto_penyerahan', 'items'
             ]);
 
         // Role-based filtering
@@ -1501,7 +1502,7 @@ class TransactionController extends Controller
         $typeLabels = [
             'rembush' => 'Reimbursement',
             'pengajuan' => 'Pengajuan', 
-            'gudang' => 'Belanja Gudang'
+            'gudang' => 'Belanja Pembelian'
         ];
 
         $paymentLabels = [
@@ -1548,6 +1549,7 @@ class TransactionController extends Controller
             'invoice_file_path' => $t->invoice_file_path,
             'bukti_transfer'    => $t->bukti_transfer,
             'foto_penyerahan'   => $t->foto_penyerahan,
+            'items'             => $t->normalized_items,
             // ✅ Search text optimized
             'search_text' => strtolower(implode(' ', array_filter([
                 $t->invoice_number ?? '',
@@ -1562,7 +1564,7 @@ class TransactionController extends Controller
     // Helper methods (same as before)
    private function getTypeLabel($type)
     {
-        return ['rembush' => 'Reimbursement', 'pengajuan' => 'Pengajuan', 'gudang' => 'Belanja Gudang'][$type] ?? $type;
+        return ['rembush' => 'Reimbursement', 'pengajuan' => 'Pengajuan', 'gudang' => 'Belanja Pembelian'][$type] ?? $type;
     }
 
     private function getStatusLabel($status, $type = null)
@@ -2059,7 +2061,7 @@ class TransactionController extends Controller
             ];
         }
 
-        // Rembush / Gudang / All format
+        // Rembush / Pembelian / All format
         $branchName = $branch ? $branch->name : ($isFirstRow ? $t->branches->pluck('name')->first() : '-');
         $qty   = $item ? (float) ($item['qty'] ?? ($item['quantity'] ?? 0)) : 0;
         $price = $item ? (float) ($item['harga_satuan'] ?? ($item['estimated_price'] ?? 0)) : 0;

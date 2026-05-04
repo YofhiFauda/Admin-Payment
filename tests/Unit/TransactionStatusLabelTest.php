@@ -28,7 +28,7 @@ class TransactionStatusLabelTest extends TestCase
         $transaction->type = 'rembush';
         $transaction->invoice_file_path = 'invoices/test.pdf';
 
-        $this->assertEquals('Menunggu Pelunasan Hutang', $transaction->status_label);
+        $this->assertEquals('Menunggu Pelunasan', $transaction->status_label);
     }
 
     /** @test */
@@ -39,17 +39,17 @@ class TransactionStatusLabelTest extends TestCase
         $transaction->type = 'rembush';
         $transaction->bukti_transfer = 'proofs/test.jpg';
 
-        $this->assertEquals('Menunggu Pelunasan Hutang', $transaction->status_label);
+        $this->assertEquals('Menunggu Pelunasan', $transaction->status_label);
     }
 
     /** @test */
-    public function it_returns_correct_status_label_for_gudang_waiting_payment()
+    public function it_returns_correct_status_label_for_pembelian_waiting_payment()
     {
         $transaction = new Transaction();
         $transaction->status = 'waiting_payment';
         $transaction->type = 'gudang';
 
-        $this->assertEquals('Pembelanjaan Belum di bayar', $transaction->status_label);
+        $this->assertEquals('Pembelian Belum di bayar', $transaction->status_label);
     }
 
     /** @test */
@@ -77,7 +77,7 @@ class TransactionStatusLabelTest extends TestCase
             'status' => 'pending'
         ]);
 
-        $this->assertEquals('Menunggu Pelunasan Hutang', $transaction->status_label);
+        $this->assertEquals('Menunggu Pelunasan', $transaction->status_label);
     }
 
     /** @test */
@@ -89,7 +89,7 @@ class TransactionStatusLabelTest extends TestCase
         
         $array = $transaction->toSearchArray();
         
-        $this->assertEquals('Menunggu Pelunasan Hutang', $array['status_label']);
+        $this->assertEquals('Menunggu Pelunasan', $array['status_label']);
     }
 
     /** @test */

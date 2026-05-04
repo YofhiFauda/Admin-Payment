@@ -56,7 +56,7 @@
             <p class="text-sm text-slate-500 mt-0.5">Kelola daftar cabang perusahaan secara dinamis</p>
         </div>
         <button onclick="openAddModal()"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold shadow-lg hover:opacity-90 transition-all">
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-sky-600 to-sky-500 text-white text-sm font-bold shadow-lg hover:opacity-90 transition-all">
             <i data-lucide="plus" class="w-4 h-4"></i> Tambah Cabang
         </button>
     </div>
@@ -117,7 +117,7 @@
                         <td class="px-5 py-3 text-slate-400 text-xs">{{ $branches->firstItem() + $i }}</td>
                         <td class="px-3 py-3">
                             <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">
+                                <div class="w-8 h-8 rounded-lg bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">
                                     {{ strtoupper(substr($branch->name, 0, 2)) }}
                                 </div>
                                 <span class="font-semibold text-slate-800 branch-name-{{ $branch->id }}">{{ $branch->name }}</span>

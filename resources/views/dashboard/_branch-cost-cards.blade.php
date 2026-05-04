@@ -3,7 +3,7 @@
     {{-- Card Header: Branch Name --}}
     <div class="px-5 pt-4 pb-3">
         <div class="flex items-center gap-3 mb-2">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-indigo-500/20">
+            <div class="w-9 h-9 rounded-lg bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center flex-shrink-0 shadow-md shadow-indigo-500/20">
                 <i data-lucide="radio-tower" class="w-4 h-4 text-white"></i>
             </div>
             <h4 class="font-black text-base text-slate-900 leading-tight">{{ $branch->name }}</h4>

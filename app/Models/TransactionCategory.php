@@ -90,7 +90,7 @@ class TransactionCategory extends Model
             })
             ->first();
         
-        // Fallback for Gudang: if not found under 'gudang' type, try 'rembush'
+        // Fallback for Pembelian: if not found under 'gudang' type, try 'rembush'
         if (!$cat && $type === self::TYPE_GUDANG) {
             $cat = self::where('type', self::TYPE_REMBUSH)
                 ->where(function($q) use ($category) {

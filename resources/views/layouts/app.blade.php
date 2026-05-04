@@ -24,6 +24,125 @@
             from { opacity: 0; margin-top: 8px; }
             to { opacity: 1; margin-top: 0; }
         }
+
+        /* Sidebar Collapse Animations & Styles */
+        @media (min-width: 768px) {
+            #mobile-sidebar {
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: width;
+            }
+            #mobile-sidebar.sidebar-collapsed {
+                width: 88px !important;
+            }
+
+            /* Smoothly hide text labels */
+            .sidebar-text, 
+            .financeops-text,
+            .profile-details,
+            #pengeluaran-lain-chevron,
+            #sidebarProfileChevron,
+            #mobile-sidebar nav p.text-xs {
+                transition: opacity 0.3s ease, transform 0.3s ease, width 0.3s ease, margin 0.3s ease;
+                opacity: 1;
+                transform: translateX(0);
+                white-space: nowrap;
+                display: inline-block;
+            }
+
+            #mobile-sidebar.sidebar-collapsed .sidebar-text,
+            #mobile-sidebar.sidebar-collapsed .financeops-text,
+            #mobile-sidebar.sidebar-collapsed .profile-details,
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-chevron,
+            #mobile-sidebar.sidebar-collapsed #sidebarProfileChevron,
+            #mobile-sidebar.sidebar-collapsed nav p.text-xs {
+                opacity: 0;
+                transform: translateX(-10px);
+                width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                pointer-events: none;
+                overflow: hidden;
+                flex: 0 0 0 !important; /* Force flex-1 to collapse */
+            }
+
+            /* Adjust nav items layout */
+            #mobile-sidebar nav {
+                transition: padding 0.3s ease;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            #mobile-sidebar.sidebar-collapsed nav {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                align-items: center;
+            }
+
+            #mobile-sidebar nav a, 
+            #mobile-sidebar button#pengeluaran-lain-toggle {
+                transition: all 0.3s ease;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+            }
+
+            #mobile-sidebar.sidebar-collapsed a,
+            #mobile-sidebar.sidebar-collapsed button#pengeluaran-lain-toggle,
+            #mobile-sidebar.sidebar-collapsed #sidebarProfileBtn {
+                justify-content: center !important;
+                padding: 0 !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: 48px;
+                height: 48px;
+                gap: 0 !important;
+                border-radius: 12px;
+            }
+
+            #mobile-sidebar.sidebar-collapsed .financeops-logo-container {
+                justify-content: center !important;
+                padding: 1rem 0 !important;
+                gap: 0 !important;
+            }
+
+            #mobile-sidebar.sidebar-collapsed i[data-lucide] {
+                margin: 0 !important;
+                transition: transform 0.3s ease;
+                width: 20px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+
+            /* Special handling for pengeluaran lain menu */
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu {
+                padding: 0 !important;
+                margin: 4px 0 8px 0 !important;
+                border: none !important;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+            }
+            #mobile-sidebar.sidebar-collapsed #pengeluaran-lain-menu a {
+                width: 40px;
+                height: 40px;
+                padding: 0 !important;
+                justify-content: center;
+                margin: 0 !important;
+            }
+
+            #mobile-sidebar.sidebar-collapsed .notif-badge-sidebar {
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                transform: scale(0.75);
+                min-width: 18px;
+                height: 18px;
+                font-size: 9px;
+            }
+        }
     </style>
     
     <style>
@@ -286,7 +405,7 @@
                 
                 {{-- 1. Brand / Logo --}}
                 <div class="flex items-center gap-2 sm:gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shrink-0">
+                    <div class="w-8 h-8 rounded-lg bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center shadow-md shrink-0">
                         <i data-lucide="receipt" class="w-4 h-4 text-white"></i>
                     </div>
                     <span class="font-bold text-lg sm:text-xl text-slate-800 tracking-tight hidden xs:block">FinanceOps</span>
@@ -369,7 +488,7 @@
                                     <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                         class="w-12 h-12 rounded-full object-cover border-2 border-white shadow">
                                 @else
-                                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                                    <div class="w-12 h-12 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -432,33 +551,33 @@
             text-slate-700 flex flex-col shrink-0 z-50 
             transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
-            <div class="p-4 flex items-center gap-3 border-b border-slate-100">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+            <div class="p-4 flex items-center gap-3 border-b border-slate-100 financeops-logo-container">
+                <div class="w-10 h-10 rounded-xl bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center shadow-md shrink-0">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
-                <h1 class="font-bold text-lg text-slate-800">FinanceOps</h1>
+                <h1 class="font-bold text-lg text-slate-800 financeops-text">FinanceOps</h1>
             </div>
 
-            <nav class="flex-1 px-4 md:px-6 py-6 space-y-3 overflow-y-auto min-h-0 scrollbar-hide text-sm">
+            <nav class="flex-1 px-4 md:px-6 py-6 space-y-2 overflow-y-auto min-h-0 custom-scrollbar text-xs sm:text-sm">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Menu Utama</p>
 
                 <a href="{{ route('dashboard') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('dashboard') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="home" class="w-4 h-4"></i> Dashboard
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('dashboard') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="home" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Dashboard</span>
                 </a>
 
                 <a href="{{ route('transactions.create') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.create') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="file-up" class="w-4 h-4"></i> Input Rembush
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Rembush</span>
                 </a>
 
                 @if(in_array(Auth::user()->role, ['atasan', 'owner']))
-                <a href="{{ route('gudang.loading') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('gudang.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="package" class="w-4 h-4"></i> Input Gudang
+                <a href="{{ route('pembelian.loading') }}"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input Pembelian</span>
                 </a>
                 @endif
 
@@ -469,83 +588,83 @@
                 @endphp
                 <div>
                     <button id="pengeluaran-lain-toggle" onclick="togglePengeluaranLain()"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
                         {{ $isPengeluaranLain ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-600' }}">
-                        <i data-lucide="wallet" class="w-4 h-4 flex-shrink-0"></i>
-                        <span class="flex-1 text-left">Input Pengeluaran Lain</span>
-                        <i data-lucide="chevron-down" id="pengeluaran-lain-chevron" class="w-4 h-4 transition-transform duration-200 {{ $isPengeluaranLain ? 'rotate-180' : '' }}"></i>
+                        <i data-lucide="wallet" class="w-5 h-5 flex-shrink-0"></i>
+                        <span class="flex-1 text-left sidebar-text">Input Pengeluaran Lain</span>
+                        <i data-lucide="chevron-down" id="pengeluaran-lain-chevron" class="w-5 h-5 shrink-0 transition-transform duration-200 {{ $isPengeluaranLain ? 'rotate-180' : '' }}"></i>
                     </button>
                     <div id="pengeluaran-lain-menu" class="mt-1 ml-4 pl-4 border-l-2 border-slate-200 space-y-1 {{ $isPengeluaranLain ? '' : 'hidden' }}">
                         <a href="{{ route('pengeluaran-lain.bayar-hutang.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/bayar-hutang*') ? 'bg-red-50 text-red-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="credit-card" class="w-4 h-4 flex-shrink-0"></i> Bayar Hutang
+                            <i data-lucide="credit-card" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Bayar Hutang</span>
                         </a>
                         <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/piutang-usaha*') ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="trending-up" class="w-4 h-4 flex-shrink-0"></i> Piutang Usaha
+                            <i data-lucide="trending-up" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Piutang Usaha</span>
                         </a>
                         @if(in_array(Auth::user()->role, ['atasan', 'owner']))
                         <a href="{{ route('pengeluaran-lain.prive.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/prive*') ? 'bg-purple-50 text-purple-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="user-check" class="w-4 h-4 flex-shrink-0"></i> Prive
+                            <i data-lucide="user-check" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Prive</span>
                         </a>
                         @endif
                         <a href="{{ route('pengeluaran-lain.gaji.index') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0
                             {{ request()->is('pengeluaran-lain/gaji*') ? 'bg-green-50 text-green-600' : 'hover:bg-slate-100 text-slate-600' }}">
-                            <i data-lucide="banknote" class="w-4 h-4 flex-shrink-0"></i> Gaji
+                            <i data-lucide="banknote" class="w-5 h-5 flex-shrink-0"></i> <span class="sidebar-text">Gaji</span>
                         </a>
                     </div>
                 </div>
                 @endif
 
                 <a href="{{ route('transactions.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transactions.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="clock" class="w-4 h-4"></i> Daftar Transaksi
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transactions.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="clock" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Daftar Transaksi</span>
                 </a>
 
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2">Administrasi</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-2 mt-4">Administrasi</p>
                 @if(in_array(Auth::user()->role, ['admin', 'atasan', 'owner']))
                 <a href="{{ route('users.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('users.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="users" class="w-4 h-4"></i> Kelola Pengguna
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('users.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="users" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Pengguna</span>
                 </a>
 
                 <a href="{{ route('branches.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('branches.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="building-2" class="w-4 h-4"></i> Kelola Cabang
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('branches.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="building-2" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Cabang</span>
                 </a>
 
                 <a href="{{ route('transaction-categories.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('transaction-categories.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="tags" class="w-4 h-4"></i> Kelola Kategori
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('transaction-categories.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="tags" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Kelola Kategori</span>
                 </a>
 
                 @if(Auth::user()->role === 'owner')
                 <a href="{{ route('price-index.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('price-index.*') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="bookmark" class="w-4 h-4"></i> Referensi Harga
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('price-index.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="bookmark" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Referensi Harga</span>
                 </a>
                 @endif
 
                 <a href="{{ route('activity-logs.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('activity-logs.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="file-text" class="w-4 h-4"></i> Log Aktivitas
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
+                    {{ request()->routeIs('activity-logs.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Log Aktivitas</span>
                 </a>
 
                 <a href="{{ route('notifications.index') }}" 
-                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all
-                    {{ request()->routeIs('notifications.index') ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
-                    <i data-lucide="bell" class="w-4 h-4"></i> Notifikasi
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all relative shrink-0
+                    {{ request()->routeIs('notifications.index') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
+                    <i data-lucide="bell" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Notifikasi</span>
                     <span id="notif-count-sidebar" class="notif-badge-sidebar badge-hidden">0</span>
                 </a>
                 @endif
@@ -563,7 +682,7 @@
                             <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                                 class="w-9 h-9 rounded-full object-cover border-2 border-white shadow">
                         @else
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                            <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold shrink-0">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         @endif
@@ -607,11 +726,11 @@
                         <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}"
                             class="w-9 h-9 rounded-full object-cover shrink-0">
                     @else
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-linear-to-r from-sky-600 to-sky-500 flex items-center justify-center text-white font-bold shrink-0">
                             {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                         </div>
                     @endif
-                    <div class="flex-1 min-w-0 text-left">
+                    <div class="flex-1 min-w-0 text-left profile-details">
                         <p class="font-bold text-slate-800 text-sm leading-tight truncate">{{ Auth::user()->name }}</p>
                         <p class="text-xs text-slate-500 truncate mt-0.5">{{ ucfirst(Auth::user()->role) }}</p>
                     </div>
@@ -621,33 +740,51 @@
         </aside>
 
         @php
-            $hideHeaderOnPc = request()->routeIs('transactions.create') 
-                || request()->routeIs('notifications.index') 
-                || request()->routeIs('activity-logs.index') 
-                || request()->routeIs('transactions.confirm')
-                || request()->routeIs('transaction-categories.index');
+            $hideHeaderOnPc = false; // Always show header on PC now for Breadcrumbs and sidebar toggle
         @endphp
 
         <main class="flex-1 flex flex-col min-w-0 bg-gray-50/50 overflow-hidden page-enter">
-            @if($hideHeaderOnPc)
-                {{-- Mobile-only: minimal bar with just hamburger --}}
-                <div class="md:hidden bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 py-3 border-b border-gray-100 shrink-0">
-                    <button onclick="toggleMobileSidebar()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                        <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
+            <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-6 py-3 md:py-4 flex justify-between items-center border-b border-gray-100 shrink-0">
+                <div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                    {{-- Mobile Sidebar Toggle --}}
+                    <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
-                </div>
-            @else
-                <header class="bg-white/80 backdrop-blur-xl sticky top-0 z-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center border-b border-gray-100 shrink-0">
-                    <div class="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-                        <button onclick="toggleMobileSidebar()" class="md:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                            <i data-lucide="menu" class="w-5 h-5 text-slate-600"></i>
-                        </button>
-                        <h2 class="text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate">
+                    {{-- Desktop Sidebar Toggle --}}
+                    <button onclick="toggleDesktopSidebar()" class="hidden md:flex p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+
+                    <div class="flex items-center min-w-0 flex-1">
+                        {{-- Breadcrumb for Desktop --}}
+                        <nav class="hidden md:flex text-sm font-medium text-slate-500" aria-label="Breadcrumb">
+                            <ol class="inline-flex items-center space-x-1 md:space-x-2">
+                                <li class="inline-flex items-center">
+                                    <a href="{{ route('dashboard') }}" class="inline-flex items-center hover:text-indigo-600 transition-colors text-xs">
+                                        <i data-lucide="home" class="w-4 h-4 mr-1.5"></i>
+                                        Home
+                                    </a>
+                                </li>
+                                @hasSection('breadcrumb')
+                                    @yield('breadcrumb')
+                                @else
+                                    <li>
+                                        <div class="flex items-center">
+                                            <i data-lucide="chevron-right" class="w-4 h-4 mx-1.5 text-slate-400"></i>
+                                            <span class="text-slate-800 font-reguler text-xs">@yield('page-title', 'Halaman')</span>
+                                        </div>
+                                    </li>
+                                @endif
+                            </ol>
+                        </nav>
+                        
+                        {{-- Page Title for Mobile --}}
+                        <h2 class="md:hidden text-lg font-bold text-slate-900 tracking-tight truncate">
                             @yield('page-title', '')
                         </h2>
                     </div>
-                </header>
-            @endif
+                </div>
+            </header>
 
             {{-- <div class="flex-1 overflow-y-auto lg:p-6"> --}}
             <div class="flex-1 overflow-y-auto scrollbar-hide">
@@ -873,15 +1010,36 @@
         document.body.style.overflow = sidebar.classList.contains('-translate-x-full') ? '' : 'hidden';
     }
 
+    function toggleDesktopSidebar() {
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (!sidebar) return;
+        sidebar.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('sidebar-collapsed'));
+    }
+
     function togglePengeluaranLain() {
         const menu    = document.getElementById('pengeluaran-lain-menu');
         const chevron = document.getElementById('pengeluaran-lain-chevron');
         if (!menu) return;
+        
+        // If sidebar is collapsed, expanding this menu might look weird, so let's uncollapse sidebar first if needed
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (sidebar && sidebar.classList.contains('sidebar-collapsed') && window.innerWidth >= 768) {
+            toggleDesktopSidebar();
+        }
+
         menu.classList.toggle('hidden');
         chevron && chevron.classList.toggle('rotate-180');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('mobile-sidebar');
+        if (sidebar && localStorage.getItem('sidebar-collapsed') === 'true') {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.add('sidebar-collapsed');
+            }
+        }
+
         if(typeof NProgress !== 'undefined'){
             NProgress.configure({ showSpinner: false, minimum: 0.1 });
             NProgress.done();
@@ -1205,22 +1363,29 @@
                 container.insertAdjacentHTML('beforeend', html);
                 const el = document.getElementById(toastId);
 
+                // Guard: element must exist before trying to animate it
+                if (!el) return;
+
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
 
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        el.classList.remove('opacity-0', 'translate-x-full');
-                        el.classList.add('opacity-100', 'translate-x-0');
+                        // Guard again inside rAF in case element was removed between frames
+                        const animEl = document.getElementById(toastId);
+                        if (!animEl) return;
+                        animEl.classList.remove('opacity-0', 'translate-x-full');
+                        animEl.classList.add('opacity-100', 'translate-x-0');
                     });
                 });
 
                 setTimeout(() => {
-                    if(document.getElementById(toastId)) {
-                        el.classList.remove('opacity-100', 'translate-x-0');
-                        el.classList.add('opacity-0', 'translate-x-full');
-                        setTimeout(() => { if(document.getElementById(toastId)) el.remove() }, 500);
+                    const liveEl = document.getElementById(toastId);
+                    if (liveEl) {
+                        liveEl.classList.remove('opacity-100', 'translate-x-0');
+                        liveEl.classList.add('opacity-0', 'translate-x-full');
+                        setTimeout(() => { const r = document.getElementById(toastId); if(r) r.remove(); }, 500);
                     }
                 }, 6000);
             };
@@ -1247,9 +1412,9 @@
             // ── Listener untuk NOTIFIKASI SYSTEM (Real-time Toasts & Database Sync) ──
             window.Echo.private(`notifications.${userId}`)
                 .listen('.notification.received', (e) => {
-                    console.log('🔔 Notification Received:', e);
+                    console.log('🔔 [NOTIF] Notification Received:', e);
 
-                    // Update badge counter
+                    // Update badge counter realtime
                     updateNotificationBadge();
 
                     // Determine colors based on type
