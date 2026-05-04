@@ -1,5 +1,10 @@
 # 📊 Status Implementasi - Monolog & Pulse
 
+**⚠️ IMPORTANT UPDATE (4 Mei 2026):**  
+Dokumentasi code review telah direorganisasi. Lihat [DOCUMENTATION_RESTRUCTURE_SUMMARY.md](../DOCUMENTATION_RESTRUCTURE_SUMMARY.md) untuk detail lengkap.
+
+---
+
 ## 🎯 Ringkasan Status
 
 | Component | Status | Siap Digunakan? | Catatan |

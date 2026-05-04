@@ -19,24 +19,30 @@ This directory contains GitHub-specific configuration files for code review, CI/
 │
 ├── CODEOWNERS                     # Automatic reviewer assignment
 ├── pull_request_template.md       # PR template
-│
+├── IMPLEMENTATION_CHECKLIST.md    # Implementation checklist
+├── WORKFLOW_DIAGRAM.md            # Workflow diagrams
+└── README.md                      # This file
+
+docs/code-review/                  # Code review documentation (moved here)
 ├── CODE_REVIEW_SETUP.md           # Complete setup guide
 ├── CODE_REVIEW_GUIDELINES.md      # Detailed review guidelines
 ├── CODE_REVIEW_QUICK_REFERENCE.md # Quick reference guide
 ├── BRANCH_PROTECTION_SETUP.md     # Branch protection configuration
-└── README.md                      # This file
+└── README.md                      # Code review docs overview
 ```
+
+**Note:** Code review documentation has been moved to `docs/code-review/` for better organization. GitHub-specific configuration files remain in `.github/`.
 
 ## 🚀 Quick Start
 
 ### For New Team Members
 
 1. **Read the Guidelines**
-   - [CODE_REVIEW_GUIDELINES.md](CODE_REVIEW_GUIDELINES.md) - How to review code
-   - [CODE_REVIEW_QUICK_REFERENCE.md](CODE_REVIEW_QUICK_REFERENCE.md) - Quick commands
+   - [CODE_REVIEW_GUIDELINES.md](../docs/code-review/CODE_REVIEW_GUIDELINES.md) - How to review code
+   - [CODE_REVIEW_QUICK_REFERENCE.md](../docs/code-review/CODE_REVIEW_QUICK_REFERENCE.md) - Quick commands
 
 2. **Understand the Process**
-   - [CODE_REVIEW_SETUP.md](CODE_REVIEW_SETUP.md) - Complete system overview
+   - [CODE_REVIEW_SETUP.md](../docs/code-review/CODE_REVIEW_SETUP.md) - Complete system overview
    - [pull_request_template.md](pull_request_template.md) - PR requirements
 
 3. **Create Your First PR**
@@ -51,7 +57,7 @@ This directory contains GitHub-specific configuration files for code review, CI/
 ### For Repository Admins
 
 1. **Configure Branch Protection**
-   - Follow [BRANCH_PROTECTION_SETUP.md](BRANCH_PROTECTION_SETUP.md)
+   - Follow [BRANCH_PROTECTION_SETUP.md](../docs/code-review/BRANCH_PROTECTION_SETUP.md)
    - Set up required status checks
    - Configure approval requirements
 
@@ -70,10 +76,10 @@ This directory contains GitHub-specific configuration files for code review, CI/
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [CODE_REVIEW_SETUP.md](CODE_REVIEW_SETUP.md) | Complete setup guide | Admins, Team Leads |
-| [CODE_REVIEW_GUIDELINES.md](CODE_REVIEW_GUIDELINES.md) | Detailed review process | All Developers |
-| [CODE_REVIEW_QUICK_REFERENCE.md](CODE_REVIEW_QUICK_REFERENCE.md) | Quick commands & tips | All Developers |
-| [BRANCH_PROTECTION_SETUP.md](BRANCH_PROTECTION_SETUP.md) | Branch protection config | Admins |
+| [CODE_REVIEW_SETUP.md](../docs/code-review/CODE_REVIEW_SETUP.md) | Complete setup guide | Admins, Team Leads |
+| [CODE_REVIEW_GUIDELINES.md](../docs/code-review/CODE_REVIEW_GUIDELINES.md) | Detailed review process | All Developers |
+| [CODE_REVIEW_QUICK_REFERENCE.md](../docs/code-review/CODE_REVIEW_QUICK_REFERENCE.md) | Quick commands & tips | All Developers |
+| [BRANCH_PROTECTION_SETUP.md](../docs/code-review/BRANCH_PROTECTION_SETUP.md) | Branch protection config | Admins |
 
 ### Templates
 
@@ -128,7 +134,7 @@ Recommended settings for `main` branch:
 - ❌ Allow force pushes
 - ❌ Allow deletions
 
-See [BRANCH_PROTECTION_SETUP.md](BRANCH_PROTECTION_SETUP.md) for detailed instructions.
+See [BRANCH_PROTECTION_SETUP.md](../docs/code-review/BRANCH_PROTECTION_SETUP.md) for detailed instructions.
 
 ### Required Status Checks
 
@@ -280,7 +286,7 @@ Report security vulnerabilities privately:
 - Check file path patterns are correct
 - Ensure CODEOWNERS file is in `.github/` directory
 
-See [CODE_REVIEW_GUIDELINES.md](CODE_REVIEW_GUIDELINES.md#troubleshooting) for more solutions.
+See [CODE_REVIEW_GUIDELINES.md](../docs/code-review/CODE_REVIEW_GUIDELINES.md#troubleshooting) for more solutions.
 
 ## 📈 Metrics
 

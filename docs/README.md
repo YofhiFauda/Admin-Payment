@@ -19,6 +19,7 @@ docs/
 ├── security/            # Security guidelines
 ├── testing/             # Testing guides
 ├── contributing/        # Contribution guidelines
+├── code-review/         # Code review process & guidelines
 └── reference/           # Reference materials
 ```
 
@@ -112,6 +113,13 @@ Security documentation:
 - [Code Style Guide](contributing/CONTRIBUTING.md#coding-standards) - Coding standards
 - [Git Workflow](contributing/CONTRIBUTING.md#development-workflow) - Git workflow
 
+### 📋 Code Review
+- [Code Review Overview](code-review/README.md) - Code review documentation
+- [Code Review Setup](code-review/CODE_REVIEW_SETUP.md) - Complete setup guide
+- [Code Review Guidelines](code-review/CODE_REVIEW_GUIDELINES.md) - Review process
+- [Quick Reference](code-review/CODE_REVIEW_QUICK_REFERENCE.md) - Quick commands
+- [Branch Protection](code-review/BRANCH_PROTECTION_SETUP.md) - Branch protection setup
+
 ### 📖 Reference
 - [Changelog](reference/CHANGELOG.md) - Version history
 - [Quick Reference](reference/QUICK_REFERENCE.md) - Command reference
@@ -124,11 +132,11 @@ Security documentation:
 ## 📊 Documentation Status
 
 ### Statistics
-- ✅ **Complete:** 32 documents
+- ✅ **Complete:** 37 documents
 - 🟡 **Partial:** 4 documents
 - 🔴 **Missing:** 26 documents
-- **Total:** 62 documents
-- **Completion Rate:** 52%
+- **Total:** 67 documents
+- **Completion Rate:** 55%
 
 ### Priority Breakdown
 - 🔴 **High Priority:** 6 remaining

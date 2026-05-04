@@ -164,13 +164,25 @@ Security documentation:
 | [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) | ✅ Complete | Contribution guidelines |
 | [CODE_STYLE.md](docs/contributing/CONTRIBUTING.md#coding-standards) | ✅ Complete | Code style guide (in CONTRIBUTING) |
 | [GIT_WORKFLOW.md](docs/contributing/CONTRIBUTING.md#development-workflow) | ✅ Complete | Git workflow (in CONTRIBUTING) |
-| [CODE_REVIEW_SETUP.md](.github/CODE_REVIEW_SETUP.md) | ✅ Complete | Complete code review system setup |
-| [CODE_REVIEW_GUIDELINES.md](.github/CODE_REVIEW_GUIDELINES.md) | ✅ Complete | Detailed code review guidelines |
-| [BRANCH_PROTECTION_SETUP.md](.github/BRANCH_PROTECTION_SETUP.md) | ✅ Complete | Branch protection configuration |
+
+#### Code Review Documentation
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [CODE_REVIEW_SETUP.md](docs/code-review/CODE_REVIEW_SETUP.md) | ✅ Complete | Complete code review system setup |
+| [CODE_REVIEW_GUIDELINES.md](docs/code-review/CODE_REVIEW_GUIDELINES.md) | ✅ Complete | Detailed code review guidelines |
+| [CODE_REVIEW_QUICK_REFERENCE.md](docs/code-review/CODE_REVIEW_QUICK_REFERENCE.md) | ✅ Complete | Quick reference for code review |
+| [BRANCH_PROTECTION_SETUP.md](docs/code-review/BRANCH_PROTECTION_SETUP.md) | ✅ Complete | Branch protection configuration |
+
+#### GitHub Configuration
+
+| Document | Status | Description |
+|----------|--------|-------------|
 | [CODEOWNERS](.github/CODEOWNERS) | ✅ Complete | Automatic reviewer assignment |
 | [Pull Request Template](.github/pull_request_template.md) | ✅ Complete | Standardized PR template |
 | [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.yml) | ✅ Complete | Bug report template |
 | [Feature Request Template](.github/ISSUE_TEMPLATE/feature_request.yml) | ✅ Complete | Feature request template |
+| [GitHub README](.github/README.md) | ✅ Complete | GitHub configuration overview |
 
 ---
 
@@ -201,13 +213,13 @@ Security documentation:
 ## 📈 Documentation Status Overview
 
 ### Statistics
-- ✅ **Complete:** 39 documents
+- ✅ **Complete:** 44 documents
 - 🟡 **Partial:** 4 documents
 - 🔴 **Missing:** 26 documents
-- **Total:** 69 documents
+- **Total:** 74 documents
 
 ### Completion Rate
-- **Current:** 57% (39/69)
+- **Current:** 59% (44/74)
 - **Target:** 100%
 
 ### Priority Breakdown
