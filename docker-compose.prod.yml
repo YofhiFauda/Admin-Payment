@@ -242,8 +242,9 @@ services:
     restart: always
     working_dir: /var/www
     command: php artisan reverb:start --host=0.0.0.0 --port=8081
-    ports:
-      - "${REVERB_PORT:-8081}:8081"
+    # No direct ports mapping, accessed via Nginx proxy on port 443
+    # ports:
+    #   - "${REVERB_PORT:-8081}:8081"
     volumes:
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache

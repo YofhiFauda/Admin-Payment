@@ -15,7 +15,6 @@ class BranchSeeder extends Seeder
             ['name' => 'OLT SLAHUNG'],
             ['name' => 'OLT SUMBEREJO'],
             ['name' => 'OLT NGAMPEL'],
-            ['name' => 'OLT SAWOO'],
         ];
 
         foreach ($branches as $branch) {
