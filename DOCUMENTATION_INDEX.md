@@ -20,6 +20,7 @@ Essential reads:
 2. 🗄️ [DATABASE_SCHEMA.md](docs/architecture/DATABASE_SCHEMA.md) - Database structure
 3. 🔧 [backend_documentation_v1.0.md](docs/backend/backend_documentation_v1.0.md) - Backend logic
 4. 🤝 [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) - How to contribute
+5. 👀 [CODE_REVIEW_GUIDELINES.md](.github/CODE_REVIEW_GUIDELINES.md) - Code review process
 
 ### 🚢 DevOps/Deployment?
 Deployment guides:
@@ -156,13 +157,20 @@ Security documentation:
 
 ---
 
-### 🤝 Contributing
+### 🤝 Contributing & Code Review
 
 | Document | Status | Description |
 |----------|--------|-------------|
 | [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) | ✅ Complete | Contribution guidelines |
 | [CODE_STYLE.md](docs/contributing/CONTRIBUTING.md#coding-standards) | ✅ Complete | Code style guide (in CONTRIBUTING) |
 | [GIT_WORKFLOW.md](docs/contributing/CONTRIBUTING.md#development-workflow) | ✅ Complete | Git workflow (in CONTRIBUTING) |
+| [CODE_REVIEW_SETUP.md](.github/CODE_REVIEW_SETUP.md) | ✅ Complete | Complete code review system setup |
+| [CODE_REVIEW_GUIDELINES.md](.github/CODE_REVIEW_GUIDELINES.md) | ✅ Complete | Detailed code review guidelines |
+| [BRANCH_PROTECTION_SETUP.md](.github/BRANCH_PROTECTION_SETUP.md) | ✅ Complete | Branch protection configuration |
+| [CODEOWNERS](.github/CODEOWNERS) | ✅ Complete | Automatic reviewer assignment |
+| [Pull Request Template](.github/pull_request_template.md) | ✅ Complete | Standardized PR template |
+| [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.yml) | ✅ Complete | Bug report template |
+| [Feature Request Template](.github/ISSUE_TEMPLATE/feature_request.yml) | ✅ Complete | Feature request template |
 
 ---
 
@@ -193,13 +201,13 @@ Security documentation:
 ## 📈 Documentation Status Overview
 
 ### Statistics
-- ✅ **Complete:** 32 documents
+- ✅ **Complete:** 39 documents
 - 🟡 **Partial:** 4 documents
 - 🔴 **Missing:** 26 documents
-- **Total:** 62 documents
+- **Total:** 69 documents
 
 ### Completion Rate
-- **Current:** 52% (32/62)
+- **Current:** 57% (39/69)
 - **Target:** 100%
 
 ### Priority Breakdown
