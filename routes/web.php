@@ -84,6 +84,38 @@ Route::get('/health', function () {
     return response()->json($health, $statusCode);
 });
 
+// ═══════════════════════════════════════════════════════════════════
+//  Error Pages Preview (Development Only - Remove in Production)
+// ═══════════════════════════════════════════════════════════════════
+if (config('app.env') !== 'production') {
+    Route::prefix('preview-errors')->group(function () {
+        Route::get('/', function () {
+            $errors = [
+                ['code' => '400', 'title' => 'Bad Request', 'color' => '#667eea'],
+                ['code' => '401', 'title' => 'Unauthorized', 'color' => '#f5576c'],
+                ['code' => '403', 'title' => 'Forbidden', 'color' => '#fa709a'],
+                ['code' => '404', 'title' => 'Not Found', 'color' => '#4facfe'],
+                ['code' => '408', 'title' => 'Request Timeout', 'color' => '#a8edea'],
+                ['code' => '500', 'title' => 'Internal Server Error', 'color' => '#ff6b6b'],
+                ['code' => '502', 'title' => 'Bad Gateway', 'color' => '#f857a6'],
+                ['code' => '503', 'title' => 'Service Unavailable', 'color' => '#ffa751'],
+            ];
+            
+            return view('errors.preview-index', compact('errors'));
+        })->name('errors.preview.index');
+
+        Route::get('/{code}', function ($code) {
+            $validCodes = ['400', '401', '403', '404', '408', '500', '502', '503'];
+            
+            if (!in_array($code, $validCodes)) {
+                abort(404, 'Error page not found');
+            }
+            
+            return response()->view("errors.{$code}", [], (int)$code);
+        })->name('errors.preview.show');
+    });
+}
+
 // Redirect root: ke dashboard jika login, ke login jika guest
 Route::get('/', function () {
     if (auth()->check()) {
