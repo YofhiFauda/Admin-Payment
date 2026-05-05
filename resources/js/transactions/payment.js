@@ -430,8 +430,8 @@ function openPaymentModal(id) {
 
                 bankInput.value = ''; nomorInput.value = ''; namaInput.value = '';
                 document.getElementById('transfer-profile-alert').classList.remove('hidden');
-            } else if (paymentMethod === 'transfer_penjual') {
-                document.getElementById('transfer-method-badge').textContent = 'TRANSFER PENJUAL (VENDOR)';
+            } else if (paymentMethod === 'transfer_penjual' || paymentMethod === 'transfer') {
+                document.getElementById('transfer-method-badge').textContent = paymentMethod === 'transfer' ? 'TRANSFER' : 'TRANSFER PENJUAL (VENDOR)';
 
                 [bankInput, nomorInput, namaInput].forEach(el => {
                     el.readOnly = true;

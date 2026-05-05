@@ -48,6 +48,9 @@
                 <option value="" disabled {{ old('payment_method') ? '' : 'selected' }}>Pilih metode
                     pembayaran...</option>
                 @foreach(\App\Models\Transaction::PAYMENT_METHODS as $key => $label)
+                    @if($key === 'transfer' && !(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isAtasan() || auth()->user()->isOwner())))
+                        @continue
+                    @endif
                     <option value="{{ $key }}" {{ old('payment_method') == $key ? 'selected' : '' }}>
                         {{ $label }}
                     </option>
@@ -75,18 +78,18 @@
                     value="{{ old('bank_name') }}"
                     class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
             </div>
-            <div>
+            <div id="account_name_container">
                 <label
                     class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Atas
-                    Nama Rekening <span class="text-red-500">*</span></label>
+                    Nama Rekening <span id="account_name_asterisk" class="text-red-500">*</span></label>
                 <input type="text" name="account_name" id="account_name" placeholder="Atas nama"
                     value="{{ old('account_name') }}"
                     class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
             </div>
-            <div>
+            <div id="account_number_container">
                 <label
                     class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor
-                    Rekening <span class="text-red-500">*</span></label>
+                    Rekening <span id="account_number_asterisk" class="text-red-500">*</span></label>
                 <input type="text" name="account_number" id="account_number"
                     placeholder="Nomor rekening / No HP" value="{{ old('account_number') }}"
                     inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"

@@ -72,13 +72,13 @@
                     @foreach($roles as $role)
                         <a href="{{ route('login', ['role' => $role['id']]) }}"
                         class="group flex items-center gap-5 p-5 rounded-3xl border border-slate-200 bg-white 
-                                hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/10 
+                                hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 
                                 transition-all duration-300 cursor-pointer">
 
                             {{-- Icon --}}
                             <div class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center 
-                                        text-slate-400 group-hover:bg-indigo-50 
-                                        group-hover:text-indigo-600 transition-all duration-300">
+                                        text-slate-400 group-hover:bg-blue-50 
+                                        group-hover:text-blue-600 transition-all duration-300">
                                 <i data-lucide="{{ 
                                     $role['id'] == 'teknisi' ? 'wrench' : 
                                     ($role['id'] == 'admin' ? 'shield-check' : 
@@ -89,12 +89,12 @@
                             {{-- Text --}}
                             <div class="flex-1">
                                 <div class="flex items-center justify-between">
-                                    <span class="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition-colors">
+                                    <span class="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
                                         {{ $role['label'] }}
                                     </span>
 
                                     <i data-lucide="arrow-right"
-                                    class="w-5 h-5 text-slate-300 group-hover:text-indigo-500 
+                                    class="w-5 h-5 text-slate-300 group-hover:text-blue-500 
                                             group-hover:translate-x-1 transition-all duration-300"></i>
                                 </div>
 
@@ -138,8 +138,8 @@
                         <div class="space-y-2">
                             <label class="block text-sm font-bold text-slate-900">Email Perusahaan</label>
                             <input type="email" name="email" required autofocus
-                                placeholder="nama@financeops.com"
-                                class="w-full px-4 py-3.5 rounded-2xl border-2 border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+                                placeholder="Masukkan alamat email"
+                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
                         </div>
 
                         {{-- Input Password --}}
@@ -147,13 +147,13 @@
                             <div class="flex items-center justify-between">
                                 <label class="block text-sm font-bold text-slate-900">Password</label>
                             </div>
-                            <input type="password" name="password" required placeholder="••••••••••"
-                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+                            <input type="password" name="password" required placeholder="Masukkan kata sandi"
+                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
                         </div>
 
                         {{-- Tombol Masuk --}}
                         <button type="submit" id="submitBtn"
-                            class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-violet-600/20 active:scale-[0.98] text-base cursor-pointer mt-2 flex items-center justify-center gap-3">
+                            class="w-full bg-linear-to-r from-sky-600 to-sky-500 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] text-base cursor-pointer mt-2 flex items-center justify-center gap-3">
                             <span id="btnText">Masuk ke Dashboard</span>
                             <div id="btnLoader" class="hidden">
                                 <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

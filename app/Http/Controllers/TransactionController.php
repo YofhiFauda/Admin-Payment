@@ -572,10 +572,10 @@ class TransactionController extends Controller
                 }
             } else {
                 $specs = null;
-                if ($request->payment_method === 'transfer_penjual') {
+                if ($request->payment_method === 'transfer_penjual' || $request->payment_method === 'transfer') {
                     $specs = [
                         'bank_name' => strtoupper($request->bank_name),
-                        'account_name' => strtoupper($request->account_name),
+                        'account_name' => strtoupper($request->account_name ?? ''),
                         'account_number' => $request->account_number,
                     ];
                 }

@@ -675,7 +675,7 @@
             <div class="p-4 md:p-6 relative">
                 {{-- Dropdown menu (muncul di ATAS card) --}}
                 <div id="sidebarProfileDropdown"
-                    class="hidden absolute left-4 right-4 md:left-6 md:right-6 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[60]"
+                    class="hidden absolute left-4 md:left-6 w-64 md:w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[60]"
                     style="bottom: 80%; margin-bottom: 8px; top: auto;">
                     
                     {{-- Header --}}

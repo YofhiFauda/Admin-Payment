@@ -278,12 +278,19 @@ class RembushController extends Controller
                  return back()->withErrors(['bank_details' => 'Nama Bank, Nama Rekening, dan Nomor Rekening wajib diisi untuk Transfer ke Penjual.'])->withInput();
             }
         }
+        
+        // Validasi transfer (hanya wajib Nama Bank)
+        if ($request->payment_method === 'transfer') {
+            if (!$request->bank_name) {
+                 return back()->withErrors(['bank_details' => 'Nama Bank wajib diisi untuk metode Transfer.'])->withInput();
+            }
+        }
 
         $specs = [];
-        if ($request->payment_method === 'transfer_penjual') {
+        if ($request->payment_method === 'transfer_penjual' || $request->payment_method === 'transfer') {
             $specs = [
                 'bank_name' => strtoupper($request->bank_name),
-                'account_name' => strtoupper($request->account_name),
+                'account_name' => strtoupper($request->account_name ?? ''),
                 'account_number' => $request->account_number,
             ];
         } elseif ($request->payment_method === 'transfer_teknisi' && $request->technician_bank_account_id) {

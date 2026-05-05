@@ -937,8 +937,8 @@ export function toggleVersionInModal(version) {
                     const number = hist.submitter.rekening_nomor || '-';
                     accountInfo = `${bank} • ${name}<br>${number}`;
                 }
-            } else if (hist.payment_method === 'transfer_penjual') {
-                methodLabel = 'Transfer ke Penjual';
+            } else if (hist.payment_method === 'transfer_penjual' || (hist.payment_method === 'transfer' && hist.type !== 'pengajuan')) {
+                methodLabel = hist.payment_method === 'transfer' ? 'Transfer' : 'Transfer ke Penjual';
                 if (hist.specs) {
                     const bank = hist.specs.bank_name || '-';
                     const name = hist.specs.account_name || '-';

@@ -82,6 +82,9 @@
                                 class="w-full appearance-none bg-white border border-slate-200 rounded-xl p-3 md:p-3.5 pr-10 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all">
                                 <option value="" disabled>Pilih metode pembayaran...</option>
                                 @foreach(\App\Models\Transaction::PAYMENT_METHODS as $key => $label)
+                                    @if($key === 'transfer' && !(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isAtasan() || auth()->user()->isOwner())))
+                                        @continue
+                                    @endif
                                     <option value="{{ $key }}" {{ old('payment_method', $transaction->payment_method) == $key ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
@@ -102,14 +105,14 @@
                                     value="{{ old('bank_name', $transaction->specs['bank_name'] ?? '') }}"
                                     class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
                             </div>
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Atas Nama Rekening <span class="text-red-500">*</span></label>
+                            <div id="account_name_container">
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Atas Nama Rekening <span id="account_name_asterisk" class="text-red-500">*</span></label>
                                 <input type="text" name="account_name" id="account_name" placeholder="Atas nama" 
                                     value="{{ old('account_name', $transaction->specs['account_name'] ?? '') }}"
                                     class="w-full border border-blue-200 rounded-xl p-3 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-300 outline-none transition-all bg-white uppercase" />
                             </div>
-                            <div>
-                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span class="text-red-500">*</span></label>
+                            <div id="account_number_container">
+                                <label class="block text-[10px] md:text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Nomor Rekening <span id="account_number_asterisk" class="text-red-500">*</span></label>
                                 <input type="text" name="account_number" id="account_number" placeholder="Nomor rekening / No HP" 
                                     value="{{ old('account_number', $transaction->specs['account_number'] ?? '') }}"
                                     inputmode="numeric"
@@ -733,10 +736,38 @@
         const bankDetailsSection  = document.getElementById('bank_details_section');
 
         function toggleBankDetails() {
-            if (paymentMethodSelect.value === 'transfer_penjual') {
+            if (paymentMethodSelect.value === 'transfer_penjual' || paymentMethodSelect.value === 'transfer') {
                 bankDetailsSection.classList.remove('hidden');
+                
+                const accountNameContainer = document.getElementById('account_name_container');
+                const accountNumberContainer = document.getElementById('account_number_container');
+                
+                if (paymentMethodSelect.value === 'transfer') {
+                    document.getElementById('bank_name')?.setAttribute('required', 'required');
+                    document.getElementById('account_name')?.removeAttribute('required');
+                    document.getElementById('account_number')?.removeAttribute('required');
+                    
+                    document.getElementById('account_name_asterisk')?.classList.add('hidden');
+                    document.getElementById('account_number_asterisk')?.classList.add('hidden');
+                    
+                    if(accountNameContainer) accountNameContainer.classList.add('hidden');
+                    if(accountNumberContainer) accountNumberContainer.classList.add('hidden');
+                } else {
+                    document.getElementById('bank_name')?.setAttribute('required', 'required');
+                    document.getElementById('account_name')?.setAttribute('required', 'required');
+                    document.getElementById('account_number')?.setAttribute('required', 'required');
+                    
+                    document.getElementById('account_name_asterisk')?.classList.remove('hidden');
+                    document.getElementById('account_number_asterisk')?.classList.remove('hidden');
+                    
+                    if(accountNameContainer) accountNameContainer.classList.remove('hidden');
+                    if(accountNumberContainer) accountNumberContainer.classList.remove('hidden');
+                }
             } else {
                 bankDetailsSection.classList.add('hidden');
+                document.getElementById('bank_name')?.removeAttribute('required');
+                document.getElementById('account_name')?.removeAttribute('required');
+                document.getElementById('account_number')?.removeAttribute('required');
             }
         }
 

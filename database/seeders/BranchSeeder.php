@@ -14,7 +14,12 @@ class BranchSeeder extends Seeder
             ['name' => 'OLT SIMAN'],
             ['name' => 'OLT SLAHUNG'],
             ['name' => 'OLT SUMBEREJO'],
-            ['name' => 'OLT NGAMPEL'],
+            ['name' => 'OLT WHUSNET'],
+            ['name' => 'OLT PACITAN'],
+            ['name' => 'OLT SAWOO'],
+            ['name' => 'OLT NGRECO'],
+            ['name' => 'OLT CARUBAN'],
+            ['name' => 'OLT TEMON'],
         ];
 
         foreach ($branches as $branch) {

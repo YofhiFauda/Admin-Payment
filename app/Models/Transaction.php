@@ -24,6 +24,7 @@ class Transaction extends Model
         'transfer_teknisi' => 'Transfer ke Teknisi',
         'cash' => 'Cash',
         'transfer_penjual' => 'Transfer ke Penjual',
+        'transfer' => 'Transfer',
     ];
 
     /**

@@ -3,177 +3,164 @@
 @section('page-title', 'Notifikasi')
 
 @section('content')
-<div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-7xl mx-auto relative min-h-screen font-sans">
+<div class="px-4 py-4 w-full max-w-7xl mx-auto relative min-h-screen font-sans">
     
-    {{-- Background Effect (Optional) --}}
-    <div class="fixed top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow"></div>
-    <div class="fixed bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow delay-1000"></div>
+    {{-- Background Effect --}}
+    <div class="fixed top-0 right-0 w-96 h-96 bg-blue-400/10 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow"></div>
+    <div class="fixed bottom-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full mix-blend-multiply filter blur-[100px] pointer-events-none anim-pulse-slow delay-1000"></div>
 
     <!-- Header Section -->
-    <div class="relative z-10 flex flex-col md:flex-row lg:flex-row justify-between items-start md:items-end lg:items-end mb-8 gap-4 anim-slide-down">
-        <div>
-            <h1 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-800 tracking-tight mb-2">Pusat Notifikasi</h1>
-            <p class="text-sm md:text-base lg:text-lg text-slate-500 font-medium">Pantau pemberitahuan OCR, status transaksi, dan aktivitas terbaru.</p>
-        </div>
-        
-        <div class="flex flex-col sm:flex-row md:flex-row gap-2 md:gap-3 w-full sm:w-auto md:w-auto mt-2 sm:mt-0 shrink-0">
-            @if($stats['unread'] > 0)
-            <form action="{{ route('notifications.readAll') }}" method="POST">
-                @csrf
-                <input type="hidden" name="type" value="{{ request('type') }}">
-                <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 md:py-3.5 bg-white text-indigo-600 rounded-xl font-bold text-sm md:text-base border border-indigo-100 shadow-lg shadow-indigo-200/50 hover:shadow-xl hover:shadow-indigo-300/50 hover:-translate-y-0.5 active:scale-95 transition-all duration-200" title="Tandai semua telah dibaca">
-                    <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span class="hidden md:inline">Tandai Semua Dibaca</span>
-                    <span class="md:hidden">Tandai Dibaca</span>
-                </button>
-            </form>
-            @endif
-
-            @if($stats['total'] > 0)
-            <button type="button" 
-                    onclick="confirmDestroyAll()"
-                    class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 md:py-3.5 bg-white text-rose-600 rounded-xl font-bold text-sm md:text-base border border-rose-100 shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-300/50 hover:-translate-y-0.5 active:scale-95 transition-all duration-200" title="Hapus semua notifikasi">
-                <i data-lucide="trash-2" class="w-4 h-4 md:w-5 md:h-5"></i>
-                <span class="hidden md:inline">Hapus Semua</span>
-                <span class="md:hidden">Hapus</span>
-            </button>
-            @endif
-        </div>
+<div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-5 anim-slide-down">
+    <!-- Text Content: Title & Description -->
+    <div class="w-full lg:w-auto mb-4 lg:mb-0">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight mb-2">Pusat Notifikasi</h1>
+        <p class="text-sm md:text-base text-slate-500 font-medium">Pantau pemberitahuan OCR, status transaksi, dan aktivitas terbaru.</p>
     </div>
-
-    <!-- Filters with Gradient Overflow Indicators -->
-    <div class="relative z-10 mb-6 anim-slide-up delay-100">
-        <div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white/80 to-transparent pointer-events-none z-10 rounded-l-2xl"></div>
-        <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent pointer-events-none z-10 rounded-r-2xl"></div>
+    
+    <!-- Buttons Group -->
+    <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0">
+        <form action="https://them-manufacturing-physics-medium.trycloudflare.com/notifications/read-all" method="POST" class="w-full sm:w-auto">
+            <input type="hidden" name="_token" value="FeqcZPZqAxwd52MlvMxn7TdrLXWubOUuvwQDwpDm" autocomplete="off">
+            <input type="hidden" name="type" value="">
+            <button type="submit" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-blue-600 rounded-xl font-bold text-sm border border-blue-100 shadow-sm hover:shadow-md hover:border-blue-200 hover:-translate-y-0.5 active:scale-95 transition-all duration-200" title="Tandai semua telah dibaca">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="check-check" aria-hidden="true" class="lucide lucide-check-check w-4 h-4"><path d="M18 6 7 17l-5-5"></path><path d="m22 10-7.5 7.5L13 16"></path></svg>
+                <span class="hidden sm:inline">Tandai Semua Dibaca</span>
+                <span class="sm:hidden">Baca Semua</span>
+            </button>
+        </form>
         
-        <div class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-sm border border-white/60 p-2 md:p-3 flex overflow-x-auto scrollbar-hide gap-2 md:gap-3">
+        <button type="button" onclick="confirmDestroyAll()" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-rose-600 rounded-xl font-bold text-sm border border-rose-100 shadow-sm hover:shadow-md hover:border-rose-200 hover:-translate-y-0.5 active:scale-95 transition-all duration-200" title="Hapus semua notifikasi">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" class="lucide lucide-trash-2 w-4 h-4"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span class="hidden sm:inline">Hapus Semua</span>
+            <span class="sm:hidden">Hapus</span>
+        </button>
+    </div>
+</div>
+
+    <!-- Filters -->
+    <div class="relative z-10 mb-8 anim-slide-up delay-100">
+        <div class="flex overflow-x-auto scrollbar-hide gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
             @php $currentType = request('type', 'all'); $currentRead = request('read'); @endphp
             
-            <a href="{{ route('notifications.index') }}" class="px-5 py-2.5 md:px-6 md:py-3 rounded-xl text-sm md:text-base font-bold whitespace-nowrap transition-all {{ $currentType === 'all' && !$currentRead ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:shadow-sm' }}">
-                Semua <span class="ml-1.5 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[10px] md:text-xs {{ $currentType === 'all' && !$currentRead ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500' }}">{{ $stats['total'] }}</span>
+            <a href="{{ route('notifications.index') }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all {{ $currentType === 'all' && !$currentRead ? 'bg-slate-800 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/60' }}">
+                Semua
+                <span class="px-2 py-0.5 rounded-md text-xs {{ $currentType === 'all' && !$currentRead ? 'bg-white/20' : 'bg-slate-100 text-slate-500' }}">{{ $stats['total'] }}</span>
             </a>
-            <a href="{{ route('notifications.index', ['read' => 'unread']) }}" class="px-5 py-2.5 md:px-6 md:py-3 rounded-xl text-sm md:text-base font-bold whitespace-nowrap transition-all {{ $currentRead === 'unread' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-500 hover:bg-white hover:shadow-sm' }}">
-                Belum Dibaca <span class="ml-1.5 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[10px] md:text-xs {{ $currentRead === 'unread' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600' }}">{{ $stats['unread'] }}</span>
+            
+            <a href="{{ route('notifications.index', ['read' => 'unread']) }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all {{ $currentRead === 'unread' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/60' }}">
+                Belum Dibaca
+                <span class="px-2 py-0.5 rounded-md text-xs {{ $currentRead === 'unread' ? 'bg-white/20' : 'bg-blue-50 text-blue-600' }}">{{ $stats['unread'] }}</span>
             </a>
-            <a href="{{ route('notifications.index', ['type' => 'ocr']) }}" class="px-5 py-2.5 md:px-6 md:py-3 rounded-xl text-sm md:text-base font-bold whitespace-nowrap transition-all {{ $currentType === 'ocr' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-500 hover:bg-white hover:shadow-sm' }}">
-                AI / OCR <span class="ml-1.5 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[10px] md:text-xs {{ $currentType === 'ocr' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-600' }}">{{ $stats['ocr'] }}</span>
+            
+            <a href="{{ route('notifications.index', ['type' => 'ocr']) }}" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all {{ $currentType === 'ocr' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/60' }}">
+                AI / OCR
+                <span class="px-2 py-0.5 rounded-md text-xs {{ $currentType === 'ocr' ? 'bg-white/20' : 'bg-indigo-50 text-indigo-600' }}">{{ $stats['ocr'] }}</span>
             </a>
         </div>
     </div>
 
+    <!-- Alert Success -->
     @if(session('success'))
-        <div class="relative z-10 mb-6 p-4 md:p-5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm md:text-base font-bold flex items-center gap-3 anim-fade-in shadow-sm">
-            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                <i data-lucide="check" class="w-4 h-4 md:w-5 md:h-5 text-emerald-600"></i>
-            </div>
+        <div class="relative z-10 mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium flex items-center gap-3 anim-fade-in">
+            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>
             {{ session('success') }}
         </div>
     @endif
 
-    <!-- Lists -->
-    <div class="relative z-10 space-y-4 md:space-y-5" id="notifications-list-container">
+    <!-- Notifications List -->
+    <div class="relative z-10 space-y-3" id="notifications-list-container">
         @forelse($notifications as $index => $notif)
             @php
                 $isRead = !is_null($notif->read_at);
                 $data = $notif->data;
-                $color = $data['color'] ?? 'blue';
+                $themeColor = $data['color'] ?? 'blue';
                 $icon = $data['icon'] ?? 'bell';
                 
-                // Color Themes
-                $theme = match($color) {
-                    'green'  => ['bg' => 'bg-emerald-500', 'light' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100'],
-                    'red'    => ['bg' => 'bg-rose-500', 'light' => 'bg-rose-50', 'text' => 'text-rose-600', 'border' => 'border-rose-100'],
-                    'indigo' => ['bg' => 'bg-indigo-500', 'light' => 'bg-indigo-50', 'text' => 'text-indigo-600', 'border' => 'border-indigo-100'],
-                    'amber'  => ['bg' => 'bg-amber-500', 'light' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100'],
-                    default  => ['bg' => 'bg-blue-500', 'light' => 'bg-blue-50', 'text' => 'text-blue-600', 'border' => 'border-blue-100'],
+                $theme = match($themeColor) {
+                    'green'  => ['bg' => 'bg-emerald-500', 'light' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-200'],
+                    'red'    => ['bg' => 'bg-rose-500', 'light' => 'bg-rose-50', 'text' => 'text-rose-600', 'border' => 'border-rose-200'],
+                    'blue'   => ['bg' => 'bg-blue-500', 'light' => 'bg-blue-50', 'text' => 'text-blue-600', 'border' => 'border-blue-200'],
+                    'amber'  => ['bg' => 'bg-amber-500', 'light' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-200'],
+                    default  => ['bg' => 'bg-slate-500', 'light' => 'bg-slate-50', 'text' => 'text-slate-600', 'border' => 'border-slate-200'],
                 };
                 
                 $delayClass = 'delay-'.(min(($index % 10) * 100 + 200, 1000));
             @endphp
             
-            <div id="notif-{{ $notif->id }}" class="group anim-slide-up {{ $delayClass }} block bg-white/80 backdrop-blur-md rounded-2xl md:rounded-3xl border {{ $isRead ? 'border-slate-100 hover:border-slate-200 hover:shadow-sm' : $theme['border'].' shadow-md hover:shadow-lg md:shadow-lg md:hover:shadow-xl' }} p-5 md:p-6 transition-all duration-300 {{ $isRead ? 'opacity-80 hover:opacity-100' : 'hover:-translate-y-1' }} cursor-pointer relative overflow-hidden" onclick="visitUrl('{{ $data['url'] ?? '' }}', '{{ $notif->id }}')">
+            <div id="notif-{{ $notif->id }}" onclick="visitUrl('{{ $data['url'] ?? '' }}', '{{ $notif->id }}')" 
+                 class="group anim-slide-up {{ $delayClass }} relative bg-white rounded-2xl border {{ $isRead ? 'border-slate-100 opacity-75 hover:opacity-100' : $theme['border'].' shadow-sm hover:shadow-md' }} p-4 sm:p-5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 overflow-hidden flex gap-4">
                 
-                {{-- Decorative side band for unread --}}
+                {{-- Unread Indicator --}}
                 @if(!$isRead)
-                    <div class="absolute left-0 top-0 bottom-0 w-1.5 md:w-2 {{ $theme['bg'] }}"></div>
+                    <div class="absolute left-0 top-0 bottom-0 w-1 {{ $theme['bg'] }}"></div>
                 @endif
                 
-                <div class="flex flex-row gap-4 md:gap-6 items-start">
-                    
-                    <!-- Icon -->
-                    <div class="flex-shrink-0 z-10 pt-0.5">
-                        <div class="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-xl md:rounded-2xl flex items-center justify-center {{ $theme['light'] }} {{ $theme['text'] }} {{ !$isRead ? 'shadow-inner' : '' }} transition-transform group-hover:scale-105 duration-300">
-                            <i data-lucide="{{ $icon }}" class="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 {{ !$isRead ? 'drop-shadow-sm' : '' }}"></i>
+                {{-- Icon --}}
+                <div class="shrink-0">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $theme['light'] }} {{ $theme['text'] }} transition-transform group-hover:scale-110 duration-300">
+                        <i data-lucide="{{ $icon }}" class="w-6 h-6"></i>
+                    </div>
+                </div>
+
+                {{-- Content --}}
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 mb-1">
+                        <h3 class="font-bold text-slate-800 text-sm sm:text-base group-hover:text-blue-600 transition-colors flex items-center gap-2 flex-wrap truncate">
+                            @if(!$isRead)
+                                <span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider shrink-0">Baru</span>
+                            @endif
+                            <span class="truncate">{{ $data['title'] ?? 'Notifikasi' }}</span>
+                        </h3>
+                        <div class="flex items-center gap-1.5 text-xs font-medium text-slate-400 shrink-0">
+                            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                            <span>{{ $notif->created_at->diffForHumans() }}</span>
                         </div>
                     </div>
-
-                    <!-- Content -->
-                    <div class="flex-grow z-10 min-w-0">
-                        <div class="flex justify-between items-start gap-3 mb-2">
-                            <div class="flex flex-wrap items-center gap-2 min-w-0">
-                                <h3 class="font-bold text-slate-800 text-base md:text-lg lg:text-xl group-hover:text-blue-600 transition-colors break-words">{{ $data['title'] ?? 'Notifikasi' }}</h3>
-                                @if(!$isRead)
-                                    <span class="px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[9px] md:text-[10px] font-black uppercase tracking-wider shadow-sm animate-pulse-slow whitespace-nowrap">Baru</span>
-                                @endif
-                            </div>
-                            
-                            <div class="flex items-center gap-1.5 text-xs md:text-sm font-bold text-slate-400 whitespace-nowrap shrink-0 pt-1">
-                                <i data-lucide="clock" class="w-3 h-3 md:w-4 md:h-4"></i>
-                                <span>{{ $notif->created_at->diffForHumans(null, true, true) }}</span>
-                            </div>
+                    
+                    <p class="text-slate-600 text-sm leading-relaxed mb-3 line-clamp-2 sm:line-clamp-none">{{ $data['message'] ?? '' }}</p>
+                    
+                    {{-- Footer: Tag & Actions --}}
+                    <div class="flex items-center justify-between gap-3 mt-auto">
+                        <div class="min-w-0">
+                            @if(isset($data['invoice_number']))
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold truncate max-w-full">
+                                    <i data-lucide="hash" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                                    <span class="truncate">{{ $data['invoice_number'] }}</span>
+                                </span>
+                            @endif
                         </div>
-                        
-                        <p class="text-slate-600 text-sm md:text-base leading-relaxed mb-3 md:mb-4 break-words">{{ $data['message'] ?? '' }}</p>
-                        
-                        <div class="flex flex-row items-center justify-between gap-3 mt-auto">
-                            <div class="flex items-center gap-2 min-w-0">
-                                @if(isset($data['invoice_number']))
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-slate-50 text-slate-500 border border-slate-100 rounded-md text-xs md:text-sm font-bold uppercase tracking-wider truncate">
-                                        <i data-lucide="hash" class="w-3 h-3 md:w-4 md:h-4 text-slate-400"></i>
-                                        {{ $data['invoice_number'] }}
-                                    </span>
-                                @endif
-                            </div>
 
-                            <!-- Actions - Always visible on tablet for better touch interaction -->
-                            <div class="flex items-center gap-2 md:gap-2.5 justify-end transition-all duration-300 relative z-20 shrink-0">
-                                @if(!$isRead)
-                                    <form action="{{ route('notifications.read', $notif->id) }}" method="POST" onclick="event.stopPropagation();">
-                                        @csrf
-                                        <button type="submit" class="w-9 h-9 md:w-11 md:h-11 lg:w-12 lg:h-12 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 active:scale-95 rounded-xl md:rounded-2xl shadow-sm transition-all" title="Tandai Dibaca">
-                                            <i data-lucide="check" class="w-4 h-4 md:w-5 md:h-5"></i>
-                                        </button>
-                                    </form>
-                                @endif
-
-                                <button type="button" 
-                                        onclick="event.stopPropagation(); confirmDestroy('{{ $notif->id }}')"
-                                        class="w-9 h-9 md:w-11 md:h-11 lg:w-12 lg:h-12 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 active:scale-95 rounded-xl md:rounded-2xl shadow-sm transition-all" title="Hapus Permanen">
-                                    <i data-lucide="trash-2" class="w-4 h-4 md:w-5 md:h-5"></i>
-                                </button>
-                            </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            @if(!$isRead)
+                                <form action="{{ route('notifications.read', $notif->id) }}" method="POST" onclick="event.stopPropagation();">
+                                    @csrf
+                                    <button type="submit" class="p-2 bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 rounded-lg transition-colors" title="Tandai Dibaca">
+                                        <i data-lucide="check" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                            @endif
+                            <button type="button" onclick="event.stopPropagation(); confirmDestroy('{{ $notif->id }}')" class="p-2 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus Permanen">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         @empty
-            <div class="anim-fade-in delay-200 bg-white/60 backdrop-blur-md rounded-3xl border border-white/60 p-10 md:p-16 text-center shadow-sm">
-                <div class="w-24 h-24 md:w-32 md:h-32 bg-slate-50 border-2 border-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
-                    <i data-lucide="bell-off" class="w-12 h-12 md:w-16 h-16 text-slate-300"></i>
+            <div class="anim-fade-in delay-200 bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+                <div class="w-20 h-20 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                    <i data-lucide="bell-off" class="w-10 h-10 text-slate-300"></i>
                 </div>
-                <h3 class="text-xl md:text-2xl font-bold text-slate-800 mb-3">Belum Ada Notifikasi</h3>
-                <p class="text-slate-500 text-sm md:text-base max-w-md mx-auto">Kami akan memberitahu Anda di sini untuk setiap pembaruan OCR, persetujuan nota, atau aktivitas penting lainnya.</p>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Belum Ada Notifikasi</h3>
+                <p class="text-slate-500 text-sm max-w-sm mx-auto">Semua pemberitahuan aktivitas, update OCR, dan status transaksi Anda akan muncul di sini.</p>
             </div>
         @endforelse
     </div>
 
+    <!-- Pagination -->
     @if($notifications->hasPages())
-        <div class="mt-8 md:mt-12 flex justify-center pb-8 anim-slide-up delay-700">
-            <div class="bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100 p-3 md:p-4 inline-block">
-                {{ $notifications->withQueryString()->links() }}
-            </div>
+        <div class="mt-8 pb-8 anim-slide-up delay-700">
+            {{ $notifications->withQueryString()->links('components.pagination.premium') }}
         </div>
     @endif
 </div>
@@ -181,11 +168,11 @@
 @push('styles')
 <style>
     @keyframes slideUpFade {
-        0% { opacity: 0; transform: translateY(20px); }
+        0% { opacity: 0; transform: translateY(15px); }
         100% { opacity: 1; transform: translateY(0); }
     }
     @keyframes slideDownFade {
-        0% { opacity: 0; transform: translateY(-20px); }
+        0% { opacity: 0; transform: translateY(-15px); }
         100% { opacity: 1; transform: translateY(0); }
     }
     @keyframes fadeIn {
@@ -193,54 +180,36 @@
         100% { opacity: 1; }
     }
     @keyframes pulseSlow {
-        0% { transform: scale(1); opacity: 0.3; }
-        50% { transform: scale(1.05); opacity: 0.5; }
-        100% { transform: scale(1); opacity: 0.3; }
+        0%, 100% { transform: scale(1); opacity: 0.2; }
+        50% { transform: scale(1.05); opacity: 0.4; }
     }
     
-    .anim-slide-up { animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-    .anim-slide-down { animation: slideDownFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-    .anim-fade-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; }
+    .anim-slide-up { animation: slideUpFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+    .anim-slide-down { animation: slideDownFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+    .anim-fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
     .anim-pulse-slow { animation: pulseSlow 8s ease-in-out infinite; }
-    .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     
     .delay-100 { animation-delay: 100ms; }
     .delay-200 { animation-delay: 200ms; }
     .delay-300 { animation-delay: 300ms; }
     .delay-400 { animation-delay: 400ms; }
     .delay-500 { animation-delay: 500ms; }
-    .delay-600 { animation-delay: 600ms; }
     .delay-700 { animation-delay: 700ms; }
-    .delay-800 { animation-delay: 800ms; }
-    .delay-900 { animation-delay: 900ms; }
-    .delay-1000 { animation-delay: 1000ms; }
 
-    /* Custom Scrollbar for Filters */
+    /* Hide scrollbar for Chrome, Safari and Opera */
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
     }
+    /* Hide scrollbar for IE, Edge and Firefox */
     .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-
-    /* Tablet-specific touch improvements */
-    @media (min-width: 768px) and (max-width: 1024px) {
-        /* Ensure touch targets are at least 44x44px */
-        button, a {
-            min-height: 44px;
-        }
-        
-        /* Improve readability on tablet */
-        body {
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
     }
 </style>
 @endpush
 
 @push('scripts')
+{{-- Biarkan javascript Anda yang lama, karena logic-nya sudah benar --}}
 <script>
     function confirmDestroyAll() {
         openConfirmModal('globalConfirmModal', {
@@ -302,9 +271,7 @@
         });
     }
 
-    // ─────────────────────────────────────────────────────────
-    // REALTIME ECHO HANDLER (NOTIFICATIONS)
-    // ─────────────────────────────────────────────────────────
+    // Echo & Reverb logic
     window.handleRealtimeNotification = function(notification) {
         fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(res => res.text())
@@ -314,55 +281,27 @@
                 
                 const newList = doc.querySelector('#notifications-list-container');
                 const oldList = document.querySelector('#notifications-list-container');
+                if (newList && oldList) oldList.innerHTML = newList.innerHTML;
                 
-                if (newList && oldList) {
-                    oldList.innerHTML = newList.innerHTML;
-                }
-                
-                const headerClass = '.relative.z-10.flex.flex-col.md\\:flex-row.lg\\:flex-row';
+                const headerClass = '.relative.z-10.flex.flex-col.md\\:flex-row';
                 const newHeader = doc.querySelector(headerClass);
                 const oldHeader = document.querySelector(headerClass);
-                if (newHeader && oldHeader) {
-                    oldHeader.innerHTML = newHeader.innerHTML;
-                }
+                if (newHeader && oldHeader) oldHeader.innerHTML = newHeader.innerHTML;
                 
-                const filterSelector = '#notifications-list-container';
-                const parentFilter = document.querySelector(filterSelector)?.previousElementSibling?.previousElementSibling;
-                const newFilterParent = doc.querySelector(filterSelector)?.previousElementSibling?.previousElementSibling;
-                if (parentFilter && newFilterParent) {
-                    parentFilter.innerHTML = newFilterParent.innerHTML;
-                }
-
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
-
-                // Update badge counter in navbar/sidebar
-                if (typeof updateNotificationBadge === 'function') {
-                    updateNotificationBadge();
-                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                if (typeof updateNotificationBadge === 'function') updateNotificationBadge();
             });
     };
     
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.Echo !== 'undefined') {
             const userId = {{ Auth::id() }};
-            
-            // Standard Laravel Notifications
             window.Echo.private(`App.Models.User.${userId}`)
-                .notification((notification) => {
-                    window.handleRealtimeNotification(notification);
-                });
-
-            // Custom Real-time Event (NotificationReceived)
+                .notification((notification) => window.handleRealtimeNotification(notification));
             window.Echo.private(`notifications.${userId}`)
-                .listen('.notification.received', (e) => {
-                    console.log('🔔 [REVERB] Notification Received:', e);
-                    window.handleRealtimeNotification(e);
-                });
+                .listen('.notification.received', (e) => window.handleRealtimeNotification(e));
         }
     });
-
 </script>
 @endpush
 @endsection
