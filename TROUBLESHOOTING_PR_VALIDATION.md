@@ -47,7 +47,6 @@ Pindahkan ke `require-dev`:
     "laravel/pint": "^1.24",
     "laravel/pulse": "^1.0",
     "laravel/sail": "^1.41",
-    "laravel/telescope": "*",
     "mockery/mockery": "^1.6",
     "nunomaduro/collision": "^8.6",
     "opcodesio/log-viewer": "^3.0",

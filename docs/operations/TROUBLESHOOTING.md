@@ -420,9 +420,8 @@ php artisan view:cache
 
 2. **Optimize database queries:**
 ```bash
-# Check slow queries
-php artisan telescope:prune
-# Review queries in Telescope
+# Check slow queries using Pulse
+# Review queries in Pulse dashboard
 ```
 
 3. **Enable Redis caching:**

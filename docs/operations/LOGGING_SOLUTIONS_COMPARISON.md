@@ -11,7 +11,6 @@ Perbandingan lengkap berbagai solusi logging untuk Laravel production environmen
 | Solution | Cost | Setup | Production Ready | Performance | Best For |
 |----------|------|-------|------------------|-------------|----------|
 | **Monolog (Built-in)** | Free | Easy | ✅ Yes | Excellent | All projects |
-| **Laravel Telescope** | Free | Easy | ❌ No | Poor | Development only |
 | **Laravel Pulse** | Free | Easy | ✅ Yes | Good | Production monitoring |
 | **Sentry** | Paid | Easy | ✅ Yes | Excellent | Error tracking |
 | **New Relic** | Paid | Medium | ✅ Yes | Excellent | Enterprise APM |
@@ -63,47 +62,7 @@ LOG_DAILY_DAYS=30
 
 ---
 
-## 2. Laravel Telescope ⚠️ DEVELOPMENT ONLY
-
-### ✅ Pros
-- **Beautiful UI** - Easy to navigate
-- **Real-time** - Live updates
-- **Comprehensive** - Tracks everything
-- **Easy setup** - One command install
-- **Great for debugging** - Detailed insights
-
-### ❌ Cons
-- **NOT production-ready** - High overhead
-- **Performance impact** - Slows down app
-- **Storage bloat** - Database grows fast
-- **Security risk** - Exposes sensitive data
-- **Memory intensive** - High memory usage
-
-### 💰 Cost
-**FREE**
-
-### 🎯 Best For
-- Local development
-- Staging environments (with caution)
-- Debugging specific issues
-
-### ⚠️ Production Recommendation
-**DISABLE in production** - Use alternatives instead
-
-### 📝 Setup
-```bash
-composer require laravel/telescope --dev
-php artisan telescope:install
-```
-
-### 🔧 Disable in Production
-```env
-TELESCOPE_ENABLED=false
-```
-
----
-
-## 3. Laravel Pulse ⭐ RECOMMENDED FOR PRODUCTION
+## 2. Laravel Pulse ⭐ RECOMMENDED FOR PRODUCTION
 
 ### ✅ Pros
 - **Production-ready** - Designed for production

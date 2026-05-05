@@ -11,7 +11,7 @@ tags: [development, monitoring, debugging]
 Project ini menggunakan beberapa development tools yang **HANYA** tersedia di local development environment:
 
 - **Laravel Pulse** - Real-time application monitoring
-- **Laravel Telescope** - Debug assistant
+- **Laravel ** - Debug assistant
 - **Log Viewer** - Web-based log viewer
 
 ⚠️ **PENTING:** Tools ini **TIDAK** akan terinstall di production untuk alasan security dan performance.
@@ -53,11 +53,11 @@ Di `routes/web.php` atau `config/pulse.php`:
 
 ---
 
-## 🔭 Laravel Telescope
+## 🔭 Laravel 
 
 ### Akses
 ```
-http://localhost:8000/telescope
+http://localhost:8000/
 ```
 
 ### Fitur
@@ -73,21 +73,21 @@ http://localhost:8000/telescope
 ### Setup
 ```bash
 # Install (sudah di require-dev)
-composer require laravel/telescope --dev
+composer require laravel/ --dev
 
 # Publish assets
-php artisan telescope:install
+php artisan :install
 
 # Run migration
 php artisan migrate
 ```
 
 ### Proteksi
-Di `app/Providers/TelescopeServiceProvider.php`:
+Di `app/Providers/ServiceProvider.php`:
 ```php
 protected function gate()
 {
-    Gate::define('viewTelescope', function ($user) {
+    Gate::define('view', function ($user) {
         return in_array($user->email, [
             'admin@whusnet.com',
         ]) || $user->role === 'owner';
@@ -142,13 +142,13 @@ composer dev
 ### 2. Access Tools
 - **App:** http://localhost:8000
 - **Pulse:** http://localhost:8000/pulse
-- **Telescope:** http://localhost:8000/telescope
+- **:** http://localhost:8000/
 - **Log Viewer:** http://localhost:8000/log-viewer
 - **Horizon:** http://localhost:8000/horizon
 
 ### 3. Monitoring Workflow
 1. **Pulse** - Monitor real-time performance
-2. **Telescope** - Debug specific requests
+2. **** - Debug specific requests
 3. **Log Viewer** - Check error logs
 4. **Horizon** - Monitor queue jobs
 
@@ -193,16 +193,16 @@ composer install --no-dev
 - [ ] Check Pulse untuk slow queries
 - [ ] Review error logs di Log Viewer
 - [ ] Monitor queue jobs di Horizon
-- [ ] Check exception rate di Telescope
+- [ ] Check exception rate di 
 
 ### Before Deployment
-- [ ] Review Telescope exceptions
+- [ ] Review  exceptions
 - [ ] Check slow query logs
 - [ ] Verify queue job success rate
 - [ ] Review cache hit rates
 
 ### Performance Optimization
-- [ ] Identify N+1 queries di Telescope
+- [ ] Identify N+1 queries di 
 - [ ] Check slow endpoints di Pulse
 - [ ] Monitor memory usage
 - [ ] Review cache effectiveness
@@ -213,12 +213,12 @@ composer install --no-dev
 
 ### 1. Slow Requests
 ```
-Pulse → Slow Requests → Click request → View in Telescope
+Pulse → Slow Requests → Click request → View in 
 ```
 
 ### 2. Database Issues
 ```
-Telescope → Queries → Sort by duration → Optimize slow queries
+ → Queries → Sort by duration → Optimize slow queries
 ```
 
 ### 3. Queue Failures
@@ -256,11 +256,11 @@ php artisan config:clear
 php artisan cache:clear
 ```
 
-### Issue: Telescope not recording
+### Issue:  not recording
 **Solution:**
 ```bash
 # Check .env
-TELESCOPE_ENABLED=true
+_ENABLED=true
 
 # Clear config
 php artisan config:clear
@@ -275,7 +275,7 @@ Check middleware di `config/log-viewer.php` dan pastikan user punya role yang se
 ## 📚 Resources
 
 - [Laravel Pulse Docs](https://laravel.com/docs/pulse)
-- [Laravel Telescope Docs](https://laravel.com/docs/telescope)
+- [Laravel  Docs](https://laravel.com/docs/)
 - [Log Viewer Docs](https://log-viewer.opcodes.io/)
 - [Laravel Horizon Docs](https://laravel.com/docs/horizon)
 
@@ -284,7 +284,7 @@ Check middleware di `config/log-viewer.php` dan pastikan user punya role yang se
 ## 💡 Pro Tips
 
 1. **Use Pulse for real-time monitoring** during development
-2. **Use Telescope for debugging** specific issues
+2. **Use  for debugging** specific issues
 3. **Use Log Viewer for historical analysis** of errors
 4. **Use Horizon for queue management** and monitoring
 5. **Never expose these tools in production** without proper authentication

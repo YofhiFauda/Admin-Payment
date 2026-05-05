@@ -268,26 +268,7 @@ Route::middleware(['auth', 'role:owner'])->group(function () {
 
 ---
 
-## 🔄 Comparison: Log Viewer vs Telescope
-
-| Feature | Log Viewer | Telescope |
-|---------|-----------|-----------|
-| **Production Ready** | ✅ Yes | ❌ No |
-| **Performance** | ✅ Low overhead | ❌ High overhead |
-| **Storage** | ✅ File-based | ❌ Database bloat |
-| **Security** | ✅ Safe | ⚠️ Risk |
-| **Log Viewing** | ✅ Excellent | ✅ Excellent |
-| **Queries** | ❌ No | ✅ Yes |
-| **Requests** | ❌ No | ✅ Yes |
-| **Jobs** | ❌ No | ✅ Yes |
-| **Events** | ❌ No | ✅ Yes |
-| **Cost** | FREE | FREE |
-
-**Verdict:** 
-- **Log Viewer** for production log viewing
-- **Telescope** for development debugging only
-
----
+----
 
 ## 🚀 Complete Setup: Log Viewer + Pulse + Sentry
 

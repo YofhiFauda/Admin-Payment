@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'n8n.secret' => \App\Http\Middleware\N8nSecretMiddleware::class,
+            'horizon.auth' => \App\Http\Middleware\HorizonBasicAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

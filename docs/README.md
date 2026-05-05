@@ -93,7 +93,6 @@ Security documentation:
 - [Monitoring Setup](operations/monitoring-setup.md) - Monitoring tools
 - [Logging Solution](operations/LOGGING_COMPLETE_SOLUTION.md) - Logging strategy
 - [Pulse & Log Viewer](operations/PULSE_LOG_VIEWER_SETUP.md) - Log viewer setup
-- [Telescope Guide](operations/TELESCOPE_PRODUCTION_GUIDE.md) - Debugging tool
 - [Performance Optimization](operations/PERFORMANCE_OPTIMIZATION.md) - Performance tuning
 
 ### 🔒 Security

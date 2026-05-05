@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-Setup lengkap untuk **Laravel Pulse** (real-time metrics) dan **Laravel Log Viewer** (GUI untuk logs seperti Telescope).
+Setup lengkap untuk **Laravel Pulse** (real-time metrics) dan **Laravel Log Viewer** (GUI untuk logs).
 
 ---
 

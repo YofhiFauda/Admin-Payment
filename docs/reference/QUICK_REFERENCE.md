@@ -581,7 +581,6 @@ alias health='curl -s https://yourdomain.com/health | jq'
 ### Dashboards
 - App: https://yourdomain.com
 - Horizon: https://yourdomain.com/horizon
-- Telescope: https://yourdomain.com/telescope (dev only)
 - Pulse: https://yourdomain.com/pulse
 
 ### Monitoring

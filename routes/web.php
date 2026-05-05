@@ -150,12 +150,32 @@ Route::get('/debug-auth', function () {
     return [
         'user' => auth()->user(),
         'check' => auth()->check(),
-        'guard' => auth()->guard()->getName(),
+        'guard' => config('auth.defaults.guard'),
         'session_id' => session()->getId(),
+        'session_driver' => config('session.driver'),
+        'session_data' => session()->all(),
         'cookies' => request()->cookies->all(),
-        'headers' => request()->headers->all(),
+        'app_env' => app()->environment(),
+        'horizon_middleware' => config('horizon.middleware'),
     ];
 })->middleware(['web']);
+
+// ✅ Debug route untuk test Horizon auth
+Route::get('/debug-horizon-auth', function () {
+    $user = auth()->user();
+    
+    return [
+        'authenticated' => auth()->check(),
+        'user' => $user,
+        'user_role' => $user?->role,
+        'can_access_horizon' => $user && \in_array($user->role, ['owner', 'admin', 'atasan'], true),
+        'app_env' => app()->environment(),
+        'is_local' => app()->environment('local'),
+        'session_driver' => config('session.driver'),
+        'session_secure' => config('session.secure'),
+        'session_same_site' => config('session.same_site'),
+    ];
+})->middleware(['web', 'auth:web']);
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {

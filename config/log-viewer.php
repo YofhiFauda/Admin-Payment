@@ -107,7 +107,7 @@ return [
 
     'exclude_files' => [
         'horizon*.log',
-        'telescope*.log',
+        'pulse*.log',
     ],
 
     /*

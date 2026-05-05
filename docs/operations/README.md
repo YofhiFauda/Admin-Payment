@@ -23,7 +23,6 @@ This folder contains documentation for operating, monitoring, and maintaining th
 - **monitoring-setup.md** - Monitoring setup guide
 - **PULSE_LOG_VIEWER_SETUP.md** - Pulse & Log Viewer setup
 - **PULSE_LOG_VIEWER_QUICK_START.md** - Quick start guide
-- **TELESCOPE_PRODUCTION_GUIDE.md** - Telescope debugging guide
 
 ### 🚀 Performance
 - **PERFORMANCE_OPTIMIZATION.md** - Performance optimization guide
@@ -56,8 +55,7 @@ These documents help with:
 
 ### Setup & Installation
 1. [Pulse & Log Viewer Setup](PULSE_LOG_VIEWER_SETUP.md)
-2. [Telescope Setup](TELESCOPE_PRODUCTION_GUIDE.md)
-3. [Monitoring Setup](monitoring-setup.md)
+2. [Monitoring Setup](monitoring-setup.md)
 
 ### Performance Tuning
 1. [Performance Optimization](PERFORMANCE_OPTIMIZATION.md)

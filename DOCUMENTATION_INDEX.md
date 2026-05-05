@@ -133,7 +133,6 @@ Security documentation:
 | [monitoring-setup.md](docs/operations/monitoring-setup.md) | 🟡 Partial | Monitoring setup (needs expansion) |
 | [LOGGING_COMPLETE_SOLUTION.md](docs/operations/LOGGING_COMPLETE_SOLUTION.md) | ✅ Complete | Logging solution |
 | [PULSE_LOG_VIEWER_SETUP.md](docs/operations/PULSE_LOG_VIEWER_SETUP.md) | ✅ Complete | Pulse & Log Viewer setup |
-| [TELESCOPE_PRODUCTION_GUIDE.md](docs/operations/TELESCOPE_PRODUCTION_GUIDE.md) | ✅ Complete | Telescope for debugging |
 | [PERFORMANCE_OPTIMIZATION.md](docs/operations/PERFORMANCE_OPTIMIZATION.md) | 🟡 Partial | Performance tuning (needs update) |
 
 ---

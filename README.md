@@ -808,7 +808,6 @@ Untuk dokumentasi yang lebih detail, silakan lihat:
 - 📈 **[Monitoring Setup](monitoring-setup.md)** - Setup monitoring tools
 - 📝 **[Logging Solution](LOGGING_COMPLETE_SOLUTION.md)** - Logging strategy lengkap
 - 🔍 **[Pulse & Log Viewer](PULSE_LOG_VIEWER_SETUP.md)** - Setup Pulse & Log Viewer
-- 🔭 **[Telescope Guide](TELESCOPE_PRODUCTION_GUIDE.md)** - Debugging dengan Telescope
 
 ### 🧪 Testing
 - 🧪 **[Testing Realtime](TESTING_REALTIME_GUIDE.md)** - Testing fitur real-time

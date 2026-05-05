@@ -516,15 +516,9 @@ Redis::pipeline(function ($pipe) {
 
 ### 10. Monitoring & Profiling
 
-#### A. Laravel Telescope (Development)
+#### A. Laravel Pulse (Production & Development)
 
-```bash
-composer require laravel/telescope --dev
-php artisan telescope:install
-php artisan migrate
-```
-
-Access: `https://yourdomain.com/telescope`
+Access: `https://yourdomain.com/pulse`
 
 #### B. Laravel Debugbar (Development)
 

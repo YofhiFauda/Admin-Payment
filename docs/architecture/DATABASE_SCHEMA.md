@@ -464,7 +464,7 @@ These tables are managed by the Laravel framework and its packages for core func
 - **`job_batches`**: Tracks groups of related jobs (batches).
 - **`failed_jobs`**: Logs details of jobs that failed after all retries.
 
-### Monitoring & Debugging (Telescope)
-- **`telescope_entries`**: Main store for Telescope's monitoring data (requests, commands, exceptions, etc.).
-- **`telescope_entries_tags`**: Pivot table for tagging telescope entries.
-- **`telescope_monitoring`**: Tracks specific tags for monitoring.
+### Monitoring & Debugging (Pulse)
+- **`pulse_entries`**: Main store for Pulse's monitoring data (requests, jobs, exceptions, etc.).
+- **`pulse_aggregates`**: Aggregated metrics for Pulse.
+- **`pulse_values`**: Time-series values for Pulse metrics.
