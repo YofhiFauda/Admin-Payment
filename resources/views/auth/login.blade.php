@@ -65,115 +65,107 @@
         <div class="w-full max-w-sm relative z-10">
 
             {{-- STEP 1: Pilihan Peran / Role Selection --}}
-            @if(!request('role'))
-                <div id="role-selection" class="animate-fade-in-up">
-                    <h2 class="text-[28px] font-black text-slate-900 mb-2 tracking-tight">Pilih Akses Anda</h2>
-                    <p class="text-slate-500 font-medium mb-10">Siapa Anda? Pilih peran untuk masuk ke sistem.</p>
+            <div id="role-selection" class="animate-fade-in-up block">
+                <h2 class="text-[28px] font-black text-slate-900 mb-2 tracking-tight">Pilih Akses Anda</h2>
+                <p class="text-slate-500 font-medium mb-10">Siapa Anda? Pilih peran untuk masuk ke sistem.</p>
 
-                    <div class="space-y-4">
-                    @foreach($roles as $role)
-                        <a href="{{ route('login', ['role' => $role['id']]) }}"
-                        class="group flex items-center gap-5 p-5 rounded-3xl border border-slate-200 bg-white 
-                                hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 
-                                transition-all duration-300 cursor-pointer">
+                <div class="space-y-4">
+                @foreach($roles as $role)
+                    <button type="button" onclick="selectRole('{{ $role['id'] }}', '{{ $role['label'] }}')"
+                    class="w-full text-left group flex items-center gap-5 p-5 rounded-3xl border border-slate-200 bg-white 
+                            hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 
+                            transition-all duration-300 cursor-pointer">
 
-                            {{-- Icon --}}
-                            <div class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center 
-                                        text-slate-400 group-hover:bg-blue-50 
-                                        group-hover:text-blue-600 transition-all duration-300">
-                                <i data-lucide="{{ 
-                                    $role['id'] == 'teknisi' ? 'wrench' : 
-                                    ($role['id'] == 'admin' ? 'shield-check' : 
-                                    ($role['id'] == 'atasan' ? 'user-cog' : 'briefcase')) 
-                                }}" class="w-6 h-6"></i>
-                            </div>
-
-                            {{-- Text --}}
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
-                                        {{ $role['label'] }}
-                                    </span>
-
-                                    <i data-lucide="arrow-right"
-                                    class="w-5 h-5 text-slate-300 group-hover:text-blue-500 
-                                            group-hover:translate-x-1 transition-all duration-300"></i>
-                                </div>
-
-                                <p class="text-sm text-slate-500 mt-1">
-                                    Login sebagai {{ strtolower($role['label']) }}
-                                </p>
-                            </div>
-
-                        </a>
-                    @endforeach
-                </div>
-                </div>
-            @endif
-
-            {{-- STEP 2: Form Login --}}
-            @if(request('role'))
-                @php
-                    $selectedRole = collect($roles)->firstWhere('id', request('role'));
-                @endphp
-                
-                <div id="login-form" class="animate-fade-in-up">
-                    <a href="{{ route('login') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-10">
-                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Ganti Peran
-                    </a>
-
-                    <h2 class="text-[32px] font-black text-slate-900 mb-2 tracking-tight">Login {{ $selectedRole['label'] ?? '' }}</h2>
-                    <p class="text-slate-500 font-medium mb-10">Masuk ke akun Anda untuk melanjutkan.</p>
-
-                    @if($errors->any())
-                        <div class="mb-6 bg-red-50 text-red-600 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-                            <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
-                            <p class="text-sm font-bold">{{ $errors->first() }}</p>
-                        </div>
-                    @endif
-
-                    <form method="POST" action="{{ route('login') }}" class="space-y-6" id="loginForm">
-                        @csrf
-                        <input type="hidden" name="role" value="{{ request('role') }}">
-
-                        {{-- Input Email --}}
-                        <div class="space-y-2">
-                            <label class="block text-sm font-bold text-slate-900">Email Perusahaan</label>
-                            <input type="email" name="email" required autofocus
-                                placeholder="Masukkan alamat email"
-                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+                        {{-- Icon --}}
+                        <div class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center 
+                                    text-slate-400 group-hover:bg-blue-50 
+                                    group-hover:text-blue-600 transition-all duration-300">
+                            <i data-lucide="{{ 
+                                $role['id'] == 'teknisi' ? 'wrench' : 
+                                ($role['id'] == 'admin' ? 'shield-check' : 
+                                ($role['id'] == 'atasan' ? 'user-cog' : 'briefcase')) 
+                            }}" class="w-6 h-6"></i>
                         </div>
 
-                        {{-- Input Password --}}
-                        <div class="space-y-2">
+                        {{-- Text --}}
+                        <div class="flex-1">
                             <div class="flex items-center justify-between">
-                                <label class="block text-sm font-bold text-slate-900">Password</label>
+                                <span class="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
+                                    {{ $role['label'] }}
+                                </span>
+
+                                <i data-lucide="arrow-right"
+                                class="w-5 h-5 text-slate-300 group-hover:text-blue-500 
+                                        group-hover:translate-x-1 transition-all duration-300"></i>
                             </div>
-                            <input type="password" name="password" required placeholder="Masukkan kata sandi"
-                                class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+
+                            <p class="text-sm text-slate-500 mt-1">
+                                Login sebagai {{ strtolower($role['label']) }}
+                            </p>
                         </div>
-
-                        {{-- Tombol Masuk --}}
-                        <button type="submit" id="submitBtn"
-                            class="w-full bg-linear-to-r from-sky-600 to-sky-500 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] text-base cursor-pointer mt-2 flex items-center justify-center gap-3">
-                            <span id="btnText">Masuk ke Dashboard</span>
-                            <div id="btnLoader" class="hidden">
-                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
-                        </button>
-                    </form>
-
-                    {{-- Footer Form --}}
-                    <div class="text-center mt-10">
-                        <p class="text-sm font-medium text-slate-500">
-                            Belum punya akun? <a href="#" class="text-indigo-600 font-bold hover:text-indigo-700 transition-colors">Hubungi Admin</a>
-                        </p>
-                    </div>
+                    </button>
+                @endforeach
                 </div>
-            @endif
+            </div>
+
+            {{-- STEP 2: Form Login (Hidden by default) --}}
+            <div id="login-form" class="hidden animate-fade-in-up">
+                <button type="button" onclick="showRoleSelection()" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-10">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Ganti Peran
+                </button>
+
+                <h2 class="text-[32px] font-black text-slate-900 mb-2 tracking-tight">Login <span id="display-role-name"></span></h2>
+                <p class="text-slate-500 font-medium mb-10">Masuk ke akun Anda untuk melanjutkan.</p>
+
+                @if($errors->any())
+                    <div class="mb-6 bg-red-50 text-red-600 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
+                        <p class="text-sm font-bold">{{ $errors->first() }}</p>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" class="space-y-6" id="loginForm">
+                    @csrf
+                    {{-- Hidden input yang nilainya akan diisi oleh JavaScript --}}
+                    <input type="hidden" name="role" id="input-role" value="">
+
+                    {{-- Input Email --}}
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-900">Email Perusahaan</label>
+                        <input type="email" name="email" required
+                            placeholder="Masukkan alamat email"
+                            class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-white text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+                    </div>
+
+                    {{-- Input Password --}}
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-bold text-slate-900">Password</label>
+                        </div>
+                        <input type="password" name="password" required placeholder="Masukkan kata sandi"
+                            class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 outline-none transition-all placeholder:text-slate-400 font-medium" />
+                    </div>
+
+                    {{-- Tombol Masuk --}}
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-linear-to-r from-sky-600 to-sky-500 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] text-base cursor-pointer mt-2 flex items-center justify-center gap-3">
+                        <span id="btnText">Masuk ke Dashboard</span>
+                        <div id="btnLoader" class="hidden">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                    </button>
+                </form>
+
+                {{-- Footer Form --}}
+                <div class="text-center mt-10">
+                    <p class="text-sm font-medium text-slate-500">
+                        Belum punya akun? <a href="#" class="text-indigo-600 font-bold hover:text-indigo-700 transition-colors">Hubungi Admin</a>
+                    </p>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -182,6 +174,7 @@
         document.addEventListener('DOMContentLoaded', () => { 
             lucide.createIcons(); 
 
+            // Script untuk Loading Button saat submit
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
                 let isSubmitting = false;
@@ -203,6 +196,42 @@
                 });
             }
         });
+
+        // FUNGSI SPA (Single Page Application)
+        function selectRole(roleId, roleLabel) {
+            // Isi nilai form input dan judul sesuai dengan role yang dipilih
+            document.getElementById('input-role').value = roleId;
+            document.getElementById('display-role-name').textContent = roleLabel;
+
+            const roleSelection = document.getElementById('role-selection');
+            const loginForm = document.getElementById('login-form');
+
+            // Sembunyikan pemilihan role, tampilkan form login
+            roleSelection.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+
+            // Re-trigger animasi agar terlihat mulus layaknya pindah halaman
+            loginForm.classList.remove('animate-fade-in-up');
+            void loginForm.offsetWidth; // Trigger reflow
+            loginForm.classList.add('animate-fade-in-up');
+            
+            // Set fokus ke input email secara otomatis
+            document.querySelector('input[name="email"]').focus();
+        }
+
+        function showRoleSelection() {
+            const roleSelection = document.getElementById('role-selection');
+            const loginForm = document.getElementById('login-form');
+
+            // Sembunyikan form login, tampilkan kembali pemilihan role
+            loginForm.classList.add('hidden');
+            roleSelection.classList.remove('hidden');
+
+            // Re-trigger animasi
+            roleSelection.classList.remove('animate-fade-in-up');
+            void roleSelection.offsetWidth; // Trigger reflow
+            roleSelection.classList.add('animate-fade-in-up');
+        }
     </script>
 </body>
 
