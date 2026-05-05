@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .forEach((cb) => {
             cb.addEventListener("change", () => {
                 updateFilterIndicators();
-                SearchEngine.init();
+                SearchEngine.applyFilters();
             });
         });
 
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     .querySelectorAll('input[name="branch_id[]"]')
                     .forEach((cb) => (cb.checked = false));
                 updateFilterIndicators();
-                SearchEngine.init();
+                SearchEngine.applyFilters();
                 return;
             }
 
@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     .querySelectorAll('input[name="category[]"]')
                     .forEach((cb) => (cb.checked = false));
                 updateFilterIndicators();
-                SearchEngine.init();
+                SearchEngine.applyFilters();
                 return;
             }
 
@@ -90,7 +90,33 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("filter-start-date").value = "";
                 document.getElementById("filter-end-date").value = "";
                 updateFilterIndicators();
-                SearchEngine.init();
+                SearchEngine.applyFilters();
+                return;
+            }
+
+            // AJAX Type Filter
+            const typeFilter = e.target.closest(".js-filter-type");
+            if (typeFilter) {
+                e.preventDefault();
+                const type = typeFilter.getAttribute("data-type");
+                const url = new URL(typeFilter.href);
+                
+                updateUrl(url);
+                syncTypeUI(type);
+                SearchEngine.applyFilters();
+                return;
+            }
+
+            // AJAX Status Tab
+            const statusTab = e.target.closest(".js-filter-status");
+            if (statusTab) {
+                e.preventDefault();
+                const status = statusTab.getAttribute("data-status");
+                const url = new URL(statusTab.href);
+
+                updateUrl(url);
+                syncStatusUI(status);
+                SearchEngine.applyFilters();
                 return;
             }
         },
@@ -128,7 +154,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById("btn-apply-date")?.addEventListener("click", () => {
         updateFilterIndicators();
-        SearchEngine.init();
+        SearchEngine.applyFilters();
     });
 
     // Instant search with synchronization across all layouts
@@ -538,4 +564,60 @@ function closePopover(popover, trigger) {
     if (!popover) return;
     popover.classList.add("hidden");
     if (trigger) trigger.classList.remove("active");
+}
+
+/**
+ * Update the browser URL without refreshing the page
+ */
+function updateUrl(url) {
+    window.history.pushState({ path: url.href }, '', url.href);
+}
+
+/**
+ * Synchronize the Type Filter UI classes
+ */
+function syncTypeUI(activeType) {
+    document.querySelectorAll('.js-filter-type').forEach(btn => {
+        const type = btn.getAttribute('data-type');
+        const isActive = type === activeType;
+        
+        // Remove all possible active/inactive classes
+        btn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800', 'bg-indigo-600', 'bg-teal-600', 'bg-amber-600', 'shadow-lg');
+        btn.classList.add('bg-white', 'text-slate-500', 'border-slate-200');
+
+        if (isActive) {
+            btn.classList.remove('bg-white', 'text-slate-500', 'border-slate-200');
+            
+            if (type === 'all') btn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+            else if (type === 'rembush') btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
+            else if (type === 'pengajuan') btn.classList.add('bg-teal-600', 'text-white', 'border-teal-600');
+            else if (type === 'gudang') btn.classList.add('bg-amber-600', 'text-white', 'border-amber-600');
+            
+            // Add shadow if it's the tablet/mobile version (which uses shadow-lg)
+            if (btn.closest('.hide-on-laptop, .md\\:hidden')) {
+                btn.classList.add('shadow-lg');
+            }
+        }
+    });
+}
+
+/**
+ * Synchronize the Status Tabs UI classes
+ */
+function syncStatusUI(activeStatus) {
+    document.querySelectorAll('.js-filter-status').forEach(tab => {
+        const status = tab.getAttribute('data-status');
+        const isActive = status === activeStatus;
+        const indicator = tab.querySelector('.js-active-indicator');
+
+        if (isActive) {
+            tab.classList.remove('text-gray-500', 'hover:text-gray-700');
+            tab.classList.add('text-blue-600');
+            indicator?.classList.remove('hidden');
+        } else {
+            tab.classList.remove('text-blue-600');
+            tab.classList.add('text-gray-500', 'hover:text-gray-700');
+            indicator?.classList.add('hidden');
+        }
+    });
 }

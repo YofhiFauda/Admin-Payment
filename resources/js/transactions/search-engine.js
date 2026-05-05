@@ -25,7 +25,7 @@ export const SearchEngine = (function () {
     // ═══════════════════════════════════════════════════════════════
     // INITIAL LOAD - Auto-detect mode
     // ═══════════════════════════════════════════════════════════════
-    async function loadData() {
+    async function loadData(forceMode = null) {
         if (isLoading) {
             console.warn('[SearchEngine] Already loading, skipping...');
             return Promise.resolve();
@@ -39,28 +39,31 @@ export const SearchEngine = (function () {
         }
 
         try {
-            // First, check dataset size
-            const countUrl = buildUrl(Config.endpoints.transactions.count);
-            const countResponse = await fetch(countUrl, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
+            if (forceMode) {
+                mode = forceMode;
+            } else {
+                // First, check dataset size
+                const countUrl = buildUrl(Config.endpoints.transactions.count);
+                const countResponse = await fetch(countUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
 
-            if (!countResponse.ok) throw new Error(`HTTP ${countResponse.status}`);
-            const { count } = await countResponse.json();
+                if (!countResponse.ok) throw new Error(`HTTP ${countResponse.status}`);
+                const { count } = await countResponse.json();
 
-            totalRecords = count;
+                totalRecords = count;
 
-            // Auto-select mode based on dataset size
-            if (count < Config.ui.searchThreshold) {
-                mode = 'client';
-                console.log(`[SearchEngine] Using CLIENT-SIDE mode (${count} records)`);
+                // Auto-select mode based on dataset size
+                mode = count < Config.ui.searchThreshold ? 'client' : 'server';
+                console.log(`[SearchEngine] Using ${mode.toUpperCase()} mode (${count} records)`);
+            }
+
+            if (mode === 'client') {
                 await loadClientSideData();
             } else {
-                mode = 'server';
-                console.log(`[SearchEngine] Using SERVER-SIDE mode (${count} records)`);
                 await loadServerSideData();
             }
 
@@ -77,31 +80,55 @@ export const SearchEngine = (function () {
         }
     }
 
+    /**
+     * Optimized Filter Application
+     * Does not re-fetch count or re-detect mode unless necessary.
+     */
+    async function applyFilters(resetPage = true) {
+        if (resetPage) currentPage = 1;
+
+        if (!mode) {
+            return loadData();
+        }
+
+        console.log(`[SearchEngine] Applying filters (${mode} mode)`);
+
+        if (mode === 'client') {
+            // Re-apply filter logic on existing data
+            const currentQuery = getActiveSearchValue();
+            filterClientSide(currentQuery);
+            renderPage();
+            updateStats();
+            return Promise.resolve();
+        } else {
+            // Fetch new data from server
+            return loadServerSideData();
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // CLIENT-SIDE MODE - Load all data once
     // ═══════════════════════════════════════════════════════════════
     async function loadClientSideData() {
         const url = buildUrl(Config.endpoints.transactions.searchData);
-        console.log('[SearchEngine] Fetching all data:', url);
+        
+        // We only fetch all data if we don't have it or if we are explicitly refreshing
+        if (allTransactions.length === 0 || isLoading) {
+            console.log('[SearchEngine] Fetching all client-side data:', url);
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        allTransactions = await response.json();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            allTransactions = await response.json();
+        }
 
         // Re-apply search if active
         const currentQuery = getActiveSearchValue();
-        if (currentQuery) {
-            filterClientSide(currentQuery);
-        } else {
-            filteredTransactions = [...allTransactions];
-        }
+        filterClientSide(currentQuery);
 
         // Adjust page if out of bounds
         totalPages = Math.ceil(filteredTransactions.length / Config.ui.itemsPerPage);
@@ -479,6 +506,7 @@ export const SearchEngine = (function () {
     // Public API
     return {
         init: loadData,
+        applyFilters: applyFilters,
         search: search,
         goToPage: goToPage,
         refresh: loadData,

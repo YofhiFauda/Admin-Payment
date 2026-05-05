@@ -90,19 +90,23 @@
             class="w-full min-[1510px]:w-auto grid grid-cols-4 gap-2 min-[1510px]:flex min-[1510px]:items-center min-[1510px]:gap-2 overflow-x-auto scrollbar-hide pb-1 min-[1510px]:pb-0">
             @php $currentType = request('type', 'all'); @endphp
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
-                class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
+                data-type="all"
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
                 Semua
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
-                class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
+                data-type="rembush"
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
                 <i data-lucide="receipt" class="w-3 h-3 inline mr-1"></i>Rembush
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
-                class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
+                data-type="pengajuan"
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
                 <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-1"></i>Pengajuan
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
-                class="px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
+                data-type="gudang"
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
                 <i data-lucide="package" class="w-3 h-3 inline mr-1"></i>Pembelian
             </a>
         </div>
@@ -157,19 +161,23 @@
         <!-- Row 3: Type Filters -->
         <div class="bg-slate-50 rounded-2xl p-3 grid grid-cols-4 gap-2">
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                data-type="all"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
                 Semua
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                data-type="rembush"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
                 <i data-lucide="receipt" class="w-3.5 h-3.5 inline mr-1"></i>Rembush
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                data-type="pengajuan"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
                 <i data-lucide="shopping-bag" class="w-3.5 h-3.5 inline mr-1"></i>Pengajuan
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
+                data-type="gudang"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100' }}">
                 <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Pembelian
             </a>
         </div>
@@ -222,19 +230,23 @@
         <!-- Row 5: Type Filters -->
         <div class="bg-slate-50 rounded-2xl p-2.5 grid grid-cols-2 gap-2">
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                data-type="all"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-500' }}">
                 Semua
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                data-type="rembush"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
                 <i data-lucide="receipt" class="w-3.5 h-3.5 inline mr-1"></i>Rembush
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                data-type="pengajuan"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
                 <i data-lucide="shopping-bag" class="w-3.5 h-3.5 inline mr-1"></i>Pengajuan
             </a>
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
-                class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
+                data-type="gudang"
+                class="js-filter-type px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center {{ $currentType === 'gudang' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white text-slate-500' }}">
                 <i data-lucide="package" class="w-3.5 h-3.5 inline mr-1"></i>Pembelian
             </a>
         </div>

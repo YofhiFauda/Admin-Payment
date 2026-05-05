@@ -16,13 +16,12 @@
 
         @foreach($tabs as $key => $tab)
             <a href="{{ route('transactions.index', ['status' => $key === 'all' ? null : $key, 'search' => request('search')]) }}"
-                class="relative px-2.5 sm:px-3 md:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs md:text-sm font-medium transition-all whitespace-nowrap {{ $currentStatus === $key ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700' }}">
+                data-status="{{ $key }}"
+                class="js-filter-status relative px-2.5 sm:px-3 md:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs md:text-sm font-medium transition-all whitespace-nowrap {{ $currentStatus === $key ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700' }}">
                 {{ $tab['label'] }}
                 <span class="ml-0.5 sm:ml-1 text-[10px] sm:text-xs opacity-70 status-count"
                     data-status="{{ $key }}">({{ $tab['count'] }})</span>
-                @if($currentStatus === $key)
-                    <div class="absolute bottom-0 left-0 w-full h-[2px] bg-blue-600 rounded-t-full"></div>
-                @endif
+                <div class="js-active-indicator absolute bottom-0 left-0 w-full h-[2px] bg-blue-600 rounded-t-full {{ $currentStatus === $key ? '' : 'hidden' }}"></div>
             </a>
         @endforeach
     </div>

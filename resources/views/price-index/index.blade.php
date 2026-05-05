@@ -36,7 +36,7 @@
 
                 {{-- Tombol Tambah --}}
                 <button onclick="openAddModal()"
-                        class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                        class="flex items-center gap-1.5 bg-linear-to-r from-sky-600 to-sky-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -76,16 +76,16 @@
                 
                 <input type="text" name="search" value="{{ request('search') }}"
                        placeholder="Cari nama barang..."
-                       class="flex-1 lg:max-w-xs border rounded-xl px-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
+                       class="flex-1 lg:max-w-xs border rounded-xl px-4 py-2 text-sm bg-gray-50 border-slate-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
 
-                <select name="category" class="border rounded-xl px-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <select name="category" class="border rounded-xl px-4 py-2 text-sm bg-gray-50 border-slate-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <option value="">Semua Kategori</option>
                     @foreach ($categories as $cat)
                         <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ $cat }}</option>
                     @endforeach
                 </select>
 
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+                <button type="submit" class="bg-linear-to-r from-sky-600 to-sky-500 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
                     Cari
                 </button>
                 @if (request()->hasAny(['search','category','review']))

@@ -34,7 +34,10 @@
     .form-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
     .btn-primary {
         width: 100%; padding: .7rem; border-radius: 10px; font-weight: 700;
-        background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff;
+        background: linear-gradient(to right, #0284c7, #0ea5e9); 
+        
+        /* Mempertahankan warna teks putih */
+        color: #ffffff;
         border: none; cursor: pointer; font-size: .9rem; transition: opacity .2s, transform .1s;
     }
     .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
@@ -64,8 +67,8 @@
     {{-- Stats bar --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
         <div class="branch-card p-4 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                <i data-lucide="building-2" class="w-5 h-5 text-indigo-600"></i>
+            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="building-2" class="w-5 h-5 text-blue-600"></i>
             </div>
             <div>
                 <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total Cabang</p>
@@ -125,7 +128,7 @@
                         </td>
                         <td class="px-3 py-3 text-center hidden sm:table-cell">
                             @if($branch->transactions_count > 0)
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
                                     <i data-lucide="receipt" class="w-3 h-3"></i>
                                     {{ $branch->transactions_count }}
                                 </span>
@@ -138,7 +141,7 @@
                         <td class="px-5 py-3 text-right">
                             <div class="flex items-center justify-end gap-1.5">
                                 <button onclick="openBranchBankAccountsModal({{ $branch->id }}, '{{ addslashes($branch->name) }}')"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors">
+                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors">
                                     <i data-lucide="credit-card" class="w-3 h-3"></i>
                                     <span class="hidden sm:inline">Rekening</span>
                                 </button>
@@ -178,7 +181,7 @@
         <div class="flex flex-col items-center justify-center py-16 text-slate-300">
             <i data-lucide="building-2" class="w-14 h-14 mb-3"></i>
             <p class="text-sm text-slate-400 font-medium">Belum ada cabang terdaftar</p>
-            <button onclick="openAddModal()" class="mt-4 px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors">
+            <button onclick="openAddModal()" class="mt-4 px-5 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
                 Tambah Cabang Pertama
             </button>
         </div>
@@ -192,8 +195,8 @@
 <div id="modal-add" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeAddModal()">
     <div class="modal-box">
         <div class="flex items-center gap-3 mb-5">
-            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                <i data-lucide="building-2" class="w-5 h-5 text-indigo-600"></i>
+            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                <i data-lucide="building-2" class="w-5 h-5 text-blue-600"></i>
             </div>
             <h3 class="!mb-0">Tambah Cabang Baru</h3>
         </div>
@@ -267,7 +270,7 @@
             {{-- Header --}}
             <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
                         <i data-lucide="credit-card" class="w-6 h-6"></i>
                     </div>
                     <div>
@@ -283,7 +286,7 @@
             {{-- List Section --}}
             <div class="flex-1 overflow-y-auto px-8 py-6" id="bbaListContainer">
                 <div id="bbaLoading" class="flex flex-col items-center justify-center py-12">
-                    <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <div class="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
                     <p class="mt-4 text-sm font-bold text-slate-400">Memuat data...</p>
                 </div>
                 <div id="bbaList" class="space-y-4 hidden">
@@ -309,27 +312,27 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Bank / E-Wallet</label>
                             <input type="text" id="bba_bank_name" required placeholder="Contoh: BCA, MANDIRI" 
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening</label>
                             <input type="text" id="bba_account_number" required placeholder="Nomor rekening"
                                 inputmode="numeric"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
+                                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Atas Nama</label>
                         <input type="text" id="bba_account_name" required placeholder="Nama pemilik rekening"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-slate-800 placeholder:text-slate-300 uppercase">
                     </div>
 
                     <div class="flex items-center gap-3 pt-2">
                         <button type="button" onclick="hideBranchBankAccountForm()" class="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-white transition-all">
                             Batal
                         </button>
-                        <button type="submit" id="bbaSaveBtn" class="flex-[2] px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+                        <button type="submit" id="bbaSaveBtn" class="flex-[2] px-6 py-3 rounded-xl bg-linear-to-r from-sky-600 to-sky-500 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
                             <i data-lucide="save" class="w-4 h-4"></i>
                             <span>Simpan Rekening</span>
                         </button>
@@ -339,7 +342,7 @@
 
             {{-- Footer (Action Buttons) --}}
             <div class="px-8 py-6 border-t border-slate-100 flex items-center justify-between shrink-0" id="bbaModalFooter">
-                <button type="button" onclick="showBranchBankAccountForm()" class="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xl transition-all items-center gap-2" id="bbaBtnAdd" style="display: {{ Auth::user()->role === 'owner' ? 'flex' : 'none' }}">
+                <button type="button" onclick="showBranchBankAccountForm()" class="px-6 py-3 rounded-xl bg-linear-to-r from-sky-600 to-sky-500 text-white font-bold hover:bg-blue-600 shadow-xl transition-all items-center gap-2" id="bbaBtnAdd" style="display: {{ Auth::user()->role === 'owner' ? 'flex' : 'none' }}">
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     <span>Tambah Rekening</span>
                 </button>
@@ -567,9 +570,9 @@ function fetchBranchBankAccounts(branchId) {
                 ` : '';
 
                 const card = `
-                    <div class="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex items-center justify-between">
+                    <div class="group bg-white border border-slate-200 rounded-2xl p-5 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center justify-between">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center transition-colors shadow-inner">
+                            <div class="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center transition-colors shadow-inner">
                                 <i data-lucide="landmark" class="w-6 h-6"></i>
                             </div>
                             <div>
