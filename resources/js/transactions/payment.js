@@ -3,6 +3,33 @@ import { SearchEngine } from './search-engine.js';
 import { closeViewModal, renderTransactionItemsCards } from './modals.js';
 import { Config } from './config.js';
 
+/**
+ * Format input angka dengan pemisah ribuan (contoh: 562500 → 562.500)
+ */
+function handleNominalInputFormat(e) {
+    const input = e.target;
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    const oldLength = oldValue.length;
+    
+    // Hapus semua karakter non-digit
+    const rawValue = oldValue.replace(/[^0-9]/g, '');
+    
+    // Format dengan pemisah ribuan
+    const formattedValue = rawValue ? formatNumber(parseInt(rawValue)) : '';
+    
+    // Update nilai input
+    input.value = formattedValue;
+    
+    // Hitung posisi kursor baru
+    const newLength = formattedValue.length;
+    const diff = newLength - oldLength;
+    const newCursorPosition = cursorPosition + diff;
+    
+    // Set posisi kursor
+    input.setSelectionRange(newCursorPosition, newCursorPosition);
+}
+
 export function initPaymentHandlers() {
     window.performStatusAction = performStatusAction;
     window.submitApproval = submitApproval;
@@ -372,7 +399,12 @@ function openPaymentModal(id) {
         document.getElementById('p_catatan').disabled = false;
         ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.disabled = false;
+            if (el) {
+                el.disabled = false;
+                // Tambahkan event listener untuk format angka
+                el.removeEventListener('input', handleNominalInputFormat);
+                el.addEventListener('input', handleNominalInputFormat);
+            }
         });
     } else {
         document.getElementById('payment-modal-title').textContent = 'Upload Bukti Transfer/Cash';
@@ -649,8 +681,8 @@ function renderPaymentModalDetails(d) {
 
                 // Attach nominal formatting
                 document.querySelectorAll('.nominal-input').forEach(inp => {
-                    inp.removeEventListener('input', window.handleNominalInput || window.AppConfig.handleNominalInput);
-                    inp.addEventListener('input', window.handleNominalInput || window.AppConfig.handleNominalInput);
+                    inp.removeEventListener('input', handleNominalInputFormat);
+                    inp.addEventListener('input', handleNominalInputFormat);
                 });
 
                 document.querySelectorAll('.sd-checkbox').forEach(cb => {
@@ -698,11 +730,20 @@ function renderPaymentModalDetails(d) {
                 });
 
                 document.querySelectorAll('.sd-amount').forEach(inp => {
-                    inp.addEventListener('input', () => calculateSumberDanaTotal(d.effective_amount));
+                    inp.addEventListener('input', (e) => {
+                        handleNominalInputFormat(e);
+                        calculateSumberDanaTotal(d.effective_amount);
+                    });
                 });
 
                 ['p_ongkir', 'p_diskon_pengiriman', 'p_voucher_diskon', 'p_dpp_lainnya', 'p_tax_amount', 'p_biaya_layanan_1', 'p_biaya_layanan_2'].forEach(id => {
-                    document.getElementById(id)?.addEventListener('input', () => calculateSumberDanaTotal(d.effective_amount));
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('input', (e) => {
+                            handleNominalInputFormat(e);
+                            calculateSumberDanaTotal(d.effective_amount);
+                        });
+                    }
                 });
 
                 calculateSumberDanaTotal(d.effective_amount);
