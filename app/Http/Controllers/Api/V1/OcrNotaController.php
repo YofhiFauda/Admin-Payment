@@ -60,7 +60,7 @@ class OcrNotaController extends Controller
         }
         \Illuminate\Support\Facades\RateLimiter::hit($key, 5);
         $validator = Validator::make($request->all(), [
-            'foto_nota'        => 'required|file|image|max:10240',
+            'foto_nota'        => 'required|file|image|max:5120',
             'transaksi_id'     => 'nullable|string',
             'expected_nominal' => 'nullable|numeric',
             'payment_method'   => 'required|in:cash,transfer_teknisi,transfer_penjual',

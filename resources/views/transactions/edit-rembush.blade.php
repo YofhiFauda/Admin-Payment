@@ -12,7 +12,9 @@
             
             {{-- Header --}}
             <div class="mb-8 md:mb-10 flex items-center gap-4">
-                <a href="{{ route('transactions.index') }}" class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors">
+                <a href="{{ route('transactions.index') }}" 
+                    class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50/50 transition-colors">
+                    <!-- class="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-colors"> -->
                     <i data-lucide="arrow-left" class="w-4 h-4"></i>
                 </a>
                 <div>

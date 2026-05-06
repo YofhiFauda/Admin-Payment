@@ -1458,29 +1458,44 @@
                     showRealtimeToast(e.title, e.message, colorClasses, iconName);
                 });
 
+            // ── Define Realtime Handlers ──
+            window.handleRealtimeTransactionCreation = function(transaction) {
+                console.log('🆕 [REALTIME] Transaction Created:', transaction);
+                if (typeof SearchEngine !== 'undefined' && SearchEngine.addTransaction) {
+                    SearchEngine.addTransaction(transaction);
+                }
+            };
+
+            window.handleRealtimeTransactionUpdate = function(transaction) {
+                console.log('🔄 [REALTIME] Transaction Updated:', transaction);
+                if (typeof SearchEngine !== 'undefined' && SearchEngine.updateTransaction) {
+                    SearchEngine.updateTransaction(transaction);
+                }
+            };
+
             // ── Listeners untuk GRID UPDATES (Tanpa Toasts - Toasts handled above) ──
             window.Echo.private(`ocr.${userId}`)
                 .listen('.ocr.updated', (e) => {
-                    if (typeof window.handleRealtimeTransactionUpdate === 'function' && e.payload.transaction) {
+                    if (e.payload && e.payload.transaction) {
                         window.handleRealtimeTransactionUpdate(e.payload.transaction);
                     }
                 });
 
             window.Echo.private(`transactions.${userId}`)
                 .listen('.transaction.updated', (e) => {
-                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
+                    if (e.transaction) {
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
                 });
 
             window.Echo.private(`transactions`)
                 .listen('.transaction.created', (e) => {
-                    if (typeof window.handleRealtimeTransactionCreation === 'function') {
+                    if (e.transaction) {
                         window.handleRealtimeTransactionCreation(e.transaction);
                     }
                 })
                 .listen('.transaction.updated', (e) => {
-                    if (typeof window.handleRealtimeTransactionUpdate === 'function') {
+                    if (e.transaction) {
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
                 });

@@ -82,27 +82,32 @@ export const SearchEngine = (function () {
 
     /**
      * Optimized Filter Application
-     * Does not re-fetch count or re-detect mode unless necessary.
+     * Forces re-fetch of data when filters change.
      */
     async function applyFilters(resetPage = true) {
         if (resetPage) currentPage = 1;
 
+        console.log(`[SearchEngine] Applying filters (mode: ${mode || 'detecting'}, resetPage: ${resetPage})`);
+
+        // If mode not detected yet, do initial load
         if (!mode) {
             return loadData();
         }
 
-        console.log(`[SearchEngine] Applying filters (${mode} mode)`);
-
-        if (mode === 'client') {
-            // Re-apply filter logic on existing data
-            const currentQuery = getActiveSearchValue();
-            filterClientSide(currentQuery);
-            renderPage();
-            updateStats();
+        // Always reload data when filters change
+        try {
+            if (mode === 'client') {
+                // Re-fetch all data to ensure we have latest with new filters
+                await loadClientSideData();
+            } else {
+                // Fetch new data from server with new filters
+                await loadServerSideData();
+            }
             return Promise.resolve();
-        } else {
-            // Fetch new data from server
-            return loadServerSideData();
+        } catch (error) {
+            console.error('[SearchEngine] applyFilters failed:', error);
+            showToast('Gagal memuat data', 'error');
+            return Promise.reject(error);
         }
     }
 
@@ -112,9 +117,22 @@ export const SearchEngine = (function () {
     async function loadClientSideData() {
         const url = buildUrl(Config.endpoints.transactions.searchData);
         
-        // We only fetch all data if we don't have it or if we are explicitly refreshing
-        if (allTransactions.length === 0 || isLoading) {
-            console.log('[SearchEngine] Fetching all client-side data:', url);
+        // Visual feedback
+        const desktopTbody = document.getElementById('desktop-tbody');
+        const mobileContainer = document.getElementById('mobile-container');
+
+        if (desktopTbody) {
+            desktopTbody.style.transition = 'opacity 0.2s ease';
+            desktopTbody.style.opacity = '0.4';
+        }
+        if (mobileContainer) {
+            mobileContainer.style.transition = 'opacity 0.2s ease';
+            mobileContainer.style.opacity = '0.4';
+        }
+
+        try {
+            // Always fetch fresh data when filters change
+            console.log('[SearchEngine] Fetching client-side data:', url);
             const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -124,20 +142,26 @@ export const SearchEngine = (function () {
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             allTransactions = await response.json();
+            
+            console.log(`[SearchEngine] Client-side data loaded: ${allTransactions.length} items`);
+
+            // Re-apply search if active
+            const currentQuery = getActiveSearchValue();
+            filterClientSide(currentQuery);
+
+            // Adjust page if out of bounds
+            totalPages = Math.ceil(filteredTransactions.length / Config.ui.itemsPerPage);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+
+            renderPage();
+            updateStats();
+        } finally {
+            // Restore opacity
+            if (desktopTbody) desktopTbody.style.opacity = '1';
+            if (mobileContainer) mobileContainer.style.opacity = '1';
         }
-
-        // Re-apply search if active
-        const currentQuery = getActiveSearchValue();
-        filterClientSide(currentQuery);
-
-        // Adjust page if out of bounds
-        totalPages = Math.ceil(filteredTransactions.length / Config.ui.itemsPerPage);
-        if (currentPage > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        }
-
-        renderPage();
-        updateStats();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -147,15 +171,19 @@ export const SearchEngine = (function () {
         if (abortController) abortController.abort();
         abortController = new AbortController();
 
-        // --- TAMBAHAN: Efek Loading Ringan ---
+        // --- Visual Loading Feedback ---
         const desktopTbody = document.getElementById('desktop-tbody');
         const mobileContainer = document.getElementById('mobile-container');
 
-        // Tambahkan class opacity agar tidak terlihat seperti refresh total
-        if (desktopTbody) desktopTbody.classList.add('opacity-40', 'transition-opacity');
-        if (mobileContainer) mobileContainer.classList.add('opacity-40', 'transition-opacity');
-
-        if (typeof NProgress !== 'undefined') NProgress.start();
+        // Tambahkan efek loading yang smooth
+        if (desktopTbody) {
+            desktopTbody.style.transition = 'opacity 0.2s ease';
+            desktopTbody.style.opacity = '0.4';
+        }
+        if (mobileContainer) {
+            mobileContainer.style.transition = 'opacity 0.2s ease';
+            mobileContainer.style.opacity = '0.4';
+        }
 
         // Synchronize search inputs value
         const searchVal = getActiveSearchValue();
@@ -185,15 +213,21 @@ export const SearchEngine = (function () {
 
             renderPage();
             updateStats();
+            
+            console.log(`[SearchEngine] Server-side data loaded: ${result.data.length} items`);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('[SearchEngine] Failed:', error);
+                showToast('Gagal memuat data', 'error');
             }
         } finally {
-            // --- TAMBAHAN: Kembalikan Opacity ---
-            if (desktopTbody) desktopTbody.classList.remove('opacity-40');
-            if (mobileContainer) mobileContainer.classList.remove('opacity-40');
-            if (typeof NProgress !== 'undefined') NProgress.done();
+            // --- Kembalikan Opacity dengan smooth transition ---
+            if (desktopTbody) {
+                desktopTbody.style.opacity = '1';
+            }
+            if (mobileContainer) {
+                mobileContainer.style.opacity = '1';
+            }
         }
     }
 
@@ -208,7 +242,7 @@ export const SearchEngine = (function () {
         const searchVal = getActiveSearchValue();
         if (searchVal) params.set('search', searchVal);
 
-        // Inherit top-level filters from URL (Type & Status)
+        // Get Type & Status from current URL (updated by filter clicks)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('type')) params.set('type', urlParams.get('type'));
         if (urlParams.has('status')) params.set('status', urlParams.get('status'));
@@ -234,7 +268,9 @@ export const SearchEngine = (function () {
             }
         });
 
-        return endpoint + '?' + params.toString();
+        const finalUrl = endpoint + '?' + params.toString();
+        console.log(`[SearchEngine] Built URL:`, finalUrl);
+        return finalUrl;
     }
 
 

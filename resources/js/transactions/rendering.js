@@ -84,7 +84,7 @@ export function renderItemsTooltip(items, index = null) {
     return `
         <div class="relative inline-block group/items">
             <span class="cursor-help p-1 rounded-md hover:bg-slate-100 hover:text-amber-500 transition-colors inline-flex">
-                <i data-lucide="info" class="w-4.5 h-4.5 text-amber-500 group-hover/items:text-blue-500 transition-colors"></i>
+                <i data-lucide="info" class="w-4 h-4 text-amber-500 group-hover/items:text-blue-500 transition-colors"></i>
             </span>
             <!-- Tooltip Premium -->
             <div class="absolute left-1/2 -translate-x-1/2 w-64 opacity-0 invisible group-hover/items:opacity-100 group-hover/items:visible transition-all duration-300 z-[110] pointer-events-none transform group-hover/items:translate-y-0 ${positionClasses}">

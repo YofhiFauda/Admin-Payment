@@ -30,8 +30,18 @@ document.addEventListener("DOMContentLoaded", function () {
         .querySelectorAll('input[name="branch_id[]"], input[name="category[]"]')
         .forEach((cb) => {
             cb.addEventListener("change", () => {
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 updateFilterIndicators();
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Filter checkbox changed`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
             });
         });
 
@@ -61,11 +71,22 @@ document.addEventListener("DOMContentLoaded", function () {
             if (branchReset) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
+                
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 document
                     .querySelectorAll('input[name="branch_id[]"]')
                     .forEach((cb) => (cb.checked = false));
                 updateFilterIndicators();
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Branch filter reset`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
                 return;
             }
 
@@ -74,11 +95,22 @@ document.addEventListener("DOMContentLoaded", function () {
             if (categoryReset) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
+                
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 document
                     .querySelectorAll('input[name="category[]"]')
                     .forEach((cb) => (cb.checked = false));
                 updateFilterIndicators();
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Category filter reset`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
                 return;
             }
 
@@ -87,10 +119,21 @@ document.addEventListener("DOMContentLoaded", function () {
             if (dateReset) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
+                
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 document.getElementById("filter-start-date").value = "";
                 document.getElementById("filter-end-date").value = "";
                 updateFilterIndicators();
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Date filter reset`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
                 return;
             }
 
@@ -98,12 +141,23 @@ document.addEventListener("DOMContentLoaded", function () {
             const typeFilter = e.target.closest(".js-filter-type");
             if (typeFilter) {
                 e.preventDefault();
+                
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 const type = typeFilter.getAttribute("data-type");
                 const url = new URL(typeFilter.href);
                 
                 updateUrl(url);
                 syncTypeUI(type);
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Type filter applied: ${type}`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
                 return;
             }
 
@@ -111,12 +165,23 @@ document.addEventListener("DOMContentLoaded", function () {
             const statusTab = e.target.closest(".js-filter-status");
             if (statusTab) {
                 e.preventDefault();
+                
+                if (typeof NProgress !== 'undefined') NProgress.start();
+                
                 const status = statusTab.getAttribute("data-status");
                 const url = new URL(statusTab.href);
 
                 updateUrl(url);
                 syncStatusUI(status);
-                SearchEngine.applyFilters();
+                
+                // Force reload data dengan filter baru
+                SearchEngine.applyFilters(true)
+                    .then(() => {
+                        console.log(`✅ Status filter applied: ${status}`);
+                    })
+                    .finally(() => {
+                        if (typeof NProgress !== 'undefined') NProgress.done();
+                    });
                 return;
             }
         },
@@ -153,8 +218,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.getElementById("btn-apply-date")?.addEventListener("click", () => {
+        if (typeof NProgress !== 'undefined') NProgress.start();
+        
         updateFilterIndicators();
-        SearchEngine.applyFilters();
+        
+        // Force reload data dengan filter baru
+        SearchEngine.applyFilters(true)
+            .then(() => {
+                console.log(`✅ Date filter applied`);
+                
+                // Close date popover after applying
+                if (typeof window.closeFilterPopover === 'function') {
+                    window.closeFilterPopover('menu-filter-date');
+                }
+            })
+            .finally(() => {
+                if (typeof NProgress !== 'undefined') NProgress.done();
+            });
     });
 
     // Instant search with synchronization across all layouts
@@ -474,6 +554,37 @@ function initFilterPopovers() {
     }
     // -------------------------
 
+    // Helper functions for opening/closing popovers
+    function openPopover(popover, trigger) {
+        if (!popover || !trigger) return;
+
+        // Position the popover below the trigger
+        const rect = trigger.getBoundingClientRect();
+        const isMobile = window.innerWidth < 768;
+
+        if (isMobile) {
+            // Mobile: full width at bottom
+            popover.style.left = "16px";
+            popover.style.right = "16px";
+            popover.style.top = `${rect.bottom + window.scrollY + 8}px`;
+            popover.style.width = "calc(100% - 32px)";
+        } else {
+            // Desktop: positioned below trigger
+            popover.style.left = `${rect.left + window.scrollX}px`;
+            popover.style.top = `${rect.bottom + window.scrollY + 8}px`;
+            popover.style.width = "";
+        }
+
+        popover.classList.remove("hidden");
+        trigger.classList.add("active");
+    }
+
+    function closePopover(popover, trigger) {
+        if (!popover) return;
+        popover.classList.add("hidden");
+        if (trigger) trigger.classList.remove("active");
+    }
+
     // Handle filter trigger button clicks
     document.addEventListener("click", function (e) {
         const trigger = e.target.closest(".filter-trigger");
@@ -534,36 +645,16 @@ function initFilterPopovers() {
                 activePopover = null;
             }
         });
-}
-
-function openPopover(popover, trigger) {
-    if (!popover || !trigger) return;
-
-    // Position the popover below the trigger
-    const rect = trigger.getBoundingClientRect();
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
-        // Mobile: full width at bottom
-        popover.style.left = "16px";
-        popover.style.right = "16px";
-        popover.style.top = `${rect.bottom + window.scrollY + 8}px`;
-        popover.style.width = "calc(100% - 32px)";
-    } else {
-        // Desktop: positioned below trigger
-        popover.style.left = `${rect.left + window.scrollX}px`;
-        popover.style.top = `${rect.bottom + window.scrollY + 8}px`;
-        popover.style.width = "";
-    }
-
-    popover.classList.remove("hidden");
-    trigger.classList.add("active");
-}
-
-function closePopover(popover, trigger) {
-    if (!popover) return;
-    popover.classList.add("hidden");
-    if (trigger) trigger.classList.remove("active");
+    
+    // Export closePopover to window for use in other functions
+    window.closeFilterPopover = function(popoverId) {
+        const popover = document.getElementById(popoverId);
+        const trigger = document.querySelector(`.filter-trigger[data-target="${popoverId}"]`);
+        if (popover && trigger) {
+            closePopover(popover, trigger);
+            activePopover = null;
+        }
+    };
 }
 
 /**
