@@ -1434,235 +1434,223 @@
                     });
             }
 
-            // ─────────────────────────────────────────────────────────
-            // REAL-TIME BROADCASTING LISTENERS (LARAVEL ECHO)
-            // ─────────────────────────────────────────────────────────
-            document.addEventListener('DOMContentLoaded', () => {
-                if (typeof window.Echo !== 'undefined') {
-                    const userId = {{ Auth::id() }};
-                    const userRole = "{{ Auth::user()->role }}";
+// ─────────────────────────────────────────────────────────
+// REAL-TIME BROADCASTING LISTENERS (LARAVEL ECHO)
+// ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.Echo !== 'undefined') {
+        const userId = {{ Auth::id() }};
+        const userRole = "{{ Auth::user()->role }}";
 
-                    // ── Toast Queue System ──
-                    const toastQueue = [];
-                    let isProcessingQueue = false;
-                    const MAX_TOASTS = 3;
+        // ── Toast Queue System ──
+        const toastQueue = [];
+        let isProcessingQueue = false;
+        const MAX_TOASTS = 3;
+        const TOAST_DURATION = 6000; // 6 Detik
 
-                    const processToastQueue = () => {
-                        if (isProcessingQueue || toastQueue.length === 0) return;
+        const processToastQueue = () => {
+            if (isProcessingQueue || toastQueue.length === 0) return;
 
-                        const currentToasts = document.querySelectorAll('.realtime-toast-item').length;
-                        if (currentToasts >= MAX_TOASTS) {
-                            setTimeout(processToastQueue, 1000);
-                            return;
-                        }
+            const currentToasts = document.querySelectorAll('.realtime-toast-item').length;
+            if (currentToasts >= MAX_TOASTS) {
+                setTimeout(processToastQueue, 1000);
+                return;
+            }
 
-                        isProcessingQueue = true;
-                        const { title, message, colorClasses, iconName } = toastQueue.shift();
-                        renderToast(title, message, colorClasses, iconName);
+            isProcessingQueue = true;
+            const { title, message, theme, iconName } = toastQueue.shift();
+            renderToast(title, message, theme, iconName);
 
-                        setTimeout(() => {
-                            isProcessingQueue = false;
-                            processToastQueue();
-                        }, 3000); // 3 second interval
-                    };
+            setTimeout(() => {
+                isProcessingQueue = false;
+                processToastQueue();
+            }, 1000); // Jeda 1 detik antar toast
+        };
 
-                    const showRealtimeToast = (title, message, colorClasses, iconName) => {
-                        toastQueue.push({ title, message, colorClasses, iconName });
-                        processToastQueue();
-                    };
+        const showRealtimeToast = (title, message, theme, iconName) => {
+            toastQueue.push({ title, message, theme, iconName });
+            processToastQueue();
+        };
 
-                    const renderToast = (title, message, colorClasses, iconName) => {
-                        const toastId = 'toast-' + Date.now();
+        const renderToast = (title, message, theme, iconName) => {
+            const toastId = 'toast-' + Date.now();
 
-                        let container = document.getElementById('toast-container-stack');
-                        if (!container) {
-                            container = document.createElement('div');
-                            container.id = 'toast-container-stack';
-                            container.className = 'fixed top-24 right-0 sm:right-4 md:right-8 z-[110] flex flex-col gap-2 sm:gap-3 pointer-events-none items-center sm:items-end w-full sm:max-w-sm px-4 sm:px-0';
-                            document.body.appendChild(container);
-                        }
+            let container = document.getElementById('toast-container-stack');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container-stack';
+                container.className = 'fixed top-24 right-0 sm:right-6 md:right-8 z-[110] flex flex-col gap-3 pointer-events-none items-center sm:items-end w-full sm:max-w-sm px-4 sm:px-0';
+                document.body.appendChild(container);
+            }
 
-                        const html = `
-                    <div id="${toastId}" class="realtime-toast-item pointer-events-auto flex items-start w-full sm:w-auto sm:min-w-[320px] p-3 sm:p-4 space-x-3 sm:space-x-4 bg-white rounded-xl sm:rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 transform translate-x-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
-                        <div class="inline-flex items-center justify-center flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl ${colorClasses}">
-                            <i data-lucide="${iconName || 'bell'}" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                        </div>
-                        <div class="flex-1 min-w-0 pt-0.5">
-                            <h3 class="text-xs sm:text-sm font-extrabold text-slate-800 mb-0.5 sm:mb-1 leading-tight">${title}</h3>
-                            <p class="text-[11px] sm:text-[13px] text-slate-500 font-medium leading-snug">${message}</p>
-                        </div>
-                        <button type="button" class="flex-shrink-0 ms-auto -mx-1 -my-1 sm:-mx-1.5 sm:-my-1.5 bg-white text-slate-400 hover:text-slate-900 rounded-lg sm:rounded-xl p-1 sm:p-1.5 hover:bg-slate-50 inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 transition-colors" onclick="const el = document.getElementById('${toastId}'); if(el){ el.style.opacity='0'; el.style.transform='translateX(100%)'; setTimeout(()=>el.remove(), 500); }">
-                            <i data-lucide="x" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
-                        </button>
-                    </div>
-                `;
+            // HTML Toast Baru: Flat design, border tegas, glassmorphism, progress bar
+            const html = `
+            <div id="${toastId}" class="realtime-toast-item group relative overflow-hidden pointer-events-auto flex items-start w-full sm:w-auto sm:min-w-[340px] bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200/80 opacity-0 translate-x-12 scale-95 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                
+                <!-- Icon Area (Flat Colors) -->
+                <div class="flex-shrink-0 w-12 h-12 m-3 rounded-lg flex items-center justify-center ${theme.iconBg} ${theme.iconText}">
+                    <i data-lucide="${iconName || 'bell'}" class="w-6 h-6"></i>
+                </div>
+                
+                <!-- Text Content -->
+                <div class="flex-1 min-w-0 py-3 pr-2">
+                    <h3 class="text-sm font-bold text-slate-800 mb-0.5 leading-tight">${title}</h3>
+                    <p class="text-[13px] text-slate-500 font-medium leading-snug">${message}</p>
+                </div>
+                
+                <!-- Close Button -->
+                <button type="button" class="flex-shrink-0 m-2 bg-transparent text-slate-400 hover:text-slate-800 rounded-lg p-1.5 hover:bg-slate-100 transition-colors" 
+                    onclick="const el = document.getElementById('${toastId}'); if(el){ el.classList.remove('opacity-100', 'translate-x-0', 'scale-100'); el.classList.add('opacity-0', 'translate-x-12', 'scale-95'); setTimeout(()=>el.remove(), 500); }">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
 
-                        container.insertAdjacentHTML('beforeend', html);
-                        const el = document.getElementById(toastId);
+                <!-- Animated Progress Bar -->
+                <div class="absolute bottom-0 left-0 h-[3px] ${theme.barBg} w-full transition-all ease-linear" id="progress-${toastId}" style="transition-duration: ${TOAST_DURATION}ms;"></div>
+            </div>
+            `;
 
-                        // Guard: element must exist before trying to animate it
-                        if (!el) return;
+            container.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById(toastId);
+            const progress = document.getElementById(`progress-${toastId}`);
 
-                        if (typeof lucide !== 'undefined') {
-                            lucide.createIcons();
-                        }
+            if (!el) return;
 
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                // Guard again inside rAF in case element was removed between frames
-                                const animEl = document.getElementById(toastId);
-                                if (!animEl) return;
-                                animEl.classList.remove('opacity-0', 'translate-x-full');
-                                animEl.classList.add('opacity-100', 'translate-x-0');
-                            });
-                        });
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
 
-                        setTimeout(() => {
-                            const liveEl = document.getElementById(toastId);
-                            if (liveEl) {
-                                liveEl.classList.remove('opacity-100', 'translate-x-0');
-                                liveEl.classList.add('opacity-0', 'translate-x-full');
-                                setTimeout(() => { const r = document.getElementById(toastId); if (r) r.remove(); }, 500);
-                            }
-                        }, 6000);
-                    };
-
-                    // Global wrapper for easier usage
-                    window.showToast = (message, type = 'success') => {
-                        let colorClasses = 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30';
-                        let iconName = 'check-circle';
-                        let title = 'Berhasil';
-
-                        if (type === 'error') {
-                            colorClasses = 'bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-red-500/30';
-                            iconName = 'alert-circle';
-                            title = 'Gagal';
-                        } else if (type === 'info') {
-                            colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30';
-                            iconName = 'info';
-                            title = 'Informasi';
-                        }
-
-                        showRealtimeToast(title, message, colorClasses, iconName);
-                    };
-
-                    // ── Listener untuk NOTIFIKASI SYSTEM (Real-time Toasts & Database Sync) ──
-                    window.Echo.private(`notifications.${userId}`)
-                        .listen('.notification.received', (e) => {
-                            console.log('🔔 [NOTIF] Notification Received:', e);
-
-                            // Update badge counter realtime
-                            updateNotificationBadge();
-
-                            // Determine colors based on type
-                            let colorClasses = 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30';
-                            let iconName = 'bell';
-
-                            if (e.type === 'ocr_status') {
-                                // Check title for 'berhasil' or check status
-                                const isSuccess = e.title.toLowerCase().includes('berhasil');
-                                colorClasses = isSuccess
-                                    ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30'
-                                    : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-500/30';
-                                iconName = isSuccess ? 'sparkles' : 'alert-triangle';
-                            } else if (e.type === 'transaction_status') {
-                                if (e.title.includes('CASH SIAP')) {
-                                    colorClasses = 'bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-orange-500/30';
-                                    iconName = 'banknote';
-                                } else if (e.title.toLowerCase().includes('disetujui owner') || e.title.includes('DISETUJUI OWNER')) {
-                                    colorClasses = 'bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-500/30';
-                                    iconName = 'check-circle';
-                                } else if (e.title.toLowerCase().includes('disetujui')) {
-                                    colorClasses = 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-blue-500/30';
-                                    iconName = 'clipboard-check';
-                                } else if (e.title.toLowerCase().includes('diproses') || e.title.includes('SEDANG DIPROSES')) {
-                                    colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-blue-500/30';
-                                    iconName = 'clock';
-                                } else if (e.title.toLowerCase().includes('selesai')) {
-                                    colorClasses = 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-lg shadow-indigo-500/30';
-                                    iconName = 'check-circle';
-                                } else if (e.title.toLowerCase().includes('ditolak')) {
-                                    colorClasses = 'bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-red-500/30';
-                                    iconName = 'x-circle';
-                                }
-                            } else if (e.type === 'owner_approval') {
-                                colorClasses = 'bg-gradient-to-br from-purple-500 to-indigo-700 text-white shadow-lg shadow-purple-500/30';
-                                iconName = 'shield-check';
-                            }
-
-                            showRealtimeToast(e.title, e.message, colorClasses, iconName);
-                        });
-
-                    // ── Define Realtime Handlers ──
-                    window.handleRealtimeTransactionCreation = function (transaction) {
-                        console.log('🆕 [REALTIME] Transaction Created:', transaction);
-                        if (typeof SearchEngine !== 'undefined' && SearchEngine.addTransaction) {
-                            SearchEngine.addTransaction(transaction);
-                        }
-                    };
-
-                    window.handleRealtimeTransactionUpdate = function (transaction) {
-                        console.log('🔄 [REALTIME] Transaction Updated:', transaction);
-                        if (typeof SearchEngine !== 'undefined' && SearchEngine.updateTransaction) {
-                            SearchEngine.updateTransaction(transaction);
-                        }
-                    };
-
-                    // ── Listeners untuk GRID UPDATES (Tanpa Toasts - Toasts handled above) ──
-                    window.Echo.private(`ocr.${userId}`)
-                        .listen('.ocr.updated', (e) => {
-                            if (e.payload && e.payload.transaction) {
-                                window.handleRealtimeTransactionUpdate(e.payload.transaction);
-                            }
-                        });
-
-                    window.Echo.private(`transactions.${userId}`)
-                        .listen('.transaction.updated', (e) => {
-                            if (e.transaction) {
-                                window.handleRealtimeTransactionUpdate(e.transaction);
-                            }
-                        });
-
-                    window.Echo.private(`transactions`)
-                        .listen('.transaction.created', (e) => {
-                            if (e.transaction) {
-                                window.handleRealtimeTransactionCreation(e.transaction);
-                            }
-                        })
-                        .listen('.transaction.updated', (e) => {
-                            if (e.transaction) {
-                                window.handleRealtimeTransactionUpdate(e.transaction);
-                            }
-                        });
-
-                    if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
-                        window.Echo.private(`notifications.management`)
-                            .listen('PriceAnomalyDetected', (e) => {
-                                console.log('Price Anomaly Detected:', e);
-
-                                // Use existing toast system if available or create a simple notification
-                                if (typeof showRealtimeToast === 'function') {
-                                    showRealtimeToast(
-                                        '⚠️ Anomali Harga!',
-                                        `Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%). <br><a href="${e.url}" class="text-blue-600 font-bold underline">Review Sekarang →</a>`,
-                                        'bg-red-50 text-red-800 border-red-200',
-                                        'alert-circle'
-                                    );
-                                } else {
-                                    // Fallback alert
-                                    alert(`⚠️ ANOMALI HARGA: Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%).`);
-                                }
-
-                                // Refresh notification count if function exists
-                                if (typeof fetchNotifications === 'function') {
-                                    fetchNotifications();
-                                }
-                            });
+            // Animasi Masuk (Slide & Scale)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (!el) return;
+                    el.classList.remove('opacity-0', 'translate-x-12', 'scale-95');
+                    el.classList.add('opacity-100', 'translate-x-0', 'scale-100');
+                    
+                    // Trigger Progress Bar
+                    if(progress) {
+                        progress.style.width = '0%';
                     }
-
-
-                }
+                });
             });
+
+            // Animasi Keluar Otomatis
+            setTimeout(() => {
+                const liveEl = document.getElementById(toastId);
+                if (liveEl) {
+                    liveEl.classList.remove('opacity-100', 'translate-x-0', 'scale-100');
+                    liveEl.classList.add('opacity-0', 'translate-x-12', 'scale-95');
+                    setTimeout(() => { const r = document.getElementById(toastId); if (r) r.remove(); }, 500);
+                }
+            }, TOAST_DURATION);
+        };
+
+        // ── Tema Warna Flat / Minimalist ──
+        const THEMES = {
+            success: { iconBg: 'bg-emerald-100', iconText: 'text-emerald-600', barBg: 'bg-emerald-500' },
+            error: { iconBg: 'bg-rose-100', iconText: 'text-rose-600', barBg: 'bg-rose-500' },
+            info: { iconBg: 'bg-blue-100', iconText: 'text-blue-600', barBg: 'bg-blue-500' },
+            warning: { iconBg: 'bg-amber-100', iconText: 'text-amber-600', barBg: 'bg-amber-500' },
+            purple: { iconBg: 'bg-purple-100', iconText: 'text-purple-600', barBg: 'bg-purple-500' },
+        };
+
+        window.showToast = (message, type = 'success') => {
+            let theme = THEMES.success;
+            let iconName = 'check-circle';
+            let title = 'Berhasil';
+
+            if (type === 'error') {
+                theme = THEMES.error; iconName = 'alert-circle'; title = 'Gagal';
+            } else if (type === 'info') {
+                theme = THEMES.info; iconName = 'info'; title = 'Informasi';
+            } else if (type === 'warning') {
+                theme = THEMES.warning; iconName = 'alert-triangle'; title = 'Peringatan';
+            }
+
+            showRealtimeToast(title, message, theme, iconName);
+        };
+
+        // ── Listener NOTIFIKASI SYSTEM ──
+        window.Echo.private(`notifications.${userId}`)
+            .listen('.notification.received', (e) => {
+                console.log('🔔 [NOTIF] Notification Received:', e);
+                if (typeof updateNotificationBadge === 'function') updateNotificationBadge();
+
+                let theme = THEMES.purple;
+                let iconName = 'bell';
+
+                if (e.type === 'ocr_status') {
+                    const isSuccess = e.title.toLowerCase().includes('berhasil');
+                    theme = isSuccess ? THEMES.success : THEMES.error;
+                    iconName = isSuccess ? 'sparkles' : 'alert-triangle';
+                } else if (e.type === 'transaction_status') {
+                    const titleLower = e.title.toLowerCase();
+                    if (titleLower.includes('cash siap')) {
+                        theme = THEMES.warning; iconName = 'banknote';
+                    } else if (titleLower.includes('disetujui owner')) {
+                        theme = THEMES.success; iconName = 'check-circle';
+                    } else if (titleLower.includes('disetujui')) {
+                        theme = THEMES.info; iconName = 'clipboard-check';
+                    } else if (titleLower.includes('diproses')) {
+                        theme = THEMES.info; iconName = 'clock';
+                    } else if (titleLower.includes('selesai')) {
+                        theme = THEMES.success; iconName = 'check-circle';
+                    } else if (titleLower.includes('ditolak')) {
+                        theme = THEMES.error; iconName = 'x-circle';
+                    }
+                } else if (e.type === 'owner_approval') {
+                    theme = THEMES.purple; iconName = 'shield-check';
+                }
+
+                showRealtimeToast(e.title, e.message, theme, iconName);
+            });
+
+        // ── Define Realtime Handlers ──
+        window.handleRealtimeTransactionCreation = function (transaction) {
+            console.log('🆕 [REALTIME] Transaction Created:', transaction);
+            if (typeof SearchEngine !== 'undefined' && SearchEngine.addTransaction) {
+                SearchEngine.addTransaction(transaction);
+            }
+        };
+
+        window.handleRealtimeTransactionUpdate = function (transaction) {
+            console.log('🔄 [REALTIME] Transaction Updated:', transaction);
+            if (typeof SearchEngine !== 'undefined' && SearchEngine.updateTransaction) {
+                SearchEngine.updateTransaction(transaction);
+            }
+        };
+
+        // ── Listeners untuk GRID UPDATES ──
+        window.Echo.private(`ocr.${userId}`)
+            .listen('.ocr.updated', (e) => {
+                if (e.payload && e.payload.transaction) window.handleRealtimeTransactionUpdate(e.payload.transaction);
+            });
+
+        window.Echo.private(`transactions.${userId}`)
+            .listen('.transaction.updated', (e) => {
+                if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
+            });
+
+        window.Echo.private(`transactions`)
+            .listen('.transaction.created', (e) => {
+                if (e.transaction) window.handleRealtimeTransactionCreation(e.transaction);
+            })
+            .listen('.transaction.updated', (e) => {
+                if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
+            });
+
+        if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
+            window.Echo.private(`notifications.management`)
+                .listen('PriceAnomalyDetected', (e) => {
+                    console.log('Price Anomaly Detected:', e);
+                    const msg = `Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%). <br><a href="${e.url}" class="text-blue-600 font-bold hover:underline mt-1 inline-block">Review Sekarang →</a>`;
+                    
+                    showRealtimeToast('⚠️ Anomali Harga!', msg, THEMES.error, 'alert-circle');
+
+                    if (typeof fetchNotifications === 'function') fetchNotifications();
+                });
+        }
+    }
+});
         </script>
         @stack('modals')
         <x-confirm-modal id="globalConfirmModal" />

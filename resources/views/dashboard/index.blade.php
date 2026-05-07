@@ -915,62 +915,62 @@ async function loadAllHutangAmounts() {
     {{-- ══════════════════════════════════════════════════════════════ --}}
     {{-- ROW 1 — METRIC CARDS                                          --}}
     {{-- ══════════════════════════════════════════════════════════════ --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-6">
 
         {{-- Total Pengeluaran --}}
-        <div class="dash-card p-5">
-            <div class="flex items-start gap-4">
-                <div class="metric-icon bg-linear-to-r from-sky-600 to-sky-500 shadow-lg shadow-indigo-500/30">
+        <div class="dash-card p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+            <div class="flex items-start gap-3 sm:gap-4">
+                <div class="metric-icon shrink-0 bg-linear-to-r from-sky-600 to-sky-500 shadow-lg shadow-sky-500/30">
                     <i data-lucide="trending-up" class="w-5 h-5 text-white"></i>
                 </div>
-                <div class="min-w-0">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Pengeluaran Bulan Ini</p>
-                    <p class="text-xl font-black text-slate-900 leading-tight truncate">
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 truncate">Pengeluaran Bulan Ini</p>
+                    <p class="text-lg sm:text-xl font-black text-slate-900 leading-tight truncate">
                         {{ \App\Models\Transaction::formatShortRupiah($totalPengeluaranRaw) }}
                     </p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Approved + Selesai</p>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Approved + Selesai</p>
                 </div>
             </div>
         </div>
 
         {{-- Pending --}}
-        <div class="dash-card p-5">
-            <div class="flex items-start gap-4">
-                <div class="metric-icon bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
+        <div class="dash-card p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+            <div class="flex items-start gap-3 sm:gap-4">
+                <div class="metric-icon shrink-0 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30">
                     <i data-lucide="clock" class="w-5 h-5 text-white"></i>
                 </div>
-                <div class="min-w-0">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Menunggu Persetujuan</p>
-                    <p class="text-xl font-black text-slate-900 leading-tight">{{ $pendingCount }}</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">{{ \App\Models\Transaction::formatShortRupiah($pendingTotal) }}</p>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 truncate">Menunggu Persetujuan</p>
+                    <p class="text-lg sm:text-xl font-black text-slate-900 leading-tight truncate">{{ $pendingCount }}</p>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">{{ \App\Models\Transaction::formatShortRupiah($pendingTotal) }}</p>
                 </div>
             </div>
         </div>
 
         {{-- Total Transaksi --}}
-        <div class="dash-card p-5">
-            <div class="flex items-start gap-4">
-                <div class="metric-icon bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30">
+        <div class="dash-card p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+            <div class="flex items-start gap-3 sm:gap-4">
+                <div class="metric-icon shrink-0 bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30">
                     <i data-lucide="receipt" class="w-5 h-5 text-white"></i>
                 </div>
-                <div class="min-w-0">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Transaksi</p>
-                    <p class="text-xl font-black text-slate-900 leading-tight">{{ $totalTransaksi }}</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Bulan {{ now()->translatedFormat('F Y') }}</p>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 truncate">Total Transaksi</p>
+                    <p class="text-lg sm:text-xl font-black text-slate-900 leading-tight truncate">{{ $totalTransaksi }}</p>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Bulan {{ now()->translatedFormat('F Y') }}</p>
                 </div>
             </div>
         </div>
 
         {{-- Ditolak --}}
-        <div class="dash-card p-5">
-            <div class="flex items-start gap-4">
-                <div class="metric-icon bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-500/30">
+        <div class="dash-card p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+            <div class="flex items-start gap-3 sm:gap-4">
+                <div class="metric-icon shrink-0 bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-500/30">
                     <i data-lucide="x-circle" class="w-5 h-5 text-white"></i>
                 </div>
-                <div class="min-w-0">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Pengajuan Ditolak</p>
-                    <p class="text-xl font-black text-slate-900 leading-tight">{{ $rejectedCount }}</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Bulan ini</p>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 truncate">Pengajuan Ditolak</p>
+                    <p class="text-lg sm:text-xl font-black text-slate-900 leading-tight truncate">{{ $rejectedCount }}</p>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Bulan ini</p>
                 </div>
             </div>
         </div>

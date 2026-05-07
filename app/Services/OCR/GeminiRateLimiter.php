@@ -39,9 +39,12 @@ class GeminiRateLimiter
 
     public function __construct()
     {
-        $this->rpmLimit    = (int) env('GEMINI_RPM_LIMIT', 12);
-        $this->cooldownSec = (int) env('GEMINI_COOLDOWN_SECONDS', 5);
-        $this->maxQueue    = (int) env('OCR_MAX_QUEUE_SIZE', 200);
+        // $this->rpmLimit    = (int) env('GEMINI_RPM_LIMIT', 12);
+        $this->rpmLimit    = (int) env('GEMINI_RPM_LIMIT', env('GEMINI_RPM_LIMIT'));
+        // $this->cooldownSec = (int) env('GEMINI_COOLDOWN_SECONDS', 5);
+        $this->cooldownSec = (int) env('GEMINI_COOLDOWN_SECONDS', env('GEMINI_COOLDOWN_SECONDS'));
+        // $this->maxQueue    = (int) env('OCR_MAX_QUEUE_SIZE', 200);
+        $this->maxQueue    = (int) env('OCR_MAX_QUEUE_SIZE', env('OCR_MAX_QUEUE_SIZE'));
     }
 
     /**

@@ -337,6 +337,23 @@
                                class="w-full border rounded-xl px-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                     </div>
                 </div>
+                {{-- ✅ Toggle Auto/Manual Mode --}}
+                <div class="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-gray-700 dark:text-gray-300">Mode Perhitungan</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5" id="edit_mode_description">
+                                Auto: Harga AVG dihitung otomatis dari transaksi
+                            </p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="edit_is_manual" class="sr-only peer" onchange="toggleEditMode()">
+                            <div class="w-14 h-7 bg-blue-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                            <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300" id="edit_mode_label">Auto</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga Min *</label>
@@ -347,7 +364,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Harga Avg *
-                            <button type="button" onclick="autoCalcAvgEdit()" class="ml-1 text-xs text-blue-500 hover:underline">(Hitung)</button>
+                            <span id="edit_avg_auto_badge" class="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Auto</span>
                         </label>
                         <input type="number" id="edit_avg_price" name="avg_price" required min="0"
                                class="w-full border rounded-xl px-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
@@ -388,21 +405,13 @@
                 </div>
                 <div id="editError" class="hidden text-red-600 text-sm"></div>
             </div>
-            <div class="px-6 pb-6 flex items-center justify-between">
-                <div>
-                    <button type="button" id="resetToAutoBtn" onclick="resetToAuto()"
-                            class="hidden text-xs font-medium text-red-600 dark:text-red-400 hover:underline">
-                        🔄 Reset ke Auto
-                    </button>
-                </div>
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeEditModal()"
-                            class="px-4 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">Batal</button>
-                    <button type="button" id="editSubmitBtn" onclick="submitEdit()"
-                            class="px-5 py-2 rounded-xl text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium transition">
-                        Simpan Perubahan
-                    </button>
-                </div>
+            <div class="px-6 pb-6 flex justify-end gap-3">
+                <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">Batal</button>
+                <button type="button" id="editSubmitBtn" onclick="submitEdit()"
+                        class="px-5 py-2 rounded-xl text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium transition">
+                    Simpan Perubahan
+                </button>
             </div>
         </form>
     </div>
@@ -437,6 +446,11 @@ function openEditModal(id, data) {
     document.getElementById('edit_avg_price').value = data.avg_price || 0;
     document.getElementById('edit_manual_reason').value = '';
 
+    // ✅ Set Toggle Mode
+    const isManual = data.is_manual || false;
+    document.getElementById('edit_is_manual').checked = isManual;
+    updateEditModeUI(isManual);
+
     // Handle Calculated Stats
     const calcBlock = document.getElementById('calculatedInfoBlock');
     if (data.calculated_avg_price > 0) {
@@ -454,14 +468,6 @@ function openEditModal(id, data) {
         calcBlock.classList.add('hidden');
     }
 
-    // Handle Reset Button Visibility
-    const resetBtn = document.getElementById('resetToAutoBtn');
-    if (data.is_manual) {
-        resetBtn.classList.remove('hidden');
-    } else {
-        resetBtn.classList.add('hidden');
-    }
-
     document.getElementById('editError').classList.add('hidden');
     document.getElementById('editModal').classList.remove('hidden');
     document.getElementById('editModal').classList.add('flex');
@@ -474,17 +480,66 @@ function closeEditModal() {
 
 // ─── Auto-calc avg helpers ──────────────────────────────────────
 function autoCalcAvgEdit() {
-    const min = parseFloat(document.getElementById('edit_min_price').value) || 0;
-    const max = parseFloat(document.getElementById('edit_max_price').value) || 0;
-    if (min > 0 && max >= min) {
-        document.getElementById('edit_avg_price').value = Math.round((min + max) / 2);
+    const isManual = document.getElementById('edit_is_manual').checked;
+    
+    // Hanya auto-calc jika mode Auto
+    if (!isManual) {
+        const min = parseFloat(document.getElementById('edit_min_price').value) || 0;
+        const max = parseFloat(document.getElementById('edit_max_price').value) || 0;
+        if (min > 0 && max >= min) {
+            document.getElementById('edit_avg_price').value = Math.round((min + max) / 2);
+        }
     }
 }
+
 function autoCalcAvgAdd() {
     const min = parseFloat(document.getElementById('add_min_price')?.value) || 0;
     const max = parseFloat(document.getElementById('add_max_price')?.value) || 0;
     if (min > 0 && max >= min) {
         document.getElementById('add_avg_price').value = Math.round((min + max) / 2);
+    }
+}
+
+// ─── Toggle Mode Handler ──────────────────────────────────────
+function toggleEditMode() {
+    const isManual = document.getElementById('edit_is_manual').checked;
+    updateEditModeUI(isManual);
+    
+    // Auto-calculate AVG jika switch ke Auto
+    if (!isManual) {
+        autoCalcAvgEdit();
+        showToast('Mode Auto: Harga AVG akan dihitung otomatis', 'info');
+    } else {
+        showToast('Mode Manual: Anda dapat mengatur harga AVG secara manual', 'info');
+    }
+}
+
+function updateEditModeUI(isManual) {
+    const avgInput = document.getElementById('edit_avg_price');
+    const avgBadge = document.getElementById('edit_avg_auto_badge');
+    const modeLabel = document.getElementById('edit_mode_label');
+    const modeDesc = document.getElementById('edit_mode_description');
+    
+    if (isManual) {
+        // Manual Mode
+        avgInput.readOnly = false;
+        avgInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+        avgInput.classList.add('bg-gray-50');
+        avgBadge.textContent = 'Manual';
+        avgBadge.classList.remove('bg-blue-100', 'text-blue-700');
+        avgBadge.classList.add('bg-purple-100', 'text-purple-700');
+        modeLabel.textContent = 'Manual';
+        modeDesc.textContent = 'Manual: Anda dapat mengatur harga AVG secara manual';
+    } else {
+        // Auto Mode
+        avgInput.readOnly = true;
+        avgInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+        avgInput.classList.remove('bg-gray-50');
+        avgBadge.textContent = 'Auto';
+        avgBadge.classList.remove('bg-purple-100', 'text-purple-700');
+        avgBadge.classList.add('bg-blue-100', 'text-blue-700');
+        modeLabel.textContent = 'Auto';
+        modeDesc.textContent = 'Auto: Harga AVG dihitung otomatis dari transaksi';
     }
 }
 
@@ -495,6 +550,8 @@ async function submitEdit() {
     btn.textContent = 'Menyimpan...';
 
     const form = document.getElementById('editForm');
+    const isManual = document.getElementById('edit_is_manual').checked;
+    
     const data = {
         item_name:     document.getElementById('edit_item_name').value,
         category:      document.getElementById('edit_category').value,
@@ -502,7 +559,8 @@ async function submitEdit() {
         min_price:     parseFloat(document.getElementById('edit_min_price').value),
         avg_price:     parseFloat(document.getElementById('edit_avg_price').value),
         max_price:     parseFloat(document.getElementById('edit_max_price').value),
-        manual_reason: document.getElementById('edit_manual_reason').value, // ✅ Audit trail
+        manual_reason: document.getElementById('edit_manual_reason').value,
+        is_manual:     isManual, // ✅ Kirim status mode
     };
 
     try {
@@ -514,7 +572,8 @@ async function submitEdit() {
         const json = await res.json();
         if (res.ok && json.success) {
             closeEditModal();
-            location.reload();
+            showToast(json.message || 'Price Index berhasil diupdate', 'success');
+            setTimeout(() => location.reload(), 1000);
         } else {
             document.getElementById('editError').textContent = json.error || 'Gagal menyimpan.';
             document.getElementById('editError').classList.remove('hidden');
@@ -534,40 +593,8 @@ function useSystemValues() {
         document.getElementById('edit_max_price').value = Math.round(block.dataset.max);
         document.getElementById('edit_avg_price').value = Math.round(block.dataset.avg);
         document.getElementById('edit_manual_reason').value = 'Mengikuti rekomendasi sistem (Sync)';
+        showToast('Nilai sistem berhasil diterapkan', 'success');
     }
-}
-
-async function resetToAuto() {
-    if (!currentEditId) return;
-    
-    openConfirmModal('globalConfirmModal', {
-        title: 'Reset ke Auto?',
-        message: 'Kembalikan status ke <strong>Auto</strong>? Harga akan dihitung ulang secara otomatis dari history transaksi.',
-        action: `/price-index/${currentEditId}/reset-auto`,
-        method: 'POST',
-        submitText: 'Ya, Reset',
-        submitColor: 'bg-amber-500 hover:bg-amber-600',
-        icon: 'refresh-cw',
-        iconColor: 'text-amber-500',
-        iconBg: 'bg-amber-50',
-        onConfirm: async () => {
-            try {
-                const response = await fetch(`/price-index/${currentEditId}/reset-auto`, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    showToast(result.message, 'success');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    throw new Error(result.error || 'Gagal reset auto');
-                }
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        }
-    });
 }
 
 // ─── Delete ─────────────────────────────────────────────────────

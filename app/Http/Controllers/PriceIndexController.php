@@ -123,6 +123,7 @@ class PriceIndexController extends Controller
             'min_price' => 'required|numeric|min:0',
             'max_price' => 'required|numeric|min:0',
             'avg_price' => 'required|numeric|min:0',
+            'is_manual' => 'nullable|boolean',
         ]);
 
         if ($request->min_price > $request->max_price) {
@@ -130,34 +131,55 @@ class PriceIndexController extends Controller
         }
 
         $oldData = $priceIndex->only(['min_price', 'max_price', 'avg_price', 'is_manual']);
+        $isManual = $request->input('is_manual', true); // Default true untuk backward compatibility
 
-        $priceIndex->update([
+        $updateData = [
             'item_name'     => $request->item_name,
             'category'      => $request->category,
             'unit'          => $request->unit,
             'min_price'     => $request->min_price,
             'max_price'     => $request->max_price,
             'avg_price'     => $request->avg_price,
-            'is_manual'     => true,
-            'manual_set_by' => Auth::id(),
-            'manual_set_at' => now(),
-            'manual_reason' => $request->input('manual_reason'), // ✅ Audit trail
-            'needs_initial_review' => false, // ✅ Mark as reviewed
-        ]);
+            'is_manual'     => $isManual,
+            'needs_initial_review' => false,
+        ];
 
-        // Flush cache explicitly just in case
+        // Jika mode Manual, set audit trail
+        if ($isManual) {
+            $updateData['manual_set_by'] = Auth::id();
+            $updateData['manual_set_at'] = now();
+            $updateData['manual_reason'] = $request->input('manual_reason', 'Update manual');
+        } else {
+            // Jika mode Auto, reset manual fields
+            $updateData['manual_set_by'] = null;
+            $updateData['manual_set_at'] = null;
+            $updateData['manual_reason'] = 'Mode Auto diaktifkan oleh ' . Auth::user()->name;
+            
+            // Trigger recalculation dari history untuk mode Auto
+            $this->priceIndexService->recalculateFromHistory($priceIndex->item_name, $priceIndex->category);
+        }
+
+        $priceIndex->update($updateData);
+
+        // Flush cache explicitly
         $priceIndex->flushCache($priceIndex->item_name);
 
-        Log::info('✏️ [PriceIndex] Manual override saved', [
+        Log::info('✏️ [PriceIndex] Updated', [
             'price_index_id' => $priceIndex->id,
             'item_name'      => $priceIndex->item_name,
             'by_user_id'     => Auth::id(),
+            'mode'           => $isManual ? 'Manual' : 'Auto',
             'old'            => $oldData,
-            'new'            => $priceIndex->only(['min_price', 'max_price', 'avg_price']),
+            'new'            => $priceIndex->only(['min_price', 'max_price', 'avg_price', 'is_manual']),
             'reason'         => $request->input('manual_reason'),
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Price Index berhasil diupdate.']);
+        return response()->json([
+            'success' => true, 
+            'message' => $isManual 
+                ? 'Price Index berhasil diupdate (Mode Manual)' 
+                : 'Price Index berhasil diupdate (Mode Auto - Dihitung dari history)'
+        ]);
     }
 
     /**

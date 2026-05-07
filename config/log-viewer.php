@@ -34,13 +34,11 @@ return [
     | This callback will be used to authorize users to access Log Viewer.
     | If the callback returns true, the user will be authorized.
     |
+    | NOTE: Use string reference instead of closure for config:cache compatibility
+    |
     */
 
-    'authorize' => function ($request) {
-        // Only allow owner and admin roles
-        return $request->user() && 
-               in_array($request->user()->role, ['owner', 'admin']);
-    },
+    'authorize' => '\App\Http\Middleware\AuthorizeLogViewer@authorize',
 
     /*
     |--------------------------------------------------------------------------

@@ -21,13 +21,15 @@ use Illuminate\Support\Facades\Log;
  *  NOTIFIKASI UNTUK OWNER/ADMIN/ATASAN:
  *  • notifyFlaggedTransaction() → Alert selisih nominal
  *  • notifyAutoReject() → Alert nota auto-reject
- *  • notifyForceApproved() → Alert force approve
+ *  • notifyForceApproved() → Alert force approve (internal management)
  *
  *  NOTIFIKASI UNTUK TEKNISI:
  *  • notifyPaymentCash() → Alert cash siap + tombol konfirmasi
  *  • notifyPaymentComplete() → Alert transfer berhasil
- *  • notifyForceApprovedToTechnician() → Alert setelah force approve
+ *  • notifyForceApprovedToTechnician() → Alert setelah force approve (ekspektasi teknisi)
  *  • notifyPaymentProcessing() → Alert pembayaran sedang diproses
+ *  • notifyWaitingOwnerApproval() → Alert menunggu otorisasi owner
+ *  • notifyTransactionRejected() → Alert transaksi ditolak
  * 
  *  NOTIFIKASI BROADCAST:
  *  • broadcastToAllStaff() → Kirim ke SEMUA karyawan
@@ -106,7 +108,7 @@ class TelegramBotService
     public function sendToMultipleUsers($query, string $message, array $replyMarkup = []): array
     {
         $users = $query->whereNotNull('telegram_chat_id')->get();
-        
+
         $stats = ['success' => 0, 'failed' => 0, 'total' => $users->count()];
 
         if ($users->isEmpty()) {
@@ -116,7 +118,7 @@ class TelegramBotService
 
         foreach ($users as $user) {
             $sent = $this->sendMessage($user->telegram_chat_id, $message, $replyMarkup);
-            
+
             if ($sent) {
                 $stats['success']++;
             } else {
@@ -141,6 +143,24 @@ class TelegramBotService
         return $this->sendMessage($this->groupMonitoringId, $message);
     }
 
+    // ─── Helper for Notification Fallback ────────────────────────────────────────────────
+    /**
+     * Handle fallback when sending notification to specific user fails.
+     * Logs the failure and sends a warning to the monitoring group.
+     * This can be extended to send via other channels (e.g., email, SMS).
+     */
+    private function handleNotificationFallback(?User $user, Transaction $transaction, string $notificationType): void
+    {
+        $userName = $user?->name ?? 'Unknown User';
+        $userId = $user?->id ?? 'N/A';
+        $invoice = $transaction->invoice_number ?? 'N/A';
+        $message = "⚠️ FAILED NOTIFICATION: Type={$notificationType}, User={$userName} (ID: {$userId}), Invoice={$invoice}";
+
+        Log::channel('ai_autofill')->warning($message);
+        $this->sendToMonitoringGroup($message);
+    }
+
+
     // ════════════════════════════════════════════════════════
     //  NOTIFIKASI UNTUK OWNER/ADMIN/ATASAN
     // ════════════════════════════════════════════════════════
@@ -149,6 +169,7 @@ class TelegramBotService
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke SEMUA OWNER saat transaksi "Flagged"
      *  (Selisih nominal antara bukti transfer dan expected)
+     *  Uses $transaction->flagged_at for timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyFlaggedTransaction(Transaction $transaction): void
@@ -157,8 +178,18 @@ class TelegramBotService
         $transaction->loadMissing(['submitter', 'konfirmator']);
 
         $invoiceNumber = $transaction->invoice_number;
-        $teknisiName   = $transaction->submitter->name ?? 'Tidak diketahui';
-        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
+        // Use nullsafe operator to prevent errors if submitter is null
+        $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->flagged_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+
+        // Log a warning if submitter is null after loading
+        if (!$transaction->submitter) {
+            Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Transaksi tidak memiliki submitter valid saat notifikasi flagged.', [
+                'transaction_id' => $transaction->id,
+                'submitter_id' => $transaction->submitter_id,
+            ]);
+        }
 
         // Nominal values
         $expectedAmount  = $transaction->expected_total ?? $transaction->effective_amount ?? 0;
@@ -180,7 +211,7 @@ class TelegramBotService
         // Parse detail validasi from flag_reason
         $flagReason     = $transaction->flag_reason ?? '-';
         $validationText = "Selisih saat ini tercatat sebesar {$selisihFmt}.";
-        
+
         if (preg_match('/tolerance\s+(\d+)/i', $flagReason, $matches)) {
             $toleranceFmt = 'Rp ' . number_format((int)$matches[1], 0, ',', '.');
             $validationText = "Batas toleransi sistem adalah {$toleranceFmt}. Selisih saat ini tercatat sebesar {$selisihFmt}.";
@@ -227,6 +258,7 @@ HTML;
     /**
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke ADMIN/OWNER/ATASAN saat Auto-Reject
+     *  Uses $transaction->rejected_at for timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyAutoReject(Transaction $transaction): void
@@ -234,7 +266,8 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
-        $timestamp     = now()->format('d/m/Y H:i');
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -265,6 +298,8 @@ HTML;
     /**
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke OWNER saat Force Approve dilakukan
+     *  (Internal management confirmation)
+     *  Uses $transaction->force_approved_at for timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyForceApproved(Transaction $transaction, User $approver, string $reason): void
@@ -274,8 +309,17 @@ HTML;
         $transaction->loadMissing(['submitter', 'konfirmator']);
 
         $invoiceNumber  = $transaction->invoice_number;
-        $teknisiName    = $transaction->submitter->name ?? 'Tidak diketahui';
-        $timestamp      = now()->format('d/m/Y - H:i') . ' WIB';
+        $teknisiName    = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
+        // Use specific event time instead of now()
+        $timestamp      = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+
+        // Log a warning if submitter is null after loading
+        if (!$transaction->submitter) {
+            Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Transaksi tidak memiliki submitter valid saat notifikasi force approve (internal).', [
+                'transaction_id' => $transaction->id,
+                'submitter_id' => $transaction->submitter_id,
+            ]);
+        }
 
         // Get nominals
         $actualAmount   = $transaction->actual_total;
@@ -341,7 +385,7 @@ HTML;
         // Kirim ke GROUP monitoring
         $this->sendToMonitoringGroup("[FORCE APPROVE] {$invoiceNumber} by {$approverName}");
 
-        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Force approve notification sent', [
+        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Internal force approve notification sent', [
             'transaction_id' => $transaction->id,
             'recipients'     => $stats,
         ]);
@@ -353,16 +397,15 @@ HTML;
 
     /**
      * Notifikasi pembayaran CASH siap diambil (dengan tombol konfirmasi)
+     * Uses $transaction->cash_ready_at for timestamp.
      */
     public function notifyPaymentCash(Transaction $transaction): void
     {
         $teknisi = $transaction->submitter;
-        
-        if (!$teknisi || !$teknisi->telegram_chat_id) {
-            Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Teknisi tidak punya chat_id', [
-                'teknisi_id' => $teknisi?->id,
-            ]);
 
+        if (!$teknisi || !$teknisi->telegram_chat_id) {
+            // Use the fallback helper
+            $this->handleNotificationFallback($teknisi, $transaction, 'PAYMENT_CASH');
             // Fallback: Kirim ke group monitoring saja
             $this->sendToMonitoringGroup(
                 "⚠️ [CASH] {$transaction->invoice_number} - Teknisi {$teknisi?->name} belum daftar Telegram"
@@ -374,7 +417,8 @@ HTML;
         $kategori      = $transaction->category ?? '-';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
-        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->cash_ready_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
         $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
@@ -431,22 +475,23 @@ HTML;
 
     /**
      * Notifikasi pembayaran TRANSFER berhasil (tanpa tombol)
+     * Uses $transaction->transfer_completed_at for timestamp.
      */
     public function notifyPaymentComplete(Transaction $transaction): void
     {
         $teknisi = $transaction->submitter;
-        
+
         if (!$teknisi || !$teknisi->telegram_chat_id) {
-            Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Teknisi tidak punya chat_id');
+            $this->handleNotificationFallback($teknisi, $transaction, 'PAYMENT_COMPLETE');
             return;
         }
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        
+
         // Gunakan tabel UserBankAccount yang terbaru sebagai standar (1 Teknisi bisa punya banyak bank)
         $latestBank = \App\Models\UserBankAccount::where('user_id', $teknisi->id)->latest()->first();
-        
+
         if ($latestBank) {
             $bankName = $latestBank->bank_name;
             $accountNumber = $latestBank->account_number;
@@ -458,8 +503,9 @@ HTML;
         if (trim($rekening) === "-") {
             $rekening = '-';
         }
-        
-        $timestamp = now()->format('d/m/Y - H:i') . ' WIB';
+
+        // Use specific event time instead of now()
+        $timestamp = $transaction->transfer_completed_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
@@ -494,18 +540,22 @@ HTML;
 
     /**
      * Notifikasi setelah Force Approve (untuk teknisi)
+     * Memberi tahu teknisi bahwa permintaan mereka telah disetujui setelah verifikasi.
+     * Uses $transaction->force_approved_at for timestamp.
      */
     public function notifyForceApprovedToTechnician(Transaction $transaction): void
     {
         $teknisi = $transaction->submitter;
-        
+
         if (!$teknisi || !$teknisi->telegram_chat_id) {
+            $this->handleNotificationFallback($teknisi, $transaction, 'FORCE_APPROVED_TECHNICIAN');
             return;
         }
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
@@ -520,7 +570,6 @@ Pengajuan pembayaran Anda telah melalui tahap verifikasi akhir dan disetujui ole
 Sistem akan segera menjadwalkan proses pencairan dana ke rekening Anda.
 
 <b>Status Otorisasi : SELESAI</b>
-<b>Tahap Selanjutnya: PROSES TRANSFER</b>
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
@@ -533,20 +582,23 @@ HTML;
 
     /**
      * Notifikasi Transaksi Ditolak (Manual Reject oleh Otorisator)
+     * Uses $transaction->rejected_at for timestamp.
      */
     public function notifyTransactionRejected(Transaction $transaction, User $rejector, string $reason): void
     {
         $teknisi = $transaction->submitter;
-        
+
         if (!$teknisi || !$teknisi->telegram_chat_id) {
+            $this->handleNotificationFallback($teknisi, $transaction, 'TRANSACTION_REJECTED');
             return;
         }
 
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
-        
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+
         // Rejector info
         $rejectorName  = $rejector->name;
         $rejectorRole  = ucfirst($rejector->role);
@@ -587,17 +639,21 @@ HTML;
 
     /**
      * Notifikasi pembayaran sedang diproses
+     * Uses $transaction->transfer_initiated_at for timestamp.
      */
     public function notifyPaymentProcessing(Transaction $transaction): void
     {
         $teknisi = $transaction->submitter;
-        
+
         if (!$teknisi || !$teknisi->telegram_chat_id) {
+            $this->handleNotificationFallback($teknisi, $transaction, 'PAYMENT_PROCESSING');
             return;
         }
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->transfer_initiated_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: DALAM PROSES PEMBAYARAN]</b>
@@ -607,6 +663,7 @@ Pencairan dana untuk tagihan Anda telah disetujui dan saat ini sedang dalam antr
 <b>Keterangan Transaksi:</b>
 ▪️ No. Invoice   : <code>{$invoiceNumber}</code>
 ▪️ Nominal       : {$nominal}
+▪️ Waktu Sistem  : {$timestamp}
 
 Mohon kesediaannya menunggu. Sistem akan mengirimkan notifikasi otomatis beserta bukti pemindahan dana setelah transfer berhasil dilakukan.
 HTML;
@@ -616,17 +673,21 @@ HTML;
 
     /**
      * Notifikasi pengajuan menunggu otorisasi owner (khusus >= 1jt)
+     * Uses $transaction->waiting_owner_approval_at for timestamp.
      */
     public function notifyWaitingOwnerApproval(Transaction $transaction): void
     {
         $teknisi = $transaction->submitter;
-        
+
         if (!$teknisi || !$teknisi->telegram_chat_id) {
+            $this->handleNotificationFallback($teknisi, $transaction, 'WAITING_OWNER_APPROVAL');
             return;
         }
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+        // Use specific event time instead of now()
+        $timestamp     = $transaction->waiting_owner_approval_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: MENUNGGU OTORISASI OWNER]</b>
@@ -636,6 +697,7 @@ Admin/Atasan telah menyetujui pengajuan Anda. Karena nominal transaksi Rp 1.000.
 <b>Keterangan Transaksi:</b>
 ▪️ No. Invoice   : <code>{$invoiceNumber}</code>
 ▪️ Nominal       : {$nominal}
+▪️ Waktu Sistem  : {$timestamp}
 
 Pengajuan Anda akan otomatis diproses ke tahap pembayaran setelah mendapatkan persetujuan dari Owner.
 HTML;
@@ -752,7 +814,6 @@ HTML;
             Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Failed to answer callback', [
                 'response' => $response->body(),
             ]);
-
         } catch (\Exception $e) {
             Log::channel('ai_autofill')->error('❌ [TELEGRAM] Exception answering callback', [
                 'error' => $e->getMessage(),
@@ -803,7 +864,6 @@ HTML;
             Log::channel('ai_autofill')->warning('⚠️ [TELEGRAM] Failed to edit message', [
                 'response' => $response->body(),
             ]);
-
         } catch (\Exception $e) {
             Log::channel('ai_autofill')->error('❌ [TELEGRAM] Exception editing message', [
                 'error' => $e->getMessage(),
@@ -831,20 +891,21 @@ HTML;
         $teknisiName   = $transaction?->submitter?->name ?? 'Tidak diketahui';
         $invoiceNumber = $transaction?->invoice_number ?? '-';
         $itemName      = $anomaly->item_name;
-        $timestamp     = now()->format('d/m/Y - H:i') . ' WIB';
+        // Use specific event time instead of now()
+        $timestamp     = $anomaly->created_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $inputFmt        = 'Rp ' . number_format($anomaly->input_price,         0, ',', '.');
         $refMaxFmt       = 'Rp ' . number_format($anomaly->reference_max_price, 0, ',', '.');
         $excessFmt       = 'Rp ' . number_format($anomaly->excess_amount,       0, ',', '.');
         $excessPct       = number_format($anomaly->excess_percentage, 1) . '%';
 
-        $severityIcon = match($anomaly->severity) {
+        $severityIcon = match ($anomaly->severity) {
             'critical' => '🔴',
             'medium'   => '🟠',
             'low'      => '🟡',
             default    => '⚠️',
         };
-        $severityLabel = match($anomaly->severity) {
+        $severityLabel = match ($anomaly->severity) {
             'critical' => 'CRITICAL (>50%)',
             'medium'   => 'MEDIUM (20-50%)',
             'low'      => 'LOW (<20%)',
@@ -894,5 +955,4 @@ HTML;
             'recipients'    => $stats,
         ]);
     }
-
 }

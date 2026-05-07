@@ -1111,11 +1111,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 'id' => (string) $b->id,
                 'name' => $b->name,
                 'percent' => (float) ($pivot->allocation_percent ?? 0),
-                'value' => (float) ($pivot->allocation_amount ?? 0)
+                'value' => (int) ($pivot->allocation_amount ?? 0)
             ];
         })->values()->toArray();
     @endphp
     let selectedBranches = @json($selectedBranchData);
+    
+    // Ensure all numeric values are properly typed (defense against JSON serialization issues)
+    selectedBranches = selectedBranches.map(branch => ({
+        ...branch,
+        percent: parseFloat(branch.percent) || 0,
+        value: parseInt(branch.value) || 0
+    }));
     const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
     const isReadOnly = @json($isReadOnly ?? false);
     const canEditDistribution = !isReadOnly || isAdminOnlyBranch;
@@ -1648,7 +1655,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     branch.percent = parseFloat((100 / selectedBranches.length).toFixed(2));
                     branch.value   = totalAmount > 0 ? Math.round(totalAmount / selectedBranches.length) : 0;
                 } else if (currentMethod === 'percent') {
-                    branch.value = totalAmount > 0 ? Math.round((totalAmount * (branch.percent || 0)) / 100) : 0;
+                    branch.percent = parseFloat(branch.percent) || 0;  // Ensure it's a number
+                    branch.value = totalAmount > 0 ? Math.round((totalAmount * branch.percent) / 100) : 0;
                 } else if (currentMethod === 'manual') {
                     branch.percent = totalAmount > 0 ? parseFloat(((branch.value / totalAmount) * 100).toFixed(2)) : 0;
                 }
@@ -1744,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedBranches.forEach(branch => {
             const pct = totalAmount > 0
                 ? ((branch.value / totalAmount) * 100).toFixed(1)
-                : (branch.percent || 0).toFixed(1);
+                : (parseFloat(branch.percent) || 0).toFixed(1)
 
             const summaryRow = `
                 <div class="flex justify-between items-start text-sm border-b border-white/10 pb-3 pt-3 px-2 last:border-0 last:pb-0">

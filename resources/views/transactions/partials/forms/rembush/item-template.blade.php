@@ -22,7 +22,7 @@
                 data-field="unit">
         </td>
         <td class="p-3">
-            <input type="text" value="{price_formatted}"
+            <input type="text" value="{price_formatted}" placeholder="Rp 0"
                 class="item-price-display w-full bg-transparent border-0 border-b border-slate-100
                     focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-right">
             <input type="hidden" name="items[{idx}][price]" value="{price}" class="item-price-hidden">
@@ -82,7 +82,7 @@
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Harga Satuan</label>
-                <input type="text" value="{price_formatted}"
+                <input type="text" value="{price_formatted}" placeholder="Rp 0"
                     class="item-price-display w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-emerald-600 outline-none focus:border-emerald-400 transition-all">
             </div>
 

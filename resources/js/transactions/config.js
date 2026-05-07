@@ -121,7 +121,7 @@ export const Config = {
     ai: {
         queued: { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Antrian' },
         pending: { color: 'bg-gray-50 text-gray-600 border-gray-200', icon: 'clock', label: 'Pending' },
-        processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR...', pulse: true },
+        processing: { color: 'bg-purple-50 text-purple-600 border-purple-200', icon: 'loader-2', label: 'OCR Proses', pulse: true },
         completed: { color: 'bg-green-50 text-green-600 border-green-200', icon: 'check-circle', label: 'AI ✓' },
         error: { color: 'bg-red-50 text-red-600 border-red-200', icon: 'alert-circle', label: 'AI ✗' }
     }

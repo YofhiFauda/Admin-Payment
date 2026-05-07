@@ -42,28 +42,76 @@ export class ItemRepeater {
 
             if (e.target.classList.contains('item-field')) {
                 this.items[idx][e.target.dataset.field] = e.target.value;
-                if (e.target.dataset.field === 'qty') this.render();
+                
+                // Realtime update untuk Qty tanpa full re-render
+                if (e.target.dataset.field === 'qty') {
+                    const qty = parseInt(e.target.value) || 0;
+                    this.items[idx].qty = qty;
+                    this.updateRowTotal(idx);
+                }
             }
 
             if (e.target.classList.contains('item-price-display')) {
+                // Real-time formatting untuk harga satuan
                 const raw = parseNumber(e.target.value);
                 this.items[idx].price = raw;
-                // Sync to hidden input in that row
-                const row = this.tbody.querySelector(`tr[data-idx="${idx}"]`);
-                if (row) row.querySelector('.item-price-hidden').value = raw;
+                
+                // Format ulang dengan Rp prefix
+                const formatted = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Simpan posisi cursor
+                const cursorPos = e.target.selectionStart;
+                const oldLength = e.target.value.length;
+                
+                // Update value
+                e.target.value = formatted;
+                
+                // Restore posisi cursor (adjust untuk perubahan panjang)
+                const newLength = formatted.length;
+                const newCursorPos = cursorPos + (newLength - oldLength);
+                e.target.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Update hidden price
+                const row = this.tbody ? this.tbody.querySelector(`tr[data-idx="${idx}"]`) : null;
+                if (row) {
+                    const hidden = row.querySelector('.item-price-hidden');
+                    if (hidden) hidden.value = raw;
+                }
+                
+                // Update total untuk row ini
+                this.updateRowTotal(idx);
             }
         };
 
         this.tbody.addEventListener('input', handleInput);
         if (this.cards) this.cards.addEventListener('input', handleInput);
 
+        // Focus handler untuk select all saat "Rp 0"
+        const handleFocus = (e) => {
+            if (e.target.classList.contains('item-price-display')) {
+                if (e.target.value === 'Rp 0') {
+                    setTimeout(() => e.target.select(), 0);
+                }
+            }
+        };
+
+        this.tbody.addEventListener('focus', handleFocus, true);
+        if (this.cards) this.cards.addEventListener('focus', handleFocus, true);
+
         // Price Format on Blur
         const handleBlur = (e) => {
             if (e.target.classList.contains('item-price-display')) {
                 const container = e.target.closest('[data-idx]');
                 if (!container) return;
-                this.items[parseInt(container.dataset.idx)].price = parseNumber(e.target.value);
-                this.render();
+                const idx = parseInt(container.dataset.idx);
+                
+                // Pastikan format tetap benar saat blur
+                const raw = parseNumber(e.target.value);
+                this.items[idx].price = raw;
+                e.target.value = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Update total keseluruhan
+                this.updateTotalAmount();
             }
         };
 
@@ -86,6 +134,62 @@ export class ItemRepeater {
         if (this.cards) this.cards.addEventListener('click', handleClick);
     }
 
+    /**
+     * Update total untuk satu row tanpa full re-render
+     */
+    updateRowTotal(idx) {
+        const item = this.items[idx];
+        const rowTotal = (item.qty || 0) * (item.price || 0);
+        
+        // Update di table (desktop)
+        if (this.tbody) {
+            const row = this.tbody.querySelector(`tr[data-idx="${idx}"]`);
+            if (row) {
+                const totalCell = row.querySelector('td:nth-child(6)');
+                if (totalCell) {
+                    totalCell.textContent = formatRupiah(rowTotal);
+                }
+            }
+        }
+        
+        // Update di card (mobile) - jika ada
+        if (this.cards) {
+            const card = this.cards.querySelector(`[data-idx="${idx}"]`);
+            if (card) {
+                // Cari subtotal di card jika ada
+                const totalSpan = card.querySelector('.text-sm.font-black.text-indigo-600, .text-sm.font-black.text-slate-800');
+                if (totalSpan) {
+                    totalSpan.textContent = formatRupiah(rowTotal);
+                }
+            }
+        }
+        
+        // Update total keseluruhan
+        this.updateTotalAmount();
+    }
+
+    /**
+     * Update total amount tanpa full re-render
+     */
+    updateTotalAmount() {
+        this.totalAmount = 0;
+        this.items.forEach(item => {
+            this.totalAmount += (item.qty || 0) * (item.price || 0);
+        });
+        
+        if (this.totalDisplay) {
+            this.totalDisplay.textContent = formatRupiah(this.totalAmount);
+        }
+        
+        if (this.totalInput) {
+            this.totalInput.value = this.totalAmount;
+        }
+        
+        if (this.onTotalChange) {
+            this.onTotalChange(this.totalAmount);
+        }
+    }
+
     render() {
         if (!this.tbody) return;
 
@@ -96,6 +200,9 @@ export class ItemRepeater {
         this.items.forEach((item, i) => {
             const rowTotal = (item.qty || 0) * (item.price || 0);
             this.totalAmount += rowTotal;
+
+            // Format harga dengan "Rp 0" sebagai default
+            const priceFormatted = item.price > 0 ? formatRupiah(item.price) : 'Rp 0';
 
             // Desktop Row
             const tr = document.createElement('tr');
@@ -123,7 +230,7 @@ export class ItemRepeater {
                         data-field="unit">
                 </td>
                 <td class="p-3">
-                    <input type="text" value="${formatRupiah(item.price)}"
+                    <input type="text" value="${priceFormatted}" placeholder="Rp 0"
                         class="item-price-display w-full bg-transparent border-0 border-b border-slate-100
                             focus:border-indigo-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-right font-bold">
                     <input type="hidden" name="items[${i}][price]" value="${item.price}" class="item-price-hidden">
@@ -176,7 +283,7 @@ export class ItemRepeater {
                                     data-field="unit">
                             </div>
                         </div>
-                        <input type="text" value="${formatRupiah(item.price)}"
+                        <input type="text" value="${priceFormatted}" placeholder="Rp 0"
                             class="item-price-display w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-indigo-600 outline-none focus:border-indigo-400 transition-all">
                     </div>`;
                 this.cards.appendChild(card);

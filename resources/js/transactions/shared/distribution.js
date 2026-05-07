@@ -107,7 +107,7 @@ export class BranchDistribution {
             this.updateSummaryList();
             this.validateAndSubmit();
             return;
-        }
+        } 
 
         this.selectedBranches.forEach((branch, idx) => {
             if (this.currentMethod === 'equal') {
@@ -239,7 +239,7 @@ export class BranchDistribution {
             this.selectedBranches.forEach(branch => {
                 const pct = totalAmount > 0
                     ? ((branch.value / totalAmount) * 100).toFixed(1)
-                    : (branch.percent || 0).toFixed(1);
+                    : (parseFloat(branch.percent) || 0).toFixed(1);
 
                 const summaryRow = `
                 <div class="flex justify-between items-start text-sm border-b border-white/10 pb-3 pt-3 px-2 last:border-0 last:pb-0">

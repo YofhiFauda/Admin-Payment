@@ -430,9 +430,9 @@
                             data-field="unit">
                     </td>
                     <td class="p-2 md:p-3">
-                        <input type="text" value="${formatRupiah(item.price)}"
+                        <input type="text" value="${item.price > 0 ? formatRupiah(item.price) : 'Rp 0'}" placeholder="Rp 0"
                             class="item-price-display w-full bg-transparent border-0 border-b border-transparent
-                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors">
+                                focus:border-emerald-400 focus:ring-0 px-2 py-1 outline-none transition-colors text-right">
                         <input type="hidden" name="items[${i}][price]" value="${item.price}" class="item-price-hidden">
                     </td>
                     <td class="p-3 md:p-4 font-bold text-slate-800">${formatRupiah(rowTotal)}</td>
@@ -469,23 +469,96 @@
 
             if (e.target.classList.contains('item-field')) {
                 items[idx][e.target.dataset.field] = e.target.value;
-                if (e.target.dataset.field === 'qty') renderItems();
+                
+                // Realtime update untuk Qty tanpa full re-render
+                if (e.target.dataset.field === 'qty') {
+                    const qty = parseInt(e.target.value) || 0;
+                    items[idx].qty = qty;
+                    updateRowTotal(idx);
+                }
             }
             if (e.target.classList.contains('item-price-display')) {
+                // Real-time formatting untuk harga satuan
                 const raw = parseNumber(e.target.value);
                 items[idx].price = raw;
+                
+                // Format ulang dengan Rp prefix
+                const formatted = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Simpan posisi cursor
+                const cursorPos = e.target.selectionStart;
+                const oldLength = e.target.value.length;
+                
+                // Update value
+                e.target.value = formatted;
+                
+                // Restore posisi cursor (adjust untuk perubahan panjang)
+                const newLength = formatted.length;
+                const newCursorPos = cursorPos + (newLength - oldLength);
+                e.target.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Update hidden price
                 tr.querySelector('.item-price-hidden').value = raw;
+                
+                // Update total untuk row ini tanpa full re-render
+                updateRowTotal(idx);
             }
         });
+        
+        // Helper function untuk update total satu row
+        function updateRowTotal(idx) {
+            const item = items[idx];
+            const rowTotal = (item.qty || 0) * (item.price || 0);
+            
+            const tr = itemsTbody.querySelector(`tr[data-idx="${idx}"]`);
+            if (tr) {
+                const totalCell = tr.querySelector('td:nth-child(6)');
+                if (totalCell) {
+                    totalCell.textContent = formatRupiah(rowTotal);
+                }
+            }
+            
+            updateTotalAmount();
+        }
+
+        // Event focus untuk select all saat "Rp 0"
+        itemsTbody.addEventListener('focus', function (e) {
+            if (e.target.classList.contains('item-price-display')) {
+                if (e.target.value === 'Rp 0') {
+                    setTimeout(() => e.target.select(), 0);
+                }
+            }
+        }, true);
 
         itemsTbody.addEventListener('blur', function (e) {
             if (e.target.classList.contains('item-price-display')) {
                 const tr = e.target.closest('tr[data-idx]');
                 if (!tr) return;
-                items[parseInt(tr.dataset.idx)].price = parseNumber(e.target.value);
-                renderItems();
+                const idx = parseInt(tr.dataset.idx);
+                
+                // Pastikan format tetap benar saat blur
+                const raw = parseNumber(e.target.value);
+                items[idx].price = raw;
+                e.target.value = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Update total keseluruhan
+                updateTotalAmount();
             }
         }, true);
+        
+        // Helper function untuk update total amount tanpa full re-render
+        function updateTotalAmount() {
+            totalAmount = 0;
+            items.forEach(item => {
+                totalAmount += (item.qty || 0) * (item.price || 0);
+            });
+            
+            displayTotalItems.textContent = formatRupiah(totalAmount);
+            formTotalAmount.value = totalAmount;
+            finalTotal.textContent = formatRupiah(totalAmount);
+            
+            renderDistribution(); // update alokasi saat total berubah
+        }
 
         itemsTbody.addEventListener('click', function (e) {
             const btn = e.target.closest('.item-delete');
@@ -665,7 +738,7 @@
             selectedBranches.forEach(branch => {
                 const pct = totalAmount > 0
                     ? ((branch.value / totalAmount) * 100).toFixed(1)
-                    : (branch.percent || 0).toFixed(1);
+                    : (parseFloat(branch.percent) || 0).toFixed(1)
                 summaryBranchesList.insertAdjacentHTML('beforeend', `
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-300">${esc(branch.name)}</span>

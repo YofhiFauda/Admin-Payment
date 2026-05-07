@@ -46,17 +46,54 @@ export class ItemRepeater {
 
             if (e.target.classList.contains('item-field')) {
                 this.items[idx][e.target.dataset.field] = e.target.value;
-                if (e.target.dataset.field === 'qty') this.render();
+                
+                // Realtime update untuk Qty tanpa full re-render
+                if (e.target.dataset.field === 'qty') {
+                    const qty = parseInt(e.target.value) || 0;
+                    this.items[idx].qty = qty;
+                    this.updateRowTotal(idx);
+                }
             }
 
             if (e.target.classList.contains('item-price-display')) {
+                // Real-time formatting untuk harga satuan
                 const raw = unformatNumber(e.target.value);
                 this.items[idx].price = raw;
+                
+                // Format ulang dengan Rp prefix
+                const formatted = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Simpan posisi cursor
+                const cursorPos = e.target.selectionStart;
+                const oldLength = e.target.value.length;
+                
+                // Update value
+                e.target.value = formatted;
+                
+                // Restore posisi cursor (adjust untuk perubahan panjang)
+                const newLength = formatted.length;
+                const newCursorPos = cursorPos + (newLength - oldLength);
+                e.target.setSelectionRange(newCursorPos, newCursorPos);
+                
                 // Update hidden price
-                const row = this.tbody.querySelector(`tr[data-idx="${idx}"]`);
+                const row = this.tbody ? this.tbody.querySelector(`tr[data-idx="${idx}"]`) : null;
+                const card = this.cards ? this.cards.querySelector(`[data-idx="${idx}"]`) : null;
+                
                 if (row) {
                     const hidden = row.querySelector('.item-price-hidden');
                     if (hidden) hidden.value = raw;
+                }
+                
+                // Update total untuk row/card ini
+                this.updateRowTotal(idx);
+            }
+        };
+
+        const handleFocus = (e) => {
+            if (e.target.classList.contains('item-price-display')) {
+                // Saat focus, jika value adalah "Rp 0", select semua agar user bisa langsung ketik
+                if (e.target.value === 'Rp 0') {
+                    setTimeout(() => e.target.select(), 0);
                 }
             }
         };
@@ -66,8 +103,14 @@ export class ItemRepeater {
                 const container = e.target.closest('[data-idx]');
                 if (!container) return;
                 const idx = parseInt(container.dataset.idx);
-                this.items[idx].price = unformatNumber(e.target.value);
-                this.render();
+                
+                // Pastikan format tetap benar saat blur
+                const raw = unformatNumber(e.target.value);
+                this.items[idx].price = raw;
+                e.target.value = raw > 0 ? formatRupiah(raw) : 'Rp 0';
+                
+                // Update total keseluruhan
+                this.updateTotalAmount();
             }
         };
 
@@ -84,6 +127,9 @@ export class ItemRepeater {
         this.tbody.addEventListener('input', handleInput);
         if (this.cards) this.cards.addEventListener('input', handleInput);
 
+        this.tbody.addEventListener('focus', handleFocus, true);
+        if (this.cards) this.cards.addEventListener('focus', handleFocus, true);
+
         this.tbody.addEventListener('blur', handleBlur, true);
         if (this.cards) this.cards.addEventListener('blur', handleBlur, true);
 
@@ -99,6 +145,63 @@ export class ItemRepeater {
         }
     }
 
+    /**
+     * Update total untuk satu row/card tanpa full re-render
+     */
+    updateRowTotal(idx) {
+        const item = this.items[idx];
+        const rowTotal = (item.qty || 0) * (item.price || 0);
+        
+        // Update di table (desktop)
+        if (this.tbody) {
+            const row = this.tbody.querySelector(`tr[data-idx="${idx}"]`);
+            if (row) {
+                const totalCell = row.querySelector('td:nth-child(6)'); // Kolom total
+                if (totalCell) {
+                    totalCell.textContent = formatRupiah(rowTotal);
+                }
+            }
+        }
+        
+        // Update di card (mobile)
+        if (this.cards) {
+            const card = this.cards.querySelector(`[data-idx="${idx}"]`);
+            if (card) {
+                // Cari subtotal di card (ada di bagian bawah dengan class text-sm.font-black.text-slate-800)
+                const totalSpan = card.querySelector('.text-sm.font-black.text-slate-800');
+                if (totalSpan) {
+                    totalSpan.textContent = formatRupiah(rowTotal);
+                }
+            }
+        }
+        
+        // Update total keseluruhan
+        this.updateTotalAmount();
+    }
+
+    /**
+     * Update total amount tanpa full re-render
+     */
+    updateTotalAmount() {
+        let totalAmount = 0;
+        this.items.forEach(item => {
+            totalAmount += (item.qty || 0) * (item.price || 0);
+        });
+        
+        if (this.totalDisplay) {
+            this.totalDisplay.textContent = formatRupiah(totalAmount);
+        }
+        
+        if (this.formTotal) {
+            this.formTotal.value = totalAmount;
+            this.formTotal.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
+        if (this.onTotalChange) {
+            this.onTotalChange(totalAmount);
+        }
+    }
+
     render() {
         if (!this.tbody) return;
         this.tbody.innerHTML = '';
@@ -109,6 +212,9 @@ export class ItemRepeater {
             const rowTotal = (item.qty || 0) * (item.price || 0);
             totalAmount += rowTotal;
 
+            // Format harga dengan "Rp 0" sebagai default
+            const priceFormatted = item.price > 0 ? formatRupiah(item.price) : 'Rp 0';
+
             // Desktop Row
             let rowHtml = this.rowTemplate.innerHTML
                 .replace(/{idx}/g, i)
@@ -117,7 +223,7 @@ export class ItemRepeater {
                 .replace(/{qty}/g, item.qty)
                 .replace(/{unit}/g, escapeHtml(item.unit))
                 .replace(/{price}/g, item.price)
-                .replace(/{price_formatted}/g, formatRupiah(item.price))
+                .replace(/{price_formatted}/g, priceFormatted)
                 .replace(/{total_formatted}/g, formatRupiah(rowTotal))
                 .replace(/{desc}/g, escapeHtml(item.desc));
             
@@ -131,7 +237,7 @@ export class ItemRepeater {
                     .replace(/{name}/g, escapeHtml(item.name))
                     .replace(/{qty}/g, item.qty)
                     .replace(/{unit}/g, escapeHtml(item.unit))
-                    .replace(/{price_formatted}/g, formatRupiah(item.price))
+                    .replace(/{price_formatted}/g, priceFormatted)
                     .replace(/{total_formatted}/g, formatRupiah(rowTotal))
                     .replace(/{desc}/g, escapeHtml(item.desc));
                 
