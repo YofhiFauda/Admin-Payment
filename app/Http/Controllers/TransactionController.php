@@ -1224,17 +1224,8 @@ class TransactionController extends Controller
         
         if ($user->role === 'teknisi') {
             $query->where('submitted_by', $user->id);
-        } elseif ($user->role === 'atasan') {
-            $query->where(function($q) use ($user) {
-                $q->where('type', 'pengajuan')
-                ->orWhere(function($subQ) use ($user) {
-                    $subQ->whereIn('type', ['rembush', 'gudang'])
-                        ->whereHas('submitter', function($userQ) use ($user) {
-                            $userQ->where('atasan_id', $user->id);
-                        });
-                });
-            });
         }
+        // atasan, admin, owner: melihat semua transaksi (no filter)
 
         $this->applyFilters($query, $request);
         return response()->json(['count' => $query->count()]);
@@ -1252,17 +1243,8 @@ class TransactionController extends Controller
         if ($user->role === 'teknisi') {
             // ✅ Perbaikan: submitted_by bukan submitter_id
             $query->where('submitted_by', $user->id);
-        } elseif ($user->role === 'atasan') {
-            $query->where(function($q) use ($user) {
-                $q->where('type', 'pengajuan')
-                ->orWhere(function($subQ) use ($user) {
-                    $subQ->whereIn('type', ['rembush', 'gudang'])
-                        ->whereHas('submitter', function($userQ) use ($user) {
-                            $userQ->where('atasan_id', $user->id);
-                        });
-                });
-            });
         }
+        // atasan, admin, owner: melihat semua transaksi (no filter)
 
         $this->applyFilters($query, $request);
 
@@ -1318,17 +1300,8 @@ class TransactionController extends Controller
         // Role-based filtering
         if ($user->role === 'teknisi') {
             $query->where('submitted_by', $user->id);
-        } elseif ($user->role === 'atasan') {
-            $query->where(function($q) use ($user) {
-                $q->where('type', 'pengajuan')
-                ->orWhere(function($subQ) use ($user) {
-                    $subQ->whereIn('type', ['rembush', 'gudang'])
-                        ->whereHas('submitter', function($userQ) use ($user) {
-                            $userQ->where('atasan_id', $user->id);
-                        });
-                });
-            });
         }
+        // atasan, admin, owner: melihat semua transaksi (no filter)
 
         // Apply filters
         $this->applyFilters($query, $request);
@@ -1407,17 +1380,8 @@ class TransactionController extends Controller
         // Role-based filtering
         if ($user->role === 'teknisi') {
             $query->where('submitted_by', $user->id);
-        } elseif ($user->role === 'atasan') {
-            $query->where(function($q) use ($user) {
-                $q->where('type', 'pengajuan')
-                  ->orWhere(function($subQ) use ($user) {
-                      $subQ->whereIn('type', ['rembush', 'gudang'])
-                           ->whereHas('submitter', function($userQ) use ($user) {
-                               $userQ->where('atasan_id', $user->id);
-                           });
-                  });
-            });
         }
+        // atasan, admin, owner: melihat semua transaksi (no filter)
  
         // Apply filters
         $this->applyFilters($query, $request);

@@ -30,10 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     // 4. Initialize Item Repeater
-    // Parameters: tbody, cards, totalInput, totalDisplay, onTotalChange
+    // Parameters: tbody, totalInput, totalDisplay, onTotalChange
     new ItemRepeater(
         '#items-tbody',
-        '#items-cards',
         '#form-total-amount',
         '#display-total-items',
         (total) => {

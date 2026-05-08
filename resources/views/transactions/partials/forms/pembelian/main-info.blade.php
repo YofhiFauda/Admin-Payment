@@ -2,6 +2,14 @@
 {{-- INFORMASI UTAMA: PEMBELIAN                       --}}
 {{-- ══════════════════════════════════════════════════ --}}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-8 md:mb-10">
+
+    {{-- Vendor --}}
+    <div>
+        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Toko / Vendor (Opsional)</label>
+        <input type="text" name="vendor" id="vendor" value="{{ old('vendor') }}"
+            placeholder="Misal: Toko Bangunan Jaya"
+            class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all" />
+    </div>
     
     {{-- Tanggal --}}
     <div>
@@ -23,14 +31,6 @@
             </select>
             <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
         </div>
-    </div>
-
-    {{-- Vendor --}}
-    <div>
-        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Nama Toko / Vendor (Opsional)</label>
-        <input type="text" name="vendor" id="vendor" value="{{ old('vendor') }}"
-            placeholder="Misal: Toko Bangunan Jaya"
-            class="w-full border border-slate-200 rounded-xl p-3 md:p-3.5 text-xs md:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 outline-none transition-all" />
     </div>
 
     {{-- Metode Pembayaran --}}

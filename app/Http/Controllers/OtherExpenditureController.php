@@ -90,7 +90,7 @@ class OtherExpenditureController extends Controller
                 }
             }
 
-            $branchDebts = $debtQuery->paginate(20, ['*'], 'branch_debts');
+            $branchDebts = $debtQuery->paginate(10, ['*'], 'branch_debts');
             $branchDebts->appends($request->all());
         }
 
@@ -126,7 +126,8 @@ class OtherExpenditureController extends Controller
         ];
 
         if (in_array($jenis, ['bayar_hutang', 'piutang_usaha'])) {
-            $rules['branch_id'] = 'required|exists:branches,id';
+            $rules['branch_id']      = 'required|exists:branches,id';
+            $rules['dari_cabang_id'] = 'required|exists:branches,id';
         }
 
         if ($jenis === 'prive') {
@@ -161,7 +162,8 @@ class OtherExpenditureController extends Controller
         ];
 
         if (in_array($jenis, ['bayar_hutang', 'piutang_usaha'])) {
-            $data['branch_id'] = $validated['branch_id'];
+            $data['branch_id']      = $validated['branch_id'];
+            $data['dari_cabang_id'] = $validated['dari_cabang_id'];
         }
 
         if ($jenis === 'prive') {

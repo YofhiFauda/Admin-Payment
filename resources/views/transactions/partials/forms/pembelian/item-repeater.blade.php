@@ -11,8 +11,8 @@
     </div>
 
     <div class="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-        {{-- Desktop Table View --}}
-        <div class="hidden md:block overflow-x-auto">
+        {{-- Responsive Table View --}}
+        <div class="overflow-x-auto">
             <table class="w-full text-left text-sm whitespace-nowrap" id="items-table">
                 <thead class="text-[10px] text-slate-400 font-bold uppercase bg-slate-50 border-b border-slate-100 tracking-wider">
                     <tr>
@@ -30,11 +30,6 @@
                     {{-- Rendered via JS --}}
                 </tbody>
             </table>
-        </div>
-
-        {{-- Mobile Cards View --}}
-        <div class="md:hidden divide-y divide-slate-100 bg-white" id="items-cards">
-            {{-- Rendered via JS --}}
         </div>
         
         {{-- Baris Total --}}

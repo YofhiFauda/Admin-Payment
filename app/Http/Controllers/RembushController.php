@@ -424,9 +424,17 @@ class RembushController extends Controller
                 ]);
             }
             
-            broadcast(new \App\Events\TransactionCreated($transaction));
-
             DB::commit();
+
+            // Broadcast setelah commit — kegagalan broadcast tidak membatalkan transaksi
+            try {
+                broadcast(new \App\Events\TransactionCreated($transaction));
+            } catch (\Exception $broadcastEx) {
+                Log::warning('Broadcast TransactionCreated gagal (non-fatal)', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $broadcastEx->getMessage(),
+                ]);
+            }
 
             // Bersihkan session
             session()->forget([

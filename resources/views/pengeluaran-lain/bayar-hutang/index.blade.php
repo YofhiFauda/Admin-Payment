@@ -22,14 +22,6 @@
         </a>
     </div>
 
-    {{-- Flash notification --}}
-    @if(session('notification'))
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-3.5 rounded-xl text-sm font-semibold flex items-center gap-3">
-        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
-        {{ session('notification') }}
-    </div>
-    @endif
-
     {{-- Table Utama --}}
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -397,8 +397,17 @@ class PengajuanController extends Controller
                 dispatch(new SendPriceAnomalyNotificationJob($anomaly->id));
             }
 
-            broadcast(new \App\Events\TransactionCreated($transaction));
             DB::commit();
+
+            // Broadcast setelah commit — kegagalan broadcast tidak membatalkan transaksi
+            try {
+                broadcast(new \App\Events\TransactionCreated($transaction));
+            } catch (\Exception $broadcastEx) {
+                Log::warning('Broadcast TransactionCreated gagal (non-fatal)', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $broadcastEx->getMessage(),
+                ]);
+            }
 
             return redirect()->route('transactions.confirm', $transaction->id);
 

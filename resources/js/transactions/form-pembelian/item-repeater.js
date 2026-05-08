@@ -8,9 +8,8 @@ import { formatRupiah, parseNumber, esc } from '../shared/helpers.js';
  */
 
 export class ItemRepeater {
-    constructor(tbodySelector, cardsSelector, totalInputSelector, totalDisplaySelector, onTotalChange) {
+    constructor(tbodySelector, totalInputSelector, totalDisplaySelector, onTotalChange) {
         this.tbody = document.querySelector(tbodySelector);
-        this.cards = document.querySelector(cardsSelector);
         this.totalInput = document.querySelector(totalInputSelector);
         this.totalDisplay = document.querySelector(totalDisplaySelector);
         this.onTotalChange = onTotalChange;
@@ -71,7 +70,7 @@ export class ItemRepeater {
                 const newCursorPos = cursorPos + (newLength - oldLength);
                 e.target.setSelectionRange(newCursorPos, newCursorPos);
                 
-                // Update hidden price
+                // Update hidden price di desktop table
                 const row = this.tbody ? this.tbody.querySelector(`tr[data-idx="${idx}"]`) : null;
                 if (row) {
                     const hidden = row.querySelector('.item-price-hidden');
@@ -84,7 +83,6 @@ export class ItemRepeater {
         };
 
         this.tbody.addEventListener('input', handleInput);
-        if (this.cards) this.cards.addEventListener('input', handleInput);
 
         // Focus handler untuk select all saat "Rp 0"
         const handleFocus = (e) => {
@@ -96,7 +94,6 @@ export class ItemRepeater {
         };
 
         this.tbody.addEventListener('focus', handleFocus, true);
-        if (this.cards) this.cards.addEventListener('focus', handleFocus, true);
 
         // Price Format on Blur
         const handleBlur = (e) => {
@@ -116,7 +113,6 @@ export class ItemRepeater {
         };
 
         this.tbody.addEventListener('blur', handleBlur, true);
-        if (this.cards) this.cards.addEventListener('blur', handleBlur, true);
 
         // Delete Handling
         const handleClick = (e) => {
@@ -131,7 +127,6 @@ export class ItemRepeater {
         };
 
         this.tbody.addEventListener('click', handleClick);
-        if (this.cards) this.cards.addEventListener('click', handleClick);
     }
 
     /**
@@ -148,18 +143,6 @@ export class ItemRepeater {
                 const totalCell = row.querySelector('td:nth-child(6)');
                 if (totalCell) {
                     totalCell.textContent = formatRupiah(rowTotal);
-                }
-            }
-        }
-        
-        // Update di card (mobile) - jika ada
-        if (this.cards) {
-            const card = this.cards.querySelector(`[data-idx="${idx}"]`);
-            if (card) {
-                // Cari subtotal di card jika ada
-                const totalSpan = card.querySelector('.text-sm.font-black.text-indigo-600, .text-sm.font-black.text-slate-800');
-                if (totalSpan) {
-                    totalSpan.textContent = formatRupiah(rowTotal);
                 }
             }
         }
@@ -194,7 +177,6 @@ export class ItemRepeater {
         if (!this.tbody) return;
 
         this.tbody.innerHTML = '';
-        if (this.cards) this.cards.innerHTML = '';
         this.totalAmount = 0;
 
         this.items.forEach((item, i) => {
@@ -250,44 +232,6 @@ export class ItemRepeater {
                 </td>`;
             this.tbody.appendChild(tr);
 
-            // Mobile Card
-            if (this.cards) {
-                const card = document.createElement('div');
-                card.className = 'p-4 space-y-4 relative bg-white';
-                card.dataset.idx = i;
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">${i + 1}</span>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Baris #${i + 1}</span>
-                        </div>
-                        <button type="button" class="item-delete p-1.5 bg-red-50 text-red-500 rounded-lg">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        </button>
-                    </div>
-                    <div class="space-y-3">
-                        <input type="text" value="${esc(item.name)}" placeholder="Nama Barang..."
-                            class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-400 transition-all"
-                            data-field="name">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Qty</label>
-                                <input type="number" value="${item.qty}" min="1"
-                                    class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700"
-                                    data-field="qty">
-                            </div>
-                            <div>
-                                <label class="block text-[8px] font-bold text-slate-400 uppercase mb-1">Satuan</label>
-                                <input type="text" value="${esc(item.unit)}"
-                                    class="item-field w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm"
-                                    data-field="unit">
-                            </div>
-                        </div>
-                        <input type="text" value="${priceFormatted}" placeholder="Rp 0"
-                            class="item-price-display w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-indigo-600 outline-none focus:border-indigo-400 transition-all">
-                    </div>`;
-                this.cards.appendChild(card);
-            }
         });
 
         // Update Totals
@@ -296,7 +240,6 @@ export class ItemRepeater {
 
         // Refresh Lucide Icons
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: this.tbody });
-        if (typeof lucide !== 'undefined' && this.cards) lucide.createIcons({ root: this.cards });
 
         // Trigger callback for distribution sync
         if (this.onTotalChange) this.onTotalChange(this.totalAmount);

@@ -43,6 +43,18 @@ class PembelianController extends Controller
      */
     public function store(Request $request)
     {
+        // Debug: Log request data untuk troubleshooting
+        Log::info('[PEMBELIAN] Store request received', [
+            'has_items' => $request->has('items'),
+            'items_count' => $request->has('items') ? count($request->items) : 0,
+            'has_branches' => $request->has('branches'),
+            'branches_count' => $request->has('branches') ? count($request->branches) : 0,
+            'amount' => $request->input('amount'),
+            'payment_method' => $request->input('payment_method'),
+            'category' => $request->input('category'),
+            'date' => $request->input('date'),
+        ]);
+
         $request->validate([
             'date'           => 'required|date',
             'vendor'         => 'nullable|string|max:255',
@@ -66,6 +78,18 @@ class PembelianController extends Controller
             'bank_name' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
             'account_name' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
             'account_number' => 'required_if:payment_method,transfer_penjual|string|max:100|nullable',
+        ], [
+            'date.required' => 'Tanggal pembelian wajib diisi.',
+            'category.required' => 'Kategori wajib dipilih.',
+            'items.required' => 'Minimal harus ada 1 item barang.',
+            'items.*.name.required' => 'Nama barang pada baris :position wajib diisi.',
+            'items.*.qty.required' => 'Jumlah barang pada baris :position wajib diisi.',
+            'items.*.price.required' => 'Harga satuan pada baris :position wajib diisi.',
+            'amount.required' => 'Total amount wajib diisi.',
+            'payment_method.required' => 'Metode pembayaran wajib dipilih.',
+            'branches.required' => 'Minimal harus memilih 1 cabang.',
+            'branches.*.branch_id.required' => 'ID cabang pada alokasi :position wajib diisi.',
+            'branches.*.allocation_percent.required' => 'Persentase alokasi cabang :position wajib diisi.',
         ]);
 
         // Validate branch allocation
@@ -175,11 +199,19 @@ class PembelianController extends Controller
                 ]);
             }
 
-            broadcast(new \App\Events\TransactionCreated($transaction));
-
             DB::commit();
 
-            return redirect()->route('transactions.index')->with('success', 'Pembelian berhasil disimpan dan menunggu Review Management.');
+            // Broadcast setelah commit — kegagalan broadcast tidak membatalkan transaksi
+            try {
+                broadcast(new \App\Events\TransactionCreated($transaction));
+            } catch (\Exception $broadcastEx) {
+                Log::warning('Broadcast TransactionCreated gagal (non-fatal)', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $broadcastEx->getMessage(),
+                ]);
+            }
+
+            return redirect()->route('transactions.confirm', $transaction->id);
 
         } catch (\Exception $e) {
             DB::rollBack();
