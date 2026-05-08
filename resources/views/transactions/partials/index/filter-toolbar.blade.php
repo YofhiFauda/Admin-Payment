@@ -86,31 +86,40 @@
 
         <!-- Group 2: Type Filters -->
         <!-- Group 2: Type Filters - Grid on 2-row mode, flex on 1-row mode -->
-        <div
-            class="w-full min-[1510px]:w-auto grid grid-cols-4 gap-2 min-[1510px]:flex min-[1510px]:items-center min-[1510px]:gap-2 overflow-x-auto scrollbar-hide pb-1 min-[1510px]:pb-0">
-            @php $currentType = request('type', 'all'); @endphp
+        <div class="w-full min-[1510px]:w-auto grid grid-cols-4 gap-2 min-[1510px]:flex min-[1510px]:items-center min-[1510px]:gap-2 overflow-x-auto scrollbar-hide pb-1 min-[1510px]:pb-0">
+            @php 
+                // Menggunakan ternary untuk mencegah bug jika URL ?type= (kosong)
+                $currentType = request('type') ?: 'all'; 
+            @endphp
+            
+            <!-- Button: Semua -->
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => null])) }}"
                 data-type="all"
-                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50' }}">
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'all' ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900 hover:border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300' }}">
                 Semua
             </a>
+            
+            <!-- Button: Rembush -->
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'rembush'])) }}"
                 data-type="rembush"
-                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50' }}">
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'rembush' ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 hover:border-indigo-700' : 'bg-white text-slate-500 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300' }}">
                 <i data-lucide="receipt" class="w-3 h-3 inline mr-1"></i>Rembush
             </a>
+            
+            <!-- Button: Pengajuan -->
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'pengajuan'])) }}"
                 data-type="pengajuan"
-                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50' }}">
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'pengajuan' ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'bg-white text-slate-500 border-slate-200 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-300' }}">
                 <i data-lucide="shopping-bag" class="w-3 h-3 inline mr-1"></i>Pengajuan
             </a>
+            
+            <!-- Button: Pembelian (Gudang) -->
             <a href="{{ route('transactions.index', array_merge(request()->except('type'), ['type' => 'gudang'])) }}"
                 data-type="gudang"
-                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50' }}">
+                class="js-filter-type px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-center border {{ $currentType === 'gudang' ? 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700 hover:border-amber-700' : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300' }}">
                 <i data-lucide="package" class="w-3 h-3 inline mr-1"></i>Pembelian
             </a>
         </div>
-    </div>
 
     <!-- TABLET: 3 Rows Layout (md to lg screens) -->
     <div class="hide-on-laptop hidden md:flex flex-col gap-3">

@@ -60,7 +60,13 @@ Broadcast::channel('transactions.{id}', function ($user, $id) use ($authorize) {
 });
 
 Broadcast::channel('transactions', function ($user) use ($authorize) {
-    return $authorize("transactions", (bool) $user, $user);
+    $allowedRoles = ['owner', 'atasan', 'admin'];
+    $currentRole = strtolower(trim((string)($user->role ?? '')));
+    $isAllowed = in_array($currentRole, $allowedRoles);
+    
+    return $authorize("transactions", $isAllowed, $user, [
+        'allowed' => $allowedRoles
+    ]);
 });
 
 Broadcast::channel('activities', function ($user) use ($authorize) {

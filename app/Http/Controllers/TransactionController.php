@@ -1004,6 +1004,9 @@ class TransactionController extends Controller
 
             $transaction->delete();
 
+            // Broadcast delete event untuk real-time update
+            broadcast(new \App\Events\TransactionDeleted($id, $invoiceNumber));
+
             // Log activity
             $log = ActivityLog::create([
                 'user_id'     => Auth::id(),

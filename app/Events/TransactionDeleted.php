@@ -9,25 +9,26 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Transaction;
 
-class TransactionUpdated implements ShouldBroadcastNow
+class TransactionDeleted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $transaction;
+    public $transactionId;
+    public $invoiceNumber;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Transaction $transaction)
+    public function __construct(int $transactionId, string $invoiceNumber)
     {
-        $this->transaction = $transaction;
+        $this->transactionId = $transactionId;
+        $this->invoiceNumber = $invoiceNumber;
         
         // Debug logging
-        \Log::info('🔔 [BROADCAST] TransactionUpdated event constructed', [
-            'id' => $transaction->id,
-            'invoice_number' => $transaction->invoice_number,
+        \Log::info('🔔 [BROADCAST] TransactionDeleted event constructed', [
+            'id' => $transactionId,
+            'invoice_number' => $invoiceNumber,
             'broadcast_driver' => config('broadcasting.default'),
         ]);
     }
@@ -39,11 +40,8 @@ class TransactionUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        // Broadcast to global channel for table refreshes, 
-        // and personal channel for the submitter's Toast notification.
         return [
             new PrivateChannel('transactions'),
-            new PrivateChannel('transactions.' . $this->transaction->submitted_by),
         ];
     }
     
@@ -52,7 +50,7 @@ class TransactionUpdated implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'transaction.updated';
+        return 'transaction.deleted';
     }
 
     /**
@@ -63,7 +61,8 @@ class TransactionUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'transaction' => $this->transaction->toSearchArray()
+            'id' => $this->transactionId,
+            'invoice_number' => $this->invoiceNumber,
         ];
     }
 }

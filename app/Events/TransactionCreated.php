@@ -23,6 +23,13 @@ class TransactionCreated implements ShouldBroadcastNow
     public function __construct(Transaction $transaction)
     {
         $this->transaction = $transaction;
+        
+        // Debug logging
+        \Log::info('🔔 [BROADCAST] TransactionCreated event constructed', [
+            'id' => $transaction->id,
+            'invoice_number' => $transaction->invoice_number,
+            'broadcast_driver' => config('broadcasting.default'),
+        ]);
     }
 
     /**

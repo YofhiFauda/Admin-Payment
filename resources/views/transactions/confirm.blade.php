@@ -131,13 +131,21 @@
 
         <!-- Title with Animation -->
         <h1 class="text-2xl font-extrabold text-[#1e293b] mb-3 fade-in-up" style="animation-delay: 0.3s; opacity: 0;">
-            {{ $transaction->isPengajuan() ? 'Pengajuan' : 'Reimbursement' }} Berhasil!
+            @if($transaction->isPengajuan())
+                Pengajuan Berhasil!
+            @elseif($transaction->isPembelian())
+                Pembelian Berhasil!
+            @else
+                Reimbursement Berhasil!
+            @endif
         </h1>
         
         <!-- Description with Animation -->
         <p class="text-slate-500 text-sm text-center mb-8 px-4 leading-relaxed fade-in-up" style="animation-delay: 0.4s; opacity: 0;">
             @if($transaction->isPengajuan())
                 Terima kasih, dokumen pengajuan dana Anda telah kami terima dan akan segera diproses.
+            @elseif($transaction->isPembelian())
+                Data pembelian barang telah berhasil disimpan dan akan segera direview oleh management.
             @else
                 Bukti nota/struk reimbursement Anda telah berhasil disubmit. Kami akan melakukan verifikasi secepatnya.
             @endif
@@ -161,6 +169,8 @@
                         <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">JENIS TRANSAKSI</span>
                         @if($transaction->isPengajuan())
                             <span class="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg transition-all hover:bg-blue-100">Pengajuan</span>
+                        @elseif($transaction->isPembelian())
+                            <span class="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-lg transition-all hover:bg-amber-100">Pembelian</span>
                         @else
                             <span class="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg transition-all hover:bg-purple-100">Reimbursement</span>
                         @endif
