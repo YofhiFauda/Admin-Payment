@@ -40,6 +40,8 @@ class TransactionDeleted implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
+        // Broadcast to global channel only
+        // Personal channel not needed for deletion (user already knows they deleted it)
         return [
             new PrivateChannel('transactions'),
         ];

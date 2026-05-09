@@ -1619,24 +1619,57 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // ── Listeners untuk GRID UPDATES ──
-        window.Echo.private(`ocr.${userId}`)
-            .listen('.ocr.updated', (e) => {
-                if (e.payload && e.payload.transaction) window.handleRealtimeTransactionUpdate(e.payload.transaction);
-            });
+        window.handleRealtimeTransactionDeletion = function (data) {
+            console.log('🗑️ [REALTIME] Transaction Deleted:', data);
+            if (typeof SearchEngine !== 'undefined' && SearchEngine.deleteTransaction) {
+                SearchEngine.deleteTransaction(data.id);
+            }
+        };
 
+        // ── STRATEGY: Role-Based Channel Subscription ──
+        // Teknisi: Only personal channel (transactions.{userId})
+        // Admin/Owner/Atasan: Both personal + global channel (transactions)
+        
+        // 1. Personal Channel - ALL ROLES (for their own transactions)
         window.Echo.private(`transactions.${userId}`)
-            .listen('.transaction.updated', (e) => {
-                if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
-            });
-
-        window.Echo.private(`transactions`)
             .listen('.transaction.created', (e) => {
+                console.log('📥 [PERSONAL] Transaction Created:', e);
                 if (e.transaction) window.handleRealtimeTransactionCreation(e.transaction);
             })
             .listen('.transaction.updated', (e) => {
+                console.log('📥 [PERSONAL] Transaction Updated:', e);
                 if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
             });
+
+        // 2. OCR Channel - ALL ROLES (for OCR processing updates)
+        window.Echo.private(`ocr.${userId}`)
+            .listen('.ocr.updated', (e) => {
+                console.log('📥 [OCR] Status Updated:', e);
+                if (e.payload && e.payload.transaction) window.handleRealtimeTransactionUpdate(e.payload.transaction);
+            });
+
+        // 3. Global Channel - ONLY for Admin/Owner/Atasan (to see all transactions)
+        if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
+            window.Echo.private(`transactions`)
+                .listen('.transaction.created', (e) => {
+                    console.log('📡 [GLOBAL] Transaction Created:', e);
+                    // Only add if it's NOT from current user (to avoid duplicate from personal channel)
+                    if (e.transaction && e.transaction.submitted_by !== userId) {
+                        window.handleRealtimeTransactionCreation(e.transaction);
+                    }
+                })
+                .listen('.transaction.updated', (e) => {
+                    console.log('📡 [GLOBAL] Transaction Updated:', e);
+                    // Only update if it's NOT from current user (to avoid duplicate from personal channel)
+                    if (e.transaction && e.transaction.submitted_by !== userId) {
+                        window.handleRealtimeTransactionUpdate(e.transaction);
+                    }
+                })
+                .listen('.transaction.deleted', (e) => {
+                    console.log('📡 [GLOBAL] Transaction Deleted:', e);
+                    if (e.id) window.handleRealtimeTransactionDeletion(e);
+                });
+        }
 
         if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
             window.Echo.private(`notifications.management`)

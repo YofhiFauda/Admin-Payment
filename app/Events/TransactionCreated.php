@@ -39,8 +39,12 @@ class TransactionCreated implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
+        // Broadcast to:
+        // 1. Global channel for Admin/Owner/Atasan to see all new transactions
+        // 2. Personal channel for the creator to get real-time feedback
         return [
             new PrivateChannel('transactions'),
+            new PrivateChannel('transactions.' . $this->transaction->submitted_by),
         ];
     }
     
