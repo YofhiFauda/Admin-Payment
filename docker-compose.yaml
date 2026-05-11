@@ -46,8 +46,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    networks:
-      - app_network
     deploy:
       resources:
         limits:
@@ -79,18 +77,16 @@ services:
       - app_public:/var/www/public:ro
     depends_on:
       - app
-    networks:
-      - app_network
     labels:
       # Coolify/Traefik labels for HTTP routing
       - "traefik.enable=true"
-      - "traefik.http.routers.whusnet.rule=Host(`${APP_DOMAIN:-whusnet.example.com}`)"
+      - "traefik.http.routers.whusnet.rule=Host(`admin-payment.whusnet.com`)"
       - "traefik.http.routers.whusnet.entrypoints=websecure"
       - "traefik.http.routers.whusnet.tls=true"
       - "traefik.http.routers.whusnet.tls.certresolver=letsencrypt"
       - "traefik.http.services.whusnet.loadbalancer.server.port=80"
       # Optional: redirect HTTP to HTTPS
-      - "traefik.http.routers.whusnet-http.rule=Host(`${APP_DOMAIN:-whusnet.example.com}`)"
+      - "traefik.http.routers.whusnet-http.rule=Host(`admin-payment.whusnet.com`)"
       - "traefik.http.routers.whusnet-http.entrypoints=web"
       - "traefik.http.routers.whusnet-http.middlewares=redirect-to-https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
@@ -134,8 +130,6 @@ services:
       - ./docker/mysql/production.cnf:/etc/mysql/conf.d/production.cnf:ro
       - ./backups:/backups
     command: --default-authentication-plugin=mysql_native_password
-    networks:
-      - app_network
     deploy:
       resources:
         limits:
@@ -150,7 +144,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      test: ["CMD", "mysql", "-h", "db", "-u${DB_USERNAME}", "-p${DB_PASSWORD}", "-e", "SELECT 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -181,8 +175,6 @@ services:
       --tcp-keepalive 300
     volumes:
       - redis_data:/data
-    networks:
-      - app_network
     deploy:
       resources:
         limits:
@@ -229,8 +221,6 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-    networks:
-      - app_network
     deploy:
       resources:
         limits:
@@ -276,8 +266,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - app_network
     labels:
       # Coolify/Traefik labels for WebSocket routing
       - "traefik.enable=true"
@@ -328,8 +316,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - app_network
     deploy:
       resources:
         limits:
@@ -343,10 +329,6 @@ services:
       options:
         max-size: "5m"
         max-file: "3"
-
-networks:
-  app_network:
-    driver: bridge
 
 volumes:
   dbdata:
