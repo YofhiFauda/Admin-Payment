@@ -571,21 +571,21 @@
 
                                 {{-- Menu Items --}}
                                 <div class="py-2">
-                                    <a href=""
+                                    {{-- <a href=""
                                         class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                                         <i data-lucide="user" class="w-[18px] h-[18px] text-slate-500"></i>
                                         <span>Profil Saya</span>
-                                    </a>
+                                    </a> --}}
                                     <button type="button" onclick="openBankAccountsModal({{ Auth::id() }})"
                                         class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left">
                                         <i data-lucide="credit-card" class="w-[18px] h-[18px] text-slate-500"></i>
                                         <span>Rekening Saya</span>
                                     </button>
-                                    <a href=""
+                                    {{-- <a href=""
                                         class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                                         <i data-lucide="settings" class="w-[18px] h-[18px] text-slate-500"></i>
                                         <span>Pengaturan</span>
-                                    </a>
+                                    </a> --}}
                                 </div>
 
                                 {{-- Logout --}}
@@ -784,7 +784,7 @@
 
                             {{-- Menu --}}
                             <div class="py-2">
-                                <a href=""
+                                {{-- <a href=""
                                     class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                                     <i data-lucide="user" class="w-[18px] h-[18px] text-slate-500"></i>
                                     <span>Profil Saya</span>
@@ -793,7 +793,7 @@
                                     class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
                                     <i data-lucide="settings" class="w-[18px] h-[18px] text-slate-500"></i>
                                     <span>Pengaturan</span>
-                                </a>
+                                </a> --}}
                             </div>
 
                             {{-- Logout --}}

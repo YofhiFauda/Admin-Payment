@@ -1,6 +1,6 @@
 {{-- Table Desktop View --}}
 
-<div class="show-on-laptop overflow-x-auto">
+<div class="show-on-laptop">
     <table class="w-full text-left border-collapse table-compact">
         <thead>
             <tr
