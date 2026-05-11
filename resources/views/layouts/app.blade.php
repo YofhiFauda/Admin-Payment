@@ -1688,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
         @stack('modals')
         <x-confirm-modal id="globalConfirmModal" />
         @stack('scripts')
+    @include('transactions.partials.forms.shared.camera-modal')
 </body>
 
 </html>

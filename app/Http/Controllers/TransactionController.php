@@ -28,15 +28,18 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 // 🔔 TELEGRAM: Import TelegramBotService
 use App\Services\Telegram\TelegramBotService;
 use App\Jobs\PriceIndex\CalculatePriceIndexJob;
+use App\Services\ImageCompressionService;
 
 class TransactionController extends Controller
 {
     // 🔔 TELEGRAM: Inject service via constructor
     private TelegramBotService $telegram;
+    private ImageCompressionService $compression;
 
-    public function __construct(TelegramBotService $telegram)
+    public function __construct(TelegramBotService $telegram, ImageCompressionService $compression)
     {
-        $this->telegram = $telegram;
+        $this->telegram    = $telegram;
+        $this->compression = $compression;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1073,18 +1076,18 @@ class TransactionController extends Controller
             $messages = [];
 
             if (!$isCash) {
-                $rules['payment_proof']          = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                $rules['payment_proof']          = 'required|file|mimes:jpg,jpeg,png,pdf|max:10240';
                 $rules['bank_account_id']        = 'required|exists:branch_bank_accounts,id';
                 $rules['sender_bank_account_id'] = 'required|exists:branch_bank_accounts,id';
                 $messages = [
                     'payment_proof.required'          => 'Bukti transfer wajib diunggah.',
-                    'payment_proof.max'               => 'Ukuran bukti transfer maksimal 5MB.',
+                    'payment_proof.max'               => 'Ukuran bukti transfer maksimal 10MB.',
                     'bank_account_id.required'        => 'Rekening tujuan wajib dipilih.',
                     'sender_bank_account_id.required' => 'Rekening pengirim wajib dipilih.',
                 ];
             } else {
                 // Cash: proof opsional tapi jika dikirim harus valid
-                $rules['payment_proof'] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                $rules['payment_proof'] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240';
             }
 
             $request->validate($rules, $messages);
@@ -1096,6 +1099,9 @@ class TransactionController extends Controller
                 $file = $request->file('payment_proof');
                 $filename = 'debt_' . $debt->id . '_' . time() . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('payment_proofs/debts', $filename, 'public');
+
+                // 🗜️ Kompresi bukti bayar hutang (skip PDF)
+                $this->compression->compressUpload(Storage::disk('public')->path($path));
             }
 
             $paymentMethod = $isCash ? 'cash' : 'transfer';

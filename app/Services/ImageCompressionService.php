@@ -10,14 +10,15 @@ use Intervention\Image\Encoders\PngEncoder;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  ImageCompressionService — WHUSNET OCR Pre-processing (v4 API)
+ *  ImageCompressionService — WHUSNET Upload Optimizer (v4 API)
  *
- *  Mengompres gambar nota sebelum dikirim ke n8n webhook.
- *  Target: selalu di bawah 1MB (dapat dikonfigurasi via .env).
+ *  Mengompres gambar yang diunggah di seluruh modul aplikasi.
+ *  Target: selalu di bawah threshold (default 1MB, via .env).
  *
  *  Strategi Kompresi (3 Step - Updated for v4):
  *  - Menggunakan decodePath() untuk membaca file.
  *  - Menggunakan discrete encoders untuk output.
+ *  - Skip otomatis untuk file non-gambar (PDF, dll).
  * ═══════════════════════════════════════════════════════════════
  */
 class ImageCompressionService
@@ -61,6 +62,31 @@ class ImageCompressionService
     public function compress(string $filePath): string
     {
         // Gunakan optimasi OCR secara default untuk hasil terbaik di Gemini
+        return $this->optimizeForOcr($filePath);
+    }
+
+    /**
+     * Safe-to-call dari semua controller upload.
+     * Otomatis melewati file PDF / non-gambar.
+     * Hanya memproses: jpg, jpeg, png, gif, bmp, webp.
+     *
+     * @param string $filePath  Path absolut ke file yang sudah disimpan di storage.
+     * @return string           Path yang sama (tidak berubah).
+     */
+    public function compressUpload(string $filePath): string
+    {
+        if (! file_exists($filePath)) {
+            return $filePath;
+        }
+
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        if (! in_array($ext, $imageExtensions)) {
+            Log::info('[ImageCompression] Skipped non-image file.', ['path' => $filePath, 'ext' => $ext]);
+            return $filePath;
+        }
+
         return $this->optimizeForOcr($filePath);
     }
 

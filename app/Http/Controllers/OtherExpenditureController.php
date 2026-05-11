@@ -8,9 +8,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Services\ImageCompressionService;
+
 
 class OtherExpenditureController extends Controller
 {
+    private ImageCompressionService $compression;
+
+    public function __construct(ImageCompressionService $compression)
+    {
+        $this->compression = $compression;
+    }
+
     private const JENIS_CONFIG = [
         'bayar_hutang'  => ['label' => 'Bayar Hutang',  'icon' => 'credit-card',    'color' => 'red'],
         'piutang_usaha' => ['label' => 'Piutang Usaha', 'icon' => 'trending-up',    'color' => 'blue'],
@@ -122,7 +131,7 @@ class OtherExpenditureController extends Controller
             'tanggal'       => 'required|date',
             'nominal'       => 'required|numeric|min:1',
             'keterangan'    => 'nullable|string|max:1000',
-            'bukti_transfer'=> 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'bukti_transfer'=> 'nullable|image|mimes:jpg,jpeg,png|max:10240',
         ];
 
         if (in_array($jenis, ['bayar_hutang', 'piutang_usaha'])) {
@@ -145,6 +154,9 @@ class OtherExpenditureController extends Controller
             $ext      = $file->getClientOriginalExtension();
             $filePath = "pengeluaran-lain/{$invoice}.{$ext}";
             Storage::disk('public')->put($filePath, file_get_contents($file));
+
+            // 🗜️ Kompresi gambar setelah disimpan (lewati PDF)
+            $this->compression->compressUpload(Storage::disk('public')->path($filePath));
         }
 
         // Generate invoice number

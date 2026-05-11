@@ -341,7 +341,7 @@ Add IP whitelist if needed:
 ### Laravel Log Viewer
 
 - **CPU:** < 0.5%
-- **Memory:** ~5MB
+- **Memory:** ~10MB
 - **Disk I/O:** Minimal (only when viewing)
 - **Response Time:** < 100ms
 

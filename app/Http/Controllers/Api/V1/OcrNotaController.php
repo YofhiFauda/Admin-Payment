@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\UserBankAccount;
+use App\Services\ImageCompressionService;
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -35,10 +36,12 @@ class OcrNotaController extends Controller
 {
     // 🔔 TELEGRAM: Inject service via constructor
     private TelegramBotService $telegram;
+    private ImageCompressionService $compression;
 
-    public function __construct(TelegramBotService $telegram)
+    public function __construct(TelegramBotService $telegram, ImageCompressionService $compression)
     {
-        $this->telegram = $telegram;
+        $this->telegram    = $telegram;
+        $this->compression = $compression;
     }
 
     /**
@@ -60,7 +63,7 @@ class OcrNotaController extends Controller
         }
         \Illuminate\Support\Facades\RateLimiter::hit($key, 5);
         $validator = Validator::make($request->all(), [
-            'foto_nota'        => 'required|file|image|max:5120',
+            'foto_nota'        => 'required|file|image|max:10240',
             'transaksi_id'     => 'nullable|string',
             'expected_nominal' => 'nullable|numeric',
             'payment_method'   => 'required|in:cash,transfer_teknisi,transfer_penjual',
@@ -78,6 +81,9 @@ class OcrNotaController extends Controller
         $uploadId    = IdGeneratorService::buildUploadId($seq);
         $transaksiId = $request->transaksi_id ?? Str::uuid()->toString();
         $path        = $request->file('foto_nota')->store('notas', 'public');
+
+        // 🗜️ Kompresi gambar nota untuk OCR (skip PDF)
+        $this->compression->compressUpload(Storage::disk('public')->path($path));
 
         $transaction = Transaction::create([
             'upload_id'      => $uploadId,
@@ -252,7 +258,7 @@ class OcrNotaController extends Controller
         $request->replace($input);
 
         $validator = Validator::make($request->all(), [
-            'invoice_file'       => 'nullable|file|image|max:5120', // Foto invoice bersifat opsional
+            'invoice_file'       => 'nullable|file|image|max:10240', // Foto invoice bersifat opsional
             'transaksi_id'       => 'required|string',
             'diskon_pengiriman'  => 'nullable|numeric|min:0',
             'ongkir'             => 'nullable|numeric|min:0',
@@ -334,6 +340,9 @@ class OcrNotaController extends Controller
         $path = null;
         if ($request->hasFile('invoice_file')) {
             $path = $request->file('invoice_file')->store('invoices', 'public');
+
+            // 🗜️ Kompresi invoice Pengajuan (skip PDF)
+            $this->compression->compressUpload(Storage::disk('public')->path($path));
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -514,8 +523,8 @@ class OcrNotaController extends Controller
     public function uploadCash(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'foto_penyerahan' => 'nullable|file|image|max:5120',
-            'file'            => 'nullable|file|image|max:5120',
+            'foto_penyerahan' => 'nullable|file|image|max:10240',
+            'file'            => 'nullable|file|image|max:10240',
             'upload_id'       => 'required|string',
             'transaksi_id'    => 'required|string',
             'teknisi_id'      => 'nullable|string',
@@ -550,9 +559,14 @@ class OcrNotaController extends Controller
         }
 
         $fileInput = $request->hasFile('foto_penyerahan') ? 'foto_penyerahan' : 'file';
-        $path = $request->hasFile($fileInput) 
-            ? $request->file($fileInput)->store('payments/cash', 'public') 
+        $path = $request->hasFile($fileInput)
+            ? $request->file($fileInput)->store('payments/cash', 'public')
             : null;
+
+        // 🗜️ Kompresi bukti cash (skip PDF & skip jika tidak ada file)
+        if ($path) {
+            $this->compression->compressUpload(Storage::disk('public')->path($path));
+        }
 
         $isPembelian = $transaction->type === 'gudang';
 
@@ -752,8 +766,8 @@ class OcrNotaController extends Controller
     public function uploadTransfer(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'bukti_transfer'   => 'nullable|file|image|max:5120',
-            'file'             => 'nullable|file|image|max:5120',
+            'bukti_transfer'   => 'nullable|file|image|max:10240',
+            'file'             => 'nullable|file|image|max:10240',
             'upload_id'        => 'required|string',
             'transaksi_id'     => 'required|string',
             'expected_nominal' => 'required|numeric',
@@ -799,6 +813,9 @@ class OcrNotaController extends Controller
         }
 
         $path = $request->file($fileInput)->store('payments/transfer', 'public');
+
+        // 🗜️ Kompresi bukti transfer (skip PDF)
+        $this->compression->compressUpload(Storage::disk('public')->path($path));
 
         // Auto-update Technician Profile (New Implementation)
         if ($transaction->payment_method === 'transfer_teknisi' && $transaction->submitter) {

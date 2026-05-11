@@ -6,7 +6,9 @@ use App\Models\Branch;
 use App\Models\Transaction;
 use App\Models\TransactionCategory;
 use App\Services\IdGeneratorService;
+use App\Services\ImageCompressionService;
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +16,13 @@ use Illuminate\Support\Facades\Storage;
  
 class PembelianController extends Controller
 {
+    private ImageCompressionService $compression;
+
+    public function __construct(ImageCompressionService $compression)
+    {
+        $this->compression = $compression;
+    }
+
     /**
      * Show loading transition before the form.
      */
@@ -70,7 +79,7 @@ class PembelianController extends Controller
             'payment_method' => 'required|string|in:cash,transfer_teknisi,transfer_penjual',
             'technician_id' => 'nullable|exists:users,id',
             'technician_bank_account_id' => 'nullable|exists:user_bank_accounts,id',
-            'nota'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'nota'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
             'branches'       => 'required|array|min:1',
             'branches.*.branch_id' => 'required|exists:branches,id',
             'branches.*.allocation_percent' => 'required|numeric|min:0|max:100',
@@ -111,6 +120,9 @@ class PembelianController extends Controller
                 $extension = $file->getClientOriginalExtension();
                 $fileName = $uploadId . '.' . $extension;
                 $filePath = $file->storeAs('uploads', $fileName, 'public');
+
+                // 🗜️ Kompresi gambar setelah disimpan (lewati PDF)
+                $this->compression->compressUpload(Storage::disk('public')->path($filePath));
             }
 
             // Determine submitter and description prefix

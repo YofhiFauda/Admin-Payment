@@ -2,10 +2,10 @@
 
 ## 📋 Overview
 
-Fitur ini mengimplementasikan kompresi otomatis untuk gambar (JPG/PNG) yang di-upload dengan ukuran 1-5MB menjadi <1MB sebelum dikirim ke n8n webhook.
+Fitur ini mengimplementasikan kompresi otomatis untuk gambar (JPG/PNG) yang di-upload dengan ukuran 1-10MB menjadi <1MB sebelum dikirim ke n8n webhook.
 
 **Key Features:**
-- ✅ Validasi upload maksimal 5MB
+- ✅ Validasi upload maksimal 10MB
 - ✅ Kompresi otomatis jika file >1MB
 - ✅ Multi-strategi kompresi (quality reduction + resize)
 - ✅ Background processing via Queue
@@ -58,7 +58,7 @@ return [
     ],
 
     'upload' => [
-        'max_size' => env('UPLOAD_MAX_SIZE', 5120), // 5MB in KB
+        'max_size' => env('UPLOAD_MAX_SIZE', 10240), // 10MB in KB
         'allowed_types' => ['image/jpeg', 'image/jpg', 'image/png'],
         'allowed_extensions' => ['jpg', 'jpeg', 'png'],
     ],
@@ -81,7 +81,7 @@ COMPRESSION_MIN_QUALITY=55
 COMPRESSION_ENABLED=true
 
 # Upload Limits
-UPLOAD_MAX_SIZE=5120
+UPLOAD_MAX_SIZE=10240
 ```
 
 ### 6. Create Temp Directory
@@ -105,7 +105,7 @@ class YourController extends Controller
     public function upload(Request $request, ImageCompressionService $compressionService)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:5120'
+            'image' => 'required|image|mimes:jpeg,jpg,png|max:10240'
         ]);
         
         $file = $request->file('image');
@@ -276,7 +276,7 @@ Service mencatat setiap proses kompresi:
 | `COMPRESSION_INITIAL_QUALITY` | 85 | Starting quality untuk JPEG |
 | `COMPRESSION_MIN_QUALITY` | 55 | Minimum quality threshold |
 | `COMPRESSION_ENABLED` | true | Enable/disable compression |
-| `UPLOAD_MAX_SIZE` | 5120 (5MB) | Maximum upload size dalam KB |
+| `UPLOAD_MAX_SIZE` | 10240 (10MB) | Maximum upload size dalam KB |
 
 ---
 
@@ -323,7 +323,7 @@ COMPRESSION_MIN_QUALITY=45  # Lower minimum quality
    - Validate di server-side dengan `mimes:jpeg,jpg,png`
 
 2. **Size Limits**
-   - Upload max: 5MB
+   - Upload max: 10MB
    - Compressed max: 1MB
    - Protect server resources
 

@@ -25,14 +25,14 @@ export const SearchEngine = (function () {
     // ═══════════════════════════════════════════════════════════════
     // INITIAL LOAD - Auto-detect mode
     // ═══════════════════════════════════════════════════════════════
-    async function loadData(forceMode = null) {
+    async function loadData(forceMode = null, silent = false) {
         if (isLoading) {
             console.warn('[SearchEngine] Already loading, skipping...');
             return Promise.resolve();
         }
 
         isLoading = true;
-        if (typeof NProgress !== 'undefined') NProgress.start();
+        if (!silent && typeof NProgress !== 'undefined') NProgress.start();
 
         if (isFirstLoad) {
             renderSkeletons();
@@ -62,9 +62,9 @@ export const SearchEngine = (function () {
             }
 
             if (mode === 'client') {
-                await loadClientSideData();
+                await loadClientSideData(silent);
             } else {
-                await loadServerSideData();
+                await loadServerSideData(silent);
             }
 
             return Promise.resolve();
@@ -76,7 +76,7 @@ export const SearchEngine = (function () {
         } finally {
             isLoading = false;
             isFirstLoad = false;
-            if (typeof NProgress !== 'undefined') NProgress.done();
+            if (!silent && typeof NProgress !== 'undefined') NProgress.done();
         }
     }
 
@@ -114,20 +114,22 @@ export const SearchEngine = (function () {
     // ═══════════════════════════════════════════════════════════════
     // CLIENT-SIDE MODE - Load all data once
     // ═══════════════════════════════════════════════════════════════
-    async function loadClientSideData() {
+    async function loadClientSideData(silent = false) {
         const url = buildUrl(Config.endpoints.transactions.searchData);
         
         // Visual feedback
         const desktopTbody = document.getElementById('desktop-tbody');
         const mobileContainer = document.getElementById('mobile-container');
 
-        if (desktopTbody) {
-            desktopTbody.style.transition = 'opacity 0.2s ease';
-            desktopTbody.style.opacity = '0.4';
-        }
-        if (mobileContainer) {
-            mobileContainer.style.transition = 'opacity 0.2s ease';
-            mobileContainer.style.opacity = '0.4';
+        if (!silent) {
+            if (desktopTbody) {
+                desktopTbody.style.transition = 'opacity 0.2s ease';
+                desktopTbody.style.opacity = '0.4';
+            }
+            if (mobileContainer) {
+                mobileContainer.style.transition = 'opacity 0.2s ease';
+                mobileContainer.style.opacity = '0.4';
+            }
         }
 
         try {
@@ -159,15 +161,17 @@ export const SearchEngine = (function () {
             updateStats();
         } finally {
             // Restore opacity
-            if (desktopTbody) desktopTbody.style.opacity = '1';
-            if (mobileContainer) mobileContainer.style.opacity = '1';
+            if (!silent) {
+                if (desktopTbody) desktopTbody.style.opacity = '1';
+                if (mobileContainer) mobileContainer.style.opacity = '1';
+            }
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
     // SERVER-SIDE MODE - Fetch page by page
     // ═══════════════════════════════════════════════════════════════
-    async function loadServerSideData() {
+    async function loadServerSideData(silent = false) {
         if (abortController) abortController.abort();
         abortController = new AbortController();
 
@@ -176,13 +180,15 @@ export const SearchEngine = (function () {
         const mobileContainer = document.getElementById('mobile-container');
 
         // Tambahkan efek loading yang smooth
-        if (desktopTbody) {
-            desktopTbody.style.transition = 'opacity 0.2s ease';
-            desktopTbody.style.opacity = '0.4';
-        }
-        if (mobileContainer) {
-            mobileContainer.style.transition = 'opacity 0.2s ease';
-            mobileContainer.style.opacity = '0.4';
+        if (!silent) {
+            if (desktopTbody) {
+                desktopTbody.style.transition = 'opacity 0.2s ease';
+                desktopTbody.style.opacity = '0.4';
+            }
+            if (mobileContainer) {
+                mobileContainer.style.transition = 'opacity 0.2s ease';
+                mobileContainer.style.opacity = '0.4';
+            }
         }
 
         // Synchronize search inputs value
@@ -222,11 +228,9 @@ export const SearchEngine = (function () {
             }
         } finally {
             // --- Kembalikan Opacity dengan smooth transition ---
-            if (desktopTbody) {
-                desktopTbody.style.opacity = '1';
-            }
-            if (mobileContainer) {
-                mobileContainer.style.opacity = '1';
+            if (!silent) {
+                if (desktopTbody) desktopTbody.style.opacity = '1';
+                if (mobileContainer) mobileContainer.style.opacity = '1';
             }
         }
     }
@@ -509,8 +513,8 @@ export const SearchEngine = (function () {
                 search(query);
             }
         } else {
-            // Server-side: just reload current page
-            loadServerSideData();
+            // Server-side: just reload current page silently
+            loadServerSideData(true);
         }
     }
 
@@ -525,7 +529,7 @@ export const SearchEngine = (function () {
                 addTransaction(transaction);
             }
         } else {
-            loadServerSideData();
+            loadServerSideData(true);
         }
     }
 
@@ -535,7 +539,7 @@ export const SearchEngine = (function () {
             const query = document.getElementById('instant-search')?.value?.trim() || '';
             search(query, false);
         } else {
-            loadServerSideData();
+            loadServerSideData(true);
         }
     }
 

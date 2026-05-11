@@ -216,7 +216,7 @@ class TransactionRequest extends FormRequest
             'description' => ['required', 'string', 'max:500'],
             'category_id' => ['required', 'exists:transaction_categories,id'],
             'date' => ['required', 'date', 'before_or_equal:today'],
-            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'], // 5MB
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'], // 10MB
         ];
     }
 
@@ -226,7 +226,7 @@ class TransactionRequest extends FormRequest
             'amount.required' => 'Jumlah harus diisi',
             'amount.numeric' => 'Jumlah harus berupa angka',
             'attachment.mimes' => 'File harus berformat JPG, PNG, atau PDF',
-            'attachment.max' => 'Ukuran file maksimal 5MB',
+            'attachment.max' => 'Ukuran file maksimal 10MB',
         ];
     }
 
@@ -261,7 +261,7 @@ class SecureFileUploadService
         'application/pdf',
     ];
 
-    private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
     public function upload(UploadedFile $file, string $directory = 'uploads'): string
     {

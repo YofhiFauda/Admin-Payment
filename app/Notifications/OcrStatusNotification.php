@@ -13,8 +13,9 @@ class OcrStatusNotification extends Notification implements ShouldQueue
 
     public function __construct(
         private readonly Transaction $transaction,
-        private readonly string      $aiStatus,   // 'completed' | 'error'
+        private readonly string      $aiStatus,   // 'completed' | 'error' | 'auto-reject'
         private readonly ?int        $confidence = null,
+        private readonly ?string     $customMessage = null, // Pesan detail dari n8n/AI
     ) {}
 
     public function via(object $notifiable): array
@@ -24,16 +25,31 @@ class OcrStatusNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        $isSuccess = $this->aiStatus === 'completed';
+        $isSuccess    = $this->aiStatus === 'completed';
+        $isAutoReject = $this->aiStatus === 'auto-reject';
         
-        $title = $isSuccess
-            ? 'Nota berhasil diproses oleh AI!'
-            : 'AI gagal memproses nota';
+        // ── ✅ Penentuan Title ──
+        $title = $isSuccess ? 'Nota berhasil diproses oleh AI!' : 'AI gagal memproses nota';
+        if ($isAutoReject) {
+            $title = '⛔ Auto-Reject: Nota Ditolak';
+        }
 
+        // ── ✅ Penentuan Message ──
         $message = $isSuccess
             ? "Invoice #{$this->transaction->invoice_number} telah diisi otomatis"
               . ($this->confidence ? " (akurasi {$this->confidence}%)" : '') . '.'
             : "Invoice #{$this->transaction->invoice_number} gagal diproses. Silakan isi form secara manual.";
+
+        if ($isAutoReject) {
+            $reason = $this->customMessage ?? '';
+            if (stripos($reason, 'duplikat') !== false || stripos($reason, 'sama') !== false) {
+                $message = "Invoice #{$this->transaction->invoice_number} ditolak karena sudah terdaftar di sistem (Duplikat).";
+            } elseif (stripos($reason, 'tanggal') !== false || stripos($reason, 'expired') !== false || stripos($reason, 'hari') !== false) {
+                $message = "Invoice #{$this->transaction->invoice_number} ditolak karena sudah melewati batas waktu maksimal 2 hari.";
+            } else {
+                $message = "Invoice #{$this->transaction->invoice_number} ditolak otomatis oleh sistem: " . ($this->customMessage ?? 'Alasan tidak diketahui');
+            }
+        }
 
         // Dispatch real-time toast event
         $unreadCount = $notifiable->unreadNotifications()->count() + 1;
@@ -52,8 +68,8 @@ class OcrStatusNotification extends Notification implements ShouldQueue
             'message' => $message,
 
             'url'     => route('transactions.show', $this->transaction->id),
-            'icon'    => $isSuccess ? 'check-circle' : 'x-circle',
-            'color'   => $isSuccess ? 'green' : 'red',
+            'icon'    => $isSuccess ? 'check-circle' : ($isAutoReject ? 'shield-off' : 'x-circle'),
+            'color'   => $isSuccess ? 'green' : ($isAutoReject ? 'slate' : 'red'),
         ];
     }
 }

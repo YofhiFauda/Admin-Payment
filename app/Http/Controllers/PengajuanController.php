@@ -13,12 +13,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\PriceIndex\PriceIndexService;
 use App\Jobs\PriceIndex\SendPriceAnomalyNotificationJob;
+use App\Services\ImageCompressionService;
+use Illuminate\Support\Facades\Cache;
+
 
 class PengajuanController extends Controller
 {
+    private ImageCompressionService $compression;
 
-
-
+    public function __construct(ImageCompressionService $compression)
+    {
+        $this->compression = $compression;
+    }
 
     /**
      * ✅ OPTIMIZED: Server-side search dengan pagination
@@ -183,7 +189,7 @@ class PengajuanController extends Controller
     public function uploadPhoto(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:jpg,jpeg,png,pdf|max:5120',
+            'file' => 'required|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
         $file = $request->file('file');
@@ -200,6 +206,8 @@ class PengajuanController extends Controller
         // Save with predictable name at storage root
         Storage::disk('public')->put($storedPath, file_get_contents($file));
 
+        // 🗜️ Kompresi gambar untuk menghemat storage (lewati PDF)
+        $this->compression->compressUpload(Storage::disk('public')->path($storedPath));
 
         session([
             'pengajuan_seq'           => $seq,
@@ -222,7 +230,7 @@ class PengajuanController extends Controller
         
         $request->validate([
             'type'                              => 'required|in:pengajuan',
-            'file'                              => 'nullable|mimes:jpg,jpeg,png,pdf|max:5120',
+            'file'                              => 'nullable|mimes:jpg,jpeg,png,pdf|max:10240',
             'items'                             => 'required|array|min:1',
             'items.*.customer'                  => 'required|string|max:255',
             'items.*.category'                  => ['required', 'string', function($attr, $val, $fail) {
@@ -263,6 +271,9 @@ class PengajuanController extends Controller
             $fileName   = $uploadId . '.' . $extension;   // UP-20260302-00002.jpeg
             Storage::disk('public')->put($fileName, file_get_contents($file));
             $filePath = $fileName;
+
+            // 🗜️ Kompresi gambar setelah disimpan (lewati PDF)
+            $this->compression->compressUpload(Storage::disk('public')->path($filePath));
         }
 
         // Validate branch allocation if provided

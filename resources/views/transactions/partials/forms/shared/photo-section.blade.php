@@ -1,13 +1,23 @@
 {{-- 1. FOTO REFERENSI --}}
 <div class="mb-8 md:mb-10">
-    <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase mb-3 tracking-wider">
-        Foto Referensi
-        @if(isset($base64) || isset($filePath))
-            <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
-        @else
-            <span class="text-slate-400">(Opsional)</span>
-        @endif
-    </label>
+    <div class="flex items-center justify-between mb-3">
+        <label class="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Foto Referensi
+            @if(isset($base64) || isset($filePath))
+                <span class="text-emerald-500">(Dari Upload Sebelumnya)</span>
+            @else
+                <span class="text-slate-400">(Opsional)</span>
+            @endif
+        </label>
+
+        {{-- Camera Trigger Button --}}
+        <button type="button" 
+            onclick="window.cameraHandler?.openCamera('{{ $inputName ?? 'reference_photo' }}')"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors text-[10px] md:text-xs font-bold uppercase tracking-wider cursor-pointer active:scale-95 border border-emerald-100">
+            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+            Ambil Foto
+        </button>
+    </div>
 
     {{-- ✅ CONDITIONAL: Show EITHER photo preview OR empty state --}}
     @if((isset($base64) && str_contains($mime ?? '', 'image')) || (isset($filePath) && $filePath))
@@ -69,7 +79,7 @@
                     <i data-lucide="upload-cloud" class="w-8 h-8 md:w-10 md:h-10 text-slate-400"></i>
                 </div>
                 <span id="photo-name-display" class="text-xs md:text-sm font-bold text-slate-700 mb-1">Pilih Foto (Klik atau Drag)</span>
-                <span class="text-[10px] md:text-xs text-slate-400">Maks. 5MB (JPG, PNG, PDF)</span>
+                <span class="text-[10px] md:text-xs text-slate-400">Maks. 10MB (JPG, PNG, PDF)</span>
             </div>
 
             {{-- Hidden Preview Area for New Uploads --}}

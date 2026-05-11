@@ -148,8 +148,8 @@ export class Uploader {
         if (this.photoInput.files && this.photoInput.files[0]) {
             const file = this.photoInput.files[0];
 
-            if (file.size > 5 * 1024 * 1024) {
-                if (window.showToast) window.showToast('Ukuran file terlalu besar (Maks. 5MB)', 'error');
+            if (file.size > 10 * 1024 * 1024) {
+                if (window.showToast) window.showToast('Ukuran file terlalu besar (Maks. 10MB)', 'error');
                 this.photoInput.value = '';
                 this.resetPhotoUI();
                 return;

@@ -54,7 +54,7 @@ return [
     ],
 
     'upload' => [
-        'max_size_kb'        => env('UPLOAD_MAX_SIZE', 5120),       // 5MB dalam KB
+        'max_size_kb'        => env('UPLOAD_MAX_SIZE', 10240),       // 10MB dalam KB
         'allowed_mimes'      => ['image/jpeg', 'image/jpg', 'image/png'],
         'allowed_extensions' => ['jpg', 'jpeg', 'png'],
     ],

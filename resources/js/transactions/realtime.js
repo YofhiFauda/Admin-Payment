@@ -15,33 +15,11 @@ export function initRealtime() {
             ? `transactions.${id}` 
             : 'transactions';
 
+        // we only subscribe to the channel here to ensure the connection is active.
+        // The actual event listeners are handled globally in app.blade.php
+        // to avoid duplication and handle toasts across all pages.
         const echoChannel = window.Echo.private(channelName);
 
-        // Listen to transaction.created event
-        echoChannel.listen('.transaction.created', (e) => {
-            console.log('🆕 [REALTIME] Transaction Created:', e);
-            if (isIndexPage()) {
-                SearchEngine.refresh();
-            }
-        });
-
-        // Listen to transaction.updated event
-        echoChannel.listen('.transaction.updated', (e) => {
-            console.log('🔄 [REALTIME] Transaction Updated:', e);
-            if (isIndexPage()) {
-                SearchEngine.refresh();
-            }
-        });
-
-        // Listen to transaction.deleted event
-        echoChannel.listen('.transaction.deleted', (e) => {
-            console.log('🗑️ [REALTIME] Transaction Deleted:', e);
-            if (isIndexPage()) {
-                SearchEngine.refresh();
-            }
-        });
-
-        console.log(`📡 [REALTIME] Echo listener initialized on channel: ${channelName}`);
+        console.log(`📡 [REALTIME] Echo subscription active on channel: ${channelName}`);
     }
 }
-

@@ -4,6 +4,7 @@ import { initPaymentHandlers } from "./payment.js";
 import { initRealtime } from "./realtime.js";
 import { Config } from "./config.js";
 import { setAsReference, syncSearchInputs } from "./utils.js";
+import { CameraHandler } from "./shared/camera.js";
 import "./modals-export-excel.js";
 import "./form-pengajuan/index.js"; // Form Pengajuan Orchestration
 import "./form-rembush/index.js"; // Form Rembush Orchestration
@@ -14,6 +15,9 @@ document.addEventListener("DOMContentLoaded", function () {
     initModals();
     initPaymentHandlers();
     initRealtime();
+    
+    // Initialize Camera Handler
+    window.cameraHandler = new CameraHandler();
 
     // Export functions globally
     window.updateFilterIndicators = updateFilterIndicators;

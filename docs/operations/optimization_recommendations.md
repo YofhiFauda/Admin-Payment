@@ -23,7 +23,7 @@ Berdasarkan analisa mendalam terhadap struktur *frontend* (UI/UX), arsitektur *b
 ## 3. Segi Keamanan (*Security*)
 
 *   **Whitelisting IP pada Webhook n8n:** Pengecekan *Header* `X-SECRET` pada `AiAutoFillController` sudah sangat baik. Namun, sebagai lapisan ke-2 (Layer 2 Security), Anda bisa menambahkan pengecekan *IP Address middleware* untuk memastikan jalur webhook `/api/ai/auto-fill` hanya bisa diakses oleh Alamat IP Server n8n Anda (jika n8n di-*host* pada IP statis).
-*   **Pengetatan Validasi Upload Berkas:** Pastikan gambar/PDF bukti *Rembush* dan Nota benar-benar diverifikasi *MIME type*-nya oleh PHP sebelum dikirim ke Gemini. Jangan hanya mengandalkan ekstensi berkas (.jpg, .png). (*Contoh validasi Laravel:* `mimes:jpeg,png,webp,pdf|max:5120`). Ini mencegah penyisipan berkas berbahaya (seperti `.php` yang di-rename).
+*   **Pengetatan Validasi Upload Berkas:** Pastikan gambar/PDF bukti *Rembush* dan Nota benar-benar diverifikasi *MIME type*-nya oleh PHP sebelum dikirim ke Gemini. Jangan hanya mengandalkan ekstensi berkas (.jpg, .png). (*Contoh validasi Laravel:* `mimes:jpeg,png,webp,pdf|max:10240`). Ini mencegah penyisipan berkas berbahaya (seperti `.php` yang di-rename).
 *   **Keamanan *WebSockets* (Reverb):** Pastikan jalur *broadcasting* `App\Events\TransactionUpdated` menggunakan *Private/Presence Channel* untuk rute berbau finansial jika belum. Hal ini untuk memastikan *user* iseng yang mengetahui kredensial Reverb tidak dapat menguping/berlangganan ke data total uang ('amount') dari luar dashboard yang terautentikasi.
 
 ---
