@@ -143,14 +143,24 @@ return [
             'locking' => false, // Disable untuk performa
         ],
 
-        'slack' => [
-            'driver' => 'slack',
-            'url' => env('LOG_SLACK_WEBHOOK_URL'),
-            'username' => env('LOG_SLACK_USERNAME', 'WHUSNET Alert'),
-            'emoji' => env('LOG_SLACK_EMOJI', ':rotating_light:'),
-            'level' => env('LOG_SLACK_LEVEL', 'critical'),
-            'replace_placeholders' => true,
-            'context' => true, // Include context data
+        // 'slack' => [
+        //     'driver' => 'slack',
+        //     'url' => env('LOG_SLACK_WEBHOOK_URL'),
+        //     'username' => env('LOG_SLACK_USERNAME', 'WHUSNET Alert'),
+        //     'emoji' => env('LOG_SLACK_EMOJI', ':rotating_light:'),
+        //     'level' => env('LOG_SLACK_LEVEL', 'critical'),
+        //     'replace_placeholders' => true,
+        //     'context' => true, // Include context data
+        // ],
+
+        'stderr' => [
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+            ],
+            'formatter' => \Monolog\Formatter\LineFormatter::class,
+            'processors' => [\Monolog\Processor\PsrLogMessageProcessor::class],
         ],
 
         'papertrail' => [
