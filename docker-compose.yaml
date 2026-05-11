@@ -19,7 +19,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
       args:
         - APP_ENV=production
     image: whusnet-app:${APP_VERSION:-latest}
@@ -201,7 +201,7 @@ services:
   horizon:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-horizon
     restart: unless-stopped
@@ -246,7 +246,7 @@ services:
   reverb:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-reverb
     restart: unless-stopped
@@ -294,7 +294,7 @@ services:
   scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-scheduler
     restart: unless-stopped
