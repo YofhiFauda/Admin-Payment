@@ -118,10 +118,10 @@ services:
     restart: unless-stopped
     environment:
       # ⚠️ Set these in Coolify Environment Variables UI
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_DATABASE: ${DB_DATABASE}
+      # MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_USER: ${DB_USERNAME}
+      # MYSQL_PASSWORD: ${DB_PASSWORD}
     # Optional: only expose if you need external database access
     # ports:
     #   - "127.0.0.1:3306:3306"
@@ -160,6 +160,9 @@ services:
     # Optional: only expose if you need external Redis access
     # ports:
     #   - "127.0.0.1:6379:6379"
+    # ✅ 1. Environment block: Agar Coolify DETECT variabel ini
+    environment:
+      # - REDIS_PASSWORD=${REDIS_PASSWORD:?}  # ← Muncul di Coolify UI
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
@@ -269,7 +272,7 @@ services:
     labels:
       # Coolify/Traefik labels for WebSocket routing
       - "traefik.enable=true"
-      - "traefik.http.routers.whusnet-ws.rule=Host(`${APP_DOMAIN:-whusnet.example.com}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.whusnet-ws.rule=Host(`admin-payment.whusnet.com`) && PathPrefix(`/app`)"
       - "traefik.http.routers.whusnet-ws.entrypoints=websecure"
       - "traefik.http.routers.whusnet-ws.tls=true"
       - "traefik.http.routers.whusnet-ws.tls.certresolver=letsencrypt"
