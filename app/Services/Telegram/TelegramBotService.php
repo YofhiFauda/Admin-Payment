@@ -181,7 +181,7 @@ class TelegramBotService
         // Use nullsafe operator to prevent errors if submitter is null
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
         // Use specific event time instead of now()
-        $timestamp     = $transaction->flagged_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->flagged_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -267,7 +267,7 @@ HTML;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
         // Use specific event time instead of now()
-        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->rejected_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -311,7 +311,7 @@ HTML;
         $invoiceNumber  = $transaction->invoice_number;
         $teknisiName    = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
         // Use specific event time instead of now()
-        $timestamp      = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp      = ($transaction->force_approved_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -418,7 +418,7 @@ HTML;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
         // Use specific event time instead of now()
-        $timestamp     = $transaction->cash_ready_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->cash_ready_at ?? now())->format('d/m/Y - H:i') . ' WIB';
         $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
@@ -505,7 +505,7 @@ HTML;
         }
 
         // Use specific event time instead of now()
-        $timestamp = $transaction->transfer_completed_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp = ($transaction->transfer_completed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
@@ -555,7 +555,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->force_approved_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
@@ -597,7 +597,7 @@ HTML;
         $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->rejected_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Rejector info
         $rejectorName  = $rejector->name;
@@ -653,7 +653,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = $transaction->transfer_initiated_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->transfer_initiated_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: DALAM PROSES PEMBAYARAN]</b>
@@ -687,7 +687,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = $transaction->waiting_owner_approval_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = ($transaction->waiting_owner_approval_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: MENUNGGU OTORISASI OWNER]</b>
