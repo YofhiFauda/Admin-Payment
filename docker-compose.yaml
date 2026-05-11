@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www
     volumes:
+      - app_public:/var/www/public
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
@@ -71,12 +72,14 @@ services:
       - "80"  # Internal only - Traefik will proxy to this
     volumes:
       - ./docker/nginx/coolify.conf:/etc/nginx/conf.d/default.conf:ro
+      - app_public:/var/www/public:ro
       - storage_data:/var/www/storage:ro
       - cache_data:/var/www/bootstrap/cache:ro
-      # Explicit volume mounts (replacing deprecated volumes_from)
-      - app_public:/var/www/public:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
+      reverb:
+        condition: service_started
     labels:
       # Coolify/Traefik labels for HTTP routing
       - "traefik.enable=true"
