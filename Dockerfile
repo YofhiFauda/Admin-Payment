@@ -56,8 +56,8 @@ WORKDIR /var/www
 # Copy composer files (for caching layer)
 COPY composer.json composer.lock ./
 
-#Install composer dependencies
-RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+ENV COMPOSER_MEMORY_LIMIT=-1
+RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader --prefer-dist
 
 # Copy application
 # COPY . .
