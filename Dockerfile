@@ -19,7 +19,7 @@ RUN composer install \
 ## ═══════════════════════════════════════════════════════════════════
 ##  Stage 2: Frontend Assets (Vite + Tailwind)
 ## ═══════════════════════════════════════════════════════════════════
-FROM node:20-alpine AS frontend
+FROM node:22-alpine AS node
 WORKDIR /app
 
 # Install dependencies terlebih dahulu (layer caching)
@@ -33,6 +33,16 @@ COPY public/ ./public/
 
 # Copy env example agar Vite punya variabel VITE_REVERB_* saat build
 COPY .env.example ./.env
+
+# Buat .env minimal untuk Vite dari build args
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT=443
+ARG VITE_REVERB_SCHEME=https
+RUN echo "VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY}" > .env && \
+    echo "VITE_REVERB_HOST=${VITE_REVERB_HOST}" >> .env && \
+    echo "VITE_REVERB_PORT=${VITE_REVERB_PORT}" >> .env && \
+    echo "VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}" >> .env
 
 RUN npm run build
 
@@ -62,8 +72,8 @@ COPY --chown=www-data:www-data . /var/www
 # Copy vendor dari Stage 1
 COPY --from=vendor --chown=www-data:www-data /app/vendor /var/www/vendor
 
-# Copy built frontend assets dari Stage 2
-COPY --from=frontend --chown=www-data:www-data /app/public/build /var/www/public/build
+# Copy built node assets dari Stage 2
+COPY --from=node --chown=www-data:www-data /app/public/build /var/www/public/build
 
 # ⚠️ WORKAROUND UNTUK DOCKER VOLUME
 # Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot

@@ -27,6 +27,10 @@ services:
       dockerfile: Dockerfile
       args:
         - APP_ENV=production
+        - VITE_REVERB_APP_KEY: ${VITE_REVERB_APP_KEY}
+        - VITE_REVERB_HOST: ${VITE_REVERB_HOST}
+        - VITE_REVERB_PORT: ${VITE_REVERB_PORT:-443}
+        - VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-https}
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-app
     restart: unless-stopped
