@@ -34,16 +34,6 @@ COPY public/ ./public/
 # Copy env example agar Vite punya variabel VITE_REVERB_* saat build
 COPY .env.example ./.env
 
-# Buat .env minimal untuk Vite dari build args
-ARG VITE_REVERB_APP_KEY
-ARG VITE_REVERB_HOST
-ARG VITE_REVERB_PORT=443
-ARG VITE_REVERB_SCHEME=https
-RUN echo "VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY}" > .env && \
-    echo "VITE_REVERB_HOST=${VITE_REVERB_HOST}" >> .env && \
-    echo "VITE_REVERB_PORT=${VITE_REVERB_PORT}" >> .env && \
-    echo "VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}" >> .env
-
 RUN npm run build
 
 ## ═══════════════════════════════════════════════════════════════════
