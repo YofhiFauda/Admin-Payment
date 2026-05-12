@@ -1,7 +1,55 @@
-node_modules
-storage/logs
-storage/framework
-public/storage
+# ─── Version control ───────────────────────────────────────────────
 .git
 .gitignore
+.gitattributes
+
+# ─── Environment files ─────────────────────────────────────────────
 .env
+.env.*
+!.env.example
+
+# ─── Development tools ─────────────────────────────────────────────
+.editorconfig
+.phpstorm.meta.php
+_ide_helper.php
+_ide_helper_models.php
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+psalm.xml
+phpstan.neon
+
+# ─── Node / Frontend (build assets sudah di-COPY dari frontend stage) ─
+node_modules
+
+# ─── Storage (akan dibuat ulang oleh entrypoint) ───────────────────
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+# Jangan ignore storage/app/public (user uploads perlu ada di image base)
+
+# ─── Tests ─────────────────────────────────────────────────────────
+tests/
+
+# ─── CI/CD & Deploy scripts ────────────────────────────────────────
+.github/
+deploy.sh
+docker-compose*.yaml
+docker-compose*.yml
+
+# ─── Documentation ─────────────────────────────────────────────────
+*.md
+!README.md
+
+# ─── IDE / OS files ────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ─── Backups ───────────────────────────────────────────────────────
+backups/
+
+# ─── Composer & npm lock (sudah ada, tidak perlu duplikat) ─────────
+# composer.lock dan package-lock.json HARUS tetap masuk (dipakai di build)
