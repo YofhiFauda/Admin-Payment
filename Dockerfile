@@ -62,6 +62,10 @@ COPY --from=vendor --chown=www-data:www-data /app/vendor /var/www/vendor
 # Copy built frontend assets dari Stage 2
 COPY --from=frontend --chown=www-data:www-data /app/public/build /var/www/public/build
 
+# ⚠️ WORKAROUND UNTUK DOCKER VOLUME
+# Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot
+RUN cp -a /var/www/public /var/www/public_source
+
 # Optimasi autoloader
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative

@@ -16,9 +16,14 @@ echo "🚀 Container starting as role: $ROLE"
 if [ "$ROLE" = "app" ]; then
 
     echo "⏳ Waiting for services..."
-
-    # Tunggu DB & Redis siap (depends_on sudah handle ini, tapi double-check)
     sleep 2
+
+    # ⚠️ SYNC PUBLIC DIRECTORY KE SHARED VOLUME
+    # Memastikan nginx mendapatkan file build terbaru yang mungkin ter-mask oleh volume lama
+    if [ -d "/var/www/public_source" ]; then
+        echo "📁 Syncing public files (including Vite build) to shared volume..."
+        cp -a /var/www/public_source/. /var/www/public/
+    fi
 
     # Storage link (idempotent, --force aman jika sudah ada)
     echo "🔗 Creating storage link..."
