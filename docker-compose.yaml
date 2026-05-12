@@ -88,19 +88,8 @@ services:
         condition: service_healthy
       reverb:
         condition: service_started
-    labels:
-      # Coolify/Traefik labels for HTTP routing
-      - "traefik.enable=true"
-      - "traefik.http.routers.whusnet.rule=Host(`admin-payment.whusnet.com`)"
-      - "traefik.http.routers.whusnet.entrypoints=websecure"
-      - "traefik.http.routers.whusnet.tls=true"
-      - "traefik.http.routers.whusnet.tls.certresolver=letsencrypt"
-      - "traefik.http.services.whusnet.loadbalancer.server.port=80"
-      # Optional: redirect HTTP to HTTPS
-      - "traefik.http.routers.whusnet-http.rule=Host(`admin-payment.whusnet.com`)"
-      - "traefik.http.routers.whusnet-http.entrypoints=web"
-      - "traefik.http.routers.whusnet-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+    # Traefik labels dihapus. Routing HARUS diatur lewat UI Coolify (Domains)
+    # untuk menghindari konflik dengan label bawaan sistem Coolify.
     deploy:
       resources:
         limits:

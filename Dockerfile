@@ -31,6 +31,9 @@ COPY vite.config.js ./
 COPY resources/ ./resources/
 COPY public/ ./public/
 
+# Copy env example agar Vite punya variabel VITE_REVERB_* saat build
+COPY .env.example ./.env
+
 RUN npm run build
 
 ## ═══════════════════════════════════════════════════════════════════
