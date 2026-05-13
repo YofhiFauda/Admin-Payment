@@ -31,7 +31,18 @@ COPY vite.config.js ./
 COPY resources/ ./resources/
 COPY public/ ./public/
 
-# Copy env example agar Vite punya variabel VITE_REVERB_* saat build
+# Teruskan build arguments dari docker-compose.yaml agar Vite bisa embed config real
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT=443
+ARG VITE_REVERB_SCHEME=https
+
+ENV VITE_REVERB_APP_KEY=$VITE_REVERB_APP_KEY
+ENV VITE_REVERB_HOST=$VITE_REVERB_HOST
+ENV VITE_REVERB_PORT=$VITE_REVERB_PORT
+ENV VITE_REVERB_SCHEME=$VITE_REVERB_SCHEME
+
+# Copy env example agar Vite punya fallback variabel VITE_REVERB_* saat build jika kosong
 COPY .env.example ./.env
 
 RUN npm run build

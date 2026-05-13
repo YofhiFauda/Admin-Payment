@@ -112,9 +112,6 @@ services:
   #  HORIZON — Queue Worker
   # ─────────────────────────────────────────
   horizon:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-horizon
     restart: unless-stopped
@@ -154,9 +151,6 @@ services:
   #  REVERB — WebSocket Server
   # ─────────────────────────────────────────
   reverb:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-reverb
     restart: unless-stopped
@@ -201,9 +195,6 @@ services:
   #  SCHEDULER — Laravel Cron
   # ─────────────────────────────────────────
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: whusnet-app:${APP_VERSION:-latest}
     container_name: whusnet-scheduler
     restart: unless-stopped
