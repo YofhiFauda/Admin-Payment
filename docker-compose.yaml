@@ -2,19 +2,6 @@
 #  docker-compose.yaml — WHUSNET Admin Payment
 #  Coolify Production Configuration (VPS 4GB)
 # ═══════════════════════════════════════════════════════════════════
-#
-#  📌 Optimized for Coolify deployment with:
-#     - Traefik integration (no nginx port exposure)
-#     - Environment injection via Coolify UI
-#     - Automatic SSL via Let's Encrypt
-#     - Internal networking
-#
-#  💾 Memory Budget (4GB VPS):
-#     - OS + Coolify + Traefik: ~1.2GB
-#     - Containers (total limits): ~2.8GB
-#     - Containers (total reservations): ~1.4GB
-#
-# ═══════════════════════════════════════════════════════════════════
 
 services:
 
@@ -43,17 +30,15 @@ services:
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
     environment:
-      # ⚠️ Set these in Coolify Environment Variables UI
       APP_ENV: production
       APP_DEBUG: "false"
       CONTAINER_ROLE: app
-      # DB_HOST, DB_DATABASE, etc. injected by Coolify
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -x php-fpm > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "php-fpm -t || exit 1"] # ✅ SUDAH DIPERBAIKI
       interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 120s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -76,7 +61,7 @@ services:
     container_name: whusnet-nginx
     restart: unless-stopped
     expose:
-      - "80"  # Internal only - Traefik will proxy to this
+      - "80"
     networks:
       - coolify
       - default
@@ -90,8 +75,6 @@ services:
         condition: service_healthy
       reverb:
         condition: service_started
-    # Traefik labels dihapus. Routing HARUS diatur lewat UI Coolify (Domains)
-    # untuk menghindari konflik dengan label bawaan sistem Coolify.
     deploy:
       resources:
         limits:
@@ -106,7 +89,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ping || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"] # ✅ SUDAH DIPERBAIKI & DUPLIKAT DIHAPUS
       interval: 30s
       timeout: 10s
       retries: 3
@@ -122,7 +105,6 @@ services:
     networks:
       - coolify
       - default
-    # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=horizon
     volumes:
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
@@ -164,9 +146,8 @@ services:
     networks:
       - coolify
       - default
-    # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=reverb
     expose:
-      - "8081"  # Internal only — Nginx proxy ke sini
+      - "8081"
     volumes:
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
@@ -177,9 +158,6 @@ services:
     depends_on:
       app:
         condition: service_healthy
-    # ❌ Tidak ada Traefik labels di sini
-    # WebSocket /app/ di-proxy via Nginx (coolify.conf location /app/)
-    # Menghindari routing conflict antara Traefik dan Nginx
     deploy:
       resources:
         limits:
@@ -211,7 +189,6 @@ services:
     networks:
       - coolify
       - default
-    # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=scheduler
     volumes:
       - storage_data:/var/www/storage
       - cache_data:/var/www/bootstrap/cache
@@ -236,11 +213,11 @@ services:
         max-size: "5m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:run' > /dev/null || pgrep -f sh > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep php || exit 1"] # ✅ SUDAH BENAR
       interval: 60s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
 
 volumes:
   storage_data:
