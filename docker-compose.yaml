@@ -38,8 +38,6 @@ services:
     networks:
       - coolify
       - default
-    env_file:
-      - .env
     volumes:
       - app_public:/var/www/public
       - storage_data:/var/www/storage
@@ -124,8 +122,6 @@ services:
     networks:
       - coolify
       - default
-    env_file:
-      - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=horizon
     volumes:
       - storage_data:/var/www/storage
@@ -168,8 +164,6 @@ services:
     networks:
       - coolify
       - default
-    env_file:
-      - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=reverb
     expose:
       - "8081"  # Internal only — Nginx proxy ke sini
@@ -217,8 +211,6 @@ services:
     networks:
       - coolify
       - default
-    env_file:
-      - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=scheduler
     volumes:
       - storage_data:/var/www/storage
