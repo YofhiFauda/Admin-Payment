@@ -45,11 +45,6 @@ services:
       APP_DEBUG: "false"
       CONTAINER_ROLE: app
       # DB_HOST, DB_DATABASE, etc. injected by Coolify
-    depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "php artisan list || exit 1"]
       interval: 30s
@@ -114,95 +109,6 @@ services:
       retries: 3
 
   # ─────────────────────────────────────────
-  #  DATABASE MySQL
-  # ─────────────────────────────────────────
-  db:
-    image: mysql:8.0
-    container_name: whusnet-db
-    restart: unless-stopped
-    environment:
-      # ⚠️ Set these in Coolify Environment Variables UI
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    # Optional: only expose if you need external database access
-    # ports:
-    #   - "127.0.0.1:3306:3306"
-    volumes:
-      - dbdata:/var/lib/mysql
-      - ./docker/mysql/production.cnf:/etc/mysql/conf.d/production.cnf:ro
-      - ./backups:/backups
-    command: --default-authentication-plugin=mysql_native_password
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # ─────────────────────────────────────────
-  #  REDIS — Cache + Queue + Session
-  # ─────────────────────────────────────────
-  redis:
-    image: redis:7.2-alpine
-    container_name: whusnet-redis
-    restart: unless-stopped
-    # Optional: only expose if you need external Redis access
-    # ports:
-    #   - "127.0.0.1:6379:6379"
-    # ✅ 1. Environment block: Agar Coolify DETECT variabel ini
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:?}  # ← Muncul di Coolify UI
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --maxmemory 192mb
-      --maxmemory-policy allkeys-lru
-      --appendonly yes
-      --appendfsync everysec
-      --save 900 1
-      --save 300 10
-      --save 60 10000
-      --tcp-backlog 511
-      --timeout 0
-      --tcp-keepalive 300
-    volumes:
-      - redis_data:/data
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  # ─────────────────────────────────────────
   #  HORIZON — Queue Worker
   # ─────────────────────────────────────────
   horizon:
@@ -223,10 +129,6 @@ services:
       CONTAINER_ROLE: horizon
     depends_on:
       app:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      db:
         condition: service_healthy
     deploy:
       resources:
@@ -272,8 +174,6 @@ services:
     depends_on:
       app:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     # ❌ Tidak ada Traefik labels di sini
     # WebSocket /app/ di-proxy via Nginx (coolify.conf location /app/)
     # Menghindari routing conflict antara Traefik dan Nginx
@@ -290,6 +190,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null http://127.0.0.1:8081 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ─────────────────────────────────────────
   #  SCHEDULER — Laravel Cron
@@ -313,8 +219,6 @@ services:
     depends_on:
       app:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -328,15 +232,17 @@ services:
       options:
         max-size: "5m"
         max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan list || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
-  dbdata:
-    driver: local
   storage_data:
     driver: local
   cache_data:
-    driver: local
-  redis_data:
     driver: local
   app_public:
     driver: local
