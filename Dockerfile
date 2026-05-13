@@ -80,9 +80,9 @@ COPY --from=node --chown=www-data:www-data /app/public/build /var/www/public/bui
 # Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot
 RUN cp -a /var/www/public /var/www/public_source
 
-# Optimasi autoloader
+# Optimasi autoloader (--no-scripts prevents artisan calls that need a full .env at build time)
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative --no-scripts
 
 # Copy konfigurasi PHP & PHP-FPM production
 COPY docker/php/production.ini /usr/local/etc/php/conf.d/99-production.ini
