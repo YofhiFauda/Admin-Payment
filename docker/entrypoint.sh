@@ -31,7 +31,10 @@ if [ "$ROLE" = "app" ]; then
 
     # Jalankan migrasi (--force wajib di production)
     echo "🗄️  Running migrations..."
-    php artisan migrate --force
+    php artisan migrate --force || {
+        echo "❌ WARNING: Migration failed. Please check your database connection / DB_HOST."
+        echo "   (Continuing boot process to allow debugging...)"
+    }
 
     # Cache semua config (setelah migrate agar DB sudah ready)
     echo "⚡ Caching config, routes, views, events..."

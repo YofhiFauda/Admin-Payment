@@ -35,6 +35,9 @@ services:
     container_name: whusnet-app
     restart: unless-stopped
     working_dir: /var/www
+    networks:
+      - coolify
+      - default
     env_file:
       - .env
     volumes:
@@ -118,6 +121,9 @@ services:
     container_name: whusnet-horizon
     restart: unless-stopped
     working_dir: /var/www
+    networks:
+      - coolify
+      - default
     env_file:
       - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=horizon
@@ -159,6 +165,9 @@ services:
     container_name: whusnet-reverb
     restart: unless-stopped
     working_dir: /var/www
+    networks:
+      - coolify
+      - default
     env_file:
       - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=reverb
@@ -205,6 +214,9 @@ services:
     container_name: whusnet-scheduler
     restart: unless-stopped
     working_dir: /var/www
+    networks:
+      - coolify
+      - default
     env_file:
       - .env
     # command tidak perlu — entrypoint.sh handle via CONTAINER_ROLE=scheduler
