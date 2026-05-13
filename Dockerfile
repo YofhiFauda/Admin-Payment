@@ -16,6 +16,11 @@ RUN composer install \
     --prefer-dist \
     --ignore-platform-reqs
 
+# Jika laravel/pulse tidak terinstall (composer.lock out of sync), install paksa
+RUN test -f vendor/laravel/pulse/src/PulseApplicationServiceProvider.php \
+    || composer require laravel/pulse:"^1.0" \
+        --no-dev --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
+
 ## ═══════════════════════════════════════════════════════════════════
 ##  Stage 2: Frontend Assets (Vite + Tailwind)
 ## ═══════════════════════════════════════════════════════════════════

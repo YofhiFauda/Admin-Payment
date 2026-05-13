@@ -11,12 +11,11 @@
         "intervention/image": "^4.0",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.45",
+        "laravel/pulse": "*",
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.10.1",
-        "phpoffice/phpspreadsheet": "^5.7",
-        "laravel/pulse": "^1.0",
-        "opcodesio/log-viewer": "^3.0"
-
+        "opcodesio/log-viewer": "^3.0",
+        "phpoffice/phpspreadsheet": "^5.7"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -81,6 +80,7 @@
     "extra": {
         "laravel": {
             "dont-discover": [
+                "laravel/pail"
             ]
         }
     },

@@ -36,16 +36,25 @@ if [ "$ROLE" = "app" ]; then
         echo "   (Continuing boot process to allow debugging...)"
     }
 
+    # Bersihkan stale cache dari volume sebelumnya (penting untuk fresh deploy)
+    echo "🧹 Clearing stale bootstrap cache..."
+    rm -f /var/www/bootstrap/cache/packages.php \
+          /var/www/bootstrap/cache/services.php \
+          /var/www/bootstrap/cache/config.php \
+          /var/www/bootstrap/cache/routes*.php \
+          /var/www/bootstrap/cache/events.php \
+          /var/www/bootstrap/cache/compiled.php
+
     # Discover packages (wajib karena Dockerfile pakai --no-scripts saat dump-autoload)
     echo "🔍 Discovering packages..."
     php artisan package:discover --ansi 2>/dev/null || echo "  package:discover skipped"
 
-    # Cache semua config (setelah migrate agar DB sudah ready)
+    # Cache semua config — non-fatal agar php-fpm selalu start meskipun ada error
     echo "⚡ Caching config, routes, views, events..."
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
-    php artisan event:cache
+    php artisan config:cache || echo "  ⚠️ config:cache failed (app will run without cache)"
+    php artisan route:cache  || echo "  ⚠️ route:cache failed (non-fatal)"
+    php artisan view:cache   || echo "  ⚠️ view:cache failed (non-fatal)"
+    php artisan event:cache  || echo "  ⚠️ event:cache failed (non-fatal)"
 
     # Publish assets untuk Pulse & Log-Viewer dashboard
     echo "📦 Publishing Pulse & Log-Viewer assets..."
