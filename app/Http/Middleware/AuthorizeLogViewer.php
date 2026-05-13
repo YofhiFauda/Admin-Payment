@@ -16,6 +16,6 @@ class AuthorizeLogViewer
     {
         // Only allow owner and admin roles
         return $request->user() && 
-               in_array($request->user()->role, ['owner', 'admin']);
+               in_array($request->user()->role, ['owner', 'atasan','admin']);
     }
 }

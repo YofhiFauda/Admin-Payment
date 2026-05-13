@@ -3,17 +3,16 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\ServiceProvider;
-use Laravel\Pulse\Facades\Pulse;
+use Laravel\Pulse\PulseApplicationServiceProvider;
 
-class PulseServiceProvider extends ServiceProvider
+class PulseServiceProvider extends PulseApplicationServiceProvider
 {
     /**
      * Register services.
      */
     public function register(): void
     {
-        //
+        parent::register();
     }
 
     /**
@@ -21,10 +20,17 @@ class PulseServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Configure Pulse authorization
+        parent::boot(); // ✅ WAJIB: panggil parent::boot() dari boot(), bukan dari register()
+    }
+
+    /**
+     * Authorize access to Pulse dashboard.
+     * Override method dari PulseApplicationServiceProvider (sama seperti HorizonServiceProvider).
+     */
+    protected function gate(): void
+    {
         Gate::define('viewPulse', function ($user) {
-            // Only allow owner and admin roles
-            return in_array($user->role, ['owner', 'admin']);
+            return in_array($user->role, ['owner', 'atasan', 'admin']);
         });
     }
 }

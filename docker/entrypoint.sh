@@ -43,6 +43,11 @@ if [ "$ROLE" = "app" ]; then
     php artisan view:cache
     php artisan event:cache
 
+    # Publish assets untuk Pulse & Log-Viewer dashboard
+    echo "📦 Publishing Pulse & Log-Viewer assets..."
+    php artisan vendor:publish --tag=pulse-assets --force 2>/dev/null || echo "  pulse assets skipped"
+    php artisan vendor:publish --tag=log-viewer-assets --force 2>/dev/null || echo "  log-viewer assets skipped"
+
     echo "✅ App setup complete. Starting PHP-FPM..."
     exec php-fpm
 

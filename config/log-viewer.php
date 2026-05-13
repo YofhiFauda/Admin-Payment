@@ -38,7 +38,7 @@ return [
     |
     */
 
-    'authorize' => '\App\Http\Middleware\AuthorizeLogViewer@authorize',
+    'authorize' => \App\Http\Middleware\AuthorizeLogViewer::class . '@authorize',
 
     /*
     |--------------------------------------------------------------------------

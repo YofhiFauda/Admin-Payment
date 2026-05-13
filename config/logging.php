@@ -153,15 +153,6 @@ return [
         //     'context' => true, // Include context data
         // ],
 
-        'stderr' => [
-            'driver' => 'monolog',
-            'handler' => StreamHandler::class,
-            'handler_with' => [
-                'stream' => 'php://stderr',
-            ],
-            'formatter' => \Monolog\Formatter\LineFormatter::class,
-            'processors' => [\Monolog\Processor\PsrLogMessageProcessor::class],
-        ],
 
         'papertrail' => [
             'driver' => 'monolog',
@@ -177,14 +168,15 @@ return [
 
         'stderr' => [
             'driver' => 'monolog',
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('LOG_LEVEL', 'warning'),  // production-safe default
             'handler' => StreamHandler::class,
             'handler_with' => [
                 'stream' => 'php://stderr',
             ],
-            'formatter' => env('LOG_STDERR_FORMATTER'),
+            'formatter' => \Monolog\Formatter\LineFormatter::class,
             'processors' => [PsrLogMessageProcessor::class],
         ],
+
 
         'syslog' => [
             'driver' => 'syslog',

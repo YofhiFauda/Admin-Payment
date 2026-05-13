@@ -23,3 +23,9 @@ Schedule::command('price-index:recalculate --mode=full')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Pulse — Flush data dari storage buffer ke database (setiap menit via scheduler)
+Schedule::command('pulse:check')
+    ->everyMinute()
+    ->runInBackground()
+    ->withoutOverlapping();
+
