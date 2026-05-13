@@ -49,11 +49,11 @@ services:
       CONTAINER_ROLE: app
       # DB_HOST, DB_DATABASE, etc. injected by Coolify
     healthcheck:
-      test: ["CMD-SHELL", "php artisan list || exit 1"]
+      test: ["CMD-SHELL", "pgrep -x php-fpm > /dev/null || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     deploy:
       resources:
         limits:
@@ -236,11 +236,11 @@ services:
         max-size: "5m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "php artisan list || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:run' > /dev/null || pgrep -f sh > /dev/null || exit 1"]
       interval: 60s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
 
 volumes:
   storage_data:
