@@ -36,6 +36,10 @@ if [ "$ROLE" = "app" ]; then
         echo "   (Continuing boot process to allow debugging...)"
     }
 
+    # Discover packages (wajib karena Dockerfile pakai --no-scripts saat dump-autoload)
+    echo "🔍 Discovering packages..."
+    php artisan package:discover --ansi 2>/dev/null || echo "  package:discover skipped"
+
     # Cache semua config (setelah migrate agar DB sudah ready)
     echo "⚡ Caching config, routes, views, events..."
     php artisan config:cache
