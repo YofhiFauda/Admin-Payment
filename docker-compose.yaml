@@ -28,13 +28,13 @@ services:
     volumes:
       - app_public:/var/www/public
       - storage_data:/var/www/storage
-      - cache_data:/var/www/bootstrap/cache
+      # bootstrap/cache TIDAK di-share — immutable per image build
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
       CONTAINER_ROLE: app
     healthcheck:
-      test: ["CMD-SHELL", "php-fpm -t || exit 1"] # ✅ SUDAH DIPERBAIKI
+      test: ["CMD-SHELL", "php-fpm -t || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -69,7 +69,7 @@ services:
       - ./docker/nginx/coolify.conf:/etc/nginx/conf.d/default.conf:ro
       - app_public:/var/www/public:ro
       - storage_data:/var/www/storage:ro
-      - cache_data:/var/www/bootstrap/cache:ro
+      # bootstrap/cache tidak perlu di nginx — hanya PHP yang butuh
     depends_on:
       app:
         condition: service_healthy
@@ -89,7 +89,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"] # ✅ SUDAH DIPERBAIKI & DUPLIKAT DIHAPUS
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -107,7 +107,7 @@ services:
       - default
     volumes:
       - storage_data:/var/www/storage
-      - cache_data:/var/www/bootstrap/cache
+      # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -150,7 +150,7 @@ services:
       - "8081"
     volumes:
       - storage_data:/var/www/storage
-      - cache_data:/var/www/bootstrap/cache
+      # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -172,7 +172,9 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -o /dev/null http://127.0.0.1:8081 || exit 1"]
+      # nc (netcat) lebih tepat untuk WebSocket — cukup cek port TCP terbuka
+      # curl bisa return non-200 pada WebSocket server meski sebenarnya healthy
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -191,7 +193,7 @@ services:
       - default
     volumes:
       - storage_data:/var/www/storage
-      - cache_data:/var/www/bootstrap/cache
+      # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -213,19 +215,65 @@ services:
         max-size: "5m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep php || exit 1"] # ✅ SUDAH BENAR
+      # schedule:work adalah long-running process — pgrep lebih tepat dari 'ps aux | grep php'
+      # 'ps aux | grep php' hampir selalu true karena grep itu sendiri muncul sebagai proses
+      test: ["CMD-SHELL", "pgrep -f 'schedule:work' >/dev/null || exit 1"]
       interval: 60s
       timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─────────────────────────────────────────
+  #  PULSE — Performance Monitoring Worker
+  # ─────────────────────────────────────────
+  pulse:
+    image: whusnet-app:${APP_VERSION:-latest}
+    container_name: whusnet-pulse
+    restart: unless-stopped
+    working_dir: /var/www
+    networks:
+      - coolify
+      - default
+    volumes:
+      - storage_data:/var/www/storage
+      # bootstrap/cache dari image — tidak perlu shared volume
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      CONTAINER_ROLE: pulse
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+    healthcheck:
+      # pgrep lebih andal dari grep string — tidak fragile terhadap perubahan format ps
+      test: ["CMD-SHELL", "pgrep -f 'pulse:work' >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 15s
       retries: 3
       start_period: 30s
 
 volumes:
   storage_data:
     driver: local
-  cache_data:
-    driver: local
   app_public:
     driver: local
+  # cache_data DIHAPUS — bootstrap/cache adalah bagian dari image, bukan persistent volume
+  # Shared volume menyebabkan race condition saat app restart:
+  #   - rm -f cache/* bisa membunuh worker yang sedang berjalan
+  #   - horizon/scheduler/pulse bisa crash dengan behavior tak terduga
 
 networks:
   coolify:

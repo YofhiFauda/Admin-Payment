@@ -55,7 +55,7 @@ FROM php:8.4-fpm
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libjpeg62-turbo-dev libwebp-dev \
     libfreetype6-dev libonig-dev libxml2-dev libicu-dev libzip-dev \
-    zip unzip autoconf gcc make \
+    zip unzip autoconf gcc make netcat-openbsd \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-configure intl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip \
@@ -83,6 +83,28 @@ RUN cp -a /var/www/public /var/www/public_source
 # Optimasi autoloader (--no-scripts prevents artisan calls that need a full .env at build time)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer dump-autoload --optimize --no-dev --no-scripts
+
+# ─────────────────────────────────────────────────────────────────────
+# Partial build-stage cache — HANYA yang aman (tidak bergantung runtime env)
+#
+# \u2705 BOLEH di build stage:
+#   - package:discover : discover service providers (struktur, bukan nilai env)
+#   - view:cache       : compile Blade templates (tidak ada env dependency)
+#   - event:cache      : discover listeners/subscribers (struktur kode)
+#
+# \u274c TIDAK BOLEH di build stage:
+#   - config:cache  : bake SEMUA env() jadi nilai FINAL dari .env.example
+#                     \u2192 runtime ENV docker-compose akan DIABAIKAN oleh Laravel
+#   - route:cache   : dilakukan di runtime (entrypoint.sh) setelah config ready
+#
+# config:cache & route:cache dilakukan di entrypoint.sh (APP role)
+# menggunakan env var container aktual, bukan nilai .env.example.
+# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+RUN cp .env.example .env \
+    && php artisan package:discover --ansi \
+    && php artisan view:cache \
+    && php artisan event:cache \
+    && rm .env
 
 # Copy konfigurasi PHP & PHP-FPM production
 COPY docker/php/production.ini /usr/local/etc/php/conf.d/99-production.ini

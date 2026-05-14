@@ -15,9 +15,6 @@ echo "🚀 Container starting as role: $ROLE"
 # ─────────────────────────────────────────
 if [ "$ROLE" = "app" ]; then
 
-    echo "⏳ Waiting for services..."
-    sleep 2
-
     # ⚠️ SYNC PUBLIC DIRECTORY KE SHARED VOLUME
     # Memastikan nginx mendapatkan file build terbaru yang mungkin ter-mask oleh volume lama
     if [ -d "/var/www/public_source" ]; then
@@ -29,6 +26,33 @@ if [ "$ROLE" = "app" ]; then
     echo "🔗 Creating storage link..."
     php artisan storage:link --force 2>/dev/null || echo "  storage:link skipped"
 
+    # ─────────────────────────────────────────
+    # Tunggu DB benar-benar ready dengan retry aktif.
+    # Pakai PHP PDO langsung — TIDAK bootstrap full Laravel,
+    # TIDAK butuh .env, langsung baca env var container.
+    # Jauh lebih ringan dari 'artisan tinker' atau 'artisan db:show'.
+    # ─────────────────────────────────────────
+    echo "⏳ Waiting for database to be ready..."
+    MAX_TRIES=12
+    TRIES=0
+    DB_DSN="mysql:host=${DB_HOST:-mysql};port=${DB_PORT:-3306};dbname=${DB_DATABASE:-admin_payment}"
+    until php -r "
+        try {
+            new PDO('${DB_DSN}', getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
+            exit(0);
+        } catch (Exception \\\$e) {
+            exit(1);
+        }
+    " 2>/dev/null || [ "$TRIES" -ge "$MAX_TRIES" ]; do
+        TRIES=$((TRIES + 1))
+        echo "  Database not ready (attempt $TRIES/$MAX_TRIES), retrying in 5s..."
+        sleep 5
+    done
+
+    if [ "$TRIES" -ge "$MAX_TRIES" ]; then
+        echo "⚠️  WARNING: Database did not respond after $MAX_TRIES attempts. Proceeding anyway..."
+    fi
+
     # Jalankan migrasi (--force wajib di production)
     echo "🗄️  Running migrations..."
     php artisan migrate --force || {
@@ -36,38 +60,27 @@ if [ "$ROLE" = "app" ]; then
         echo "   (Continuing boot process to allow debugging...)"
     }
 
-    # Bersihkan stale cache dari volume sebelumnya (penting untuk fresh deploy)
-    echo "🧹 Clearing stale bootstrap cache..."
-    rm -f /var/www/bootstrap/cache/packages.php \
-          /var/www/bootstrap/cache/services.php \
-          /var/www/bootstrap/cache/config.php \
-          /var/www/bootstrap/cache/routes*.php \
-          /var/www/bootstrap/cache/events.php \
-          /var/www/bootstrap/cache/compiled.php
-
-    # Discover packages (wajib karena Dockerfile pakai --no-scripts saat dump-autoload)
-    echo "🔍 Discovering packages..."
-    php artisan package:discover --ansi 2>/dev/null || echo "  package:discover skipped"
-
-    # Cache semua config — non-fatal agar php-fpm selalu start meskipun ada error
-    echo "⚡ Caching config, routes, views, events..."
-    php artisan config:cache || echo "  ⚠️ config:cache failed (app will run without cache)"
-    php artisan route:cache  || echo "  ⚠️ route:cache failed (non-fatal)"
-    php artisan view:cache   || echo "  ⚠️ view:cache failed (non-fatal)"
-    php artisan event:cache  || echo "  ⚠️ event:cache failed (non-fatal)"
-
-    # Publish assets untuk Pulse & Log-Viewer dashboard
-    echo "📦 Publishing Pulse & Log-Viewer assets..."
-    php artisan vendor:publish --tag=pulse-assets --force 2>/dev/null || echo "  pulse assets skipped"
-    php artisan vendor:publish --tag=log-viewer-assets --force 2>/dev/null || echo "  log-viewer assets skipped"
+    # ─────────────────────────────────────────
+    # Runtime config cache — WAJIB di sini, BUKAN di Dockerfile.
+    # config:cache di build stage akan bake nilai .env.example secara permanen,
+    # sehingga runtime ENV dari docker-compose diabaikan oleh Laravel.
+    # ─────────────────────────────────────────
+    echo "⚡ Building runtime config cache (using actual container ENV)..."
+    php artisan config:clear 2>/dev/null || true
+    php artisan config:cache  || echo "  ⚠️ config:cache failed (app will use uncached config)"
+    php artisan route:clear  2>/dev/null || true
+    php artisan route:cache   || echo "  ⚠️ route:cache failed (non-fatal)"
 
     echo "✅ App setup complete. Starting PHP-FPM..."
     exec php-fpm
 
 # ─────────────────────────────────────────
 #  HORIZON — Queue Worker Manager
+#  horizon:terminate dulu agar worker lama tidak pakai code lama
 # ─────────────────────────────────────────
 elif [ "$ROLE" = "horizon" ]; then
+    echo "🔄 Terminating any stale Horizon workers before start..."
+    php artisan horizon:terminate || true
     echo "🔄 Starting Laravel Horizon..."
     exec php artisan horizon
 
@@ -80,16 +93,22 @@ elif [ "$ROLE" = "reverb" ]; then
 
 # ─────────────────────────────────────────
 #  SCHEDULER — Laravel Cron
+#  schedule:work lebih stabil dari manual while-loop
+#  Healthcheck cukup via pgrep karena ini adalah long-running process
 # ─────────────────────────────────────────
 elif [ "$ROLE" = "scheduler" ]; then
-    echo "⏰ Starting Laravel Scheduler loop..."
-    while true; do
-        php artisan schedule:run --verbose --no-interaction
-        sleep 60
-    done
+    echo "⏰ Starting Laravel Scheduler (schedule:work)..."
+    exec php artisan schedule:work
+
+# ─────────────────────────────────────────
+#  PULSE — Performance Monitoring Worker
+# ─────────────────────────────────────────
+elif [ "$ROLE" = "pulse" ]; then
+    echo "📊 Starting Laravel Pulse worker..."
+    exec php artisan pulse:work --sleep=5 --tries=3
 
 else
     echo "❌ ERROR: Unknown CONTAINER_ROLE '$ROLE'"
-    echo "   Valid values: app, horizon, reverb, scheduler"
+    echo "   Valid values: app, horizon, reverb, scheduler, pulse"
     exit 1
 fi
