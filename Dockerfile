@@ -55,7 +55,7 @@ FROM php:8.4-fpm
 RUN apt-get update && apt-get install -y \
     git curl libpng-dev libjpeg62-turbo-dev libwebp-dev \
     libfreetype6-dev libonig-dev libxml2-dev libicu-dev libzip-dev \
-    zip unzip autoconf gcc make netcat-openbsd \
+    zip unzip autoconf gcc make netcat-openbsd procps \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-configure intl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip \

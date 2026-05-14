@@ -40,7 +40,7 @@ if [ "$ROLE" = "app" ]; then
         try {
             new PDO('${DB_DSN}', getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
             exit(0);
-        } catch (Exception \\\$e) {
+        } catch (Exception \$e) {
             exit(1);
         }
     " 2>/dev/null || [ "$TRIES" -ge "$MAX_TRIES" ]; do
