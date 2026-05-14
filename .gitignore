@@ -26,3 +26,10 @@ Thumbs.db
 
 .gemini/
 gha-creds-*.json
+
+/bootstrap/cache/*.php
+/bootstrap/cache/packages.php
+/bootstrap/cache/services.php
+/bootstrap/cache/config.php
+/bootstrap/cache/routes.php
+/bootstrap/cache/events.php
