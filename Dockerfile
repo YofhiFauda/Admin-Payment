@@ -76,16 +76,17 @@ COPY --from=vendor --chown=www-data:www-data /app/vendor /var/www/vendor
 # Copy built node assets dari Stage 2
 COPY --from=node --chown=www-data:www-data /app/public/build /var/www/public/build
 
-# ⚠️ WORKAROUND UNTUK DOCKER VOLUME
-# Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot
-RUN cp -a /var/www/public /var/www/public_source
+# ─────────────────────────────────────────────────────────────────────
+# Partial build-stage cache — HANYA yang aman (tidak bergantung runtime env)
+# ─────────────────────────────────────────────────────────────────────
 
 # Optimasi autoloader (--no-scripts prevents artisan calls that need a full .env at build time)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer dump-autoload --optimize --no-dev --no-scripts
 
-# ─────────────────────────────────────────────────────────────────────
-# Partial build-stage cache — HANYA yang aman (tidak bergantung runtime env)
+# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+# Partial build-stage cache \u2014 HANYA yang aman (tidak bergantung runtime env)
 #
 # \u2705 BOLEH di build stage:
 #   - package:discover : discover service providers (struktur, bukan nilai env)
@@ -104,7 +105,14 @@ RUN cp .env.example .env \
     && php artisan package:discover --ansi \
     && php artisan view:cache \
     && php artisan event:cache \
+    && php artisan vendor:publish --tag=pulse-assets --force \
+    && php artisan vendor:publish --tag=log-viewer-assets --force \
     && rm .env
+
+# ⚠️ WORKAROUND UNTUK DOCKER VOLUME
+# Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot.
+# Dilakukan setelah vendor:publish agar assets dashboard ikut tersalin.
+RUN cp -a /var/www/public /var/www/public_source
 
 # Copy konfigurasi PHP & PHP-FPM production
 COPY docker/php/production.ini /usr/local/etc/php/conf.d/99-production.ini

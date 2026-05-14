@@ -71,6 +71,17 @@ if [ "$ROLE" = "app" ]; then
     php artisan route:clear  2>/dev/null || true
     php artisan route:cache   || echo "  ⚠️ route:cache failed (non-fatal)"
 
+    # ─────────────────────────────────────────
+    # Wajib clear view cache saat startup.
+    # storage/framework/views/ ada di persistent volume (storage_data),
+    # sehingga compiled Blade lama dari deploy sebelumnya bisa survive restart.
+    # Ini menyebabkan error seperti "Undefined array key 'groups'" saat
+    # vendor package update struktur view-nya (misal: laravel/pulse).
+    # view:cache di Dockerfile build stage tidak efektif karena di-override volume.
+    # ─────────────────────────────────────────
+    echo "🗂️  Clearing stale compiled views from persistent storage volume..."
+    php artisan view:clear 2>/dev/null || true
+
     echo "✅ App setup complete. Starting PHP-FPM..."
     exec php-fpm
 
@@ -105,7 +116,7 @@ elif [ "$ROLE" = "scheduler" ]; then
 # ─────────────────────────────────────────
 elif [ "$ROLE" = "pulse" ]; then
     echo "📊 Starting Laravel Pulse worker..."
-    exec php artisan pulse:work --sleep=5 --tries=3
+    exec php artisan pulse:work
 
 else
     echo "❌ ERROR: Unknown CONTAINER_ROLE '$ROLE'"

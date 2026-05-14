@@ -14,8 +14,9 @@ class AuthorizeLogViewer
      */
     public static function authorize(Request $request): bool
     {
-        // Only allow owner and admin roles
-        return $request->user() && 
-               in_array($request->user()->role, ['owner', 'atasan','admin']);
+        // Explicitly check the web guard to ensure session context is used
+        $user = $request->user('web');
+        
+        return $user && in_array($user->role, ['owner', 'atasan', 'admin']);
     }
 }
