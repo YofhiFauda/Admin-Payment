@@ -37,70 +37,85 @@ class TelegramWebhookController extends Controller
      */
     public function handle(Request $request)
     {
-        $update = $request->all();
+        try {
+            $update = $request->all();
 
-        Log::channel('ai_autofill')->debug('📱 [TELEGRAM WEBHOOK] Update received', [
+            // 📝 LOG MENTAH: Gunakan ini untuk memastikan request sampai ke server
+        Log::info('📥 [TELEGRAM WEBHOOK] Update Received', [
             'update_id' => $update['update_id'] ?? null,
+            'type'      => isset($update['callback_query']) ? 'callback' : (isset($update['message']) ? 'message' : 'unknown'),
+            'raw'       => $update
         ]);
 
-        // ═══════════════════════════════════════════════════
-        //  HANDLE CALLBACK QUERY (Tombol Inline)
-        // ═══════════════════════════════════════════════════
-        if (isset($update['callback_query'])) {
-            $this->handleCallbackQuery($update['callback_query']);
-            return response()->json(['ok' => true]);
+            // ═══════════════════════════════════════════════════
+            //  1. HANDLE CALLBACK QUERY (Tombol Inline)
+            // ═══════════════════════════════════════════════════
+            if (isset($update['callback_query'])) {
+                $this->handleCallbackQuery($update['callback_query']);
+                return response()->json(['ok' => true]);
+            }
+
+            // ═══════════════════════════════════════════════════
+            //  2. HANDLE PESAN TEXT (/start, /daftar, dll)
+            // ═══════════════════════════════════════════════════
+            $message = $update['message'] ?? null;
+            if (!$message) {
+                return response()->json(['ok' => true]);
+            }
+
+            $chatId = $message['chat']['id'] ?? null;
+            $text   = trim($message['text'] ?? '');
+            $from   = $message['from'] ?? [];
+
+            if (!$chatId) {
+                return response()->json(['ok' => true]);
+            }
+
+            // ── Handle /start ──────────────────────────────────────
+            if ($text === '/start' || str_starts_with($text, '/start')) {
+                $this->handleStart($chatId, $from);
+                return response()->json(['ok' => true]);
+            }
+
+            // ── Handle /daftar <email> ─────────────────────────────
+            if (str_starts_with(strtolower($text), '/daftar')) {
+                $parts = explode(' ', $text, 2);
+                $email = trim($parts[1] ?? '');
+                $this->handleDaftar($chatId, $email, $from);
+                return response()->json(['ok' => true]);
+            }
+
+            // ── Handle /status ─────────────────────────────────────
+            if ($text === '/status') {
+                $this->handleStatus($chatId);
+                return response()->json(['ok' => true]);
+            }
+
+            // ── Handle /cabut ──────────────────────────────────────
+            if ($text === '/cabut') {
+                $this->handleCabut($chatId);
+                return response()->json(['ok' => true]);
+            }
+
+            // ── Pesan tidak dikenali (Hanya respon jika di private chat) ──
+            if (isset($message['chat']['type']) && $message['chat']['type'] === 'private') {
+                $this->telegram->sendMessage($chatId,
+                    "❓ Perintah tidak dikenal.\n\nGunakan:\n" .
+                    "• /daftar &lt;email&gt; — Daftarkan akun\n" .
+                    "• /status — Cek status pendaftaran\n" .
+                    "• /cabut — Hapus notifikasi"
+                );
+            }
+
+        } catch (\Exception $e) {
+            Log::error('❌ [TELEGRAM WEBHOOK] Crash:', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine()
+            ]);
         }
 
-        // ═══════════════════════════════════════════════════
-        //  HANDLE PESAN TEXT (/start, /daftar, dll)
-        // ═══════════════════════════════════════════════════
-        $message = $update['message'] ?? null;
-        if (!$message) {
-            return response()->json(['ok' => true]);
-        }
-
-        $chatId = $message['chat']['id'] ?? null;
-        $text   = trim($message['text'] ?? '');
-        $from   = $message['from'] ?? [];
-
-        if (!$chatId) {
-            return response()->json(['ok' => true]);
-        }
-
-        // ── Handle /start ──────────────────────────────────────
-        if ($text === '/start' || str_starts_with($text, '/start')) {
-            $this->handleStart($chatId, $from);
-            return response()->json(['ok' => true]);
-        }
-
-        // ── Handle /daftar <email> ─────────────────────────────
-        if (str_starts_with(strtolower($text), '/daftar')) {
-            $parts = explode(' ', $text, 2);
-            $email = trim($parts[1] ?? '');
-            $this->handleDaftar($chatId, $email, $from);
-            return response()->json(['ok' => true]);
-        }
-
-        // ── Handle /status ─────────────────────────────────────
-        if ($text === '/status') {
-            $this->handleStatus($chatId);
-            return response()->json(['ok' => true]);
-        }
-
-        // ── Handle /cabut ──────────────────────────────────────
-        if ($text === '/cabut') {
-            $this->handleCabut($chatId);
-            return response()->json(['ok' => true]);
-        }
-
-        // ── Pesan tidak dikenali ───────────────────────────────
-        $this->telegram->sendMessage($chatId,
-            "❓ Perintah tidak dikenal.\n\nGunakan:\n" .
-            "• /daftar &lt;email&gt; — Daftarkan akun\n" .
-            "• /status — Cek status pendaftaran\n" .
-            "• /cabut — Hapus notifikasi"
-        );
-
+        // Telegram mewajibkan respon 200 OK agar tidak mengirim ulang pesan yang sama
         return response()->json(['ok' => true]);
     }
 
@@ -110,140 +125,136 @@ class TelegramWebhookController extends Controller
     
     private function handleCallbackQuery(array $callbackQuery): void
     {
-        $chatId       = $callbackQuery['message']['chat']['id'] ?? null;
-        $callbackData = $callbackQuery['data'] ?? '';
         $callbackId   = $callbackQuery['id'] ?? null;
+        $callbackData = $callbackQuery['data'] ?? '';
+        $fromId       = $callbackQuery['from']['id'] ?? null;
+        $chatId       = $callbackQuery['message']['chat']['id'] ?? null;
+        $messageId    = $callbackQuery['message']['message_id'] ?? null;
 
-        if (!$chatId || !$callbackData) {
+        if (!$callbackId || !$callbackData) {
             return;
         }
 
-        // Parse callback_data format: "confirm_cash:123"
-        $parts = explode(':', $callbackData, 2);
-        $action        = $parts[0] ?? '';
-        $transactionId = (int) ($parts[1] ?? 0);
-
-        Log::info('📱 [TELEGRAM CALLBACK] Button clicked', [
-            'action'         => $action,
-            'transaction_id' => $transactionId,
-            'chat_id'        => $chatId,
+        Log::info('📱 [TELEGRAM CALLBACK] Received', [
+            'action'  => $callbackData,
+            'from_id' => $fromId,
+            'chat_id' => $chatId,
         ]);
 
-        // ─────────────────────────────────────────────────
-        //  TOMBOL: "✅ Terima" (Konfirmasi Cash)
-        // ─────────────────────────────────────────────────
-        if ($action === 'confirm_cash') {
+        try {
+            // Parse callback_data format: "confirm_cash:123"
+            $parts         = explode(':', $callbackData, 2);
+            $action        = $parts[0] ?? '';
+            $transactionId = (int) ($parts[1] ?? 0);
+
+            // 1. Validasi User (Gunakan fromId, bukan chatId - Penting untuk Group!)
+            $user = User::where('telegram_chat_id', (string)$fromId)->first();
+            if (!$user) {
+                $this->answerCallbackQuery($callbackId, '⚠️ Akun Telegram Anda belum terdaftar di sistem.', true);
+                return;
+            }
+
+            // 2. Load Transaksi
             $transaction = Transaction::find($transactionId);
-            
             if (!$transaction) {
-                $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan');
+                $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan.', true);
                 return;
             }
 
-            // 🛡️ Prevent double confirmation
-            if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
-                $this->answerCallbackQuery($callbackId, 'ℹ️ Anda sudah memberikan konfirmasi untuk transaksi ini.', false);
-                return;
+            // 3. Routing Aksi
+            if ($action === 'confirm_cash') {
+                $this->handleConfirmCash($callbackId, $transaction, $user, $chatId, $messageId);
+            } elseif ($action === 'report_issue') {
+                $this->handleReportIssue($callbackId, $transaction, $user, $chatId, $messageId);
+            } else {
+                $this->answerCallbackQuery($callbackId, '❓ Aksi tidak dikenali.');
             }
 
-            // Validasi user adalah teknisi yang bersangkutan
-            $user = User::where('telegram_chat_id', (string)$chatId)->first();
-            if (!$user || $user->id !== $transaction->submitted_by) {
-                $this->answerCallbackQuery($callbackId, '❌ Anda tidak berhak konfirmasi transaksi ini');
-                return;
-            }
-
-            // Update status transaksi
-            $transaction->update([
-                'status'         => 'completed',
-                'konfirmasi_at'  => now(),
-                'konfirmasi_by'  => $user->id,
+        } catch (\Exception $e) {
+            Log::error('❌ [TELEGRAM CALLBACK] Exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            $this->answerCallbackQuery($callbackId, '❌ Terjadi kesalahan internal sistem.', true);
+        }
+    }
 
-            // 🔔 Broadcast update untuk UI
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
-
-            // 🔔 Notifikasi Sistem (Tercatat di halaman Notifikasi)
-            if ($user) {
-                $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'completed'));
-            }
-
-            // Answer callback (popup notification)
-            $this->answerCallbackQuery($callbackId, '✅ Terima kasih! Transaksi selesai.');
-
-            $timestamp = now()->translatedFormat('d F Y H:i');
-
-            // Kirim pesan konfirmasi
-            $this->telegram->sendMessage($chatId,
-                "✅ <b>Konfirmasi Berhasil</b>\n\n" .
-                "Transaksi <code>{$transaction->invoice_number}</code> telah diselesaikan.\n" .
-                "⏰ <b>Waktu:</b> {$timestamp} WIB\n\n" .
-                "Status: <b>SELESAI</b> ✅"
-            );
-
-            Log::channel('ai_autofill')->info('✅ [TELEGRAM] Cash payment confirmed', [
-                'transaction_id' => $transaction->id,
-                'teknisi_id'     => $user->id,
-            ]);
-
+    /**
+     * Logika Konfirmasi Cash
+     */
+    private function handleConfirmCash(string $callbackId, Transaction $transaction, User $user, $chatId, $messageId): void
+    {
+        // 🛡️ Prevent double confirmation
+        if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
+            $this->answerCallbackQuery($callbackId, 'ℹ️ Transaksi ini sudah diproses sebelumnya.', false);
             return;
         }
 
-        // ─────────────────────────────────────────────────
-        //  TOMBOL: "❌ Tolak" (Laporkan Masalah)
-        // ─────────────────────────────────────────────────
-        if ($action === 'report_issue') {
-            $transaction = Transaction::find($transactionId);
-            
-            if (!$transaction) {
-                $this->answerCallbackQuery($callbackId, '❌ Transaksi tidak ditemukan');
-                return;
-            }
-
-            // 🛡️ Prevent double confirmation
-            if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
-                $this->answerCallbackQuery($callbackId, 'ℹ️ Anda sudah memberikan konfirmasi untuk transaksi ini.', false);
-                return;
-            }
-
-            // Validasi user adalah teknisi yang bersangkutan
-            $user = User::where('telegram_chat_id', (string)$chatId)->first();
-            if (!$user || $user->id !== $transaction->submitted_by) {
-                $this->answerCallbackQuery($callbackId, '❌ Anda tidak berhak konfirmasi transaksi ini');
-                return;
-            }
-
-            // Update status transaksi ke Rejected
-            $transaction->update([
-                'status'           => 'rejected',
-                'rejection_reason' => 'Ditolak oleh Teknisi via Telegram',
-                'konfirmasi_at'    => now(),
-                'konfirmasi_by'    => $user->id,
-            ]);
-
-            // 🔔 Broadcast update untuk UI
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
-
-            // 🔔 Notifikasi Sistem (Tercatat di halaman Notifikasi)
-            if ($user) {
-                $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'rejected'));
-            }
-
-            $this->answerCallbackQuery($callbackId, '❌ Pembayaran ditolak. Silakan hubungi Admin.');
-
-            $this->telegram->sendMessage($chatId,
-                "❌ <b>Pembayaran Ditolak</b>\n\n" .
-                "Status transaksi <code>{$transaction->invoice_number}</code> telah diubah menjadi <b>DITOLAK</b>.\n\n" .
-                "Silakan hubungi Admin via WhatsApp atau telepon untuk penyelesaian:\n" .
-                "• WhatsApp: 0812-3456-7890\n" .
-                "• Telepon: (0352) 123-456"
-            );
-
+        // Validasi kepemilikan (Khusus Teknisi)
+        if ($user->id !== $transaction->submitted_by && $user->role === 'teknisi') {
+            $this->answerCallbackQuery($callbackId, '❌ Anda hanya bisa konfirmasi pengajuan Anda sendiri.', true);
             return;
         }
 
-        // Unknown action
-        $this->answerCallbackQuery($callbackId, '❓ Aksi tidak dikenali');
+        // ✅ Answer Telegram FAST (Prevent spinning icon)
+        $this->answerCallbackQuery($callbackId, '✅ Konfirmasi diterima, memproses...');
+
+        // Update Database
+        $transaction->update([
+            'status'         => 'completed',
+            'konfirmasi_at'  => now(),
+            'konfirmasi_by'  => $user->id,
+        ]);
+
+        // Broadcast & Notification
+        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+        $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'completed'));
+
+        // Update Message UI (Remove Buttons)
+        $timestamp = now()->translatedFormat('d F Y H:i');
+        $this->telegram->editMessageText($chatId, $messageId, 
+            "✅ <b>PENGAMBILAN DANA TUNAI SELESAI</b>\n\n" .
+            "Transaksi <code>{$transaction->invoice_number}</code> telah dikonfirmasi diterima.\n" .
+            "👤 <b>Penerima:</b> {$user->name}\n" .
+            "⏰ <b>Waktu:</b> {$timestamp} WIB\n\n" .
+            "Status: <b>SELESAI</b> ✅"
+        );
+    }
+
+    /**
+     * Logika Laporan Masalah (Tolak)
+     */
+    private function handleReportIssue(string $callbackId, Transaction $transaction, User $user, $chatId, $messageId): void
+    {
+        if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
+            $this->answerCallbackQuery($callbackId, 'ℹ️ Transaksi ini sudah diproses sebelumnya.', false);
+            return;
+        }
+
+        if ($user->id !== $transaction->submitted_by && $user->role === 'teknisi') {
+            $this->answerCallbackQuery($callbackId, '❌ Anda hanya bisa menolak pengajuan Anda sendiri.', true);
+            return;
+        }
+
+        $this->answerCallbackQuery($callbackId, '❌ Laporan diterima, membatalkan...');
+
+        $transaction->update([
+            'status'           => 'rejected',
+            'rejection_reason' => "Ditolak oleh {$user->name} via Telegram",
+            'konfirmasi_at'    => now(),
+            'konfirmasi_by'    => $user->id,
+        ]);
+
+        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+        $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'rejected'));
+
+        $this->telegram->editMessageText($chatId, $messageId, 
+            "❌ <b>PEMBAYARAN DITOLAK</b>\n\n" .
+            "Transaksi <code>{$transaction->invoice_number}</code> telah dibatalkan oleh teknisi.\n" .
+            "👤 <b>Oleh:</b> {$user->name}\n" .
+            "📝 <b>Alasan:</b> Masalah fisik dana / nominal tidak sesuai.\n\n" .
+            "Status: <b>DITOLAK</b> ❌"
+        );
     }
 
     /**
@@ -333,7 +344,7 @@ class TelegramWebhookController extends Controller
         // ✅ Simpan chat_id ke profil user
         $user->update(['telegram_chat_id' => (string)$chatId]);
 
-        Log::channel('ai_autofill')->info('📱 [TELEGRAM] Chat ID registered', [
+        Log::info('📱 [TELEGRAM] Chat ID registered', [
             'user_id'   => $user->id,
             'user_name' => $user->name,
             'role'      => $user->role,

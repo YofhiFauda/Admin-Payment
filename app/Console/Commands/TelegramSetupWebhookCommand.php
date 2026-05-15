@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use App\Services\Telegram\TelegramBotService;
 
 class TelegramSetupWebhookCommand extends Command
 {
@@ -61,19 +62,21 @@ class TelegramSetupWebhookCommand extends Command
         $this->info('   URL: ' . $webhookUrl);
 
         try {
-            $response = Http::post("https://api.telegram.org/bot{$botToken}/setWebhook", [
-                'url' => $webhookUrl,
-                'allowed_updates' => ['message', 'callback_query'],
-                'drop_pending_updates' => true, // Clear pending updates
-            ]);
-
-            $result = $response->json();
+            $telegram = app(TelegramBotService::class);
+            $result = $telegram->setWebhook($webhookUrl);
 
             if ($result['ok'] ?? false) {
-                $this->info('');
                 $this->info('✅ Webhook berhasil didaftarkan!');
-                $this->info('   URL: ' . $webhookUrl);
-                $this->info('   Allowed updates: message, callback_query');
+
+                $this->info('🔄 Mendaftarkan daftar perintah (commands)...');
+                $cmdResult = $telegram->setCommands();
+
+                if ($cmdResult['ok'] ?? false) {
+                    $this->info('✅ Perintah berhasil didaftarkan!');
+                } else {
+                    $this->warn('⚠️ Gagal mendaftarkan perintah: ' . ($cmdResult['description'] ?? 'Unknown error'));
+                }
+
                 $this->info('');
                 $this->info('📌 NEXT STEPS:');
                 $this->info('   1. Test bot dengan mengetik /start di Telegram');
@@ -160,16 +163,18 @@ class TelegramSetupWebhookCommand extends Command
     protected function showBotInfo(string $botToken): void
     {
         try {
-            $response = Http::get("https://api.telegram.org/bot{$botToken}/getMe");
+            $response = Http::withoutVerifying()->get("https://api.telegram.org/bot{$botToken}/getMe");
             $result = $response->json();
 
             if ($result['ok'] ?? false) {
                 $bot = $result['result'];
                 
-                $this->info('🤖 BOT INFO:');
-                $this->info('   Name: ' . $bot['first_name']);
-                $this->info('   Username: @' . $bot['username']);
-                $this->info('   ID: ' . $bot['id']);
+                $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                $this->info('🤖 BOT AKTIF SAAT INI:');
+                $this->info('   Nama     : ' . $bot['first_name']);
+                $this->info('   Username : @' . $bot['username']);
+                $this->info('   ID       : ' . $bot['id']);
+                $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 $this->info('');
                 $this->info('💬 Test bot Anda:');
                 $this->info('   https://t.me/' . $bot['username']);

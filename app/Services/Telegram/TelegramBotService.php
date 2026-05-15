@@ -74,10 +74,17 @@ class TelegramBotService
                 $payload['reply_markup'] = json_encode($replyMarkup);
             }
 
-            $response = Http::timeout(10)->post("{$this->apiUrl}/sendMessage", $payload);
+            $request = Http::timeout(10);
+            
+            // 🛡️ Bypass SSL verification in local environment to prevent cURL error 60
+            if (app()->environment('local')) {
+                $request->withoutVerifying();
+            }
+
+            $response = $request->post("{$this->apiUrl}/sendMessage", $payload);
 
             if ($response->successful()) {
-                Log::channel('ai_autofill')->info('📨 [TELEGRAM] Message sent', [
+                Log::info('📨 [TELEGRAM] Message sent', [
                     'chat_id' => $chatId,
                 ]);
                 return true;
@@ -181,7 +188,7 @@ class TelegramBotService
         // Use nullsafe operator to prevent errors if submitter is null
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->flagged_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->flagged_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -267,7 +274,7 @@ HTML;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->rejected_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -311,7 +318,7 @@ HTML;
         $invoiceNumber  = $transaction->invoice_number;
         $teknisiName    = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
         // Use specific event time instead of now()
-        $timestamp      = ($transaction->force_approved_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp      = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -418,7 +425,7 @@ HTML;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         $cabang        = $transaction->branch?->name ?? '-';
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->cash_ready_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->cash_ready_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
         $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
@@ -505,7 +512,7 @@ HTML;
         }
 
         // Use specific event time instead of now()
-        $timestamp = ($transaction->transfer_completed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp = $transaction->transfer_completed_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
@@ -555,7 +562,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->force_approved_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
@@ -597,7 +604,7 @@ HTML;
         $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->rejected_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         // Rejector info
         $rejectorName  = $rejector->name;
@@ -653,7 +660,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->transfer_initiated_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->transfer_initiated_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: DALAM PROSES PEMBAYARAN]</b>
@@ -687,7 +694,7 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
-        $timestamp     = ($transaction->waiting_owner_approval_at ?? now())->format('d/m/Y - H:i') . ' WIB';
+        $timestamp     = $transaction->waiting_owner_approval_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⏳ <b>[STATUS TRANSAKSI: MENUNGGU OTORISASI OWNER]</b>
@@ -744,7 +751,12 @@ HTML;
             return ['ok' => false, 'description' => 'Bot token not configured'];
         }
 
-        $response = Http::timeout(15)->post("{$this->apiUrl}/setWebhook", [
+        $request = Http::timeout(15);
+        if (app()->environment('local')) {
+            $request->withoutVerifying();
+        }
+
+        $response = $request->post("{$this->apiUrl}/setWebhook", [
             'url'                  => $webhookUrl,
             'allowed_updates'      => ['message', 'callback_query'],
             'drop_pending_updates' => true,
@@ -755,6 +767,42 @@ HTML;
         Log::channel('ai_autofill')->info('📡 [TELEGRAM] Webhook set', [
             'url'    => $webhookUrl,
             'result' => $result,
+        ]);
+
+        return $result ?? ['ok' => false, 'description' => 'No response'];
+    }
+
+    /**
+     * Daftarkan daftar perintah (commands) ke Telegram Bot
+     * Agar muncul otomatis saat user mengetik '/'
+     */
+    public function setCommands(): array
+    {
+        if (!$this->botToken) {
+            return ['ok' => false, 'description' => 'Bot token not configured'];
+        }
+
+        $commands = [
+            ['command' => 'start',  'description' => 'Mulai bot & info pendaftaran'],
+            ['command' => 'daftar', 'description' => 'Daftarkan akun (Contoh: /daftar email@anda.com)'],
+            ['command' => 'status', 'description' => 'Cek status pendaftaran akun Anda'],
+            ['command' => 'cabut',  'description' => 'Hapus notifikasi dari akun Telegram ini'],
+        ];
+
+        $request = Http::timeout(15);
+        if (app()->environment('local')) {
+            $request->withoutVerifying();
+        }
+
+        $response = $request->post("{$this->apiUrl}/setMyCommands", [
+            'commands' => $commands,
+        ]);
+
+        $result = $response->json();
+
+        Log::channel('ai_autofill')->info('📡 [TELEGRAM] Commands registered', [
+            'commands' => $commands,
+            'result'   => $result,
         ]);
 
         return $result ?? ['ok' => false, 'description' => 'No response'];
