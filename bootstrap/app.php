@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'broadcasting/auth',
+            'log-viewer',
+            'log-viewer/*',
         ]);
         $middleware->trustProxies(at: '*');
         $middleware->alias([
