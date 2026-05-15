@@ -42,10 +42,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: '0.70'
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: '0.35'
           memory: 256M
     logging:
       driver: "json-file"
@@ -78,10 +78,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: '0.20'
           memory: 128M
         reservations:
-          cpus: '0.25'
+          cpus: '0.10'
           memory: 64M
     logging:
       driver: "json-file"
@@ -118,10 +118,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: '0.50'
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: '0.25'
           memory: 256M
     logging:
       driver: "json-file"
@@ -161,10 +161,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: '0.20'
           memory: 256M
         reservations:
-          cpus: '0.25'
+          cpus: '0.10'
           memory: 128M
     logging:
       driver: "json-file"
@@ -204,10 +204,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.10'
           memory: 192M
         reservations:
-          cpus: '0.1'
+          cpus: '0.05'
           memory: 96M
     logging:
       driver: "json-file"
@@ -247,10 +247,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.30'
           memory: 128M
         reservations:
-          cpus: '0.1'
+          cpus: '0.15'
           memory: 64M
     logging:
       driver: "json-file"
