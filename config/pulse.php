@@ -73,7 +73,9 @@ return [
         'driver' => env('PULSE_STORAGE_DRIVER', 'database'),
 
         'database' => [
-            'connection' => env('PULSE_DB_CONNECTION', env('DB_CONNECTION', 'mysql')),
+            // 'pulse' = dedicated connection di config/database.php
+            // Fallback ke DB utama HANYA jika benar-benar tidak ada env apapun
+            'connection' => env('PULSE_DB_CONNECTION', 'pulse'),
             'chunk' => 1000,
         ],
     ],
@@ -90,9 +92,13 @@ return [
     */
 
     'ingest' => [
-        'driver' => env('PULSE_INGEST_DRIVER', 'storage'),
+        // 'redis' = data ditulis ke Redis dulu (non-blocking), lalu pulse:work flush ke DB
+        // 'storage' = tulis langsung ke DB per request (blocking, tidak cocok production)
+        'driver' => env('PULSE_INGEST_DRIVER', 'redis'),
 
-        'buffer' => env('PULSE_INGEST_BUFFER', 5000),
+        // Buffer: berapa entri ditampung di memori sebelum dikirim ke Redis
+        // 1000 cukup untuk VPS 4GB dengan 9 container — hindari OOM
+        'buffer' => env('PULSE_INGEST_BUFFER', 1000),
 
         'trim' => [
             'lottery' => [1, 1000],
@@ -100,7 +106,9 @@ return [
         ],
 
         'redis' => [
-            'connection' => env('PULSE_REDIS_CONNECTION'),
+            // 'pulse' = Redis DB index 2 (terpisah dari cache/default)
+            // Lihat config/database.php section redis.pulse
+            'connection' => env('PULSE_REDIS_CONNECTION', 'pulse'),
             'chunk' => 1000,
         ],
     ],

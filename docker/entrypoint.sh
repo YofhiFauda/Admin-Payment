@@ -113,10 +113,29 @@ elif [ "$ROLE" = "scheduler" ]; then
 
 # ─────────────────────────────────────────
 #  PULSE — Performance Monitoring Worker
+#  --timeout=0 mencegah PHP timeout (default 60s) membunuh proses
+#  Loop restart memastikan pulse:work bangkit kembali jika crash
+# ─────────────────────────────────────────
+# ─────────────────────────────────────────
+#  PULSE — Performance Monitoring Worker
 # ─────────────────────────────────────────
 elif [ "$ROLE" = "pulse" ]; then
-    echo "📊 Starting Laravel Pulse worker..."
-    exec php artisan pulse:work
+    echo "📊 Starting Laravel Pulse worker (timeout=0)..."
+    
+    # Matikan strict mode sementara agar error tidak membunuh container
+    set +e 
+    
+    while true; do
+        php artisan pulse:work --timeout=0
+        EXIT_CODE=$?
+        if [ $EXIT_CODE -ne 0 ]; then
+            echo "⚠️  pulse:work exited with code $EXIT_CODE. Restarting in 3s..."
+            sleep 3
+        else
+            echo "ℹ️  pulse:work stopped cleanly. Restarting in 1s..."
+            sleep 1
+        fi
+    done
 
 else
     echo "❌ ERROR: Unknown CONTAINER_ROLE '$ROLE'"

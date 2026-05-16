@@ -39,6 +39,13 @@ return [
     */
 
     'authorize' => [\App\Http\Middleware\AuthorizeLogViewer::class, 'authorize'],
+    
+    'api_middleware' => [
+        'web',
+        'auth',
+        \Opcodes\LogViewer\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------

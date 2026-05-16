@@ -45,7 +45,7 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DB_URL'),
+            // 'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('DB_DATABASE', 'laravel'),
@@ -65,11 +65,12 @@ return [
 
         'pulse' => [
             'driver' => 'mysql',
-            'host' => env('PULSE_DB_HOST', env('DB_HOST')),
-            'port' => env('PULSE_DB_PORT', env('DB_PORT')),
-            'database' => env('PULSE_DB_DATABASE', env('DB_DATABASE')),
-            'username' => env('PULSE_DB_USERNAME', env('DB_USERNAME')),
-            'password' => env('PULSE_DB_PASSWORD', env('DB_PASSWORD')),
+            // 'url' => env('PULSE_DB_URL', env('DB_URL')),
+            'host' => env('PULSE_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('PULSE_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('PULSE_DB_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('PULSE_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('PULSE_DB_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
@@ -193,16 +194,16 @@ return [
         ],
 
         'pulse' => [
-            'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_PULSE_DB', '2'),
-            'max_retries' => env('REDIS_MAX_RETRIES', 3),
-            'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
-            'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
-            'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+            'url' => env('PULSE_REDIS_URL'),
+            'host' => env('PULSE_REDIS_HOST', '127.0.0.1'),
+            'username' => env('PULSE_REDIS_USERNAME'),
+            'password' => env('PULSE_REDIS_PASSWORD'),
+            'port' => env('PULSE_REDIS_PORT', '6379'),
+            'database' => env('PULSE_REDIS_DB', '0'),
+            'max_retries' => env('PULSE_REDIS_MAX_RETRIES', 3),
+            'backoff_algorithm' => env('PULSE_REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
+            'backoff_base' => env('PULSE_REDIS_BACKOFF_BASE', 100),
+            'backoff_cap' => env('PULSE_REDIS_BACKOFF_CAP', 1000),
         ],
 
     ],
