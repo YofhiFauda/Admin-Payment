@@ -2,7 +2,7 @@
 
 ## 🔴 Masalah Awal
 
-Deployment gagal dengan 2 error utama:
+Deployment gagal dengan 3 error:
 
 1. **REVERB_APP_KEY tidak terdefinisi** (exit code 255)
    ```
@@ -12,6 +12,11 @@ Deployment gagal dengan 2 error utama:
 2. **File conflict saat docker cp**
    ```
    cannot overwrite directory "/data/coolify/.../app/Http/Middleware/LogViewerAuth.php" with non-directory
+   ```
+
+3. **Port already allocated** (exit code 1)
+   ```
+   Bind for 0.0.0.0:8000 failed: port is already allocated
    ```
 
 ---
@@ -64,7 +69,39 @@ WORKDIR /app
 -     - ./app/Providers/AppServiceProvider.php:/var/www/app/Providers/AppServiceProvider.php:ro
 ```
 
-### 3. **Verifikasi .env.production**
+### 3. **docker-compose.yaml** - Ganti Port Mappings dengan Expose
+
+```diff
+  nginx:
+    image: nginx:alpine
+    container_name: whusnet-nginx
+    restart: unless-stopped
+-   ports:
+-     - "8000:80"
++   expose:
++     - "80"
+    networks:
+      - coolify
+      - default
+
+  reverb:
+    image: whusnet-app:${APP_VERSION:-latest}
+    container_name: whusnet-reverb
+    restart: unless-stopped
+-   ports:
+-     - "8081:8081"
++   expose:
++     - "8081"
+    networks:
+      - coolify
+      - default
+```
+
+**Alasan:**
+- Coolify menggunakan Traefik sebagai reverse proxy
+- Port mapping eksplisit tidak diperlukan
+- `expose:` cukup untuk internal network routing
+- Menghindari port conflict dengan container lama
 
 ```bash
 ✅ REVERB_APP_KEY=whusnet_reverb_key_123

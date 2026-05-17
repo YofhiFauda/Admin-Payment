@@ -85,8 +85,21 @@ services:
     image: nginx:alpine
     container_name: whusnet-nginx
     restart: unless-stopped
-    ports:
-      - "8000:80"
+    # ═══════════════════════════════════════════════════════════════
+    # ⚠️ CATATAN: Port Mapping untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # Coolify menggunakan Traefik sebagai reverse proxy.
+    # Port 80 di-expose ke internal network (coolify), bukan host.
+    # Traefik akan route traffic dari domain ke container ini.
+    #
+    # Jika deployment gagal dengan "port already allocated":
+    # 1. Hapus "ports:" section (uncomment expose:)
+    # 2. Atau gunakan port yang berbeda
+    # ═══════════════════════════════════════════════════════════════
+    expose:
+      - "80"
+    # ports:
+    #   - "8000:80"  # Hanya untuk local testing, comment untuk Coolify
     networks:
       - coolify
       - default
@@ -175,8 +188,16 @@ services:
     networks:
       - coolify
       - default
-    ports:
-      - "8081:8081"
+    # ═══════════════════════════════════════════════════════════════
+    # ⚠️ CATATAN: Port Mapping untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # Reverb WebSocket server perlu expose port untuk Traefik routing.
+    # Coolify akan configure Traefik untuk route WebSocket traffic.
+    # ═══════════════════════════════════════════════════════════════
+    expose:
+      - "8081"
+    # ports:
+    #   - "8081:8081"  # Hanya untuk local testing, comment untuk Coolify
     volumes:
       - storage_data:/var/www/storage
       # bootstrap/cache dari image — tidak perlu shared volume
