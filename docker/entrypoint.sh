@@ -82,6 +82,12 @@ if [ "$ROLE" = "app" ]; then
     echo "🗂️  Clearing stale compiled views from persistent storage volume..."
     php artisan view:clear 2>/dev/null || true
 
+    echo "📦 Publishing assets and discovering packages..."
+    php artisan package:discover --ansi || true
+    php artisan event:cache || true
+    php artisan vendor:publish --tag=pulse-assets --force || true
+    php artisan vendor:publish --tag=log-viewer-assets --force || true
+
     echo "✅ App setup complete. Starting PHP-FPM..."
     exec php-fpm
 
@@ -126,7 +132,7 @@ elif [ "$ROLE" = "pulse" ]; then
     set +e 
     
     while true; do
-        php artisan pulse:work --timeout=0
+        php artisan pulse:work
         EXIT_CODE=$?
         if [ $EXIT_CODE -ne 0 ]; then
             echo "⚠️  pulse:work exited with code $EXIT_CODE. Restarting in 3s..."

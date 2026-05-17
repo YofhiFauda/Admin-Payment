@@ -56,7 +56,7 @@ return [
     |
     */
 
-    'enabled' => env('PULSE_ENABLED', true),
+    'enabled' => env('PULSE_ENABLED', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -131,6 +131,23 @@ return [
             'ignore' => [
                 '#^illuminate:pulse:#',
             ],
+            'groups' => [
+                // AI AutoFill cache keys (OCR processing)
+                '/^ai_autofill:.*/' => 'ai_autofill:*',
+                
+                // Transaction search & stats cache
+                '/^transactions_search_.*/' => 'transactions_search:*',
+                '/^transactions_stats_.*/' => 'transactions_stats:*',
+                '/^tx_stats_.*/' => 'tx_stats:*',
+                
+                // Price index & item matching cache
+                '/^price_index_lookup:.*/' => 'price_index_lookup:*',
+                '/^master_item:.*/' => 'master_item:*',
+                '/^autocomplete:.*/' => 'autocomplete:*',
+                
+                // Transaction category labels
+                '/^transaction_category_label:.*/' => 'transaction_category_label:*',
+            ],
         ],
 
         \Laravel\Pulse\Recorders\Exceptions::class => [
@@ -166,6 +183,9 @@ return [
             'ignore' => [
                 // 'my-job',
             ],
+            'groups' => [
+                // Add job grouping patterns here if needed
+            ],
         ],
 
         \Laravel\Pulse\Recorders\SlowOutgoingRequests::class => [
@@ -174,6 +194,9 @@ return [
             'threshold' => env('PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD', 1000),
             'ignore' => [
                 // '#^http://127\.0\.0\.1:13714#', // Inertia SSR...
+            ],
+            'groups' => [
+                // Add URL grouping patterns here if needed
             ],
         ],
 
@@ -185,6 +208,9 @@ return [
             'ignore' => [
                 // '#^insert into `pulse_#',
             ],
+            'groups' => [
+                // Add query grouping patterns here if needed
+            ],
         ],
 
         \Laravel\Pulse\Recorders\SlowRequests::class => [
@@ -195,6 +221,9 @@ return [
                 '#^/pulse$#',
                 '#^/log-viewer#',
             ],
+            'groups' => [
+                // Add request path grouping patterns here if needed
+            ],
         ],
 
         \Laravel\Pulse\Recorders\UserJobs::class => [
@@ -202,6 +231,9 @@ return [
             'sample_rate' => env('PULSE_USER_JOBS_SAMPLE_RATE', 1),
             'ignore' => [
                 // 'my-job',
+            ],
+            'groups' => [
+                // Add job grouping patterns here if needed
             ],
         ],
 
@@ -211,6 +243,9 @@ return [
             'ignore' => [
                 '#^/pulse$#',
                 '#^/log-viewer#',
+            ],
+            'groups' => [
+                // Add request path grouping patterns here if needed
             ],
         ],
     ],

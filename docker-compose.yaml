@@ -25,13 +25,21 @@ services:
     networks:
       - coolify
       - default
+    env_file:
+      - .env.production
     volumes:
       - app_public:/var/www/public
       - storage_data:/var/www/storage
+      - ./config/pulse.php:/var/www/config/pulse.php:ro
+      - ./config/log-viewer.php:/var/www/config/log-viewer.php:ro
+      - ./app/Http/Middleware/LogViewerAuth.php:/var/www/app/Http/Middleware/LogViewerAuth.php:ro
+      - ./bootstrap/app.php:/var/www/bootstrap/app.php:ro
+      - ./app/Providers/AppServiceProvider.php:/var/www/app/Providers/AppServiceProvider.php:ro
+      
       # bootstrap/cache TIDAK di-share — immutable per image build
     environment:
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       CONTAINER_ROLE: app
     healthcheck:
       test: ["CMD-SHELL", "pgrep php-fpm >/dev/null || exit 1"]
@@ -60,11 +68,13 @@ services:
     image: nginx:alpine
     container_name: whusnet-nginx
     restart: unless-stopped
-    expose:
-      - "80"
+    ports:
+      - "8000:80"
     networks:
       - coolify
       - default
+    env_file:
+      - .env.production
     volumes:
       - ./docker/nginx/coolify.conf:/etc/nginx/conf.d/default.conf:ro
       - app_public:/var/www/public:ro
@@ -105,12 +115,14 @@ services:
     networks:
       - coolify
       - default
+    env_file:
+      - .env.production
     volumes:
       - storage_data:/var/www/storage
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       CONTAINER_ROLE: horizon
     depends_on:
       app:
@@ -146,15 +158,17 @@ services:
     networks:
       - coolify
       - default
-    expose:
-      - "8081"
+    ports:
+      - "8081:8081"
     volumes:
       - storage_data:/var/www/storage
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       CONTAINER_ROLE: reverb
+    env_file:
+      - .env.production
     depends_on:
       app:
         condition: service_healthy
@@ -191,12 +205,14 @@ services:
     networks:
       - coolify
       - default
+    env_file:
+      - .env.production
     volumes:
       - storage_data:/var/www/storage
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       CONTAINER_ROLE: scheduler
     depends_on:
       app:
@@ -234,12 +250,14 @@ services:
     networks:
       - coolify
       - default
+    env_file:
+      - .env.production
     volumes:
       - storage_data:/var/www/storage
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "false"
+      APP_DEBUG: "true"
       CONTAINER_ROLE: pulse
     depends_on:
       app:

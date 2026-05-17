@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
+    /**database\migrations\2026_05_04_100000_add_avg_price_manual_to_price_indexes.php
      * Run the migrations.
      * 
      * Menambahkan kolom avg_price_manual untuk override manual harga rata-rata.

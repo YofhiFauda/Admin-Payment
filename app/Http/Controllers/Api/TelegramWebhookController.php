@@ -33,7 +33,6 @@ class TelegramWebhookController extends Controller
 
     /**
      * POST /api/telegram/webhook
-     * Dipanggil oleh Telegram server setiap ada pesan masuk ke bot.
      */
     public function handle(Request $request)
     {

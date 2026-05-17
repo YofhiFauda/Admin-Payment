@@ -24,7 +24,7 @@ return [
     |
     */
 
-    'middleware' => ['web', 'auth'],
+    'middleware' => ['web', 'auth', 'log-viewer.auth'],
 
     /*
     |--------------------------------------------------------------------------
@@ -34,18 +34,13 @@ return [
     | This callback will be used to authorize users to access Log Viewer.
     | If the callback returns true, the user will be authorized.
     |
-    | NOTE: Use string reference instead of closure for config:cache compatibility
+    | NOTE: Authorization is handled by middleware, so we use static method
     |
     */
 
-    'authorize' => [\App\Http\Middleware\AuthorizeLogViewer::class, 'authorize'],
+    'authorize' => [\App\Http\Middleware\LogViewerAuth::class, 'authorizeStatic'],
     
-    'api_middleware' => [
-        'web',
-        'auth',
-        \Opcodes\LogViewer\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-        \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
-    ],
+    'api_middleware' => ['web', 'auth', 'log-viewer.auth'],
 
     /*
     |--------------------------------------------------------------------------

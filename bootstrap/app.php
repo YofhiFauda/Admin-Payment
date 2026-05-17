@@ -26,12 +26,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'broadcasting/auth',
             'log-viewer',
             'log-viewer/*',
+            'log-viewer/api/*',
         ]);
         $middleware->trustProxies(at: '*');
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'n8n.secret' => \App\Http\Middleware\N8nSecretMiddleware::class,
             'horizon.auth' => \App\Http\Middleware\HorizonBasicAuth::class,
+            'log-viewer.auth' => \App\Http\Middleware\LogViewerAuth::class,
+            'api-docs.auth' => \App\Http\Middleware\AuthorizeApiDocs::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

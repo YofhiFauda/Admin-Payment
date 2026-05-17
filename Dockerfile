@@ -101,13 +101,8 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 # config:cache & route:cache dilakukan di entrypoint.sh (APP role)
 # menggunakan env var container aktual, bukan nilai .env.example.
 # \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-RUN cp .env.example .env \
-    && php artisan package:discover --ansi \
-    && php artisan view:cache \
-    && php artisan event:cache \
-    && php artisan vendor:publish --tag=pulse-assets --force \
-    && php artisan vendor:publish --tag=log-viewer-assets --force \
-    && rm .env
+# Artisan optimasi dan vendor:publish telah dipindahkan ke entrypoint.sh
+# untuk menghindari error koneksi / timeout saat proses docker build.
 
 # ⚠️ WORKAROUND UNTUK DOCKER VOLUME
 # Simpan copy dari public directory agar bisa di-sync ke shared volume saat boot.

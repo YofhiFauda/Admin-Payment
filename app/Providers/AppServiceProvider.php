@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -21,7 +23,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        URL::forceScheme('https');
+        if (app()->environment('production') || str_starts_with(config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+            
+            // Force the root URL to match APP_URL to prevent malformed redirects
+            // when behind proxies like Cloudflare Tunnel.
+            if (config('app.url')) {
+                URL::forceRootUrl(config('app.url'));
+            }
+        }
+
+        // ─── Gate: Log Viewer Authorization ─────────────────────────
+        Gate::define('viewLogViewer', function ($user) {
+            return $user && $user->role === 'owner';
+        });
+
+        // ─── Gate: API Documentation Authorization ──────────────────
+        Gate::define('viewApiDocs', function ($user) {
+            return $user && $user->role === 'owner';
+        });
 
         // ─── Rate Limit: AI Autofill ────────────────────────────────
         RateLimiter::for('ai-auto-fill', function (Request $request) {
