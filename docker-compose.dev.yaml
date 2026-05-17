@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════════════════
+#  docker-compose.dev.yaml — Development Override
+#  HANYA untuk development/debugging lokal
+#  JANGAN gunakan di Coolify production!
+# ═══════════════════════════════════════════════════════════════════
+#
+#  Usage:
+#    docker-compose -f docker-compose.yaml -f docker-compose.dev.yaml up
+#
+#  Fitur:
+#    - Hot reload untuk config & code changes
+#    - Tidak perlu rebuild image setiap perubahan
+#    - Debug mode enabled
+#
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+  app:
+    environment:
+      APP_DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      # Mount directories untuk hot reload (development only)
+      - ./config:/var/www/config:ro
+      - ./app:/var/www/app:ro
+      - ./bootstrap:/var/www/bootstrap:ro
+      - ./routes:/var/www/routes:ro
+      - ./resources:/var/www/resources:ro
+      
+      # ⚠️ CATATAN:
+      # - Mount directory, BUKAN individual files
+      # - Read-only (:ro) untuk safety
+      # - Hanya untuk development, JANGAN di production
+
+  horizon:
+    environment:
+      APP_DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./config:/var/www/config:ro
+      - ./app:/var/www/app:ro
+
+  reverb:
+    environment:
+      APP_DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./config:/var/www/config:ro
+      - ./app:/var/www/app:ro
+
+  scheduler:
+    environment:
+      APP_DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./config:/var/www/config:ro
+      - ./app:/var/www/app:ro
+
+  pulse:
+    environment:
+      APP_DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./config:/var/www/config:ro
+      - ./app:/var/www/app:ro

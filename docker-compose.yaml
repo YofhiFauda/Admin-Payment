@@ -14,6 +14,7 @@ services:
       dockerfile: Dockerfile
       args:
         - APP_ENV=production
+        - REVERB_APP_KEY=${REVERB_APP_KEY}
         - VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY}
         - VITE_REVERB_HOST=${VITE_REVERB_HOST}
         - VITE_REVERB_PORT=${VITE_REVERB_PORT:-443}
@@ -30,16 +31,32 @@ services:
     volumes:
       - app_public:/var/www/public
       - storage_data:/var/www/storage
-      - ./config/pulse.php:/var/www/config/pulse.php:ro
-      - ./config/log-viewer.php:/var/www/config/log-viewer.php:ro
-      - ./app/Http/Middleware/LogViewerAuth.php:/var/www/app/Http/Middleware/LogViewerAuth.php:ro
-      - ./bootstrap/app.php:/var/www/bootstrap/app.php:ro
-      - ./app/Providers/AppServiceProvider.php:/var/www/app/Providers/AppServiceProvider.php:ro
       
-      # bootstrap/cache TIDAK di-share — immutable per image build
+      # ═══════════════════════════════════════════════════════════════
+      # ⚠️ CATATAN: Individual File Mounts DIHAPUS
+      # ═══════════════════════════════════════════════════════════════
+      # File-file berikut TIDAK di-mount karena:
+      # 1. Coolify tidak support individual file mounts (deployment error)
+      # 2. File sudah ada di image via COPY . /var/www (Dockerfile line 56)
+      # 3. Production best practice: immutable infrastructure
+      #
+      # File yang sebelumnya di-mount:
+      # - ./config/pulse.php:/var/www/config/pulse.php:ro
+      # - ./config/log-viewer.php:/var/www/config/log-viewer.php:ro
+      # - ./app/Http/Middleware/LogViewerAuth.php:/var/www/app/Http/Middleware/LogViewerAuth.php:ro
+      # - ./bootstrap/app.php:/var/www/bootstrap/app.php:ro
+      # - ./app/Providers/AppServiceProvider.php:/var/www/app/Providers/AppServiceProvider.php:ro
+      #
+      # Jika perlu update file tersebut:
+      # 1. Edit file → commit → push
+      # 2. Redeploy di Coolify (rebuild image)
+      # 3. File terbaru akan masuk ke image
+      #
+      # Lihat: VOLUME_MOUNTING_EXPLANATION.md untuk detail lengkap
+      # ═══════════════════════════════════════════════════════════════
     environment:
       APP_ENV: production
-      APP_DEBUG: "true"
+      APP_DEBUG: "false"
       CONTAINER_ROLE: app
     healthcheck:
       test: ["CMD-SHELL", "pgrep php-fpm >/dev/null || exit 1"]
@@ -122,7 +139,7 @@ services:
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "true"
+      APP_DEBUG: "false"
       CONTAINER_ROLE: horizon
     depends_on:
       app:
@@ -165,7 +182,7 @@ services:
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "true"
+      APP_DEBUG: "false"
       CONTAINER_ROLE: reverb
     env_file:
       - .env.production
@@ -212,7 +229,7 @@ services:
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "true"
+      APP_DEBUG: "false"
       CONTAINER_ROLE: scheduler
     depends_on:
       app:
@@ -257,7 +274,7 @@ services:
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
-      APP_DEBUG: "true"
+      APP_DEBUG: "false"
       CONTAINER_ROLE: pulse
     depends_on:
       app:
