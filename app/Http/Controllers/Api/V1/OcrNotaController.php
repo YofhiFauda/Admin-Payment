@@ -44,6 +44,39 @@ class OcrNotaController extends Controller
         $this->compression = $compression;
     }
 
+    private function broadcastTransactionUpdate(Transaction $transaction): void
+    {
+        try {
+            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+        } catch (\Exception $e) {
+            Log::channel('ai_autofill')->warning('⚠️ [TRANSACTION BROADCAST] FAILED', [
+                'transaction_id' => $transaction->id,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function paymentActorOrError(): array
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return [null, response()->json([
+                'success' => false,
+                'message' => 'Sesi login tidak valid. Silakan login ulang.',
+            ], 401)];
+        }
+
+        if (!in_array($user->role, ['admin', 'atasan', 'owner'], true)) {
+            return [null, response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin melakukan pembayaran.',
+            ], 403)];
+        }
+
+        return [$user, null];
+    }
+
     /**
      * POST /api/v1/nota/upload
      */
@@ -237,6 +270,11 @@ class OcrNotaController extends Controller
      */
     public function uploadPengajuanInvoice(Request $request)
     {
+        [$paymentActor, $authError] = $this->paymentActorOrError();
+        if ($authError) {
+            return $authError;
+        }
+
         // ═══════════════════════════════════════════════════════════
         // PREPARE / SANITIZE INPUTS BEFORE VALIDATION
         // Remove formatting dots from nominal inputs sent from frontend
@@ -409,7 +447,7 @@ class OcrNotaController extends Controller
         $logDescription = "Mengunggah Invoice untuk Pengajuan " . $transaction->invoice_number . " (" . ($finalStatus === 'completed' ? 'Selesai' : 'Pending Hutang') . "). Sumber Dana: " . $sumberNames;
 
         \App\Models\ActivityLog::create([
-            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
+            'user_id'        => $paymentActor->id,
             'action'         => 'upload_invoice',
             'transaction_id' => $transaction->id,
             'target_id'      => $transaction->invoice_number,
@@ -538,6 +576,11 @@ class OcrNotaController extends Controller
             ], 422);
         }
 
+        [$paymentActor, $authError] = $this->paymentActorOrError();
+        if ($authError) {
+            return $authError;
+        }
+
         $transaction = Transaction::where('upload_id', $request->upload_id)
             ->orWhere('id', $request->transaksi_id)
             ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
@@ -559,13 +602,35 @@ class OcrNotaController extends Controller
         }
 
         $fileInput = $request->hasFile('foto_penyerahan') ? 'foto_penyerahan' : 'file';
-        $path = $request->hasFile($fileInput)
-            ? $request->file($fileInput)->store('payments/cash', 'public')
-            : null;
+        $path = null;
 
-        // 🗜️ Kompresi bukti cash (skip PDF & skip jika tidak ada file)
-        if ($path) {
-            $this->compression->compressUpload(Storage::disk('public')->path($path));
+        try {
+            $storageDisk = Storage::disk('public');
+            if (!$storageDisk->exists('payments/cash')) {
+                $storageDisk->makeDirectory('payments/cash');
+            }
+
+            $path = $request->hasFile($fileInput)
+                ? $request->file($fileInput)->store('payments/cash', 'public')
+                : null;
+
+            if ($path) {
+                $this->compression->compressUpload($storageDisk->path($path));
+            }
+        } catch (\Exception $e) {
+            if ($path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            Log::channel('ai_autofill')->error('❌ [UPLOAD CASH] FILE STORAGE FAILED', [
+                'upload_id' => $request->upload_id,
+                'error'     => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan bukti cash. Silakan coba lagi.',
+            ], 500);
         }
 
         $isPembelian = $transaction->type === 'gudang';
@@ -578,20 +643,25 @@ class OcrNotaController extends Controller
             'description'     => $request->catatan,
         ]);
 
-        // 🔔 Broadcast update untuk UI teknisi
-        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+        $this->broadcastTransactionUpdate($transaction);
 
-        \App\Models\ActivityLog::create([
-            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
-            'action'         => 'upload_payment',
-            'transaction_id' => $transaction->id,
-            'target_id'      => $transaction->invoice_number,
-            'description'    => "Mengunggah bukti penyerahan Cash" . ($request->catatan ? ". Catatan: " . $request->catatan : ""),
-        ]);
+        try {
+            \App\Models\ActivityLog::create([
+                'user_id'        => $paymentActor->id,
+                'action'         => 'upload_payment',
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => "Mengunggah bukti penyerahan Cash" . ($request->catatan ? ". Catatan: " . $request->catatan : ""),
+            ]);
 
-        // 🔔 Kirim notifikasi sistem ke Teknisi
-        if ($transaction->submitter) {
-            $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'pending_technician'));
+            if ($transaction->submitter) {
+                $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'pending_technician'));
+            }
+        } catch (\Exception $e) {
+            Log::channel('ai_autofill')->warning('⚠️ [UPLOAD CASH] POST UPDATE SIDE EFFECT FAILED', [
+                'transaction_id' => $transaction->id,
+                'error'          => $e->getMessage(),
+            ]);
         }
 
         Log::channel('ai_autofill')->info('📤 [UPLOAD CASH] PAYMENT PROOF UPLOADED', [
@@ -787,6 +857,11 @@ class OcrNotaController extends Controller
             ], 422);
         }
 
+        [$paymentActor, $authError] = $this->paymentActorOrError();
+        if ($authError) {
+            return $authError;
+        }
+
         $transaction = Transaction::where('upload_id', $request->upload_id)
             ->orWhere('id', $request->transaksi_id)
             ->with('submitter')
@@ -812,10 +887,31 @@ class OcrNotaController extends Controller
             return response()->json(['message' => 'Bukti transfer wajib diunggah.'], 422);
         }
 
-        $path = $request->file($fileInput)->store('payments/transfer', 'public');
+        $path = null;
 
-        // 🗜️ Kompresi bukti transfer (skip PDF)
-        $this->compression->compressUpload(Storage::disk('public')->path($path));
+        try {
+            $storageDisk = Storage::disk('public');
+            if (!$storageDisk->exists('payments/transfer')) {
+                $storageDisk->makeDirectory('payments/transfer');
+            }
+
+            $path = $request->file($fileInput)->store('payments/transfer', 'public');
+            $this->compression->compressUpload($storageDisk->path($path));
+        } catch (\Exception $e) {
+            Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] FILE STORAGE FAILED', [
+                'upload_id' => $request->upload_id,
+                'error'     => $e->getMessage(),
+            ]);
+
+            if ($path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan bukti transfer. Silakan coba lagi.',
+            ], 500);
+        }
 
         // Auto-update Technician Profile (New Implementation)
         if ($transaction->payment_method === 'transfer_teknisi' && $transaction->submitter) {
@@ -850,22 +946,36 @@ class OcrNotaController extends Controller
         $expectedTotal = $request->expected_nominal + ($request->kode_unik ?? 0) + ($request->biaya_admin ?? 0);
 
         $isPembelian = $transaction->type === 'gudang';
+        $originalPaymentState = [
+            'bukti_transfer' => $transaction->bukti_transfer,
+            'status'         => $transaction->status,
+            'expected_total' => $transaction->expected_total,
+            'paid_by'        => $transaction->paid_by,
+            'paid_at'        => $transaction->paid_at,
+        ];
 
         $transaction->update([
             'bukti_transfer' => $path,
-            'status'         => $isPembelian ? 'completed' : 'Sedang Diverifikasi AI',
+            'status'         => $isPembelian ? 'completed' : 'waiting_payment',
             'expected_total' => $expectedTotal,
             'paid_by'        => auth()->id(),
             'paid_at'        => now(),
         ]);
 
-        \App\Models\ActivityLog::create([
-            'user_id'        => auth()->id() ?? \App\Models\User::where('role', 'admin')->first()->id,
-            'action'         => 'upload_payment',
-            'transaction_id' => $transaction->id,
-            'target_id'      => $transaction->invoice_number,
-            'description'    => "Mengunggah bukti Transfer. Total Transfer: Rp " . number_format($expectedTotal, 0, ',', '.'),
-        ]);
+        try {
+            \App\Models\ActivityLog::create([
+                'user_id'        => $paymentActor->id,
+                'action'         => 'upload_payment',
+                'transaction_id' => $transaction->id,
+                'target_id'      => $transaction->invoice_number,
+                'description'    => "Mengunggah bukti Transfer. Total Transfer: Rp " . number_format($expectedTotal, 0, ',', '.'),
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('ai_autofill')->warning('⚠️ [UPLOAD TRANSFER] ACTIVITY LOG FAILED', [
+                'transaction_id' => $transaction->id,
+                'error'          => $e->getMessage(),
+            ]);
+        }
 
         Log::channel('ai_autofill')->info('📤 [UPLOAD TRANSFER] PAYMENT PROOF UPLOADED', [
             'step'           => 'transfer_upload',
@@ -906,6 +1016,9 @@ class OcrNotaController extends Controller
                         ]);
 
                     if ($response->successful()) {
+                        $transaction->update(['status' => 'Sedang Diverifikasi AI']);
+                        $this->broadcastTransactionUpdate($transaction);
+
                         Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [
                             'step'            => 'transfer_n8n_trigger',
                             'upload_id'       => $request->upload_id,
@@ -914,26 +1027,55 @@ class OcrNotaController extends Controller
                             'file_sent'       => $fileName,
                         ]);
                     } else {
+                        $transaction->update($originalPaymentState);
+                        Storage::disk('public')->delete($path);
+                        $this->broadcastTransactionUpdate($transaction);
+
                         Log::channel('ai_autofill')->warning('⚠️ [UPLOAD TRANSFER] N8N WEBHOOK FAILED', [
                             'step'            => 'transfer_n8n_error',
                             'upload_id'       => $request->upload_id,
                             'response_status' => $response->status(),
                             'response_body'   => $response->body(),
                         ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Gagal mengirim ke sistem verifikasi AI. Silakan coba lagi.',
+                        ], 502);
                     }
                 } catch (\Exception $e) {
+                    $transaction->update($originalPaymentState);
+                    Storage::disk('public')->delete($path);
+                    $this->broadcastTransactionUpdate($transaction);
+
                     Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] N8N WEBHOOK EXCEPTION', [
                         'step'      => 'transfer_n8n_exception',
                         'upload_id' => $request->upload_id,
                         'error'     => $e->getMessage(),
                     ]);
 
-                    $transaction->update([
-                        'status' => 'flagged',
-                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Koneksi ke sistem verifikasi AI gagal. Silakan coba lagi.',
+                    ], 503);
                 }
+            } else {
+                $transaction->update($originalPaymentState);
+                Storage::disk('public')->delete($path);
+                $this->broadcastTransactionUpdate($transaction);
+
+                Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] N8N_WEBHOOK not configured', [
+                    'upload_id' => $request->upload_id,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Webhook verifikasi AI belum dikonfigurasi. Hubungi administrator.',
+                ], 503);
             }
         }
+
+        $finalStatus = $transaction->fresh()->status;
 
         return response()->json([
             'success'        => true,
@@ -942,7 +1084,7 @@ class OcrNotaController extends Controller
             'transaksi_id'   => $transaction->id,
             'pembayaran_id'  => $transaction->id,
             'expected_total' => $expectedTotal,
-            'status'         => $isPembelian ? 'completed' : 'Sedang Diverifikasi AI',
+            'status'         => $finalStatus,
             'detail'         => [
                 'nominal'     => (float) $request->expected_nominal,
                 'kode_unik'   => (float) ($request->kode_unik ?? 0),
@@ -1041,7 +1183,7 @@ class OcrNotaController extends Controller
             ]);
 
             // 🔔 Broadcast update untuk UI
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            $this->broadcastTransactionUpdate($transaction);
 
             \App\Models\ActivityLog::create([
                 'user_id'        => auth()->id(),

@@ -28,8 +28,8 @@ Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
     ->name('telegram.webhook');
 
 
-// ─── PUBLIC ENDPOINTS (v1) ───────────────────────────────────────
-Route::prefix('v1')->group(function () {
+// ─── FRONTEND AJAX ENDPOINTS (v1) ──────────────────────────────────
+Route::prefix('v1')->middleware(['web', 'auth:web'])->group(function () {
 
     // Flow 1 - Upload Nota
     Route::post('/nota/upload', [OcrNotaController::class, 'uploadNota']);
