@@ -115,8 +115,22 @@ else
 fi
 echo ""
 
-# ─── Step 7: Restart Services ──────────────────────────────────────
-echo -e "${BLUE}[Step 7/8]${NC} Restarting services..."
+# ─── Step 7: Ensure Traefik WebSocket Config ───────────────────────
+echo -e "${BLUE}[Step 7/9]${NC} Ensuring Traefik WebSocket config..."
+TRAEFIK_DYNAMIC_DIR="/data/coolify/proxy/dynamic"
+WEBSOCKET_CONFIG="$TRAEFIK_DYNAMIC_DIR/websocket.yml"
+WEBSOCKET_SOURCE="$(dirname "$0")/../docker/traefik/websocket.yml"
+
+if [ -f "$WEBSOCKET_SOURCE" ] && [ -d "$TRAEFIK_DYNAMIC_DIR" ]; then
+    cp "$WEBSOCKET_SOURCE" "$WEBSOCKET_CONFIG"
+    echo -e "${GREEN}✓ Traefik WebSocket config deployed${NC}"
+else
+    echo -e "${YELLOW}⚠ Traefik WebSocket config skipped (dir not found or source missing)${NC}"
+fi
+echo ""
+
+# ─── Step 8: Restart Services ──────────────────────────────────────
+echo -e "${BLUE}[Step 8/9]${NC} Restarting services..."
 docker-compose restart app nginx horizon reverb scheduler pulse > /dev/null 2>&1
 echo -e "${GREEN}✓ Services restarted${NC}"
 echo ""
@@ -126,7 +140,7 @@ echo "  Waiting for services to be ready..."
 sleep 10
 
 # ─── Step 8: Verify Services ───────────────────────────────────────
-echo -e "${BLUE}[Step 8/8]${NC} Verifying services..."
+echo -e "${BLUE}[Step 9/9]${NC} Verifying services..."
 
 # Check container status
 CONTAINERS=("app" "nginx" "horizon" "reverb" "scheduler" "pulse")

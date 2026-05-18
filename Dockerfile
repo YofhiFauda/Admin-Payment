@@ -43,7 +43,8 @@ ENV VITE_REVERB_PORT=$VITE_REVERB_PORT
 ENV VITE_REVERB_SCHEME=$VITE_REVERB_SCHEME
 
 # Copy env example agar Vite punya fallback variabel VITE_REVERB_* saat build jika kosong
-COPY .env.example ./.env
+# CATATAN: .env.example TIDAK di-copy agar Vite tidak override build args dari ARG/ENV di atas
+# COPY .env.example ./.env
 
 RUN npm run build
 

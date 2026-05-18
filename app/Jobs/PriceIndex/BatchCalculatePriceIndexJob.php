@@ -28,16 +28,12 @@ class BatchCalculatePriceIndexJob implements ShouldQueue
     {
         Log::info('🔄 [BatchRecalc] Starting incremental batch recalculation...');
 
-        // Query optimal: Ambil item_name dari transaksi 'completed' yang updatenya > last_calculated_at
-        // Kita gunakan subquery atau join untuk performa bila data sangat besar, 
-        // tapi untuk tahap ini pluck + unique sudah cukup optimal dengan filter updated_at.
+        // Query optimal: Ambil item_name dari transaksi yang diperbarui dalam 24 jam terakhir.
+        // Kita gunakan filter updated_at karena transactions table tidak punya last_calculated_at.
         
         $itemsToRecalc = Transaction::where('status', 'completed')
             ->whereNotNull('items')
-            ->where(function($q) {
-                $q->whereNull('last_calculated_at')
-                  ->orWhereColumn('updated_at', '>', 'last_calculated_at');
-            })
+            ->where('updated_at', '>=', now()->subHours(24))
             ->select('items')
             ->cursor() // Menggunakan cursor agar memori hemat saat data besar
             ->flatMap(function ($trx) {
