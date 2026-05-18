@@ -20,6 +20,6 @@ export function initRealtime() {
         // to avoid duplication and handle toasts across all pages.
         const echoChannel = window.Echo.private(channelName);
 
-        console.log(`📡 [REALTIME] Echo subscription active on channel: ${channelName}`);
+        // console.log(`📡 [REALTIME] Echo subscription active on channel: ${channelName}`);
     }
 }

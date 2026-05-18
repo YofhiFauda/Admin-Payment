@@ -80,5 +80,5 @@ export function setAsReference(transactionId) {
         showToast('Transaksi dijadikan referensi', 'success');
     }
     
-    console.log(`✅ Transaction ${transactionId} set as reference`);
+    // console.log(`✅ Transaction ${transactionId} set as reference`);
 }

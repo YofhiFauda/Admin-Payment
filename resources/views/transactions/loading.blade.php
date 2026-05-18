@@ -148,17 +148,17 @@
             return;
         }
 
-        console.log('📡 [OCR] Listening for updates on channel:', `ocr.${userId}`);
+        // console.log('📡 [OCR] Listening for updates on channel:', `ocr.${userId}`);
 
         window.Echo.private(`ocr.${userId}`)
             .listen('.ocr.updated', (e) => {
-                console.log('📥 [OCR] Received broadcast:', e);
+                // console.log('📥 [OCR] Received broadcast:', e);
                 
                 // Ensure this event is for the current upload
                 if (e.payload.upload_id !== uploadId) return;
 
                 if (e.payload.ai_status === 'completed') {
-                    console.log('✅ [OCR] Completed! Redirecting...');
+                    // console.log('✅ [OCR] Completed! Redirecting...');
                     window.location.href = redirectUrl;
                 } else if (e.payload.ai_status === 'error' || e.payload.ai_status === 'auto-reject') {
                     console.warn('❌ [OCR] Failed or Auto-rejected:', e.payload.message);

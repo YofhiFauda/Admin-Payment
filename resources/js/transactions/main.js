@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Filter checkbox changed`);
+                        // console.log(`✅ Filter checkbox changed`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Branch filter reset`);
+                        // console.log(`✅ Branch filter reset`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Category filter reset`);
+                        // console.log(`✅ Category filter reset`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Date filter reset`);
+                        // console.log(`✅ Date filter reset`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Type filter applied: ${type}`);
+                        // console.log(`✅ Type filter applied: ${type}`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force reload data dengan filter baru
                 SearchEngine.applyFilters(true)
                     .then(() => {
-                        console.log(`✅ Status filter applied: ${status}`);
+                        // console.log(`✅ Status filter applied: ${status}`);
                     })
                     .finally(() => {
                         if (typeof NProgress !== 'undefined') NProgress.done();
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Force reload data dengan filter baru
         SearchEngine.applyFilters(true)
             .then(() => {
-                console.log(`✅ Date filter applied`);
+                // console.log(`✅ Date filter applied`);
                 
                 // Close date popover after applying
                 if (typeof window.closeFilterPopover === 'function') {

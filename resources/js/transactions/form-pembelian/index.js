@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('transaction-form');
     if (!form || !document.getElementById('pembelian-form-indicator')) return;
 
-    console.log('[Pembelian] Initializing Modular Form...');
+    // console.log('[Pembelian] Initializing Modular Form...');
 
     // 2. Initialize Uploader
     new Uploader('nota');
@@ -46,17 +46,18 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     // 5. Initialize Technician Manager
-    if (document.getElementById('technician_id')) {
-        new TechnicianManager('#technician_id', '#technician_bank_account_id', '#technician_bank_container');
-        console.log('[Pembelian] TechnicianManager initialized');
-        console.log('[Pembelian] Elements found:', {
-            technicianSelect: !!document.getElementById('technician_id'),
-            bankSelect: !!document.getElementById('technician_bank_account_id'),
-            bankContainer: !!document.getElementById('technician_bank_container')
-        });
-    } else {
-        console.log('[Pembelian] Technician select not found - skipping TechnicianManager');
-    }
+    //Comment FOR Production
+    // if (document.getElementById('technician_id')) {
+    //     new TechnicianManager('#technician_id', '#technician_bank_account_id', '#technician_bank_container');
+    //     console.log('[Pembelian] TechnicianManager initialized');
+    //     console.log('[Pembelian] Elements found:', {
+    //         technicianSelect: !!document.getElementById('technician_id'),
+    //         bankSelect: !!document.getElementById('technician_bank_account_id'),
+    //         bankContainer: !!document.getElementById('technician_bank_container')
+    //     });
+    // } else {
+    //     console.log('[Pembelian] Technician select not found - skipping TechnicianManager');
+    // }
 
     // 6. Initialize Payment Method Manager (Parity with Rembush)
     new PaymentMethodManager('#payment_method', '#bank_details_section');

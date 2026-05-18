@@ -58,7 +58,7 @@ export const SearchEngine = (function () {
 
                 // Auto-select mode based on dataset size
                 mode = count < Config.ui.searchThreshold ? 'client' : 'server';
-                console.log(`[SearchEngine] Using ${mode.toUpperCase()} mode (${count} records)`);
+                // console.log(`[SearchEngine] Using ${mode.toUpperCase()} mode (${count} records)`);
             }
 
             if (mode === 'client') {
@@ -87,7 +87,7 @@ export const SearchEngine = (function () {
     async function applyFilters(resetPage = true) {
         if (resetPage) currentPage = 1;
 
-        console.log(`[SearchEngine] Applying filters (mode: ${mode || 'detecting'}, resetPage: ${resetPage})`);
+        // console.log(`[SearchEngine] Applying filters (mode: ${mode || 'detecting'}, resetPage: ${resetPage})`);
 
         // If mode not detected yet, do initial load
         if (!mode) {
@@ -134,7 +134,7 @@ export const SearchEngine = (function () {
 
         try {
             // Always fetch fresh data when filters change
-            console.log('[SearchEngine] Fetching client-side data:', url);
+            // console.log('[SearchEngine] Fetching client-side data:', url);
             const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -145,7 +145,7 @@ export const SearchEngine = (function () {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             allTransactions = await response.json();
             
-            console.log(`[SearchEngine] Client-side data loaded: ${allTransactions.length} items`);
+            // console.log(`[SearchEngine] Client-side data loaded: ${allTransactions.length} items`);
 
             // Re-apply search if active
             const currentQuery = getActiveSearchValue();
@@ -220,7 +220,7 @@ export const SearchEngine = (function () {
             renderPage();
             updateStats();
             
-            console.log(`[SearchEngine] Server-side data loaded: ${result.data.length} items`);
+            // console.log(`[SearchEngine] Server-side data loaded: ${result.data.length} items`);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('[SearchEngine] Failed:', error);
@@ -273,7 +273,7 @@ export const SearchEngine = (function () {
         });
 
         const finalUrl = endpoint + '?' + params.toString();
-        console.log(`[SearchEngine] Built URL:`, finalUrl);
+        // console.log(`[SearchEngine] Built URL:`, finalUrl);
         return finalUrl;
     }
 

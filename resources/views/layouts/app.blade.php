@@ -1572,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // ── Listener NOTIFIKASI SYSTEM ──
         window.Echo.private(`notifications.${userId}`)
             .listen('.notification.received', (e) => {
-                console.log('🔔 [NOTIF] Notification Received:', e);
+                // console.log('🔔 [NOTIF] Notification Received:', e);
                 if (typeof updateNotificationBadge === 'function') updateNotificationBadge();
 
                 let theme = THEMES.purple;
@@ -1606,21 +1606,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ── Define Realtime Handlers ──
         window.handleRealtimeTransactionCreation = function (transaction) {
-            console.log('🆕 [REALTIME] Transaction Created:', transaction);
+            // console.log('🆕 [REALTIME] Transaction Created:', transaction);
             if (typeof SearchEngine !== 'undefined' && SearchEngine.addTransaction) {
                 SearchEngine.addTransaction(transaction);
             }
         };
 
         window.handleRealtimeTransactionUpdate = function (transaction) {
-            console.log('🔄 [REALTIME] Transaction Updated:', transaction);
+            // console.log('🔄 [REALTIME] Transaction Updated:', transaction);
             if (typeof SearchEngine !== 'undefined' && SearchEngine.updateTransaction) {
                 SearchEngine.updateTransaction(transaction);
             }
         };
 
         window.handleRealtimeTransactionDeletion = function (data) {
-            console.log('🗑️ [REALTIME] Transaction Deleted:', data);
+            // console.log('🗑️ [REALTIME] Transaction Deleted:', data);
             if (typeof SearchEngine !== 'undefined' && SearchEngine.deleteTransaction) {
                 SearchEngine.deleteTransaction(data.id);
             }
@@ -1633,18 +1633,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Personal Channel - ALL ROLES (for their own transactions)
         window.Echo.private(`transactions.${userId}`)
             .listen('.transaction.created', (e) => {
-                console.log('📥 [PERSONAL] Transaction Created:', e);
+                // console.log('📥 [PERSONAL] Transaction Created:', e);
                 if (e.transaction) window.handleRealtimeTransactionCreation(e.transaction);
             })
             .listen('.transaction.updated', (e) => {
-                console.log('📥 [PERSONAL] Transaction Updated:', e);
+                // console.log('📥 [PERSONAL] Transaction Updated:', e);
                 if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
             });
 
         // 2. OCR Channel - ALL ROLES (for OCR processing updates)
         window.Echo.private(`ocr.${userId}`)
             .listen('.ocr.updated', (e) => {
-                console.log('📥 [OCR] Status Updated:', e);
+                // console.log('📥 [OCR] Status Updated:', e);
                 if (e.payload && e.payload.transaction) window.handleRealtimeTransactionUpdate(e.payload.transaction);
             });
 
@@ -1652,21 +1652,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
             window.Echo.private(`transactions`)
                 .listen('.transaction.created', (e) => {
-                    console.log('📡 [GLOBAL] Transaction Created:', e);
+                    // console.log('📡 [GLOBAL] Transaction Created:', e);
                     // Only add if it's NOT from current user (to avoid duplicate from personal channel)
                     if (e.transaction && e.transaction.submitted_by !== userId) {
                         window.handleRealtimeTransactionCreation(e.transaction);
                     }
                 })
                 .listen('.transaction.updated', (e) => {
-                    console.log('📡 [GLOBAL] Transaction Updated:', e);
+                    // console.log('📡 [GLOBAL] Transaction Updated:', e);
                     // Only update if it's NOT from current user (to avoid duplicate from personal channel)
                     if (e.transaction && e.transaction.submitted_by !== userId) {
                         window.handleRealtimeTransactionUpdate(e.transaction);
                     }
                 })
                 .listen('.transaction.deleted', (e) => {
-                    console.log('📡 [GLOBAL] Transaction Deleted:', e);
+                    // console.log('📡 [GLOBAL] Transaction Deleted:', e);
                     if (e.id) window.handleRealtimeTransactionDeletion(e);
                 });
         }
@@ -1674,7 +1674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
             window.Echo.private(`notifications.management`)
                 .listen('PriceAnomalyDetected', (e) => {
-                    console.log('Price Anomaly Detected:', e);
+                    // console.log('Price Anomaly Detected:', e);
                     const msg = `Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%). <br><a href="${e.url}" class="text-blue-600 font-bold hover:underline mt-1 inline-block">Review Sekarang →</a>`;
                     
                     showRealtimeToast('⚠️ Anomali Harga!', msg, THEMES.error, 'alert-circle');

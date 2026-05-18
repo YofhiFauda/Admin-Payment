@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Edit page has its own inline script implementation
     const isEditPage = pengajuanForm.action.includes('/transactions/') && pengajuanForm.method.toUpperCase() === 'POST' && pengajuanForm.querySelector('input[name="_method"][value="PUT"]');
     if (isEditPage) {
-        console.log('[form-pengajuan/index.js] Skipping initialization for edit page (using inline script)');
+        // console.log('[form-pengajuan/index.js] Skipping initialization for edit page (using inline script)');
         return;
     }
 

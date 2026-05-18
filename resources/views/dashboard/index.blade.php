@@ -354,11 +354,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof window.Echo !== 'undefined') {
         window.Echo.private('transactions')
             .listen('.transaction.updated', (e) => {
-                console.log('🔔 [DASHBOARD] Transaction Updated:', e);
+                // console.log('🔔 [DASHBOARD] Transaction Updated:', e);
                 // Refresh pending list when transaction status changes
                 refreshPendingList();
             });
-        console.log('📡 [DASHBOARD] Echo listener initialized for pending list');
+        // console.log('📡 [DASHBOARD] Echo listener initialized for pending list');
     }
     @endif
 
@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.Echo !== 'undefined') {
             window.Echo.private('transactions')
                 .listen('.transaction.updated', (e) => {
-                    console.log('🔔 [DASHBOARD] Transaction Updated (Branch Cost):', e);
+                    // console.log('🔔 [DASHBOARD] Transaction Updated (Branch Cost):', e);
                     // Refresh branch cost breakdown when transaction changes
                     silentRefreshBranchCost();
                     // Also refresh hutang amounts if function exists
@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         loadAllHutangAmounts();
                     }
                 });
-            console.log('📡 [DASHBOARD] Echo listener initialized for branch cost breakdown');
+            // console.log('📡 [DASHBOARD] Echo listener initialized for branch cost breakdown');
         }
     })();
     @endif
