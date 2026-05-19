@@ -44,7 +44,8 @@ class RembushController extends Controller
             Redis::expire($throttleKey, 60);
         }
 
-        if ($uploadCount > self::MAX_UPLOADS_PER_MIN) {
+        $maxUploads = config('services.throttle.ocr_limit', 5);
+        if ($uploadCount > $maxUploads) {
             $ttl = Redis::ttl($throttleKey);
             
             // 📝 LOG: Upload Throttled

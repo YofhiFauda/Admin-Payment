@@ -16,21 +16,24 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('ai-auto-fill', function (Request $request) {
             $key = $request->ip() . ':' . $request->header('X-SECRET', 'no-secret');
-            return Limit::perMinute(60)->by($key);
+            $limit = config('services.throttle.api_limit', 60);
+            return Limit::perMinute($limit)->by($key);
         });
 
         // ─── Rate Limit: Upload Foto ────────────────────────────────
-        // Max 5 upload per menit per user (tambahan dari throttle di controller)
+        // Menggunakan THROTTLE_OCR_LIMIT dari env
         RateLimiter::for('upload-foto', function (Request $request) {
+            $limit = config('services.throttle.ocr_limit', 20);
             return $request->user()
-                ? Limit::perMinute(5)->by('user:' . $request->user()->id)
-                : Limit::perMinute(3)->by($request->ip());
+                ? Limit::perMinute($limit)->by('user:' . $request->user()->id)
+                : Limit::perMinute(max(3, (int)($limit / 5)))->by($request->ip());
         });
 
         // ─── Rate Limit: Polling ────────────────────────────────────
-        // Loading page poll tiap 2 detik = 30/menit, beri limit 60/menit
+        // Loading page poll tiap 2 detik = 30/menit, menggunakan THROTTLE_API_LIMIT
         RateLimiter::for('ocr-polling', function (Request $request) {
-            return Limit::perMinute(60)->by($request->ip());
+            $limit = config('services.throttle.api_limit', 60);
+            return Limit::perMinute($limit)->by($request->ip());
         });
     }
 }

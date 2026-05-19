@@ -51,9 +51,18 @@ class OcrStatusNotification extends Notification implements ShouldQueue
             }
         }
 
-        // Dispatch real-time toast event
+        // Dispatch real-time toast event. Jangan gagalkan database notification
+        // hanya karena Reverb/broadcast sedang tidak tersedia.
         $unreadCount = $notifiable->unreadNotifications()->count() + 1;
-        broadcast(new \App\Events\NotificationReceived($notifiable->id, $unreadCount, $title, $message, 'ocr_status'));
+        try {
+            broadcast(new \App\Events\NotificationReceived($notifiable->id, $unreadCount, $title, $message, 'ocr_status'));
+        } catch (\Throwable $e) {
+            \Log::warning('Broadcast NotificationReceived gagal (non-critical)', [
+                'notifiable_id' => $notifiable->id,
+                'transaction_id' => $this->transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return [
             'type'           => 'ocr_status',

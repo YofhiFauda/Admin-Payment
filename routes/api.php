@@ -80,7 +80,7 @@ Route::middleware(N8nSecretMiddleware::class)->group(function () {
 
 // ─── Polling Endpoint (dari loading.blade.php) ───────────────────
 Route::get('/ai/auto-fill/status/{uploadId}', [AiAutoFillController::class, 'status'])
-    ->middleware('throttle:60,1');
+    ->middleware('throttle:ocr-polling');
 
 // Legacy route (backward compatibility)
 Route::get('/ai/ai-status/{uploadId}', [AiAutoFillController::class, 'statusLegacy']);

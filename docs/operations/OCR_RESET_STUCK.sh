@@ -7,23 +7,50 @@
 #  ARTISAN COMMAND (direkomendasikan)
 # ─────────────────────────────────────────────────────────────
 
-# 1. DRY-RUN: Lihat semua yang stuck (> 10 menit) tanpa mengubah apapun
+# ── DRY-RUN: Lihat semua stuck tanpa mengubah apapun ──
 docker exec whusnet-app php artisan ocr:reset-stuck
 
-# 2. FIX: Reset semua yang stuck > 10 menit ke ai_status=error
+
+# ═══════════════════════════════════════════════════════════════
+#  MODE 1: RESET KE ERROR (isi manual dari UI)
+# ═══════════════════════════════════════════════════════════════
+
+# Reset semua yang stuck > 10 menit ke ai_status=error
 docker exec -it whusnet-app php artisan ocr:reset-stuck --fix
 
-# 3. FIX: Reset satu transaksi spesifik by ID
+# Reset satu transaksi spesifik ke error
 docker exec -it whusnet-app php artisan ocr:reset-stuck --id=42 --fix
 
-# 4. FIX: Hanya yang stuck > 30 menit
+# Hanya yang stuck > 30 menit
 docker exec -it whusnet-app php artisan ocr:reset-stuck --minutes=30 --fix
 
-# 5. FIX: Hanya yang statusnya 'queued' saja
-docker exec -it whusnet-app php artisan ocr:reset-stuck --status=queued --fix
 
-# 6. FIX: Hanya yang statusnya 'processing' saja
-docker exec -it whusnet-app php artisan ocr:reset-stuck --status=processing --fix
+# ═══════════════════════════════════════════════════════════════
+#  MODE 2: BYPASS KE COMPLETED (nota tetap terisi, form auto-fill)
+# ═══════════════════════════════════════════════════════════════
+
+# [SKENARIO A] n8n sudah callback tapi DB belum terupdate → apply dari Redis cache
+# (Ini yang paling umum: n8n sukses, tapi webhook diblokir Nginx sebelum fix)
+docker exec -it whusnet-app php artisan ocr:reset-stuck --id=42 --complete --from-cache
+
+# [SKENARIO B] Data sudah ada di DB (vendor/amount/items sudah terisi), cukup ubah status
+docker exec -it whusnet-app php artisan ocr:reset-stuck --id=42 --complete
+
+# [SKENARIO C] Isi data manual via CLI (jika DB & cache kosong)
+docker exec -it whusnet-app php artisan ocr:reset-stuck \
+  --id=42 \
+  --complete \
+  --vendor="Toko Budi Elektronik" \
+  --amount=450000 \
+  --date=2026-05-19
+
+# [SKENARIO D] Gabung: ambil dari cache, override vendor & amount via CLI
+docker exec -it whusnet-app php artisan ocr:reset-stuck \
+  --id=42 \
+  --complete \
+  --from-cache \
+  --vendor="Toko ABC" \
+  --amount=250000
 
 
 # ─────────────────────────────────────────────────────────────

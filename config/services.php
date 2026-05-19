@@ -59,4 +59,14 @@ return [
         'allowed_extensions' => ['jpg', 'jpeg', 'png'],
     ],
 
+    // ─── Rate Limiting ────────────────────────────────────────────
+    'throttle' => [
+        'api_limit' => env('THROTTLE_API_LIMIT', 60),
+        'ocr_limit' => env('THROTTLE_OCR_LIMIT', 20),
+    ],
+
+    'ocr' => [
+        'timeout_seconds' => env('OCR_PROCESSING_TIMEOUT_SECONDS', 180),
+    ],
+
 ];

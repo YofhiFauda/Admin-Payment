@@ -1,21 +1,4 @@
 # ═══════════════════════════════════════════════════════════════════
-#  docker-compose.dev.yaml — Development Override
-#  HANYA untuk development/debugging lokal
-#  JANGAN gunakan di Coolify production!
-# ═══════════════════════════════════════════════════════════════════
-#
-#  Usage:
-#    docker-compose -f docker-compose.yaml -f docker-compose.dev.yaml up
-#
-#  Fitur:
-#    - Hot reload untuk config & code changes
-#    - Tidak perlu rebuild image setiap perubahan
-#    - Debug mode enabled
-#
-# ═══════════════════════════════════════════════════════════════════
-
-
-# ═══════════════════════════════════════════════════════════════════
 #  docker-compose.yaml — WHUSNET Admin Payment
 #  Coolify Production Configuration (VPS 4GB)
 # ═══════════════════════════════════════════════════════════════════
@@ -36,7 +19,7 @@ services:
         - VITE_REVERB_PORT=443
         - VITE_REVERB_SCHEME=https
     image: whusnet-app:${APP_VERSION:-latest}
-  #  container_name: whusnet-app
+    container_name: whusnet-app
     restart: unless-stopped
     working_dir: /var/www
     networks:
@@ -57,11 +40,11 @@ services:
       # 3. Production best practice: immutable infrastructure
       #
       # File yang sebelumnya di-mount:
-      - ./config:/var/www/config:ro
-      - ./app:/var/www/app:ro
-      - ./bootstrap:/var/www/bootstrap:ro
-      - ./routes:/var/www/routes:ro
-      - ./resources:/var/www/resources:ro
+      # - ./config/pulse.php:/var/www/config/pulse.php:ro
+      # - ./config/log-viewer.php:/var/www/config/log-viewer.php:ro
+      # - ./app/Http/Middleware/LogViewerAuth.php:/var/www/app/Http/Middleware/LogViewerAuth.php:ro
+      # - ./bootstrap/app.php:/var/www/bootstrap/app.php:ro
+      # - ./app/Providers/AppServiceProvider.php:/var/www/app/Providers/AppServiceProvider.php:ro
       #
       # Jika perlu update file tersebut:
       # 1. Edit file → commit → push
@@ -99,11 +82,23 @@ services:
   # ─────────────────────────────────────────
   nginx:
     image: nginx:alpine
-  #  container_name: whusnet-nginx
+    container_name: whusnet-nginx
     restart: unless-stopped
-
-    ports:
-      - "8000:80"  # Hanya untuk local testing, comment untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # ⚠️ CATATAN: Port Mapping untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # Coolify menggunakan Traefik sebagai reverse proxy.
+    # Port 80 di-expose ke internal network (coolify), bukan host.
+    # Traefik akan route traffic dari domain ke container ini.
+    #
+    # Jika deployment gagal dengan "port already allocated":
+    # 1. Hapus "ports:" section (uncomment expose:)
+    # 2. Atau gunakan port yang berbeda
+    # ═══════════════════════════════════════════════════════════════
+    expose:
+      - "80"
+    # ports:
+    #   - "8000:80"  # Hanya untuk local testing, comment untuk Coolify
     networks:
       - coolify
       - default
@@ -143,7 +138,7 @@ services:
   # ─────────────────────────────────────────
   horizon:
     image: whusnet-app:${APP_VERSION:-latest}
- #   container_name: whusnet-horizon
+    container_name: whusnet-horizon
     restart: unless-stopped
     working_dir: /var/www
     networks:
@@ -152,9 +147,8 @@ services:
     env_file:
       - .env.production
     volumes:
-      - ./config:/var/www/config:ro
-      - ./app:/var/www/app:ro
       - storage_data:/var/www/storage
+      # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -187,18 +181,25 @@ services:
   # ─────────────────────────────────────────
   reverb:
     image: whusnet-app:${APP_VERSION:-latest}
-  #  container_name: whusnet-reverb
+    container_name: whusnet-reverb
     restart: unless-stopped
     working_dir: /var/www
     networks:
       - coolify
       - default
-    ports:
-       - "8081:8081"  # Hanya untuk local testing, comment untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # ⚠️ CATATAN: Port Mapping untuk Coolify
+    # ═══════════════════════════════════════════════════════════════
+    # Reverb WebSocket server perlu expose port untuk Traefik routing.
+    # Coolify akan configure Traefik untuk route WebSocket traffic.
+    # ═══════════════════════════════════════════════════════════════
+    expose:
+      - "8081"
+    # ports:
+    #   - "8081:8081"  # Hanya untuk local testing, comment untuk Coolify
     volumes:
       - storage_data:/var/www/storage
-      - ./config:/var/www/config:ro
-      - ./app:/var/www/app:ro
+      # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -235,7 +236,7 @@ services:
   # ─────────────────────────────────────────
   scheduler:
     image: whusnet-app:${APP_VERSION:-latest}
-  #  container_name: whusnet-scheduler
+    container_name: whusnet-scheduler
     restart: unless-stopped
     working_dir: /var/www
     networks:
@@ -245,9 +246,6 @@ services:
       - .env.production
     volumes:
       - storage_data:/var/www/storage
-      - ./config:/var/www/config:ro
-      - ./app:/var/www/app:ro
-
       # bootstrap/cache dari image — tidak perlu shared volume
     environment:
       APP_ENV: production
@@ -335,57 +333,3 @@ volumes:
 networks:
   coolify:
     external: true
-
-
-
-
-
-# services:
-#   app:
-#     environment:
-#       APP_DEBUG: "true"
-#       LOG_LEVEL: debug
-#     volumes:
-#       # Mount directories untuk hot reload (development only)
-#       - ./config:/var/www/config:ro
-#       - ./app:/var/www/app:ro
-#       - ./bootstrap:/var/www/bootstrap:ro
-#       - ./routes:/var/www/routes:ro
-#       - ./resources:/var/www/resources:ro
-      
-#       # ⚠️ CATATAN:
-#       # - Mount directory, BUKAN individual files
-#       # - Read-only (:ro) untuk safety
-#       # - Hanya untuk development, JANGAN di production
-
-#   horizon:
-#     environment:
-#       APP_DEBUG: "true"
-#       LOG_LEVEL: debug
-#     volumes:
-#       - ./config:/var/www/config:ro
-#       - ./app:/var/www/app:ro
-
-#   reverb:
-#     environment:
-#       APP_DEBUG: "true"
-#       LOG_LEVEL: debug
-#     volumes:
-#       - ./config:/var/www/config:ro
-#       - ./app:/var/www/app:ro
-
-#   scheduler:
-#     environment:
-#       APP_DEBUG: "true"
-#       LOG_LEVEL: debug
-#     volumes:
-#       - ./config:/var/www/config:ro
-#       - ./app:/var/www/app:ro
-
-#   pulse:
-#     environment:
-#       APP_DEBUG: "true"
-#       LOG_LEVEL: debug
-#     volumes:
-#       - ./config:/var/www/config:ro
-#       - ./app:/var/www/app:ro

@@ -1,0 +1,411 @@
+# 🎨 OCR Stuck - Visual Guide
+
+## 🔄 Normal OCR Flow
+
+```
+┌─────────────────┐
+│  User Uploads   │
+│   Foto Nota     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ OcrProcessingJob│ ← ai_status: queued
+│   (Laravel)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  N8N Webhook    │ ← ai_status: processing
+│   (HTTP POST)   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Gemini API    │
+│  (OCR Extract)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  N8N Callback   │
+│   to Laravel    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│AiAutoFillCtrl   │ ← ai_status: completed
+│   (Laravel)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Broadcast     │
+│   to Frontend   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│  Auto-filled    │
+│     Form        │
+└─────────────────┘
+```
+
+## ❌ Stuck Scenarios
+
+### Scenario 1: N8N Webhook Timeout
+
+```
+┌─────────────────┐
+│ OcrProcessingJob│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  N8N Webhook    │ ← ⚠️ TIMEOUT (120s)
+│   (HTTP POST)   │
+└────────┬────────┘
+         │
+         ✗ STUCK HERE
+         │ ai_status: processing
+         │ No callback received
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│ Loading Screen  │
+│   Forever...    │
+└─────────────────┘
+```
+
+**Fix:**
+```bash
+php artisan ocr:reset-stuck --fix
+```
+
+### Scenario 2: N8N Callback Failed
+
+```
+┌─────────────────┐
+│   Gemini API    │
+│  (OCR Extract)  │ ← ✅ Success
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  N8N Callback   │ ← ⚠️ Network Error
+│   to Laravel    │    Wrong URL
+└────────┬────────┘    Secret Mismatch
+         │
+         ✗ STUCK HERE
+         │ ai_status: processing
+         │ Data in n8n but not in Laravel
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│ Loading Screen  │
+│   Forever...    │
+└─────────────────┘
+```
+
+**Fix:**
+```bash
+# If n8n has data in cache
+php artisan ocr:reset-stuck --id=42 --complete --from-cache
+
+# Or reset to error
+php artisan ocr:reset-stuck --fix
+```
+
+### Scenario 3: Rate Limiter Blocking
+
+```
+┌─────────────────┐
+│ OcrProcessingJob│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Rate Limiter    │ ← ⚠️ 429 from Gemini
+│  (Cooldown)     │    Global lock active
+└────────┬────────┘
+         │
+         ✗ STUCK HERE
+         │ ai_status: queued/processing
+         │ Waiting for cooldown
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│ Loading Screen  │
+│   Forever...    │
+└─────────────────┘
+```
+
+**Fix:**
+```bash
+# Check rate limiter
+php artisan tinker
+>>> app(\App\Services\OCR\GeminiRateLimiter::class)->getStatus()
+
+# Clear cooldown if needed
+>>> Redis::del('gemini:global:lock')
+```
+
+## 🛠️ Fix Flow
+
+### Auto-Fix with Scheduler
+
+```
+┌─────────────────┐
+│ Laravel Cron    │
+│  (Every 10min)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ ocr:reset-stuck │
+│     --fix       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Find Stuck Txs  │ ← updated_at > 10 min
+│ ai_status:      │   ai_status: queued/processing
+│ queued/process  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Update Status   │ ← ai_status: error
+│ to Error        │   status: pending
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Broadcast     │
+│   to Frontend   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│  Error Message  │
+│ + Manual Form   │
+└─────────────────┘
+```
+
+### Manual Bypass
+
+```
+┌─────────────────┐
+│     Admin       │
+│  Runs Command   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ ocr:reset-stuck │
+│ --id=42         │
+│ --complete      │
+│ --from-cache    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Get Data from   │ ← Redis cache
+│ Redis Cache     │   or manual input
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Update Status   │ ← ai_status: completed
+│ to Completed    │   status: pending
+│ + Fill Data     │   vendor, amount, items
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Broadcast     │
+│   to Frontend   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  User Sees      │
+│  Auto-filled    │
+│     Form        │
+└─────────────────┘
+```
+
+## 📊 Status Transitions
+
+```
+┌─────────────────┐
+│   ai_status:    │
+│     queued      │ ← Initial state after upload
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   ai_status:    │
+│   processing    │ ← Job started, sent to n8n
+└────────┬────────┘
+         │
+         ├─────────────────┐
+         │                 │
+         ▼                 ▼
+┌─────────────────┐  ┌─────────────────┐
+│   ai_status:    │  │   ai_status:    │
+│   completed     │  │     error       │
+│                 │  │                 │
+│ ✅ Success      │  │ ❌ Failed       │
+└─────────────────┘  └─────────────────┘
+```
+
+## 🎯 Decision Tree
+
+```
+Is OCR stuck?
+│
+├─ YES → How long?
+│        │
+│        ├─ < 5 min → Wait (might still be processing)
+│        │
+│        ├─ 5-10 min → Check logs & n8n
+│        │             │
+│        │             ├─ N8N has data → Bypass with cache
+│        │             │                 php artisan ocr:reset-stuck --id=X --complete --from-cache
+│        │             │
+│        │             └─ N8N no data → Reset to error
+│        │                               php artisan ocr:reset-stuck --fix
+│        │
+│        └─ > 10 min → Auto-reset (if scheduler enabled)
+│                      or manual reset
+│                      php artisan ocr:reset-stuck --fix
+│
+└─ NO → All good! ✅
+```
+
+## 🔍 Monitoring Dashboard (Conceptual)
+
+```
+╔════════════════════════════════════════════════════════════╗
+║                    OCR Health Dashboard                    ║
+╠════════════════════════════════════════════════════════════╣
+║                                                            ║
+║  📊 Current Status                                         ║
+║  ├─ Stuck Transactions: 0                        ✅       ║
+║  ├─ Processing: 3                                          ║
+║  ├─ Queued: 12                                             ║
+║  └─ Completed Today: 245                                   ║
+║                                                            ║
+║  🚦 Rate Limiter                                           ║
+║  ├─ Current RPM: 12 / 60                         ✅       ║
+║  ├─ Utilization: 20%                                       ║
+║  ├─ Queue Size: 3 / 200                                    ║
+║  └─ Cooldown: Inactive                           ✅       ║
+║                                                            ║
+║  🔌 Services                                               ║
+║  ├─ Redis: Connected                             ✅       ║
+║  ├─ Queue Worker: Running                        ✅       ║
+║  ├─ N8N: Reachable                               ✅       ║
+║  └─ Gemini API: OK                               ✅       ║
+║                                                            ║
+║  📈 Success Rate (24h)                                     ║
+║  ├─ Successful: 98.5%                            ✅       ║
+║  ├─ Failed: 1.2%                                           ║
+║  └─ Stuck: 0.3%                                            ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+## 🚀 Quick Reference
+
+### Check Status
+```bash
+# Windows
+.\scripts\check-stuck-ocr.ps1
+
+# Linux/Mac
+./scripts/check-stuck-ocr.sh
+```
+
+### Fix Stuck
+```bash
+# Windows
+.\scripts\fix-stuck-ocr.ps1
+
+# Linux/Mac
+./scripts/fix-stuck-ocr.sh
+```
+
+### Manual Commands
+```bash
+# Check
+php artisan ocr:reset-stuck
+
+# Fix
+php artisan ocr:reset-stuck --fix
+
+# Bypass
+php artisan ocr:reset-stuck --id=42 --complete --from-cache
+```
+
+## 📱 User Experience
+
+### Before Fix
+```
+┌─────────────────────────────────────┐
+│  🔄 Memproses Nota...               │
+│                                     │
+│  ⏳ Mohon tunggu...                 │
+│                                     │
+│  (Loading forever...)               │
+│                                     │
+│  ❌ User frustrated                 │
+└─────────────────────────────────────┘
+```
+
+### After Fix (Auto-Reset)
+```
+┌─────────────────────────────────────┐
+│  ⚠️ OCR Gagal                       │
+│                                     │
+│  Silakan isi form secara manual    │
+│                                     │
+│  [Isi Manual] [Coba Lagi]          │
+│                                     │
+│  ✅ User can proceed                │
+└─────────────────────────────────────┘
+```
+
+### After Fix (Bypass Success)
+```
+┌─────────────────────────────────────┐
+│  ✅ Form Terisi Otomatis            │
+│                                     │
+│  Vendor: Toko ABC                   │
+│  Total: Rp 150.000                  │
+│  Items: 3 barang                    │
+│                                     │
+│  [Submit] [Edit]                    │
+│                                     │
+│  ✅ User happy                      │
+└─────────────────────────────────────┘
+```
+
+---
+
+**Legend:**
+- ✅ = Success / OK
+- ❌ = Error / Failed
+- ⚠️ = Warning / Attention
+- 🔄 = Processing
+- ⏳ = Waiting
+- 📊 = Statistics
+- 🚦 = Status
+- 🔌 = Connection
+- 📈 = Metrics
