@@ -5,7 +5,7 @@ import { Config } from './config.js';
 const isIndexPage = () => !!document.getElementById('search-results-container');
 
 export function initRealtime() {
-    if (typeof window.Echo !== 'undefined') {
+    if (typeof window.Echo !== 'undefined' && Config.user && Config.user.id) {
         const role = Config.user.role;
         const id = Config.user.id;
         
