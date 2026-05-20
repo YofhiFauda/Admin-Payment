@@ -318,6 +318,8 @@ class RembushController extends Controller
             'upload_id' => $uploadId,
             'user_id' => Auth::id(),
             'technician_id' => $request->technician_id,
+            'branches_count' => $request->branches ? count($request->branches) : 0,
+            'branches_data' => $request->branches,
         ]);
 
         DB::beginTransaction();

@@ -242,7 +242,7 @@ server {
 
     # Status polling OCR — browser user menunggu hasil proses AI
     # Ubah menjadi (hilangkan slash sebelum kurung kurawal penutup):
-    location ~ ^/api/ai/(auto-fill/status|ai-status)/(?:/|$) {
+    location ~ ^/api/ai/(auto-fill/status|ai-status)(?:/|$) {
         allow all;
         limit_req zone=polling burst=60 nodelay;
         try_files $uri /index.php?$query_string;

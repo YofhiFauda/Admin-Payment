@@ -381,7 +381,8 @@
             
             // Mark pills as active
             branchPills.forEach(pill => {
-                const id = String(pill.dataset.branchId);  // ← Force string
+                // ✅ FIX: Use correct dataset attribute (data-id, not data-branch-id)
+                const id = String(pill.dataset.id);  // ← Changed from dataset.branchId
                 if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
                     pill.classList.remove('border-slate-200', 'text-slate-500');
                     pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
@@ -591,9 +592,10 @@
         // ─────────────────────────────────────────────
         branchPills.forEach(pill => {
             pill.addEventListener('click', function () {
-                // ✅ FIX: Force string type for consistent comparison
-                const id   = String(this.dataset.branchId);
-                const name = this.dataset.branchName;
+                // ✅ FIX: Use correct dataset attributes (data-id, data-name)
+                // HTML partial uses data-id and data-name, not data-branch-id
+                const id   = String(this.dataset.id);  // ← Changed from dataset.branchId
+                const name = this.dataset.name;         // ← Changed from dataset.branchName
                 const idx  = selectedBranches.findIndex(b => String(b.id) === id);
 
                 if (idx > -1) {
