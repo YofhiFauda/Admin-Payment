@@ -59,7 +59,7 @@ services:
       # File yang sebelumnya di-mount:
       - ./config:/var/www/config:ro
       - ./app:/var/www/app:ro
-      - ./bootstrap:/var/www/bootstrap:ro
+      - ./bootstrap:/var/www/bootstrap
       - ./routes:/var/www/routes:ro
       - ./resources:/var/www/resources:ro
       #

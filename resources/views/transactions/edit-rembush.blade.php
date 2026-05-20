@@ -370,13 +370,19 @@
         }
         
         if (Array.isArray(window._initialBranches) && window._initialBranches.length > 0) {
-            selectedBranches = window._initialBranches;
+            // ✅ FIX: Deep clone to prevent reference issues & ensure consistent string IDs
+            selectedBranches = window._initialBranches.map(b => ({
+                id: String(b.id),      // ← Force string for consistent comparison
+                name: b.name,
+                percent: parseFloat(b.percent) || 0,
+                value: parseInt(b.value) || 0
+            }));
             allocationContainer.style.display = 'block';
             
             // Mark pills as active
             branchPills.forEach(pill => {
-                const id = pill.dataset.branchId;
-                if (selectedBranches.some(b => b.id === id)) {
+                const id = String(pill.dataset.branchId);  // ← Force string
+                if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
                     pill.classList.remove('border-slate-200', 'text-slate-500');
                     pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
                 }
@@ -392,6 +398,12 @@
                      summaryModeBadge.textContent = 'Metode: Persentase';
                 }
             });
+            
+            // ✅ FIX: Initial render distribution after branches are set
+            // This ensures distribution list is populated on page load
+            // renderDistribution() will be called again by renderItems() but that's OK
+            // (it's idempotent and ensures correct state)
+            renderDistribution();
         }
 
         // ─────────────────────────────────────────────
@@ -579,16 +591,21 @@
         // ─────────────────────────────────────────────
         branchPills.forEach(pill => {
             pill.addEventListener('click', function () {
-                const id   = this.dataset.branchId;
+                // ✅ FIX: Force string type for consistent comparison
+                const id   = String(this.dataset.branchId);
                 const name = this.dataset.branchName;
-                const idx  = selectedBranches.findIndex(b => b.id === id);
+                const idx  = selectedBranches.findIndex(b => String(b.id) === id);
 
                 if (idx > -1) {
+                    // Deselect
                     selectedBranches.splice(idx, 1);
                     this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
                     this.classList.add('border-slate-200', 'text-slate-500');
                 } else {
-                    selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    // Select - ensure no duplicates before adding
+                    if (!selectedBranches.some(b => String(b.id) === id)) {
+                        selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    }
                     this.classList.remove('border-slate-200', 'text-slate-500');
                     this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
                 }

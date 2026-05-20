@@ -32,16 +32,20 @@ export class BranchDistribution {
         if (this.branchPills.length > 0) {
             this.branchPills.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = e.currentTarget.dataset.id;
+                    // ✅ FIX: Force string type for consistent comparison
+                    const id = String(e.currentTarget.dataset.id);
                     const name = e.currentTarget.dataset.name;
-                    const index = this.selectedBranches.findIndex(b => b.id == id);
+                    const index = this.selectedBranches.findIndex(b => String(b.id) === id);
 
                     if (index > -1) {
                         this.selectedBranches.splice(index, 1);
                         e.currentTarget.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md', 'hover:text-emerald-500');
                         e.currentTarget.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                     } else {
-                        this.selectedBranches.push({ id, name, value: 0, percent: 0 });
+                        // ✅ FIX: Ensure no duplicates before adding
+                        if (!this.selectedBranches.some(b => String(b.id) === id)) {
+                            this.selectedBranches.push({ id, name, value: 0, percent: 0 });
+                        }
                         e.currentTarget.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                         e.currentTarget.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md', 'hover:text-emerald-500');
                     }

@@ -30,7 +30,6 @@ services:
     volumes:
       - app_public:/var/www/public
       - storage_data:/var/www/storage
-      
       # ═══════════════════════════════════════════════════════════════
       # ⚠️ CATATAN: Individual File Mounts DIHAPUS
       # ═══════════════════════════════════════════════════════════════
@@ -58,7 +57,7 @@ services:
       APP_DEBUG: "false"
       CONTAINER_ROLE: app
     healthcheck:
-      test: ["CMD-SHELL", "pgrep php-fpm >/dev/null || exit 1"]
+      test: [ "CMD-SHELL", "pgrep php-fpm >/dev/null || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,7 +127,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"]
+      test: [ "CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -170,7 +169,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'horizon' >/dev/null || exit 1"]
+      test: [ "CMD-SHELL", "pgrep -f 'horizon' >/dev/null || exit 1" ]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -225,7 +224,7 @@ services:
     healthcheck:
       # nc (netcat) lebih tepat untuk WebSocket — cukup cek port TCP terbuka
       # curl bisa return non-200 pada WebSocket server meski sebenarnya healthy
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 || exit 1"]
+      test: [ "CMD-SHELL", "nc -z 127.0.0.1 8081 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -270,7 +269,7 @@ services:
     healthcheck:
       # schedule:work adalah long-running process — pgrep lebih tepat dari 'ps aux | grep php'
       # 'ps aux | grep php' hampir selalu true karena grep itu sendiri muncul sebagai proses
-      test: ["CMD-SHELL", "pgrep -f 'schedule:work' >/dev/null || exit 1"]
+      test: [ "CMD-SHELL", "pgrep -f 'schedule:work' >/dev/null || exit 1" ]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -314,7 +313,7 @@ services:
         max-file: "3"
     healthcheck:
       # pgrep lebih andal dari grep string — tidak fragile terhadap perubahan format ps
-      test: ["CMD-SHELL", "pgrep -f 'pulse:work' >/dev/null || exit 1"]
+      test: [ "CMD-SHELL", "pgrep -f 'pulse:work' >/dev/null || exit 1" ]
       interval: 60s
       timeout: 15s
       retries: 3

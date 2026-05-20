@@ -1117,9 +1117,10 @@ document.addEventListener('DOMContentLoaded', function () {
     @endphp
     let selectedBranches = @json($selectedBranchData);
     
-    // Ensure all numeric values are properly typed (defense against JSON serialization issues)
+    // ✅ FIX: Deep clone to prevent reference issues & ensure consistent string IDs
     selectedBranches = selectedBranches.map(branch => ({
         ...branch,
+        id: String(branch.id),           // ← Force string for consistent comparison
         percent: parseFloat(branch.percent) || 0,
         value: parseInt(branch.value) || 0
     }));
@@ -1554,6 +1555,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // ───────────────────────────────────────────────────
     // INITIAL POPULATION FALLBACK (If json failed)
     // ───────────────────────────────────────────────────
+    // ✅ FIX: REMOVE FALLBACK - This causes unwanted branches to be selected
+    // The selectedBranches should ONLY come from window._initialBranches (server data)
+    // DO NOT read from DOM classes as they may be stale or incorrect
+    /*
     if (selectedBranches.length === 0) {
         document.querySelectorAll('.branch-pill.bg-emerald-500').forEach(btn => {
             selectedBranches.push({
@@ -1564,6 +1569,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+    */
 
     // Initialize preselected branches for existing items
 
@@ -1578,9 +1584,10 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.addEventListener('click', function () {
                 if (!canEditDistribution) return;
 
-                const id   = this.dataset.id;
+                // ✅ FIX: Force string type for consistent comparison
+                const id   = String(this.dataset.id);
                 const name = this.dataset.name;
-                const index = selectedBranches.findIndex(b => b.id == id);
+                const index = selectedBranches.findIndex(b => String(b.id) === id);
 
                 if (index > -1) {
                     // Deselect
@@ -1588,8 +1595,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                     this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                 } else {
-                    // Select
-                    selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    // Select - ensure no duplicates before adding
+                    if (!selectedBranches.some(b => String(b.id) === id)) {
+                        selectedBranches.push({ id, name, value: 0, percent: 0 });
+                    }
                     this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                     this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                 }

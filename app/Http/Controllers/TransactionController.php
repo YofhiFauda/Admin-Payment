@@ -467,6 +467,15 @@ class TransactionController extends Controller
 
         // Validate branches if provided
         if ($request->branches && count($request->branches) > 0) {
+            // ✅ FIX: Check for duplicate branch IDs to prevent manipulation
+            $branchIds = collect($request->branches)->pluck('branch_id');
+            if ($branchIds->count() !== $branchIds->unique()->count()) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'branches' => 'Cabang tidak boleh duplikat. Silakan refresh halaman dan coba lagi.'
+                ])->withInput();
+            }
+            
             $totalPercent = collect($request->branches)->sum('allocation_percent');
             if (abs($totalPercent - 100) > 1) {
                 return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
