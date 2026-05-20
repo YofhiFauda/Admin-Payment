@@ -384,8 +384,9 @@
                 // ✅ FIX: Use correct dataset attribute (data-id, not data-branch-id)
                 const id = String(pill.dataset.id);  // ← Changed from dataset.branchId
                 if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
-                    pill.classList.remove('border-slate-200', 'text-slate-500');
-                    pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                    // ✅ FIX: Use correct classes to match click handler
+                    pill.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                    pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                 }
             });
             // Default to manual mode if editing from an existing percent/ratio
@@ -601,15 +602,17 @@
                 if (idx > -1) {
                     // Deselect
                     selectedBranches.splice(idx, 1);
-                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
-                    this.classList.add('border-slate-200', 'text-slate-500');
+                    // ✅ FIX: Use correct default classes (bg-white text-slate-600)
+                    this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                 } else {
                     // Select - ensure no duplicates before adding
                     if (!selectedBranches.some(b => String(b.id) === id)) {
                         selectedBranches.push({ id, name, value: 0, percent: 0 });
                     }
-                    this.classList.remove('border-slate-200', 'text-slate-500');
-                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                    // ✅ FIX: Remove default classes before adding active classes
+                    this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                    this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                 }
 
                 allocationContainer.style.display = selectedBranches.length > 0 ? 'block' : 'none';
