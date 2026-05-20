@@ -175,8 +175,10 @@
                     {{-- Branch Pills --}}
                     <div class="flex flex-wrap gap-2 mb-6" id="branch-pills-container">
                         @foreach($branches as $branch)
-                            <button type="button" data-branch-id="{{ $branch->id }}" data-branch-name="{{ $branch->name }}" 
-                                class="branch-pill px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all border border-slate-200 text-slate-500 hover:bg-slate-50">
+                            <button type="button" 
+                                data-id="{{ $branch->id }}" 
+                                data-name="{{ $branch->name }}" 
+                                class="branch-pill px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-bold transition-all border border-slate-200 bg-white text-slate-600 cursor-pointer hover:border-emerald-300">
                                 {{ $branch->name }}
                             </button>
                         @endforeach
@@ -379,16 +381,26 @@
             }));
             allocationContainer.style.display = 'block';
             
-            // Mark pills as active
-            branchPills.forEach(pill => {
-                // ✅ FIX: Use correct dataset attribute (data-id, not data-branch-id)
-                const id = String(pill.dataset.id);  // ← Changed from dataset.branchId
-                if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
-                    // ✅ FIX: Use correct classes to match click handler
-                    pill.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
-                    pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
-                }
-            });
+            console.log('[edit-rembush] Initial branches:', selectedBranches);
+            console.log('[edit-rembush] Branch pills found:', branchPills.length);
+            
+            // ✅ FIX: Use setTimeout to ensure pills are fully rendered
+            setTimeout(() => {
+                // Mark pills as active
+                branchPills.forEach(pill => {
+                    // ✅ FIX: Use correct dataset attribute (data-id, not data-branch-id)
+                    const id = String(pill.dataset.id);  // ← Changed from dataset.branchId
+                    console.log('[edit-rembush] Checking pill:', id, pill.dataset.name);
+                    
+                    if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
+                        console.log('[edit-rembush] Marking pill as active:', id, pill.dataset.name);
+                        // ✅ FIX: Use correct classes to match click handler
+                        pill.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                        pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
+                    }
+                });
+            }, 100);
+            
             // Default to manual mode if editing from an existing percent/ratio
             currentMethod = 'percent';
             methodBtns.forEach(b => {
