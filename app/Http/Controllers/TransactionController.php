@@ -842,6 +842,28 @@ class TransactionController extends Controller
                 $updateData['rejection_reason'] = null;
             }
 
+            // ✅ FIX: Clear payment proof fields when resetting to pending
+            // This allows re-upload of payment proof after reset
+            if ($newStatus === 'pending') {
+                $updateData['bukti_transfer'] = null;
+                $updateData['foto_penyerahan'] = null;
+                $updateData['invoice_file_path'] = null;
+                $updateData['paid_by'] = null;
+                $updateData['paid_at'] = null;
+                $updateData['ai_status'] = null;
+                $updateData['actual_total'] = null;
+                $updateData['selisih'] = null;
+                $updateData['ocr_result'] = null;
+                $updateData['flag_reason'] = null;
+                $updateData['konfirmasi_by'] = null;
+                $updateData['konfirmasi_at'] = null;
+                
+                Log::info('🔄 [RESET] Clearing payment proof fields', [
+                    'transaction_id' => $transaction->id,
+                    'old_status' => $oldStatus,
+                ]);
+            }
+
             $transaction->update($updateData);
 
             // ✅ PRICE INDEX: Dispatch recalculation job saat Pengajuan disetujui

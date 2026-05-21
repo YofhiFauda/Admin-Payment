@@ -117,10 +117,11 @@ export function generateAIBadge(t) {
     // Jangan tampilkan untuk verifikasi transfer/cash (sudah ada bukti pembayaran)
     if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) return '';
     
-    // ✅ FIX: Skip AI badge jika sedang verifikasi transfer/cash
-    // Indikator: status = 'waiting_payment' + ai_status = 'processing' + ada bukti pembayaran
-    if (t.status === 'waiting_payment' && t.ai_status === 'processing' && (t.bukti_transfer || t.foto_penyerahan)) {
-        return ''; // Jangan tampilkan "OCR Proses", karena ini verifikasi transfer, bukan OCR nota
+    // ✅ FIX: Skip AI badge jika ada bukti pembayaran (transfer/cash)
+    // Badge "OCR Proses" HANYA untuk OCR Nota (extract data), BUKAN untuk verifikasi pembayaran
+    // Berlaku untuk SEMUA status (waiting_payment, flagged, completed, dll)
+    if (t.bukti_transfer || t.foto_penyerahan) {
+        return ''; // Jangan tampilkan badge untuk verifikasi pembayaran
     }
     
     const aiBadge = Config.ai[t.ai_status];

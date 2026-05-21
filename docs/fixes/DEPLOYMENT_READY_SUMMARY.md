@@ -2,7 +2,7 @@
 
 **Date:** 21 Mei 2026  
 **Status:** ✅ READY FOR PRODUCTION  
-**Version:** 4.5.2
+**Version:** 4.5.3
 
 ---
 
@@ -34,6 +34,12 @@
 - **Files Changed:**
   - `app/Models/Transaction.php`
 
+### Issue 5: Upload Button Not Showing After Reset ✅ NEW FIX
+- **Root Cause:** Payment proof fields not cleared when resetting to pending
+- **Fix:** Clear all payment proof fields when status reset to `'pending'`
+- **Files Changed:**
+  - `app/Http/Controllers/TransactionController.php`
+
 ---
 
 ## 📦 Files Changed Summary
@@ -42,28 +48,30 @@
 1. ✅ `app/Http/Controllers/Api/V1/OcrNotaController.php` - Line 1023-1027
 2. ✅ `app/Http/Controllers/Api/AiAutoFillController.php` - Line 51
 3. ✅ `app/Models/Transaction.php` - Line 305 (defensive check added)
-4. ✅ `tests/Feature/TelegramNotificationPolicyTest.php` - Line 117
+4. ✅ `app/Http/Controllers/TransactionController.php` - Line 835-860 (clear payment proof on reset)
+5. ✅ `tests/Feature/TelegramNotificationPolicyTest.php` - Line 117
 
 ### Frontend (JavaScript)
-5. ✅ `resources/js/transactions/rendering.js` - generateAIBadge() function
-6. ✅ **Built:** `npm run build` completed successfully
+6. ✅ `resources/js/transactions/rendering.js` - generateAIBadge() function
+7. ✅ **Built:** `npm run build` completed successfully
 
 ### N8N Workflow
-7. ✅ `OCR_Nota_Kontan_v4.5.json` - Callback node updated
+8. ✅ `OCR_Nota_Kontan_v4.5.json` - Callback node updated
 
 ### Documentation
-8. ✅ `docs/fixes/PAYMENT_VERIFICATION_FIX.md`
-9. ✅ `docs/fixes/N8N_PAYMENT_CALLBACK_FIX.md`
-10. ✅ `docs/fixes/PAYMENT_VERIFICATION_SUMMARY.md`
-11. ✅ `docs/fixes/COMPLETE_FIX_SUMMARY.md`
-12. ✅ `docs/fixes/UI_LABEL_FIX.md`
-13. ✅ `docs/fixes/UI_LABEL_CASH_VS_TRANSFER_ANALYSIS.md`
-14. ✅ `docs/fixes/FINAL_FIX_SUMMARY_CASH_VS_TRANSFER.md`
-15. ✅ `docs/fixes/DEPLOYMENT_READY_SUMMARY.md` (this file)
+9. ✅ `docs/fixes/PAYMENT_VERIFICATION_FIX.md`
+10. ✅ `docs/fixes/N8N_PAYMENT_CALLBACK_FIX.md`
+11. ✅ `docs/fixes/PAYMENT_VERIFICATION_SUMMARY.md`
+12. ✅ `docs/fixes/COMPLETE_FIX_SUMMARY.md`
+13. ✅ `docs/fixes/UI_LABEL_FIX.md`
+14. ✅ `docs/fixes/UI_LABEL_CASH_VS_TRANSFER_ANALYSIS.md`
+15. ✅ `docs/fixes/FINAL_FIX_SUMMARY_CASH_VS_TRANSFER.md`
+16. ✅ `docs/fixes/RESET_PENDING_UPLOAD_BUTTON_FIX.md` (NEW)
+17. ✅ `docs/fixes/DEPLOYMENT_READY_SUMMARY.md` (this file)
 
 ### Recovery Scripts
-16. ✅ `scripts/fix-stuck-transactions.php`
-17. ✅ `scripts/check-stuck-transactions.sql`
+18. ✅ `scripts/fix-stuck-transactions.php`
+19. ✅ `scripts/check-stuck-transactions.sql`
 
 ---
 
@@ -84,6 +92,8 @@
 - [ ] Upload TRANSFER → Verify shows "Sedang Diverifikasi AI"
 - [ ] Upload NOTA → Verify shows "Pending" + "OCR Proses" badge
 - [ ] Verify no "OCR Proses" badge for payment verification
+- [ ] **NEW:** Reset to pending → Approve → Verify upload button appears
+- [ ] **NEW:** Upload after reset → Verify upload successful
 
 ---
 
@@ -363,7 +373,7 @@ php scripts/fix-stuck-transactions.php
 ---
 
 **Last Updated:** 21 Mei 2026  
-**Version:** 4.5.2  
+**Version:** 4.5.3  
 **Status:** ✅ DEPLOYMENT READY  
 **Confidence:** HIGH
 
