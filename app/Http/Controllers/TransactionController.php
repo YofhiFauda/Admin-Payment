@@ -831,7 +831,7 @@ class TransactionController extends Controller
             }
 
             $updateData = [
-                'status'      => $newStatus,
+                'status' => $newStatus,
             ];
 
             // ✅ FIX: Clear payment proof fields when resetting to pending
@@ -849,9 +849,10 @@ class TransactionController extends Controller
                 $updateData['flag_reason'] = null;
                 $updateData['konfirmasi_by'] = null;
                 $updateData['konfirmasi_at'] = null;
-                $updateData['reviewed_by'] = null; // Clear reviewer for fresh start
-                $updateData['reviewed_at'] = null; // Clear review timestamp
-                $updateData['rejection_reason'] = null; // Clear rejection reason
+                $updateData['rejection_reason'] = null;
+                // ✅ Keep reviewed_by and reviewed_at for audit trail (who reset it)
+                $updateData['reviewed_by'] = Auth::id();
+                $updateData['reviewed_at'] = now();
                 
                 Log::info('🔄 [RESET] Clearing payment proof fields', [
                     'transaction_id' => $transaction->id,
