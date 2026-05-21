@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\IdGeneratorService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
@@ -149,12 +150,19 @@ class Transaction extends Model
     protected static function booted()
     {
         $clearCache = function ($transaction) {
-            // Clear global stats cache (for Admin/Owner)
-            Cache::forget('transactions_stats_global');
+            try {
+                // Clear global stats cache (for Admin/Owner)
+                Cache::forget('transactions_stats_global');
 
-            // Clear specific user stats cache (for Teknisi)
-            if ($transaction->submitted_by) {
-                Cache::forget("transactions_stats_teknisi_{$transaction->submitted_by}");
+                // Clear specific user stats cache (for Teknisi)
+                if ($transaction->submitted_by) {
+                    Cache::forget("transactions_stats_teknisi_{$transaction->submitted_by}");
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[TRANSACTION CACHE] Failed to clear transaction stats cache', [
+                    'transaction_id' => $transaction->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
             }
         };
 
@@ -165,7 +173,7 @@ class Transaction extends Model
         // Auto-calculate discrepancy (selisih) and ensure expected_total is set
         static::saving(function ($transaction) {
             // Ensure expected_total has a fallback to the approved amount
-            if (is_null($transaction->expected_total)) {
+            if (is_null($transaction->expected_total) && $transaction->status !== 'pending') {
                 $transaction->expected_total = $transaction->effective_amount;
             }
 

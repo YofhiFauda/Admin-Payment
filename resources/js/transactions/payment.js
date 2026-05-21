@@ -67,14 +67,14 @@ export function initPaymentHandlers() {
             if (typeof NProgress !== 'undefined') NProgress.start();
 
             fetch(Config.endpoints.transactions.status(id), {
-                method: 'POST',
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': Config.csrfToken,
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ status: 'rejected', rejection_reason: reason, _method: 'PATCH' }),
+                body: JSON.stringify({ status: 'rejected', rejection_reason: reason }),
             })
                 .then(r => r.json().catch(() => ({})))
                 .then(data => {
@@ -143,14 +143,14 @@ function performStatusAction(id, status, triggerEl) {
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: triggerEl });
     }
     fetch(Config.endpoints.transactions.status(id), {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': Config.csrfToken,
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify({ status, _method: 'PATCH' }),
+        body: JSON.stringify({ status }),
     })
         .then(r => r.json().catch(() => ({})))
         .then(data => {

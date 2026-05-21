@@ -833,23 +833,37 @@ class TransactionController extends Controller
             $updateData = [
                 'status' => $newStatus,
             ];
+            $paymentProofPaths = [];
 
             // ✅ FIX: Clear payment proof fields when resetting to pending
             // This allows re-upload of payment proof after reset
             if ($newStatus === 'pending') {
+                $paymentProofPaths = array_filter([
+                    $transaction->bukti_transfer,
+                    $transaction->foto_penyerahan,
+                    $transaction->invoice_file_path,
+                ]);
+
                 $updateData['bukti_transfer'] = null;
                 $updateData['foto_penyerahan'] = null;
                 $updateData['invoice_file_path'] = null;
                 $updateData['paid_by'] = null;
                 $updateData['paid_at'] = null;
                 $updateData['ai_status'] = null;
+                $updateData['expected_total'] = null;
                 $updateData['actual_total'] = null;
                 $updateData['selisih'] = null;
                 $updateData['ocr_result'] = null;
+                $updateData['ocr_confidence'] = null;
                 $updateData['flag_reason'] = null;
                 $updateData['konfirmasi_by'] = null;
                 $updateData['konfirmasi_at'] = null;
                 $updateData['rejection_reason'] = null;
+                $updateData['pembayaran_id'] = null;
+                $updateData['confidence'] = null;
+                $updateData['overall_confidence'] = null;
+                $updateData['confidence_label'] = null;
+                $updateData['field_confidence'] = null;
                 // ✅ Keep reviewed_by and reviewed_at for audit trail (who reset it)
                 $updateData['reviewed_by'] = Auth::id();
                 $updateData['reviewed_at'] = now();
@@ -870,7 +884,30 @@ class TransactionController extends Controller
                 }
             }
 
-            $transaction->update($updateData);
+            DB::transaction(function () use ($transaction, $updateData, $newStatus) {
+                $transaction->update($updateData);
+
+                if ($newStatus === 'pending') {
+                    \App\Models\PaymentDiscrepancyAudit::where('transaction_id', $transaction->id)->delete();
+                    \App\Models\BranchDebt::where('transaction_id', $transaction->id)->delete();
+                }
+            });
+
+            if ($newStatus === 'pending') {
+                foreach ($paymentProofPaths as $path) {
+                    try {
+                        if ($path && Storage::disk('public')->exists($path)) {
+                            Storage::disk('public')->delete($path);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('[RESET] Failed to delete old payment proof file', [
+                            'transaction_id' => $transaction->id,
+                            'path' => $path,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
 
             // ✅ PRICE INDEX: Dispatch recalculation job saat Pengajuan disetujui
             // Trigger saat status berubah ke waiting_payment (setelah approve)
@@ -915,8 +952,15 @@ class TransactionController extends Controller
                 'target_id'      => $transaction->invoice_number,
                 'description'    => $description,
             ]);
-            broadcast(new \App\Events\ActivityLogged($log));
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            try {
+                broadcast(new \App\Events\ActivityLogged($log));
+                broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            } catch (\Throwable $e) {
+                Log::warning('[BROADCAST] Failed to broadcast status update', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             Log::info('Transaction status updated', [
                 'transaction_id'   => $transaction->id,

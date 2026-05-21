@@ -231,6 +231,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/transactions/{id}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
         Route::put('/transactions/{id}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::patch('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus');
+        Route::post('/transactions/{id}/status', [TransactionController::class, 'updateStatus'])->name('transactions.updateStatus.post');
 
         // ✅ FIXED: Explicit auth middleware
         Route::post('/transactions/{id}/override', [OcrNotaController::class, 'requestOverride'])

@@ -335,7 +335,7 @@ export function generateDesktopRow(t, rowNum = '') {
     const statusCfg = Config.status[t.status] || { label: t.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
     const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
-    const label = typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label;
+    const label = t.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label);
     const color = typeof statusCfg.color === 'function' ? statusCfg.color(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
     const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
 
@@ -416,7 +416,7 @@ export function generateMobileCard(t, rowNum = '') {
     const statusCfg = Config.status[t.status] || { label: t.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
     const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
-    const label = typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label;
+    const label = t.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label);
     const color = typeof statusCfg.color === 'function' ? statusCfg.color(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
     const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
 

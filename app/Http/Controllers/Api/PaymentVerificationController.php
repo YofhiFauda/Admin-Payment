@@ -66,17 +66,27 @@ class PaymentVerificationController extends Controller
         $uploadId = $request->upload_id;
 
         // ── ✅ NEW: Penanggulangan Race Condition via Redis Lock ──
-        $lock = Cache::lock("lock:payment_verify:{$uploadId}", 30);
+        $lock = null;
 
         try {
-            if (!$lock->get()) {
-                Log::channel('ai_autofill')->warning('🔒 [PAYMENT VERIFY] DUPLICATE REQUEST BLOCKED (LOCKED)', [
-                    'upload_id' => $uploadId
+            try {
+                $lock = Cache::lock("lock:payment_verify:{$uploadId}", 30);
+
+                if (!$lock->get()) {
+                    Log::channel('ai_autofill')->warning('🔒 [PAYMENT VERIFY] DUPLICATE REQUEST BLOCKED (LOCKED)', [
+                        'upload_id' => $uploadId
+                    ]);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Request is already being processed.'
+                    ], 202);
+                }
+            } catch (\Throwable $e) {
+                $lock = null;
+                Log::channel('ai_autofill')->warning('⚠️ [PAYMENT VERIFY] LOCK UNAVAILABLE - CONTINUING WITHOUT LOCK', [
+                    'upload_id' => $uploadId,
+                    'error'     => $e->getMessage(),
                 ]);
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Request is already being processed.'
-                ], 202);
             }
 
         // Normalisasi status: N8N kadang kirim "completed" atau "mismatch"
@@ -146,6 +156,7 @@ class PaymentVerificationController extends Controller
 
             $transaction->update([
                 'status'         => $finalStatus,
+                'ai_status'      => 'completed',
                 'actual_total'   => $actualTotal,
                 'expected_total' => $expectedTotal,
                 'confidence'     => $confidence ?? 100,
@@ -177,7 +188,14 @@ class PaymentVerificationController extends Controller
             }
 
             // 🔔 Broadcast Realtime Update (Agar UI langsung terganti tanpa Refresh F5)
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            try {
+                broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            } catch (\Throwable $e) {
+                Log::channel('ai_autofill')->warning('⚠️ [PAYMENT VERIFY] BROADCAST FAILED', [
+                    'transaction_id' => $transaction->id,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -197,6 +215,7 @@ class PaymentVerificationController extends Controller
             
             $transaction->update([
                 'status'         => 'flagged',
+                'ai_status'      => 'completed',
                 'actual_total'   => $actualTotal,
                 'expected_total' => $expectedTotal,
                 'flag_reason'    => $request->flag_reason ?? 'Selisih nominal transfer',
@@ -244,7 +263,14 @@ class PaymentVerificationController extends Controller
             }
 
             // 🔔 Broadcast Realtime Update (Agar UI Terminal/Status Flagged langsung muncul tanpa Refresh F5)
-            broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            try {
+                broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
+            } catch (\Throwable $e) {
+                Log::channel('ai_autofill')->warning('⚠️ [PAYMENT VERIFY] BROADCAST FAILED', [
+                    'transaction_id' => $transaction->id,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -259,7 +285,16 @@ class PaymentVerificationController extends Controller
             ]);
         }
         } finally {
-            $lock->release();
+            if ($lock) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $e) {
+                    Log::channel('ai_autofill')->warning('⚠️ [PAYMENT VERIFY] LOCK RELEASE FAILED', [
+                        'upload_id' => $uploadId,
+                        'error'     => $e->getMessage(),
+                    ]);
+                }
+            }
         }
     }
 }
