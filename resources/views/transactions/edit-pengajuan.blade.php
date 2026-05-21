@@ -1158,6 +1158,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const summaryBranchesList = document.getElementById('summary-branches-list');
     const summarySubmit     = document.getElementById('summary-submit');
 
+    function setPercentWarning(message = '') {
+        if (!percentWarning) return;
+
+        if (message) {
+            percentWarning.classList.remove('hidden');
+            percentWarning.textContent = message;
+            return;
+        }
+
+        percentWarning.classList.add('hidden');
+    }
+
+    function setSummarySubmitDisabled(disabled) {
+        if (summarySubmit) {
+            summarySubmit.disabled = disabled;
+        }
+    }
+
     function updateGlobalTotal() {
         let itemsTotal = 0;
         const itemCards = itemsContainer.querySelectorAll('.item-card');
@@ -1630,6 +1648,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // ─────────────────────────────
         function renderDistribution(forcedTotal = null) {
             const totalAmount = forcedTotal !== null ? forcedTotal : (parseInt(formTotalInput.value) || 0);
+            if (!distributionList) return;
+
             distributionList.innerHTML = '';
 
             // Selalu update label total di summary black card
@@ -1647,13 +1667,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Admin tetap bisa melihat summary billing kosong jika baru mulai
                 const isAdminOnlyBranch = @json($isAdminOnlyBranch ?? false);
                 if (isAdminOnlyBranch) {
-                    summarySection.classList.remove('hidden');
-                    summarySection.style.display = 'block';
+                    if (summarySection) {
+                        summarySection.classList.remove('hidden');
+                        summarySection.style.display = 'block';
+                    }
                 } else {
-                    summarySection.classList.add('hidden');
+                    if (summarySection) summarySection.classList.add('hidden');
                 }
-                summarySubmit.disabled = true;
-                percentWarning.classList.add('hidden');
+                setSummarySubmitDisabled(true);
+                setPercentWarning();
                 return;
             }
 
@@ -1724,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             const methodLabels = { 'equal': 'BAGI RATA', 'percent': 'PERSENTASE', 'manual': 'MANUAL' };
-            summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
+            if (summaryMethod) summaryMethod.textContent = 'METODE: ' + (methodLabels[currentMethod] || '-');
 
             updateHiddenInputs();
             updateSummaryList();
@@ -1744,6 +1766,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     function updateHiddenInputs() {
+        if (!hiddenInputsContainer) return;
+
         hiddenInputsContainer.innerHTML = '';
         selectedBranches.forEach((branch, idx) => {
             hiddenInputsContainer.insertAdjacentHTML('beforeend', `
@@ -1755,7 +1779,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateSummaryList() {
-        summaryBranchesList.innerHTML = '';
+        if (summaryBranchesList) summaryBranchesList.innerHTML = '';
+
         const totalAmount = parseInt(formTotalInput.value) || 0;
 
         selectedBranches.forEach(branch => {
@@ -1772,11 +1797,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="text-emerald-400 font-bold">Rp ${formatRupiah(branch.value)}</span>
                 </div>
             `;
-            summaryBranchesList.insertAdjacentHTML('beforeend', summaryRow);
+            if (summaryBranchesList) summaryBranchesList.insertAdjacentHTML('beforeend', summaryRow);
         });
 
-        summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
-        summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
+        if (summaryTotal) summaryTotal.textContent = 'Rp ' + formatRupiah(totalAmount);
+        if (summaryBranchCount) summaryBranchCount.textContent = selectedBranches.length + ' CABANG';
     }
 
     if (distributionList) {
@@ -1818,28 +1843,26 @@ document.addEventListener('DOMContentLoaded', function () {
             // 1. Check total nominal balance (Anti-manipulation)
             if (totalAmount > 0 && Math.abs(totalAllocated - totalAmount) > 2) {
                 isValid = false;
-                percentWarning.classList.remove('hidden');
-                percentWarning.textContent = `⚠ Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`;
+                setPercentWarning(`Total alokasi (Rp ${formatRupiah(totalAllocated)}) tidak sesuai dengan total transaksi (Rp ${formatRupiah(totalAmount)})`);
             } else if (currentMethod === 'percent') {
                 // 2. Check percent if in percent mode
                 const totalPercent = selectedBranches.reduce((sum, b) => sum + (parseFloat(b.percent)||0), 0);
                 if (Math.abs(totalPercent - 100) > 0.1) {
                     isValid = false;
-                    percentWarning.classList.remove('hidden');
-                    percentWarning.textContent = `⚠ Total persen saat ini ${totalPercent.toFixed(1)}%. Harus 100%`;
+                    setPercentWarning(`Total persen saat ini ${totalPercent.toFixed(1)}%. Harus 100%`);
                 } else {
-                    percentWarning.classList.add('hidden');
+                    setPercentWarning();
                 }
             } else {
-                percentWarning.classList.add('hidden');
+                setPercentWarning();
             }
         } else {
-            percentWarning.classList.add('hidden');
+            setPercentWarning();
         }
 
         if (totalAmount <= 0) isValid = false;
 
-        summarySubmit.disabled = !isValid;
+        setSummarySubmitDisabled(!isValid);
     }
     /**
      * ═══════════════════════════════════════════════════════════════

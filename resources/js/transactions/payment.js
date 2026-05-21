@@ -302,8 +302,25 @@ function resetPaymentFileInput() {
     if (wrap) wrap.classList.add('hidden');
 }
 
+function resetSumberDanaControls() {
+    document.querySelectorAll('.sd-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+
+    document.querySelectorAll('.sd-amount').forEach(input => {
+        input.required = false;
+        input.disabled = true;
+        input.value = '';
+    });
+
+    document.querySelectorAll('input[name^="sumber_dana"][name$="[branch_id]"]').forEach(input => {
+        input.disabled = true;
+    });
+}
+
 function openPaymentModal(id) {
     resetPaymentFileInput();
+    resetSumberDanaControls();
     const transaction = SearchEngine.getAll().find(x => x.id === id);
     if (!transaction) return;
     const transactionId = transaction.id;
@@ -322,6 +339,7 @@ function openPaymentModal(id) {
     const submitBtnText = document.getElementById('btnSubmitPaymentText');
 
     document.getElementById('payment-form').reset();
+    resetSumberDanaControls();
     document.getElementById('transfer-profile-alert').classList.add('hidden');
     document.getElementById('cash-fields').classList.add('hidden');
     document.getElementById('transfer-fields').classList.add('hidden');
@@ -523,6 +541,7 @@ function closePaymentModal() {
     const modal = document.getElementById('payment-modal');
     const inner = modal.querySelector('div');
     if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+    resetSumberDanaControls();
     modal.classList.add('opacity-0');
     inner.classList.remove('scale-100');
     inner.classList.add('scale-95');
@@ -530,6 +549,7 @@ function closePaymentModal() {
         modal.classList.add('hidden');
         modal.setAttribute('aria-hidden', 'true');
         document.getElementById('payment-form').reset();
+        resetSumberDanaControls();
         document.querySelectorAll('.dyn-hidden').forEach(e => e.remove());
     }, 300);
 }
@@ -991,6 +1011,7 @@ function confirmCashPayment(id, action) {
 function bindAjaxForm(formId, closeModalFunc, successMsg) {
     const form = document.getElementById(formId);
     if (!form) return;
+    form.noValidate = true;
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         const submitBtn = this.querySelector('button[type="submit"]');

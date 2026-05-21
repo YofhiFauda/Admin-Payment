@@ -796,62 +796,62 @@ function closePiutangUsahaModal() { piutangUsahaModal.classList.add('hidden'); d
 
 // Load all amounts for all visible branch cards (badges)
 async function loadAllHutangAmounts() {
-    // 1. Rembush Hutang
-    document.querySelectorAll('.hutang-btn[data-branch]').forEach(async (btn) => {
-        const branchName = btn.dataset.branch;
-        const amountEl = btn.querySelector('.hutang-amount');
-        if (!amountEl) return;
-        try {
-            const url = '{{ route("dashboard.branchHutangData") }}?branch_name=' + encodeURIComponent(branchName);
-            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json();
-            if (data.total_hutang > 0) {
-                amountEl.innerHTML = `<span class="font-black text-orange-600">${data.formatted_total}</span>`;
+    try {
+        const res = await fetch('{{ route("dashboard.batchBranchStats") }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const branchStats = data.branches || {};
+
+        document.querySelectorAll('.hutang-btn[data-branch]').forEach((btn) => {
+            const stats = branchStats[btn.dataset.branch]?.rembush;
+            const amountEl = btn.querySelector('.hutang-amount');
+            if (!amountEl || !stats) return;
+
+            if (stats.total > 0) {
+                amountEl.innerHTML = `<span class="font-black text-orange-600">${stats.formatted}</span>`;
                 btn.classList.add('border-orange-300');
             } else {
                 amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Lunas</span>`;
                 btn.classList.remove('border-orange-300');
             }
-        } catch (e) {}
-    });
+        });
 
-    // 2. Hutang Usaha (Inter-branch)
-    document.querySelectorAll('.hutang-usaha-btn[data-branch]').forEach(async (btn) => {
-        const branchName = btn.dataset.branch;
-        const amountEl = btn.querySelector('.hutang-usaha-amount');
-        if (!amountEl) return;
-        try {
-            const url = '{{ route("dashboard.branchInterBranchDebtData") }}?branch_name=' + encodeURIComponent(branchName);
-            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json();
-            if (data.total_hutang > 0) {
-                amountEl.innerHTML = `<span class="font-black text-red-600">${data.formatted_total}</span>`;
+        document.querySelectorAll('.hutang-usaha-btn[data-branch]').forEach((btn) => {
+            const stats = branchStats[btn.dataset.branch]?.debt;
+            const amountEl = btn.querySelector('.hutang-usaha-amount');
+            if (!amountEl || !stats) return;
+
+            if (stats.total > 0) {
+                amountEl.innerHTML = `<span class="font-black text-red-600">${stats.formatted}</span>`;
                 btn.classList.add('border-red-300');
             } else {
                 amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Lunas</span>`;
                 btn.classList.remove('border-red-300');
             }
-        } catch (e) {}
-    });
+        });
 
-    // 3. Piutang Usaha (Inter-branch)
-    document.querySelectorAll('.piutang-usaha-btn[data-branch]').forEach(async (btn) => {
-        const branchName = btn.dataset.branch;
-        const amountEl = btn.querySelector('.piutang-usaha-amount');
-        if (!amountEl) return;
-        try {
-            const url = '{{ route("dashboard.branchInterBranchReceivableData") }}?branch_name=' + encodeURIComponent(branchName);
-            const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const data = await res.json();
-            if (data.total_piutang > 0) {
-                amountEl.innerHTML = `<span class="font-black text-emerald-600">${data.formatted_total}</span>`;
+        document.querySelectorAll('.piutang-usaha-btn[data-branch]').forEach((btn) => {
+            const stats = branchStats[btn.dataset.branch]?.receivable;
+            const amountEl = btn.querySelector('.piutang-usaha-amount');
+            if (!amountEl || !stats) return;
+
+            if (stats.total > 0) {
+                amountEl.innerHTML = `<span class="font-black text-emerald-600">${stats.formatted}</span>`;
                 btn.classList.add('border-emerald-300');
             } else {
                 amountEl.innerHTML = `<span class="text-slate-400 font-semibold text-[10px]">Sudah Lunas</span>`;
                 btn.classList.remove('border-emerald-300');
             }
-        } catch (e) {}
-    });
+        });
+    } catch (e) {
+        console.warn('Gagal memuat ringkasan hutang cabang:', e);
+    }
 }
 </script>
 @endpush

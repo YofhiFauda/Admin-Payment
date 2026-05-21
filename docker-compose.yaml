@@ -1,5 +1,5 @@
-# ═══════════════════════════════════════════════════════════════════
 #  docker-compose.yaml — WHUSNET Admin Payment
+# ═══════════════════════════════════════════════════════════════════
 #  Coolify Production Configuration (VPS 4GB)
 # ═══════════════════════════════════════════════════════════════════
 
@@ -65,11 +65,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.70'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1024M  # Increased from 512M to handle concurrent requests
         reservations:
-          cpus: '0.35'
-          memory: 256M
+          cpus: '0.50'
+          memory: 512M
     logging:
       driver: "json-file"
       options:
