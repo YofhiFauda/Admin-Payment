@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Models\ActivityLog;
 use App\Notifications\TransactionStatusNotification;
 use App\Notifications\OwnerApprovalNotification;
@@ -867,6 +868,12 @@ class TransactionController extends Controller
                 // ✅ Keep reviewed_by and reviewed_at for audit trail (who reset it)
                 $updateData['reviewed_by'] = Auth::id();
                 $updateData['reviewed_at'] = now();
+
+                $updateData = array_filter(
+                    $updateData,
+                    fn ($value, $column) => Schema::hasColumn('transactions', $column),
+                    ARRAY_FILTER_USE_BOTH
+                );
                 
                 Log::info('🔄 [RESET] Clearing payment proof fields', [
                     'transaction_id' => $transaction->id,
@@ -884,14 +891,19 @@ class TransactionController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($transaction, $updateData, $newStatus) {
-                $transaction->update($updateData);
+            $transaction->update($updateData);
 
-                if ($newStatus === 'pending') {
+            if ($newStatus === 'pending') {
+                try {
                     \App\Models\PaymentDiscrepancyAudit::where('transaction_id', $transaction->id)->delete();
                     \App\Models\BranchDebt::where('transaction_id', $transaction->id)->delete();
+                } catch (\Throwable $e) {
+                    Log::warning('[RESET] Failed to cleanup reset-related records', [
+                        'transaction_id' => $transaction->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-            });
+            }
 
             if ($newStatus === 'pending') {
                 foreach ($paymentProofPaths as $path) {
@@ -945,15 +957,27 @@ class TransactionController extends Controller
                 $description = "Menyetujui status Transaksi " . $transaction->invoice_number;
             }
 
-            $log = ActivityLog::create([
-                'user_id'        => Auth::id(),
-                'action'         => strtolower($actionLabel),
-                'transaction_id' => $transaction->id,
-                'target_id'      => $transaction->invoice_number,
-                'description'    => $description,
-            ]);
+            $log = null;
             try {
-                broadcast(new \App\Events\ActivityLogged($log));
+                $log = ActivityLog::create([
+                    'user_id'        => Auth::id(),
+                    'action'         => strtolower($actionLabel),
+                    'transaction_id' => $transaction->id,
+                    'target_id'      => $transaction->invoice_number,
+                    'description'    => $description,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('[ACTIVITY LOG] Failed to write transaction status activity', [
+                    'transaction_id' => $transaction->id,
+                    'action' => strtolower($actionLabel),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            try {
+                if ($log) {
+                    broadcast(new \App\Events\ActivityLogged($log));
+                }
                 broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
             } catch (\Throwable $e) {
                 Log::warning('[BROADCAST] Failed to broadcast status update', [
