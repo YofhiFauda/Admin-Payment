@@ -46,6 +46,7 @@ limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
 limit_req_zone $binary_remote_addr zone=api:10m     rate=60r/m;
 limit_req_zone $binary_remote_addr zone=polling:10m rate=120r/m;
 limit_req_zone $binary_remote_addr zone=login:10m   rate=5r/m;
+limit_req_zone $binary_remote_addr zone=dashboard:10m rate=30r/m;  # Dashboard endpoints
 limit_conn_zone $binary_remote_addr zone=addr:10m;
 
 # Upstream PHP-FPM
@@ -178,6 +179,8 @@ server {
     #  yang men-trigger koneksi ini).
     # ─────────────────────────────────────────────────────────────
 
+
+
     location /app/ {
         resolver 127.0.0.11 ipv6=off valid=10s;
         set $reverb_upstream http://reverb:8081;
@@ -227,11 +230,6 @@ server {
     #  Keamanan: X-SECRET header (n8n) dan token resmi Telegram.
     # ─────────────────────────────────────────────────────────────
 
-    # OCR & payment verification webhooks dari n8n
-    location ~ ^/api/(ai/auto-fill|ai/auto-fil|payment/verify)$ {
-        allow all;
-        try_files $uri /index.php?$query_string;
-    }
 
     # Telegram webhook
     # (IP resmi Telegram: 91.108.0.0/16, 149.154.0.0/16 — opsional whitelist di sini)
@@ -242,7 +240,22 @@ server {
 
     # Status polling OCR — browser user menunggu hasil proses AI
     # Ubah menjadi (hilangkan slash sebelum kurung kurawal penutup):
-    location ~ ^/api/ai/(auto-fill/status|ai-status)(?:/|$) {
+    # OCR callback dari n8n.
+    # Wajib public karena n8n memanggil dari IP eksternal, keamanan tetap lewat X-SECRET.
+  location ~ ^/api/ai/(auto-fill|auto-fil)$ {
+      allow all;
+      limit_req zone=polling burst=60 nodelay;
+      try_files $uri /index.php?$query_string;
+  }
+
+  location ~ ^/api/ai/(auto-fill/status|ai-status)(?:/|$) {
+      allow all;
+      limit_req zone=polling burst=60 nodelay;
+      try_files $uri /index.php?$query_string;
+  }
+
+    
+    location = /api/payment/verify {
         allow all;
         limit_req zone=polling burst=60 nodelay;
         try_files $uri /index.php?$query_string;
@@ -262,6 +275,18 @@ server {
     #  FIX dari versi .bak: range diperluas dari /30 (4 IP) ke /24
     #  (256 IP), mencakup seluruh subnet kantor 165.99.202.x
     # ─────────────────────────────────────────────────────────────
+
+    # Dashboard AJAX endpoints — rate limited untuk mencegah overload
+    location ~ ^/dashboard/(branch-hutang|branch-inter-debt|branch-inter-receivable|branch-cost-data|pending-list-data|batch-branch-stats)$ {
+        allow 165.99.202.0/24;
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        deny all;
+
+        limit_req zone=dashboard burst=10 nodelay;
+        try_files $uri /index.php?$query_string;
+    }
 
     location ~ ^/api/ {
         allow 165.99.202.0/24;   # Seluruh subnet kantor (sesuaikan jika perlu)
