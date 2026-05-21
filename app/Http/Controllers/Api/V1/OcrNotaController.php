@@ -1020,7 +1020,11 @@ class OcrNotaController extends Controller
                         ]);
 
                     if ($response->successful()) {
-                        $transaction->update(['status' => 'Sedang Diverifikasi AI']);
+                        // ✅ FIX: Gunakan status valid 'waiting_payment' dengan ai_status untuk tracking
+                        $transaction->update([
+                            'status' => 'waiting_payment',
+                            'ai_status' => 'processing'
+                        ]);
                         $this->broadcastTransactionUpdate($transaction);
 
                         Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [

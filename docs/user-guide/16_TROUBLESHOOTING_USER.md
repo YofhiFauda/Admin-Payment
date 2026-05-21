@@ -853,7 +853,88 @@ Berapa lama sejak status Completed?
 
 ---
 
-### 🔴 Masalah 18: "Nominal Transfer Kurang dari Nota"
+### 🔴 Masalah 18: "Status застрял di 'Sedang Diverifikasi AI'"
+
+**Gejala:**
+- Setelah upload bukti transfer, status застрял di "Sedang Diverifikasi AI"
+- Status tidak berubah meskipun sudah menunggu lama (> 5 menit)
+- Tidak ada notifikasi error atau update
+
+**Penyebab:**
+1. Koneksi ke sistem verifikasi AI (n8n) gagal
+2. Proses OCR gagal atau timeout
+3. Bug sistem (sudah diperbaiki di versi terbaru)
+
+**Solusi:**
+
+**Step 1: Tunggu 5-10 Menit**
+```
+Proses verifikasi AI biasanya memakan waktu:
+- Normal: 30 detik - 2 menit
+- Lambat: 2-5 menit
+- Timeout: > 5 menit (ada masalah)
+
+Jika sudah > 10 menit, lanjut ke Step 2
+```
+
+**Step 2: Refresh Halaman**
+```
+1. Tekan F5 atau klik tombol refresh browser
+2. Cek apakah status sudah berubah
+3. Jika masih застрял, lanjut ke Step 3
+```
+
+**Step 3: Hubungi Admin/IT Support**
+```
+1. Hubungi Admin atau IT Support
+2. Berikan informasi:
+   - ID Transaksi atau Upload ID
+   - Waktu upload bukti transfer
+   - Screenshot status yang застрял
+3. Admin/IT akan:
+   - Cek log sistem
+   - Reset status transaksi
+   - Minta Anda upload ulang bukti transfer
+
+⚠️ PENTING:
+Jangan upload bukti transfer lagi sebelum Admin reset status!
+Bisa menyebabkan duplikasi transaksi.
+```
+
+**Step 4: Upload Ulang (Setelah Reset)**
+```
+Setelah Admin reset status:
+1. Buka detail transaksi
+2. Klik "Upload Bukti Transfer" lagi
+3. Upload bukti transfer yang sama
+4. Tunggu proses verifikasi
+5. Status seharusnya berubah dalam 2-5 menit
+```
+
+**Catatan untuk Admin/IT:**
+```
+Untuk memperbaiki transaksi застрял:
+
+1. Jalankan script fix:
+   php scripts/fix-stuck-transactions.php --dry-run
+   
+2. Atau query SQL:
+   SELECT * FROM transactions 
+   WHERE status = 'Sedang Diverifikasi AI';
+   
+3. Reset status:
+   UPDATE transactions 
+   SET status = 'waiting_payment', ai_status = 'error'
+   WHERE status = 'Sedang Diverifikasi AI';
+   
+4. Minta user upload ulang bukti transfer
+
+Dokumentasi lengkap: docs/fixes/PAYMENT_VERIFICATION_FIX.md
+```
+
+---
+
+### 🔴 Masalah 19: "Nominal Transfer Kurang dari Nota"
 
 **Gejala:**
 - Terima transfer tapi nominalnya kurang
@@ -881,7 +962,7 @@ Berapa lama sejak status Completed?
 
 ## Masalah Performa
 
-### 🔴 Masalah 19: "Sistem Lambat / Loading Lama"
+### 🔴 Masalah 20: "Sistem Lambat / Loading Lama"
 
 **Gejala:**
 - Halaman loading lama

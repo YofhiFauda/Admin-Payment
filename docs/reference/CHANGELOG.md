@@ -9,11 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Payment Verification:** Fixed stuck status "Sedang Diverifikasi AI" issue
+  - Changed hard-coded invalid status to valid `waiting_payment` status
+  - Added `ai_status` field for tracking AI processing separately
+  - Created recovery script for stuck transactions
+  - Updated troubleshooting documentation
+  - See: `docs/fixes/PAYMENT_VERIFICATION_FIX.md`
+
 ### Added
 - Documentation reorganization with hierarchical structure
 - CONTRIBUTING.md for development guidelines
 - QUICK_START.md for 5-minute setup
 - CHANGELOG.md for version tracking
+- Recovery script for stuck payment verification (`scripts/fix-stuck-transactions.php`)
+- SQL queries for monitoring stuck transactions (`scripts/check-stuck-transactions.sql`)
 
 ---
 
