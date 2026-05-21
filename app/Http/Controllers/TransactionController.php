@@ -832,15 +832,7 @@ class TransactionController extends Controller
 
             $updateData = [
                 'status'      => $newStatus,
-                'reviewed_by' => Auth::id(),
-                'reviewed_at' => now(),
             ];
-
-            if ($newStatus === 'rejected') {
-                $updateData['rejection_reason'] = $request->rejection_reason;
-            } else {
-                $updateData['rejection_reason'] = null;
-            }
 
             // ✅ FIX: Clear payment proof fields when resetting to pending
             // This allows re-upload of payment proof after reset
@@ -857,11 +849,24 @@ class TransactionController extends Controller
                 $updateData['flag_reason'] = null;
                 $updateData['konfirmasi_by'] = null;
                 $updateData['konfirmasi_at'] = null;
+                $updateData['reviewed_by'] = null; // Clear reviewer for fresh start
+                $updateData['reviewed_at'] = null; // Clear review timestamp
+                $updateData['rejection_reason'] = null; // Clear rejection reason
                 
                 Log::info('🔄 [RESET] Clearing payment proof fields', [
                     'transaction_id' => $transaction->id,
                     'old_status' => $oldStatus,
                 ]);
+            } else {
+                // For non-reset status changes, set reviewer
+                $updateData['reviewed_by'] = Auth::id();
+                $updateData['reviewed_at'] = now();
+                
+                if ($newStatus === 'rejected') {
+                    $updateData['rejection_reason'] = $request->rejection_reason;
+                } else {
+                    $updateData['rejection_reason'] = null;
+                }
             }
 
             $transaction->update($updateData);
@@ -891,10 +896,16 @@ class TransactionController extends Controller
             }
 
             // Log activity
-            $actionLabel = $newStatus === 'rejected' ? 'Reject' : 'Approve';
-            $description = $newStatus === 'rejected' 
-                ? "Menolak status Transaksi " . $transaction->invoice_number . " dengan alasan: " . $request->rejection_reason
-                : "Menyetujui status Transaksi " . $transaction->invoice_number;
+            if ($newStatus === 'pending') {
+                $actionLabel = 'reset';
+                $description = "Reset status Transaksi " . $transaction->invoice_number . " ke Pending";
+            } elseif ($newStatus === 'rejected') {
+                $actionLabel = 'reject';
+                $description = "Menolak status Transaksi " . $transaction->invoice_number . " dengan alasan: " . $request->rejection_reason;
+            } else {
+                $actionLabel = 'approve';
+                $description = "Menyetujui status Transaksi " . $transaction->invoice_number;
+            }
 
             $log = ActivityLog::create([
                 'user_id'        => Auth::id(),

@@ -650,6 +650,7 @@ class OcrNotaController extends Controller
         $transaction->update([
             'foto_penyerahan' => $path,
             'status'          => $finalStatus,
+            'ai_status'       => null, // ✅ Clear ai_status for cash payment
             'paid_by'         => auth()->id(),
             'paid_at'         => now(),
             'description'     => $request->catatan,
@@ -953,14 +954,17 @@ class OcrNotaController extends Controller
         $originalPaymentState = [
             'bukti_transfer' => $transaction->bukti_transfer,
             'status'         => $transaction->status,
+            'ai_status'      => $transaction->ai_status, // ✅ Include for rollback
             'expected_total' => $transaction->expected_total,
             'paid_by'        => $transaction->paid_by,
             'paid_at'        => $transaction->paid_at,
         ];
 
+        // ✅ FIX: Set ai_status immediately for non-Pembelian to show correct label
         $transaction->update([
             'bukti_transfer' => $path,
             'status'         => $isPembelian ? 'completed' : 'waiting_payment',
+            'ai_status'      => $isPembelian ? null : 'processing', // Set immediately
             'expected_total' => $expectedTotal,
             'paid_by'        => auth()->id(),
             'paid_at'        => now(),
@@ -1020,11 +1024,7 @@ class OcrNotaController extends Controller
                         ]);
 
                     if ($response->successful()) {
-                        // ✅ FIX: Gunakan status valid 'waiting_payment' dengan ai_status untuk tracking
-                        $transaction->update([
-                            'status' => 'waiting_payment',
-                            'ai_status' => 'processing'
-                        ]);
+                        // ✅ ai_status already set above, just broadcast
                         $this->broadcastTransactionUpdate($transaction);
 
                         Log::channel('ai_autofill')->info('✅ [UPLOAD TRANSFER] N8N WEBHOOK SUCCESS', [
