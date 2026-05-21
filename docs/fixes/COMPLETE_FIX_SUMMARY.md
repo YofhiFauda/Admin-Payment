@@ -64,7 +64,79 @@ $transaction->update([
 
 ---
 
-#### 3. Laravel - Test File ✅
+#### 3. Laravel - Transaction.php (Status Label) ✅ IMPROVED
+
+**File:** `app/Models/Transaction.php`  
+**Method:** `getStatusLabelAttribute()`
+
+```php
+// ❌ SEBELUM (Vulnerable to edge case)
+if ($this->bukti_transfer || $this->foto_penyerahan) {
+    return 'Menunggu Konfirmasi';
+}
+
+// ✅ SESUDAH (Defensive logic)
+// Priority 1: If AI is processing TRANSFER verification
+if ($this->bukti_transfer && $this->ai_status === 'processing') {
+    return 'Sedang Diverifikasi AI';
+}
+
+// Priority 2: If CASH uploaded, waiting for technician confirmation
+// ✅ DEFENSIVE: Only show for pure CASH (no transfer proof)
+if ($this->foto_penyerahan && !$this->bukti_transfer) {
+    return 'Menunggu Konfirmasi';
+}
+
+// Priority 3: If TRANSFER uploaded but AI already completed
+if ($this->bukti_transfer) {
+    return 'Menunggu Pembayaran';
+}
+```
+
+**Alasan:**
+- Tampilkan "Sedang Diverifikasi AI" ketika AI sedang proses verifikasi transfer
+- "Menunggu Konfirmasi" HANYA untuk CASH murni (tidak ada bukti transfer)
+- Mencegah edge case dimana kedua field terisi
+- Lebih jelas untuk user apa yang sedang terjadi
+
+---
+
+#### 4. Frontend - rendering.js (UI Label) ✅
+
+**File:** `resources/js/transactions/rendering.js`  
+**Function:** `generateAIBadge()`
+
+```javascript
+// ❌ SEBELUM
+export function generateAIBadge(t) {
+    if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) return '';
+    
+    const aiBadge = Config.ai[t.ai_status];
+    return `<span>...${aiBadge.label}...</span>`; // Selalu tampilkan "OCR Proses"
+}
+
+// ✅ SESUDAH
+export function generateAIBadge(t) {
+    if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) return '';
+    
+    // ✅ FIX: Skip AI badge jika sedang verifikasi transfer/cash
+    if (t.status === 'waiting_payment' && t.ai_status === 'processing' && (t.bukti_transfer || t.foto_penyerahan)) {
+        return ''; // Jangan tampilkan "OCR Proses"
+    }
+    
+    const aiBadge = Config.ai[t.ai_status];
+    return `<span>...${aiBadge.label}...</span>`;
+}
+```
+
+**Alasan:**
+- AI badge "OCR Proses" hanya untuk OCR nota (extract data)
+- Verifikasi transfer sudah jelas dari status utama "Sedang Diverifikasi AI"
+- Menghindari duplikasi label yang membingungkan
+
+---
+
+#### 5. Laravel - Test File ✅
 
 **File:** `tests/Feature/TelegramNotificationPolicyTest.php`  
 **Line:** 117

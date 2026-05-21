@@ -113,7 +113,15 @@ export function escapeHtml(text) {
 }
 
 export function generateAIBadge(t) {
+    // ✅ FIX: Hanya tampilkan AI badge untuk OCR Nota (belum ada bukti pembayaran)
+    // Jangan tampilkan untuk verifikasi transfer/cash (sudah ada bukti pembayaran)
     if (t.type !== 'rembush' || !['queued', 'pending', 'processing', 'completed', 'error'].includes(t.ai_status)) return '';
+    
+    // ✅ FIX: Skip AI badge jika sedang verifikasi transfer/cash
+    // Indikator: status = 'waiting_payment' + ai_status = 'processing' + ada bukti pembayaran
+    if (t.status === 'waiting_payment' && t.ai_status === 'processing' && (t.bukti_transfer || t.foto_penyerahan)) {
+        return ''; // Jangan tampilkan "OCR Proses", karena ini verifikasi transfer, bukan OCR nota
+    }
     
     const aiBadge = Config.ai[t.ai_status];
     if (!aiBadge) return '';

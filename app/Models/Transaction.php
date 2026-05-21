@@ -302,9 +302,21 @@ class Transaction extends Model
             }
 
             // ✅ Logic for Rembush in 'waiting_payment' status:
-            // If office has uploaded proof of transfer/cash, it's waiting for technician confirmation.
-            if ($this->bukti_transfer || $this->foto_penyerahan) {
+            
+            // Priority 1: If AI is processing TRANSFER verification
+            if ($this->bukti_transfer && $this->ai_status === 'processing') {
+                return 'Sedang Diverifikasi AI';
+            }
+            
+            // Priority 2: If CASH uploaded, waiting for technician confirmation
+            // ✅ DEFENSIVE: Only show for pure CASH (no transfer proof)
+            if ($this->foto_penyerahan && !$this->bukti_transfer) {
                 return 'Menunggu Konfirmasi';
+            }
+            
+            // Priority 3: If TRANSFER uploaded but AI already completed (shouldn't happen, but fallback)
+            if ($this->bukti_transfer) {
+                return 'Menunggu Pembayaran'; // Fallback, seharusnya sudah completed/flagged
             }
 
             return 'Menunggu Pembayaran';
@@ -321,12 +333,14 @@ class Transaction extends Model
         }
 
         return match ($this->status) {
-            'pending'   => 'Pending',
-            'approved'  => 'Menunggu Owner',
-            'completed' => 'Selesai',
-            'rejected'  => 'Ditolak',
-            null        => 'Draft',
-            default     => (string) $this->status,
+            'pending'             => 'Pending',
+            'approved'            => 'Menunggu Owner',
+            'completed'           => 'Selesai',
+            'rejected'            => 'Ditolak',
+            'pending_technician'  => 'Menunggu Konfirmasi',
+            'flagged'             => 'Flagged',
+            null                  => 'Draft',
+            default               => (string) $this->status,
         };
     }
 
