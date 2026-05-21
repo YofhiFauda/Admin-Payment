@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Edit page has its own inline script implementation
     const isEditPage = form.querySelector('input[name="_method"][value="PUT"]');
     if (isEditPage) {
-        console.log('[form-rembush/index.js] Skipping initialization for edit page (using inline script)');
+        // console.log('[form-rembush/index.js] Skipping initialization for edit page (using inline script)');
         return;
     }
 
@@ -62,23 +62,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // 4. Branch Distribution Auto-click from AI
     setTimeout(() => {
         if (aiData && aiData.branches && Array.isArray(aiData.branches) && aiData.branches.length > 0) {
-            console.log('[form-rembush/index.js] AI Data Branches:', aiData.branches);
-            
+            // console.log('[form-rembush/index.js] AI Data Branches:', aiData.branches);
+
             // ✅ FIX: Validate and deduplicate branch IDs before auto-clicking
             const uniqueBranchIds = [...new Set(aiData.branches.map(b => String(b.branch_id || b.id)))];
-            console.log('[form-rembush/index.js] Unique Branch IDs to auto-select:', uniqueBranchIds);
-            
+            // console.log('[form-rembush/index.js] Unique Branch IDs to auto-select:', uniqueBranchIds);
+
             uniqueBranchIds.forEach(branchId => {
                 const btn = document.querySelector(`.branch-pill[data-id="${branchId}"]`);
                 if (btn) {
-                    console.log('[form-rembush/index.js] Auto-clicking branch:', branchId, btn.dataset.name);
+                    // console.log('[form-rembush/index.js] Auto-clicking branch:', branchId, btn.dataset.name);
                     btn.click();
                 } else {
                     console.warn('[form-rembush/index.js] Branch button not found for ID:', branchId);
                 }
             });
         } else {
-            console.log('[form-rembush/index.js] No AI branches data to auto-select');
+            // console.log('[form-rembush/index.js] No AI branches data to auto-select');
         }
     }, 300);
 

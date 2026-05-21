@@ -395,8 +395,8 @@
             selectedBranches = cleanBranches;
             allocationContainer.style.display = 'block';
             
-            console.log('[edit-rembush] Initial branches loaded:', selectedBranches);
-            console.log('[edit-rembush] Branch pills found:', branchPills.length);
+            // console.log('[edit-rembush] Initial branches loaded:', selectedBranches);
+            // console.log('[edit-rembush] Branch pills found:', branchPills.length);
             
             // ✅ FIX: Use setTimeout to ensure pills are fully rendered
             setTimeout(() => {
@@ -404,10 +404,10 @@
                 branchPills.forEach(pill => {
                     // ✅ FIX: Use correct dataset attribute (data-id, not data-branch-id)
                     const id = String(pill.dataset.id);  // ← Changed from dataset.branchId
-                    console.log('[edit-rembush] Checking pill:', id, pill.dataset.name);
+                    // console.log('[edit-rembush] Checking pill:', id, pill.dataset.name);
                     
                     if (selectedBranches.some(b => String(b.id) === id)) {  // ← Strict comparison
-                        console.log('[edit-rembush] Marking pill as active:', id, pill.dataset.name);
+                        // console.log('[edit-rembush] Marking pill as active:', id, pill.dataset.name);
                         // ✅ FIX: Use correct classes to match click handler
                         pill.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                         pill.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
@@ -636,14 +636,14 @@
                     this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                     this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
                     
-                    console.log('[edit-rembush] Branch deselected:', id, name);
+                    // console.log('[edit-rembush] Branch deselected:', id, name);
                 } else {
                     // Select - add to array only if not already present (anti-duplicate)
                     const alreadyExists = selectedBranches.some(b => String(b.id) === id);
                     
                     if (!alreadyExists) {
                         selectedBranches.push({ id, name, value: 0, percent: 0 });
-                        console.log('[edit-rembush] Branch selected:', id, name);
+                        // console.log('[edit-rembush] Branch selected:', id, name);
                     } else {
                         console.warn('[edit-rembush] Branch already in array, skipping:', id, name);
                     }
@@ -654,7 +654,7 @@
                 }
 
                 // Log current state for debugging
-                console.log('[edit-rembush] Selected branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
+                // console.log('[edit-rembush] Selected branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
 
                 allocationContainer.style.display = selectedBranches.length > 0 ? 'block' : 'none';
                 renderDistribution();
@@ -730,7 +730,7 @@
             // Update selectedBranches if duplicates were found
             if (uniqueBranches.length !== selectedBranches.length) {
                 selectedBranches = uniqueBranches;
-                console.log('[edit-rembush] Duplicates removed in renderDistribution. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
+                // console.log('[edit-rembush] Duplicates removed in renderDistribution. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
             }
 
             summaryCountBadge.textContent = `${selectedBranches.length} Cabang`;
@@ -823,7 +823,7 @@
             // Update selectedBranches to remove duplicates
             if (uniqueBranches.length !== selectedBranches.length) {
                 selectedBranches = uniqueBranches;
-                console.log('[edit-rembush] Duplicates removed. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
+                // console.log('[edit-rembush] Duplicates removed. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
             }
             
             selectedBranches.forEach((branch, idx) => {
