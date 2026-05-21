@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Log;
  *  TelegramBotService — Notifikasi Real-Time ke Multiple Users
  *
  *  FITUR UTAMA:
- *  ✅ Kirim ke SEMUA user berdasarkan role (owner, admin, atasan)
- *  ✅ Kirim ke user SPESIFIK (teknisi tertentu)
- *  ✅ Kirim ke GROUP monitoring (optional)
+ *  ✅ Kirim alert management ke GROUP monitoring/channel
+ *  ✅ Kirim update transaksi teknisi ke Telegram pribadi teknisi
+ *  ✅ Kirim broadcast manual ke role tertentu bila dibutuhkan
  *  ✅ Inline keyboard (tombol interaktif)
  *  ✅ Error handling & logging lengkap
  * 
@@ -153,7 +153,7 @@ class TelegramBotService
     // ─── Helper for Notification Fallback ────────────────────────────────────────────────
     /**
      * Handle fallback when sending notification to specific user fails.
-     * Logs the failure and sends a warning to the monitoring group.
+     * Logs the failure without sending technician-status noise to the management channel.
      * This can be extended to send via other channels (e.g., email, SMS).
      */
     private function handleNotificationFallback(?User $user, Transaction $transaction, string $notificationType): void
@@ -164,7 +164,6 @@ class TelegramBotService
         $message = "⚠️ FAILED NOTIFICATION: Type={$notificationType}, User={$userName} (ID: {$userId}), Invoice={$invoice}";
 
         Log::channel('ai_autofill')->warning($message);
-        $this->sendToMonitoringGroup($message);
     }
 
 
@@ -246,19 +245,13 @@ Sistem mendeteksi adanya selisih transfer yang melebihi batas toleransi yang dii
 Mohon lakukan peninjauan. Transaksi ini memerlukan Persetujuan Khusus (Force Approve) dari Owner/Atasan untuk dapat diproses lebih lanjut.
 HTML;
 
-        // Kirim ke SEMUA OWNER
-        $stats = $this->sendToMultipleUsers(
-            User::query()->where('role', 'owner'),
-            $message
-        );
-
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup("[FLAGGED] {$invoiceNumber} - Selisih {$selisihFmt}");
+        // Alert management dikirim ke channel monitoring, bukan Telegram pribadi owner.
+        $sentToChannel = $this->sendToMonitoringGroup($message);
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Flagged notification sent', [
             'transaction_id' => $transaction->id,
             'invoice_number' => $invoiceNumber,
-            'recipients'     => $stats,
+            'channel_sent'   => $sentToChannel,
         ]);
     }
 
@@ -287,18 +280,12 @@ HTML;
 <i>Gunakan tombol "Request Override" jika ingin melanjutkan transaksi ini.</i>
 HTML;
 
-        // Kirim ke ADMIN, OWNER, ATASAN
-        $stats = $this->sendToMultipleUsers(
-            User::query()->whereIn('role', ['admin', 'owner', 'atasan']),
-            $message
-        );
-
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup("[AUTO-REJECT] {$invoiceNumber} - {$reason}");
+        // Alert management dikirim ke channel monitoring, bukan Telegram pribadi role.
+        $sentToChannel = $this->sendToMonitoringGroup($message);
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Auto-reject notification sent', [
             'transaction_id' => $transaction->id,
-            'recipients'     => $stats,
+            'channel_sent'   => $sentToChannel,
         ]);
     }
 
@@ -383,18 +370,12 @@ Persetujuan Khusus (Force Approve) atas selisih nominal transfer telah berhasil 
 <b>Status Transaksi : SELESAI & DITERUSKAN</b>
 HTML;
 
-        // Kirim ke SEMUA OWNER
-        $stats = $this->sendToMultipleUsers(
-            User::query()->where('role', 'owner'),
-            $message
-        );
-
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup("[FORCE APPROVE] {$invoiceNumber} by {$approverName}");
+        // Alert management dikirim ke channel monitoring, bukan Telegram pribadi owner.
+        $sentToChannel = $this->sendToMonitoringGroup($message);
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Internal force approve notification sent', [
             'transaction_id' => $transaction->id,
-            'recipients'     => $stats,
+            'channel_sent'   => $sentToChannel,
         ]);
     }
 
@@ -413,10 +394,6 @@ HTML;
         if (!$teknisi || !$teknisi->telegram_chat_id) {
             // Use the fallback helper
             $this->handleNotificationFallback($teknisi, $transaction, 'PAYMENT_CASH');
-            // Fallback: Kirim ke group monitoring saja
-            $this->sendToMonitoringGroup(
-                "⚠️ [CASH] {$transaction->invoice_number} - Teknisi {$teknisi?->name} belum daftar Telegram"
-            );
             return;
         }
 
@@ -468,11 +445,6 @@ HTML;
 
         // Kirim ke TEKNISI dengan tombol
         $this->sendMessage($teknisi->telegram_chat_id, $message, $replyMarkup);
-
-        // Kirim ke GROUP monitoring (tanpa tombol)
-        $this->sendToMonitoringGroup(
-            "[CASH] {$invoiceNumber} - {$teknisi->name} - {$nominal}"
-        );
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Cash payment notification sent', [
             'transaction_id' => $transaction->id,
@@ -531,13 +503,7 @@ Terima kasih atas kerja sama Anda.
 <b>Status Transaksi : SELESAI</b>
 HTML;
 
-        // Kirim ke TEKNISI
         $this->sendMessage($teknisi->telegram_chat_id, $message);
-
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup(
-            "[TRANSFER COMPLETE] {$invoiceNumber} - {$teknisi->name} - {$nominal}"
-        );
 
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Transfer complete notification sent', [
             'transaction_id' => $transaction->id,
@@ -635,9 +601,6 @@ HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
 
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup("[TRANSAKSI DITOLAK] {$invoiceNumber} rejected by {$rejectorName}");
-
         Log::channel('ai_autofill')->info('📨 [TELEGRAM] Transaction rejected notification sent to technician', [
             'transaction_id' => $transaction->id,
             'teknisi_id'     => $teknisi->id,
@@ -686,11 +649,6 @@ HTML;
     {
         $teknisi = $transaction->submitter;
 
-        if (!$teknisi || !$teknisi->telegram_chat_id) {
-            $this->handleNotificationFallback($teknisi, $transaction, 'WAITING_OWNER_APPROVAL');
-            return;
-        }
-
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
         // Use specific event time instead of now()
@@ -709,7 +667,13 @@ Admin/Atasan telah menyetujui pengajuan Anda. Karena nominal transaksi Rp 1.000.
 Pengajuan Anda akan otomatis diproses ke tahap pembayaran setelah mendapatkan persetujuan dari Owner.
 HTML;
 
-        $this->sendMessage($teknisi->telegram_chat_id, $message);
+        if (!$teknisi || !$teknisi->telegram_chat_id) {
+            $this->handleNotificationFallback($teknisi, $transaction, 'WAITING_OWNER_APPROVAL');
+        } else {
+            $this->sendMessage($teknisi->telegram_chat_id, $message);
+        }
+
+        $this->sendToMonitoringGroup("[WAITING OWNER APPROVAL] {$invoiceNumber} - {$teknisi?->name} - {$nominal}");
     }
 
     // ════════════════════════════════════════════════════════
@@ -985,22 +949,12 @@ HTML;
             <a href="{$reviewUrl}">🔍 Review Anomali Sekarang</a>
         HTML;
 
-        // Kirim ke SEMUA OWNER
-        $stats = $this->sendToMultipleUsers(
-            User::query()->where('role', 'owner'),
-            $message
-        );
-
-        // Kirim ke GROUP monitoring
-        $this->sendToMonitoringGroup(
-            "[ANOMALI HARGA] {$invoiceNumber} - {$itemName} +{$excessPct}"
-        );
-
-        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Price anomaly notification sent', [
+        Log::channel('ai_autofill')->info('📨 [TELEGRAM] Price anomaly notification skipped by channel policy', [
             'anomaly_id'    => $anomaly->id,
             'item_name'     => $itemName,
             'severity'      => $anomaly->severity,
-            'recipients'    => $stats,
+            'channel_sent'  => false,
+            'reason'        => 'Channel policy limited to force approve, flagged, waiting owner approval, and auto-reject',
         ]);
     }
 }

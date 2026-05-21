@@ -1,7 +1,7 @@
 # 📚 WHUSNET Admin Payment - Documentation Index
 
 **Project Version:** Laravel 12 + PHP 8.4  
-**Last Updated:** 4 Mei 2026  
+**Last Updated:** 21 Mei 2026  
 **Purpose:** Central navigation hub untuk semua dokumentasi project
 
 ---
@@ -108,7 +108,10 @@ Security documentation:
 | [PRICE_INDEX_DOCS.md](docs/features/PRICE_INDEX_DOCS.md) | ✅ Complete | Price Index & anomaly detection |
 | [REALTIME_MIGRATION_REPORT.md](docs/features/REALTIME_MIGRATION_REPORT.md) | ✅ Complete | Real-time notification migration |
 | [FLOWCHARTS.md](docs/features/FLOWCHARTS.md) | ✅ Complete | System flowcharts |
-| [GEMINI.md](docs/features/GEMINI.md) | ✅ Complete | Gemini AI integration |
+| [PROFILE_PAGE_DESIGN.md](docs/features/PROFILE_PAGE_DESIGN.md) | ✅ Complete | Profile page design |
+| [IMPLEMENTATION_SUMMARY.md](docs/features/IMPLEMENTATION_SUMMARY.md) | ✅ Complete | Feature implementation summary |
+
+**Note:** GEMINI.md remains in root directory for quick access.
 
 ---
 
@@ -122,6 +125,9 @@ Security documentation:
 | [PRODUCTION_READINESS_CHECKLIST.md](docs/deployment/PRODUCTION_READINESS_CHECKLIST.md) | ✅ Complete | Pre-deployment checklist |
 | [PRODUCTION_DEPLOYMENT_SUMMARY.md](docs/deployment/PRODUCTION_DEPLOYMENT_SUMMARY.md) | ✅ Complete | Deployment summary |
 | [DEPLOYMENT_CHECKLIST.md](docs/deployment/DEPLOYMENT_CHECKLIST.md) | ✅ Complete | Step-by-step deployment |
+| [REKOMENDASI_PRODUCTION.md](docs/deployment/REKOMENDASI_PRODUCTION.md) | ✅ Complete | Production recommendations |
+| [VOLUME_MOUNTING_EXPLANATION.md](docs/deployment/VOLUME_MOUNTING_EXPLANATION.md) | ✅ Complete | Volume mounting guide |
+| [JAWABAN_FILE_MOUNTS.md](docs/deployment/JAWABAN_FILE_MOUNTS.md) | ✅ Complete | File mounts Q&A |
 
 ---
 
@@ -134,6 +140,12 @@ Security documentation:
 | [LOGGING_COMPLETE_SOLUTION.md](docs/operations/LOGGING_COMPLETE_SOLUTION.md) | ✅ Complete | Logging solution |
 | [PULSE_LOG_VIEWER_SETUP.md](docs/operations/PULSE_LOG_VIEWER_SETUP.md) | ✅ Complete | Pulse & Log Viewer setup |
 | [PERFORMANCE_OPTIMIZATION.md](docs/operations/PERFORMANCE_OPTIMIZATION.md) | 🟡 Partial | Performance tuning (needs update) |
+| [AUDIT_TRAIL_LOGGING.md](docs/operations/AUDIT_TRAIL_LOGGING.md) | ✅ Complete | Audit trail logging guide |
+| [MONOLOG_LOGGING_GUIDE.md](docs/operations/MONOLOG_LOGGING_GUIDE.md) | ✅ Complete | Monolog logging guide |
+| [WHAT_TO_LOG_QUICK_REFERENCE.md](docs/operations/WHAT_TO_LOG_QUICK_REFERENCE.md) | ✅ Complete | Quick logging reference |
+| [POST_DEPLOY_CHECKLIST.md](docs/operations/POST_DEPLOY_CHECKLIST.md) | ✅ Complete | Post-deployment checklist |
+| [PRE_PRODUCTION_CHECKLIST.md](docs/operations/PRE_PRODUCTION_CHECKLIST.md) | ✅ Complete | Pre-production checklist |
+| [QUICK_COMMANDS.md](docs/operations/QUICK_COMMANDS.md) | ✅ Complete | Quick command reference |
 
 ---
 
@@ -163,6 +175,9 @@ Security documentation:
 | [CONTRIBUTING.md](docs/contributing/CONTRIBUTING.md) | ✅ Complete | Contribution guidelines |
 | [CODE_STYLE.md](docs/contributing/CONTRIBUTING.md#coding-standards) | ✅ Complete | Code style guide (in CONTRIBUTING) |
 | [GIT_WORKFLOW.md](docs/contributing/CONTRIBUTING.md#development-workflow) | ✅ Complete | Git workflow (in CONTRIBUTING) |
+| [DOCUMENTATION_RESTORATION_COMPLETE.md](docs/contributing/DOCUMENTATION_RESTORATION_COMPLETE.md) | ✅ Complete | Documentation restoration record |
+| [DOCS_README_FIX_SUMMARY.md](docs/contributing/DOCS_README_FIX_SUMMARY.md) | ✅ Complete | Documentation fix summary |
+| [DOKUMENTASI_SUDAH_BENAR.md](docs/contributing/DOKUMENTASI_SUDAH_BENAR.md) | ✅ Complete | Documentation verification |
 
 #### Code Review Documentation
 
@@ -207,18 +222,42 @@ Security documentation:
 | [ANALISIS_SPA_VS_MPA.md](docs/analysis/ANALISIS_SPA_VS_MPA.md) | ✅ Complete | SPA vs MPA analysis |
 | [ANALYSIS_INSIGHTS.md](docs/analysis/ANALYSIS_INSIGHTS.md) | ✅ Complete | System insights |
 
+#### Archived Analysis
+Historical analysis documents moved to [docs/analysis/archived/](docs/analysis/archived/):
+- Activity log analysis
+- Documentation analysis
+- Livewire SPA/MPA analysis
+- Real-time implementation analysis
+- Production environment analysis
+
+---
+
+### 🔧 Fix Documentation
+
+All completed fixes and issue resolutions are now organized in [docs/fixes/](docs/fixes/):
+
+| Category | Location | Description |
+|----------|----------|-------------|
+| **Deployment Fixes** | [docs/fixes/deployment/](docs/fixes/deployment/) | Coolify, domain, Reverb, environment fixes |
+| **Authentication Fixes** | [docs/fixes/authentication/](docs/fixes/authentication/) | CSRF, 403, Pulse, log viewer access fixes |
+| **Realtime Fixes** | [docs/fixes/realtime/](docs/fixes/realtime/) | WebSocket, real-time feature fixes |
+| **OCR Fixes** | [docs/fixes/ocr/](docs/fixes/ocr/) | OCR stuck issues and implementations |
+| **General Fixes** | [docs/fixes/](docs/fixes/) | Port conflicts, branch duplication, PR validation |
+
+📋 **Complete Index**: See [docs/fixes/README.md](docs/fixes/README.md) for detailed fix documentation index
+
 ---
 
 ## 📈 Documentation Status Overview
 
 ### Statistics
-- ✅ **Complete:** 44 documents
+- ✅ **Complete:** 61 documents
 - 🟡 **Partial:** 4 documents
 - 🔴 **Missing:** 26 documents
-- **Total:** 74 documents
+- **Total:** 91 documents
 
 ### Completion Rate
-- **Current:** 59% (44/74)
+- **Current:** 67% (61/91)
 - **Target:** 100%
 
 ### Priority Breakdown
@@ -336,14 +375,18 @@ For questions: [email@example.com]
 
 ## 📅 Last Updated
 
-**Date:** 4 Mei 2026  
+**Date:** 21 Mei 2026  
 **By:** Documentation Team  
-**Version:** 1.0
+**Version:** 2.0
 
 ---
 
 **Note:** This index is automatically updated when new documentation is added. If you notice any discrepancies, please report them to the documentation team.
 
+For a complete list of all fixes and issue resolutions, see [docs/fixes/README.md](docs/fixes/README.md).
+
+For the documentation reorganization summary, see [DOCUMENTATION_REORGANIZATION.md](DOCUMENTATION_REORGANIZATION.md).
+
 ---
 
-*For detailed analysis of documentation gaps, see [ANALISIS_DOKUMENTASI.md](ANALISIS_DOKUMENTASI.md)*
+*For detailed analysis of documentation gaps, see archived analysis documents in [docs/analysis/archived/](docs/analysis/archived/)*

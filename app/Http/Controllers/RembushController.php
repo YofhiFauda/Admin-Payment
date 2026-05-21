@@ -249,7 +249,7 @@ class RembushController extends Controller
             'items'          => 'nullable|array',
             'date'           => 'nullable|date',
             'branches'       => 'nullable|array',
-            'branches.*.branch_id'           => 'required_with:branches|exists:branches,id',
+            'branches.*.branch_id'           => ['required_with:branches', 'exists:branches,id', 'distinct'],
             'branches.*.allocation_percent'  => 'required_with:branches|numeric|min:0|max:100',
             'branches.*.allocation_amount'   => 'nullable|numeric|min:0',
             // Bank details for transfer_penjual

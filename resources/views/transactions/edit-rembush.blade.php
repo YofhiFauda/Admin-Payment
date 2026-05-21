@@ -373,15 +373,29 @@
         
         if (Array.isArray(window._initialBranches) && window._initialBranches.length > 0) {
             // ✅ FIX: Deep clone to prevent reference issues & ensure consistent string IDs
-            selectedBranches = window._initialBranches.map(b => ({
-                id: String(b.id),      // ← Force string for consistent comparison
-                name: b.name,
-                percent: parseFloat(b.percent) || 0,
-                value: parseInt(b.value) || 0
-            }));
+            // Also remove any duplicates that might exist in backend data
+            const seenIds = new Set();
+            const cleanBranches = [];
+            
+            window._initialBranches.forEach(b => {
+                const branchId = String(b.id);
+                if (!seenIds.has(branchId)) {
+                    seenIds.add(branchId);
+                    cleanBranches.push({
+                        id: branchId,      // ← Force string for consistent comparison
+                        name: b.name,
+                        percent: parseFloat(b.percent) || 0,
+                        value: parseInt(b.value) || 0
+                    });
+                } else {
+                    console.warn('[edit-rembush] Duplicate branch in initial data, skipping:', branchId, b.name);
+                }
+            });
+            
+            selectedBranches = cleanBranches;
             allocationContainer.style.display = 'block';
             
-            console.log('[edit-rembush] Initial branches:', selectedBranches);
+            console.log('[edit-rembush] Initial branches loaded:', selectedBranches);
             console.log('[edit-rembush] Branch pills found:', branchPills.length);
             
             // ✅ FIX: Use setTimeout to ensure pills are fully rendered
@@ -609,23 +623,38 @@
                 // HTML partial uses data-id and data-name, not data-branch-id
                 const id   = String(this.dataset.id);  // ← Changed from dataset.branchId
                 const name = this.dataset.name;         // ← Changed from dataset.branchName
-                const idx  = selectedBranches.findIndex(b => String(b.id) === id);
-
-                if (idx > -1) {
-                    // Deselect
-                    selectedBranches.splice(idx, 1);
-                    // ✅ FIX: Use correct default classes (bg-white text-slate-600)
+                
+                // ✅ FIX: Check visual state (pill classes) as source of truth
+                // This prevents race conditions between state and UI
+                const isCurrentlyActive = this.classList.contains('bg-emerald-500');
+                
+                if (isCurrentlyActive) {
+                    // Deselect - remove from array
+                    selectedBranches = selectedBranches.filter(b => String(b.id) !== id);
+                    
+                    // Update visual
                     this.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                     this.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+                    
+                    console.log('[edit-rembush] Branch deselected:', id, name);
                 } else {
-                    // Select - ensure no duplicates before adding
-                    if (!selectedBranches.some(b => String(b.id) === id)) {
+                    // Select - add to array only if not already present (anti-duplicate)
+                    const alreadyExists = selectedBranches.some(b => String(b.id) === id);
+                    
+                    if (!alreadyExists) {
                         selectedBranches.push({ id, name, value: 0, percent: 0 });
+                        console.log('[edit-rembush] Branch selected:', id, name);
+                    } else {
+                        console.warn('[edit-rembush] Branch already in array, skipping:', id, name);
                     }
-                    // ✅ FIX: Remove default classes before adding active classes
+                    
+                    // Update visual
                     this.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
                     this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500', 'shadow-md');
                 }
+
+                // Log current state for debugging
+                console.log('[edit-rembush] Selected branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
 
                 allocationContainer.style.display = selectedBranches.length > 0 ? 'block' : 'none';
                 renderDistribution();
@@ -683,6 +712,26 @@
             activeBranchesList.innerHTML  = '';
             summaryBranchesList.innerHTML = '';
             if (hiddenInputsContainer) hiddenInputsContainer.innerHTML = '';
+
+            // ✅ FIX: Remove duplicates before rendering
+            const uniqueBranches = [];
+            const seenIds = new Set();
+            
+            selectedBranches.forEach(branch => {
+                const branchId = String(branch.id);
+                if (!seenIds.has(branchId)) {
+                    seenIds.add(branchId);
+                    uniqueBranches.push(branch);
+                } else {
+                    console.warn('[edit-rembush] Duplicate branch detected in renderDistribution, removing:', branchId, branch.name);
+                }
+            });
+            
+            // Update selectedBranches if duplicates were found
+            if (uniqueBranches.length !== selectedBranches.length) {
+                selectedBranches = uniqueBranches;
+                console.log('[edit-rembush] Duplicates removed in renderDistribution. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
+            }
 
             summaryCountBadge.textContent = `${selectedBranches.length} Cabang`;
 
@@ -755,6 +804,28 @@
         function updateHiddenInputs() {
             if (!hiddenInputsContainer) return;
             hiddenInputsContainer.innerHTML = '';
+            
+            // ✅ FIX: Remove duplicates before creating hidden inputs
+            // This is a safety net in case duplicates somehow get into selectedBranches
+            const uniqueBranches = [];
+            const seenIds = new Set();
+            
+            selectedBranches.forEach(branch => {
+                const branchId = String(branch.id);
+                if (!seenIds.has(branchId)) {
+                    seenIds.add(branchId);
+                    uniqueBranches.push(branch);
+                } else {
+                    console.warn('[edit-rembush] Duplicate branch detected and removed:', branchId, branch.name);
+                }
+            });
+            
+            // Update selectedBranches to remove duplicates
+            if (uniqueBranches.length !== selectedBranches.length) {
+                selectedBranches = uniqueBranches;
+                console.log('[edit-rembush] Duplicates removed. Clean branches:', selectedBranches.map(b => `${b.name} (${b.id})`));
+            }
+            
             selectedBranches.forEach((branch, idx) => {
                 hiddenInputsContainer.insertAdjacentHTML('beforeend', `
                     <input type="hidden" name="branches[${idx}][branch_id]"          value="${branch.id}">

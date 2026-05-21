@@ -77,6 +77,12 @@ class OcrNotaController extends Controller
         return [$user, null];
     }
 
+    private function submitterRequiresCashTelegram(Transaction $transaction): bool
+    {
+        return $transaction->type !== 'gudang'
+            && $transaction->submitter?->isTeknisi();
+    }
+
     /**
      * POST /api/v1/nota/upload
      */
@@ -586,8 +592,11 @@ class OcrNotaController extends Controller
             ->with('submitter')  // 🔔 TELEGRAM: Load teknisi
             ->firstOrFail();
 
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Pembelian/Internal)
-        if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
+        $requiresTechnicianConfirmation = $this->submitterRequiresCashTelegram($transaction);
+
+        // Cash untuk teknisi tetap perlu tombol konfirmasi Telegram.
+        // Submitter internal (admin/atasan/owner) tidak wajib Telegram pribadi.
+        if ($requiresTechnicianConfirmation && !$transaction->submitter->telegram_chat_id) {
             return response()->json([
                 'success' => false,
                 'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan akun Telegram. Pembayaran CASH tidak dapat diproses sampai teknisi mendaftar via bot.',
@@ -634,10 +643,13 @@ class OcrNotaController extends Controller
         }
 
         $isPembelian = $transaction->type === 'gudang';
+        $finalStatus = ($isPembelian || !$requiresTechnicianConfirmation)
+            ? 'completed'
+            : 'pending_technician';
 
         $transaction->update([
             'foto_penyerahan' => $path,
-            'status'          => $isPembelian ? 'completed' : 'pending_technician',
+            'status'          => $finalStatus,
             'paid_by'         => auth()->id(),
             'paid_at'         => now(),
             'description'     => $request->catatan,
@@ -654,7 +666,7 @@ class OcrNotaController extends Controller
                 'description'    => "Mengunggah bukti penyerahan Cash" . ($request->catatan ? ". Catatan: " . $request->catatan : ""),
             ]);
 
-            if ($transaction->submitter) {
+            if ($transaction->submitter && $requiresTechnicianConfirmation) {
                 $transaction->submitter->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'pending_technician'));
             }
         } catch (\Exception $e) {
@@ -671,11 +683,9 @@ class OcrNotaController extends Controller
             'file_path'      => $path,
         ]);
 
-        // ═══════════════════════════════════════════════════════════
-        //  🔔 TELEGRAM #1: KIRIM NOTIFIKASI CASH KE TEKNISI
-        //  (Lewati untuk Pembelian/Internal)
-        // ═══════════════════════════════════════════════════════════
-        if ($transaction->type !== 'gudang') {
+        // Kirim tombol konfirmasi hanya untuk transaksi milik teknisi.
+        // Transaksi internal selesai tanpa Telegram pribadi maupun channel.
+        if ($requiresTechnicianConfirmation) {
             try {
                 $this->telegram->notifyPaymentCash($transaction);
                 
@@ -733,12 +743,14 @@ class OcrNotaController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => $isPembelian ? 'Bukti penyerahan diterima. Transaksi Selesai.' : 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
+            'message'       => $finalStatus === 'completed'
+                ? 'Bukti penyerahan diterima. Transaksi Selesai.'
+                : 'Foto penyerahan diterima. Menunggu konfirmasi teknisi.',
             'upload_id'     => $transaction->upload_id,
             'transaksi_id'  => $transaction->id,
             'pembayaran_id' => $transaction->id,
-            'status'        => $isPembelian ? 'completed' : 'pending_technician',
-            'status_label'  => $isPembelian ? 'Selesai' : 'Menunggu Konfirmasi Teknisi',
+            'status'        => $finalStatus,
+            'status_label'  => $finalStatus === 'completed' ? 'Selesai' : 'Menunggu Konfirmasi Teknisi',
         ], 202);
     }
 
@@ -866,14 +878,6 @@ class OcrNotaController extends Controller
             ->orWhere('id', $request->transaksi_id)
             ->with('submitter')
             ->firstOrFail();
-
-        // 🛡️ VALIDASI: Cek pendaftaran Telegram teknisi (Lewati untuk Pembelian/Internal)
-        if ($transaction->type !== 'gudang' && (!$transaction->submitter || !$transaction->submitter->telegram_chat_id)) {
-            return response()->json([
-                'success' => false,
-                'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan Telegram. Bukti transfer tidak dapat diproses sampai teknisi mendaftar via bot.',
-            ], 422);
-        }
 
         if ($transaction->status !== 'waiting_payment') {
             return response()->json([

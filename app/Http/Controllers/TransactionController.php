@@ -398,7 +398,7 @@ class TransactionController extends Controller
         if ($transaction->isPengajuan()) {
             $rules = [
                 'branches'        => 'nullable|array',
-                'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
+                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id', 'distinct'],
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
                 'dpp_lainnya'     => 'nullable|integer|min:0',
@@ -455,7 +455,7 @@ class TransactionController extends Controller
                 'items.*.total_harga' => 'nullable|numeric',
                 'date'           => 'nullable|date',
                 'branches'       => 'nullable|array',
-                'branches.*.branch_id' => 'required_with:branches|exists:branches,id',
+                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id', 'distinct'],
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
                 // Bank details for transfer_penjual
