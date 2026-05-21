@@ -686,6 +686,10 @@ class TransactionController extends Controller
             $transaction = Transaction::with('submitter')->findOrFail($id);
             $oldStatus = $transaction->status;
 
+            if ($newStatus === 'pending') {
+                return $this->resetToPending($request, $transaction, $oldStatus);
+            }
+
             // ─── Approval Logic ───────────────────────────
             if ($transaction->isPengajuan()) {
                 // PENGAJUAN LOGIC — Dual-Gate untuk ≥ Rp 1.000.000
@@ -1055,9 +1059,12 @@ class TransactionController extends Controller
 
             return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: {$statusLabel}");
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Status update failed', [
+                'class' => get_class($e),
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'transaction_id' => $id,
             ]);
 
@@ -1067,6 +1074,151 @@ class TransactionController extends Controller
 
             return back()->withErrors(['error' => 'Gagal mengubah status']);
         }
+    }
+
+    /**
+     * Minimal reset path for production stability.
+     *
+     * Reset intentionally bypasses Eloquent model events and the generic status
+     * workflow so cache, broadcast, notification, and accessor failures cannot
+     * block the actual status reset.
+     */
+    private function resetToPending(Request $request, Transaction $transaction, ?string $oldStatus)
+    {
+        $paymentProofPaths = array_filter([
+            $transaction->bukti_transfer,
+            $transaction->foto_penyerahan,
+            $transaction->invoice_file_path,
+        ]);
+
+        $resetData = [
+            'status' => 'pending',
+            'bukti_transfer' => null,
+            'foto_penyerahan' => null,
+            'invoice_file_path' => null,
+            'paid_by' => null,
+            'paid_at' => null,
+            'ai_status' => null,
+            'expected_total' => null,
+            'actual_total' => null,
+            'selisih' => null,
+            'ocr_result' => null,
+            'ocr_confidence' => null,
+            'flag_reason' => null,
+            'konfirmasi_by' => null,
+            'konfirmasi_at' => null,
+            'rejection_reason' => null,
+            'pembayaran_id' => null,
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        try {
+            $columns = Schema::getColumnListing('transactions');
+            $resetData = array_intersect_key($resetData, array_flip($columns));
+        } catch (\Throwable $e) {
+            Log::warning('[RESET] Failed to inspect transaction columns; using conservative reset columns', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $resetData = [
+                'status' => 'pending',
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        try {
+            DB::table('transactions')
+                ->where('id', $transaction->id)
+                ->update($resetData);
+        } catch (\Throwable $e) {
+            Log::error('[RESET] Failed to update transaction to pending', [
+                'class' => get_class($e),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'transaction_id' => $transaction->id,
+                'old_status' => $oldStatus,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal reset transaksi ke Pending.',
+            ], 500);
+        }
+
+        try {
+            \App\Models\PaymentDiscrepancyAudit::where('transaction_id', $transaction->id)->delete();
+            \App\Models\BranchDebt::where('transaction_id', $transaction->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[RESET] Failed to cleanup reset-related records', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        foreach ($paymentProofPaths as $path) {
+            try {
+                if ($path && Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[RESET] Failed to delete old payment proof file', [
+                    'transaction_id' => $transaction->id,
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        try {
+            $log = ActivityLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'reset',
+                'transaction_id' => $transaction->id,
+                'target_id' => $transaction->invoice_number,
+                'description' => "Reset status Transaksi {$transaction->invoice_number} ke Pending",
+            ]);
+
+            try {
+                broadcast(new \App\Events\ActivityLogged($log));
+                broadcast(new \App\Events\TransactionUpdated(Transaction::find($transaction->id)));
+            } catch (\Throwable $e) {
+                Log::warning('[RESET] Failed to broadcast reset update', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[RESET] Failed to write reset activity log', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        Log::info('[RESET] Transaction reset to pending', [
+            'transaction_id' => $transaction->id,
+            'invoice_number' => $transaction->invoice_number,
+            'old_status' => $oldStatus,
+            'reset_by' => Auth::id(),
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Nota {$transaction->invoice_number} diubah ke: PENDING",
+                'status' => 'pending',
+                'status_label' => 'Pending',
+                'toast_type' => 'info',
+                'toast_message' => "Transaksi {$transaction->invoice_number} direset ke Pending.",
+            ]);
+        }
+
+        return back()->with('success', "Nota {$transaction->invoice_number} diubah ke: PENDING");
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
