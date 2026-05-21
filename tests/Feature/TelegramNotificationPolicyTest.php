@@ -113,7 +113,7 @@ class TelegramNotificationPolicyTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'success' => true,
-                'status' => 'Sedang Diverifikasi AI',
+                'status' => 'waiting_payment',  // ✅ FIX: Status valid
             ]);
     }
 

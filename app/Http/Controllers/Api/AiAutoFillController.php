@@ -47,9 +47,9 @@ class AiAutoFillController extends Controller
             'pending', 'pending - menunggu approval admin'            => 'pending',
             'approved', 'disetujui', 'menunggu approve owner'        => 'approved',
             'rejected', 'ditolak'                                     => 'rejected',
-            'menunggu konfirmasi teknisi'                             => 'Menunggu Konfirmasi Teknisi',
-            'sedang diverifikasi ai'                                  => 'Sedang Diverifikasi AI',
-            'ditolak teknisi'                                         => 'Ditolak Teknisi',
+            'menunggu konfirmasi teknisi'                             => 'pending_technician',
+            // ✅ REMOVED: 'sedang diverifikasi ai' - Status tidak valid, gunakan ai_status field
+            'ditolak teknisi'                                         => 'rejected',
             default                                                   => $rawStatus,
         };
     }
