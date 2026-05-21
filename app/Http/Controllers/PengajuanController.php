@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\PriceIndex\PriceIndexService;
 use App\Jobs\PriceIndex\SendPriceAnomalyNotificationJob;
 use App\Services\ImageCompressionService;
+use App\Support\BranchAllocation;
 use Illuminate\Support\Facades\Cache;
 
 
@@ -278,12 +279,8 @@ class PengajuanController extends Controller
 
         // Validate branch allocation if provided
         if ($request->branches && count($request->branches) > 0) {
-            $branchIds = collect($request->branches)->pluck('branch_id');
-            if ($branchIds->count() !== $branchIds->unique()->count()) {
-                return back()->withErrors(['branches' => 'Cabang tidak boleh duplikat.'])->withInput();
-            }
-
-            $totalPercent = collect($request->branches)->sum('allocation_percent');
+            $branches = BranchAllocation::normalize($request->branches);
+            $totalPercent = collect($branches)->sum('allocation_percent');
             if (abs($totalPercent - 100) > 1) {
                 return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
             }
@@ -368,35 +365,9 @@ class PengajuanController extends Controller
 
             // Attach branches if provided
             if ($request->branches && count($request->branches) > 0) {
-                $effectiveAmount = $transaction->amount;
-                $branchAttachData = [];
-                $totalAllocated = 0;
-                
-                foreach ($request->branches as $branchData) {
-                    $allocPercent = floatval($branchData['allocation_percent']);
-                    // Selalu hitung ulang di backend berdasarkan persen untuk akurasi
-                    $allocAmount = intval(round(($effectiveAmount * $allocPercent) / 100));
-                    $totalAllocated += $allocAmount;
-
-                    $branchAttachData[] = [
-                        'id'                 => $branchData['branch_id'],
-                        'allocation_percent' => $allocPercent,
-                        'allocation_amount'  => $allocAmount,
-                    ];
-                }
-                
-                // Absorb difference in last branch to ensure sum equals exactly $effectiveAmount
-                $diff = $effectiveAmount - $totalAllocated;
-                if (count($branchAttachData) > 0 && $diff != 0) {
-                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
-                }
-
-                foreach ($branchAttachData as $branch) {
-                    $transaction->branches()->attach($branch['id'], [
-                        'allocation_percent' => $branch['allocation_percent'],
-                        'allocation_amount'  => $branch['allocation_amount'],
-                    ]);
-                }
+                $transaction->branches()->sync(
+                    BranchAllocation::toSyncData($branches ?? $request->branches, $transaction->amount)
+                );
             }
 
             // ✅ PRICE INDEX — Deteksi Anomali Harga

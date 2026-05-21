@@ -29,6 +29,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use App\Services\Telegram\TelegramBotService;
 use App\Jobs\PriceIndex\CalculatePriceIndexJob;
 use App\Services\ImageCompressionService;
+use App\Support\BranchAllocation;
 
 class TransactionController extends Controller
 {
@@ -398,7 +399,7 @@ class TransactionController extends Controller
         if ($transaction->isPengajuan()) {
             $rules = [
                 'branches'        => 'nullable|array',
-                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id', 'distinct'],
+                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id'],
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
                 'dpp_lainnya'     => 'nullable|integer|min:0',
@@ -455,7 +456,7 @@ class TransactionController extends Controller
                 'items.*.total_harga' => 'nullable|numeric',
                 'date'           => 'nullable|date',
                 'branches'       => 'nullable|array',
-                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id', 'distinct'],
+                'branches.*.branch_id' => ['required_with:branches', 'exists:branches,id'],
                 'branches.*.allocation_percent' => 'required_with:branches|numeric|min:0|max:100',
                 'branches.*.allocation_amount' => 'nullable|numeric|min:0',
                 // Bank details for transfer_penjual
@@ -467,16 +468,8 @@ class TransactionController extends Controller
 
         // Validate branches if provided
         if ($request->branches && count($request->branches) > 0) {
-            // ✅ FIX: Check for duplicate branch IDs to prevent manipulation
-            $branchIds = collect($request->branches)->pluck('branch_id');
-            if ($branchIds->count() !== $branchIds->unique()->count()) {
-                DB::rollBack();
-                return back()->withErrors([
-                    'branches' => 'Cabang tidak boleh duplikat. Silakan refresh halaman dan coba lagi.'
-                ])->withInput();
-            }
-            
-            $totalPercent = collect($request->branches)->sum('allocation_percent');
+            $branches = BranchAllocation::normalize($request->branches);
+            $totalPercent = collect($branches)->sum('allocation_percent');
             if (abs($totalPercent - 100) > 1) {
                 return back()->withErrors(['branches' => 'Total alokasi harus 100%.'])->withInput();
             }
@@ -608,24 +601,13 @@ class TransactionController extends Controller
             $transaction->branches()->detach();
             if ($request->branches && count($request->branches) > 0) {
                 $effectiveAmount = $transaction->amount;
-                $totalAllocated  = 0;
 
                 // 🔒 SECURITY FIX: Never trust allocation_amount from request.
                 // Always recalculate from allocation_percent to prevent manipulation
                 // where a user submits a valid percent (50%+50%=100%) but a tampered
                 // amount (20k+20k ≠ 100k) causing untracked funds.
-                $branchAttachData = [];
-                foreach ($request->branches as $branchData) {
-                    $allocPercent = floatval($branchData['allocation_percent']);
-                    $allocAmount  = intval(round(($effectiveAmount * $allocPercent) / 100));
-                    $totalAllocated += $allocAmount;
-
-                    $branchAttachData[] = [
-                        'id'                 => $branchData['branch_id'],
-                        'allocation_percent' => $allocPercent,
-                        'allocation_amount'  => $allocAmount,
-                    ];
-                }
+                $syncData = BranchAllocation::toSyncData($branches ?? $request->branches, $effectiveAmount);
+                $totalAllocated = collect($syncData)->sum('allocation_amount');
 
                 // ✅ Integrity check: Handle rounding differences on last branch caused by percentages (e.g. 33.33% x 3 = 99.99%)
                 $diff = $effectiveAmount - $totalAllocated;
@@ -641,16 +623,7 @@ class TransactionController extends Controller
                     ])->withInput();
                 }
 
-                if (count($branchAttachData) > 0 && $diff != 0) {
-                    $branchAttachData[count($branchAttachData) - 1]['allocation_amount'] += $diff;
-                }
-
-                foreach ($branchAttachData as $branch) {
-                    $transaction->branches()->attach($branch['id'], [
-                        'allocation_percent' => $branch['allocation_percent'],
-                        'allocation_amount'  => $branch['allocation_amount'],
-                    ]);
-                }
+                $transaction->branches()->sync($syncData);
             }
 
             DB::commit();
