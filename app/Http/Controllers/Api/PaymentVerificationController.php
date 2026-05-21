@@ -49,23 +49,11 @@ class PaymentVerificationController extends Controller
      */
     public function handle(Request $request)
     {
-        // ✅ Support upload_id dari query parameter atau body
-        $uploadId = $request->query('upload_id') ?? $request->input('upload_id');
-        
-        // Merge upload_id ke request untuk validasi
-        if ($uploadId) {
-            $request->merge(['upload_id' => $uploadId]);
-        }
-        
         $request->validate([
             'upload_id'      => 'required|string',
-            'status'         => 'required|in:match,flagged,completed,success,mismatch,failed,error',
+            'status'         => 'required|in:match,flagged,completed,mismatch,failed',
             'actual_total'   => 'nullable|numeric',
             'expected_total' => 'nullable|numeric',
-            'amount'         => 'nullable|numeric',
-            'total'          => 'nullable|numeric',
-            'nominal'        => 'nullable|numeric',
-            'total_transfer' => 'nullable|numeric',
             'selisih'        => 'nullable|numeric',
             'confidence'     => 'nullable|numeric',
             'ocr_confidence' => 'nullable|numeric',  // N8N mengirim field ini
@@ -73,11 +61,9 @@ class PaymentVerificationController extends Controller
         ]);
 
         // 🔍 DEBUG: Log payload asli dari N8N untuk analisa Match/Mismatch
-        Log::channel('ai_autofill')->info('🔍 [PAYMENT VERIFY] Raw N8N Payload Received', [
-            'query_params' => $request->query(),
-            'body_params'  => $request->except(['secret']),
-            'upload_id'    => $uploadId,
-        ]);
+        Log::channel('ai_autofill')->info('🔍 [PAYMENT VERIFY] Raw N8N Payload Received', $request->all());
+
+        $uploadId = $request->upload_id;
 
         // ── ✅ NEW: Penanggulangan Race Condition via Redis Lock ──
         $lock = Cache::lock("lock:payment_verify:{$uploadId}", 30);
@@ -96,9 +82,9 @@ class PaymentVerificationController extends Controller
         // Normalisasi status: N8N kadang kirim "completed" atau "mismatch"
         // Laravel hanya pakai "match" atau "flagged" secara internal
         $rawStatus = $request->status;
-        if (in_array($rawStatus, ['completed', 'success'], true)) {
+        if ($rawStatus === 'completed') {
             $request->merge(['status' => 'match']);
-        } elseif (in_array($rawStatus, ['mismatch', 'failed', 'error'], true)) {
+        } elseif ($rawStatus === 'mismatch') {
             $request->merge(['status' => 'flagged']);
         }
 
@@ -124,23 +110,13 @@ class PaymentVerificationController extends Controller
             ], 404);
         }
 
-        $expectedTotal = $this->firstPositiveAmount(
-            $transaction->expected_total,
-            $request->expected_total,
-            $transaction->effective_amount
-        );
-        $actualTotal = $this->firstPositiveAmount(
-            $request->actual_total,
-            $request->amount,
-            $request->total,
-            $request->nominal,
-            $request->total_transfer
-        );
+        $expectedTotal = (float) $transaction->effective_amount;
+        $actualTotal   = (float) $request->actual_total;
         $calculatedSelisih = abs($expectedTotal - $actualTotal);
         $tolerance     = 1000; // Standard system tolerance
 
         // 🛡️ ZERO TRUST: Even if n8n says 'match', we override if backend finds a discrepancy
-        if ($status === 'match' && ($expectedTotal <= 0 || $actualTotal <= 0 || $calculatedSelisih > $tolerance)) {
+        if ($status === 'match' && $calculatedSelisih > $tolerance) {
             Log::channel('ai_autofill')->warning('🚨 [PAYMENT VERIFY] n8n reported MATCH but backend found DISCREPANCY', [
                 'upload_id' => $uploadId,
                 'expected'  => $expectedTotal,
@@ -223,10 +199,7 @@ class PaymentVerificationController extends Controller
                 'status'         => 'flagged',
                 'actual_total'   => $actualTotal,
                 'expected_total' => $expectedTotal,
-                'flag_reason'    => $request->flag_reason
-                    ?? ($expectedTotal <= 0 || $actualTotal <= 0
-                        ? 'Nominal transfer tidak terbaca lengkap oleh AI'
-                        : 'Selisih nominal transfer'),
+                'flag_reason'    => $request->flag_reason ?? 'Selisih nominal transfer',
                 'confidence'     => $confidence ?? 0,
                 'is_locked'      => true,
                 // 'selisih' will be auto-calculated by Model Saving event
@@ -288,29 +261,5 @@ class PaymentVerificationController extends Controller
         } finally {
             $lock->release();
         }
-    }
-
-    private function firstPositiveAmount(...$values): float
-    {
-        foreach ($values as $value) {
-            if ($value === null || $value === '') {
-                continue;
-            }
-
-            $normalized = is_string($value)
-                ? preg_replace('/[^\d.-]/', '', $value)
-                : $value;
-
-            if (!is_numeric($normalized)) {
-                continue;
-            }
-
-            $amount = (float) $normalized;
-            if ($amount > 0) {
-                return $amount;
-            }
-        }
-
-        return 0.0;
     }
 }

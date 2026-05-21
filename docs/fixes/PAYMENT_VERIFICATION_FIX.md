@@ -35,8 +35,6 @@ Status `"Sedang Diverifikasi AI"` **BUKAN** status valid, sehingga:
 
 ### 1. Perbaikan Kode (SUDAH DILAKUKAN)
 
-**A. Fix Status di OcrNotaController (uploadTransfer)**
-
 Ganti status hard-coded dengan status valid + ai_status untuk tracking:
 
 ```php
@@ -51,31 +49,6 @@ $transaction->update([
 - `status = 'waiting_payment'` → Status valid yang dikenali sistem
 - `ai_status = 'processing'` → Field terpisah untuk tracking proses AI/OCR
 - Ketika n8n callback ke `/api/payment/verify`, status akan diupdate ke `match` atau `flagged`
-
-**B. Fix PaymentVerificationController (Support Query Parameter)**
-
-Controller sekarang support `upload_id` dari **query parameter** atau **request body**:
-
-```php
-// ✅ Support kedua cara
-$uploadId = $request->query('upload_id') ?? $request->input('upload_id');
-```
-
-**Ini berarti callback URL bisa menggunakan salah satu format:**
-
-1. **Query Parameter** (untuk n8n workflow yang sudah ada):
-   ```
-   POST /api/payment/verify?upload_id={{ $json.upload_id }}
-   Body: { "status": "match", "actual_total": 150000, ... }
-   ```
-
-2. **Request Body** (recommended):
-   ```
-   POST /api/payment/verify
-   Body: { "upload_id": "RMBSH-001", "status": "match", ... }
-   ```
-
-Kedua format akan bekerja dengan baik!
 
 ### 2. Alur yang Benar
 
@@ -209,23 +182,8 @@ curl -X POST https://admin-payment.whusnet.com/api/v1/payment/transfer/upload \
 ```
 
 ### 2. Test N8N Callback
-
-**Opsi A: Callback dengan Query Parameter (sesuai workflow Anda)**
 ```bash
-curl -X POST 'https://admin-payment.whusnet.com/api/payment/verify?upload_id=RMBSH-20260521-001' \
-  -H "Content-Type: application/json" \
-  -H "X-N8N-Secret: <secret>" \
-  -d '{
-    "status": "match",
-    "actual_total": 150000,
-    "expected_total": 150000,
-    "selisih": 0,
-    "confidence": 95
-  }'
-```
-
-**Opsi B: Callback dengan Request Body (recommended)**
-```bash
+# Simulate n8n callback (untuk testing)
 curl -X POST https://admin-payment.whusnet.com/api/payment/verify \
   -H "Content-Type: application/json" \
   -H "X-N8N-Secret: <secret>" \
@@ -237,18 +195,16 @@ curl -X POST https://admin-payment.whusnet.com/api/payment/verify \
     "selisih": 0,
     "confidence": 95
   }'
-```
 
-**Expected Response (kedua opsi):**
-```json
-{
-  "success": true,
-  "message": "Payment verified successfully",
-  "data": {
-    "transaction_id": 123,
-    "status": "completed"
-  }
-}
+# Expected Response:
+# {
+#   "success": true,
+#   "message": "Payment verified successfully",
+#   "data": {
+#     "transaction_id": 123,
+#     "status": "completed"  ← Status final setelah verifikasi
+#   }
+# }
 ```
 
 ## 📝 Checklist
