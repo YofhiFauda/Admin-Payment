@@ -1091,50 +1091,25 @@ class TransactionController extends Controller
             $transaction->invoice_file_path,
         ]);
 
-        $resetData = [
-            'status' => 'pending',
-            'bukti_transfer' => null,
-            'foto_penyerahan' => null,
-            'invoice_file_path' => null,
-            'paid_by' => null,
-            'paid_at' => null,
-            'ai_status' => null,
-            'expected_total' => null,
-            'actual_total' => null,
-            'selisih' => null,
-            'ocr_result' => null,
-            'ocr_confidence' => null,
-            'flag_reason' => null,
-            'konfirmasi_by' => null,
-            'konfirmasi_at' => null,
-            'rejection_reason' => null,
-            'pembayaran_id' => null,
-            'reviewed_by' => Auth::id(),
-            'reviewed_at' => now(),
-            'updated_at' => now(),
-        ];
-
+        $columns = [];
         try {
             $columns = Schema::getColumnListing('transactions');
-            $resetData = array_intersect_key($resetData, array_flip($columns));
         } catch (\Throwable $e) {
-            Log::warning('[RESET] Failed to inspect transaction columns; using conservative reset columns', [
+            Log::warning('[RESET] Failed to inspect transaction columns; using status-only reset first', [
                 'transaction_id' => $transaction->id,
                 'error' => $e->getMessage(),
             ]);
-
-            $resetData = [
-                'status' => 'pending',
-                'reviewed_by' => Auth::id(),
-                'reviewed_at' => now(),
-                'updated_at' => now(),
-            ];
         }
 
         try {
+            $statusUpdate = ['status' => 'pending'];
+            if (in_array('updated_at', $columns, true)) {
+                $statusUpdate['updated_at'] = now();
+            }
+
             DB::table('transactions')
                 ->where('id', $transaction->id)
-                ->update($resetData);
+                ->update($statusUpdate);
         } catch (\Throwable $e) {
             Log::error('[RESET] Failed to update transaction to pending', [
                 'class' => get_class($e),
@@ -1149,6 +1124,64 @@ class TransactionController extends Controller
                 'success' => false,
                 'message' => 'Gagal reset transaksi ke Pending.',
             ], 500);
+        }
+
+        $resetNullColumns = [
+            'bukti_transfer',
+            'foto_penyerahan',
+            'invoice_file_path',
+            'paid_by',
+            'paid_at',
+            'ai_status',
+            'expected_total',
+            'actual_total',
+            'selisih',
+            'ocr_result',
+            'ocr_confidence',
+            'flag_reason',
+            'konfirmasi_by',
+            'konfirmasi_at',
+            'rejection_reason',
+            'pembayaran_id',
+        ];
+
+        foreach ($resetNullColumns as $column) {
+            if (!in_array($column, $columns, true)) {
+                continue;
+            }
+
+            try {
+                DB::table('transactions')
+                    ->where('id', $transaction->id)
+                    ->update([$column => null]);
+            } catch (\Throwable $e) {
+                Log::warning('[RESET] Failed to clear transaction column', [
+                    'transaction_id' => $transaction->id,
+                    'column' => $column,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $metadataUpdate = [];
+        if (in_array('reviewed_by', $columns, true)) {
+            $metadataUpdate['reviewed_by'] = Auth::id();
+        }
+        if (in_array('reviewed_at', $columns, true)) {
+            $metadataUpdate['reviewed_at'] = now();
+        }
+
+        if ($metadataUpdate) {
+            try {
+                DB::table('transactions')
+                    ->where('id', $transaction->id)
+                    ->update($metadataUpdate);
+            } catch (\Throwable $e) {
+                Log::warning('[RESET] Failed to update reset metadata', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         try {
