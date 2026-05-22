@@ -663,7 +663,7 @@ class OcrNotaController extends Controller
         $transaction->update([
             'foto_penyerahan' => $path,
             'status'          => $finalStatus,
-            'ai_status'       => null, // ✅ Clear ai_status for cash payment
+            'ai_status'       => 'completed',
             'paid_by'         => auth()->id(),
             'paid_at'         => now(),
             'description'     => $request->catatan,
