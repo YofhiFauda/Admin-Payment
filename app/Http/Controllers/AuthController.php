@@ -25,7 +25,9 @@ class AuthController extends Controller
         $selectedRole = $request->query('role');
 
         if ($selectedRole && ! array_key_exists($selectedRole, self::LOGIN_ROLE_LABELS)) {
-            return redirect()->route('login')->withHeaders($this->noStoreHeaders());
+            return redirect()
+                ->route('login')
+                ->withHeaders($this->noStoreHeaders());
         }
 
         return response()
@@ -63,10 +65,13 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->withHeaders($this->noStoreHeaders());
+        return redirect()
+            ->route('login')
+            ->withHeaders($this->noStoreHeaders());
     }
 
     private function redirectByRole(string $role)

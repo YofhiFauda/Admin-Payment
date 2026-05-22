@@ -73,6 +73,7 @@
                     <div class="space-y-4">
                     @foreach($roles as $role)
                         <a href="{{ route('login', ['role' => $role['id']]) }}"
+                        data-role-link
                         class="group flex items-center gap-5 p-5 rounded-3xl border border-slate-200 bg-white 
                                 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 
                                 transition-all duration-300 cursor-pointer">
@@ -181,6 +182,13 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => { 
             lucide.createIcons(); 
+
+            document.querySelectorAll('[data-role-link]').forEach((link) => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    window.location.replace(link.href);
+                });
+            });
 
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
