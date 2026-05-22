@@ -1132,7 +1132,6 @@ class TransactionController extends Controller
             'invoice_file_path',
             'paid_by',
             'paid_at',
-            'ai_status',
             'expected_total',
             'actual_total',
             'selisih',
@@ -1158,6 +1157,19 @@ class TransactionController extends Controller
                 Log::warning('[RESET] Failed to clear transaction column', [
                     'transaction_id' => $transaction->id,
                     'column' => $column,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (in_array('ai_status', $columns, true)) {
+            try {
+                DB::table('transactions')
+                    ->where('id', $transaction->id)
+                    ->update(['ai_status' => 'completed']);
+            } catch (\Throwable $e) {
+                Log::warning('[RESET] Failed to mark OCR as completed', [
+                    'transaction_id' => $transaction->id,
                     'error' => $e->getMessage(),
                 ]);
             }
