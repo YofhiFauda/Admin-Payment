@@ -44,6 +44,17 @@ class TransactionController extends Controller
         $this->compression = $compression;
     }
 
+    private function auditUploadFilename(Transaction $transaction, string $type, $file): string
+    {
+        $base = $transaction->upload_id ?: ($transaction->invoice_number ?: 'TRX-' . $transaction->id);
+        $base = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $base);
+        $base = trim($base, '-_') ?: 'TRX-' . $transaction->id;
+        $type = preg_replace('/[^A-Za-z0-9_-]+/', '-', $type);
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
+
+        return "{$base}_{$type}_" . now()->format('Ymd-His') . ".{$extension}";
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     //  INDEX — Riwayat Transaksi (Rembush + Pengajuan)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1378,7 +1389,7 @@ class TransactionController extends Controller
             $path = null;
             if ($request->hasFile('payment_proof')) {
                 $file = $request->file('payment_proof');
-                $filename = 'debt_' . $debt->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filename = $this->auditUploadFilename($debt->transaction, 'debt-' . $debt->id . '-' . ($isCash ? 'cash' : 'transfer'), $file);
                 $path = $file->storeAs('payment_proofs/debts', $filename, 'public');
 
                 // 🗜️ Kompresi bukti bayar hutang (skip PDF)

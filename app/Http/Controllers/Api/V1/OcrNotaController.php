@@ -44,6 +44,17 @@ class OcrNotaController extends Controller
         $this->compression = $compression;
     }
 
+    private function auditUploadFilename(Transaction $transaction, string $type, $file): string
+    {
+        $base = $transaction->upload_id ?: ($transaction->invoice_number ?: 'TRX-' . $transaction->id);
+        $base = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $base);
+        $base = trim($base, '-_') ?: 'TRX-' . $transaction->id;
+        $type = preg_replace('/[^A-Za-z0-9_-]+/', '-', $type);
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
+
+        return "{$base}_{$type}_" . now()->format('Ymd-His') . ".{$extension}";
+    }
+
     private function broadcastTransactionUpdate(Transaction $transaction): void
     {
         try {
@@ -383,7 +394,8 @@ class OcrNotaController extends Controller
         // Store the file (jika ada)
         $path = null;
         if ($request->hasFile('invoice_file')) {
-            $path = $request->file('invoice_file')->store('invoices', 'public');
+            $file = $request->file('invoice_file');
+            $path = $file->storeAs('invoices', $this->auditUploadFilename($transaction, 'invoice', $file), 'public');
 
             // 🗜️ Kompresi invoice Pengajuan (skip PDF)
             $this->compression->compressUpload(Storage::disk('public')->path($path));
@@ -619,9 +631,10 @@ class OcrNotaController extends Controller
                 $storageDisk->makeDirectory('payments/cash');
             }
 
-            $path = $request->hasFile($fileInput)
-                ? $request->file($fileInput)->store('payments/cash', 'public')
-                : null;
+            if ($request->hasFile($fileInput)) {
+                $file = $request->file($fileInput);
+                $path = $file->storeAs('payments/cash', $this->auditUploadFilename($transaction, 'cash', $file), 'public');
+            }
 
             if ($path) {
                 $this->compression->compressUpload($storageDisk->path($path));
@@ -900,7 +913,8 @@ class OcrNotaController extends Controller
                 $storageDisk->makeDirectory('payments/transfer');
             }
 
-            $path = $request->file($fileInput)->store('payments/transfer', 'public');
+            $file = $request->file($fileInput);
+            $path = $file->storeAs('payments/transfer', $this->auditUploadFilename($transaction, 'transfer', $file), 'public');
             $this->compression->compressUpload($storageDisk->path($path));
         } catch (\Exception $e) {
             Log::channel('ai_autofill')->error('❌ [UPLOAD TRANSFER] FILE STORAGE FAILED', [
