@@ -4,55 +4,60 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
+    private const LOGIN_ROLE_LABELS = [
+        'teknisi' => 'Teknisi',
+        'admin' => 'Admin',
+        'atasan' => 'Atasan',
+        'owner' => 'Owner',
+    ];
+
     public function showLogin(Request $request)
     {
         if (Auth::check()) {
-            return Auth::user()->role === 'teknisi' 
-                ? redirect()->route('transactions.create') 
-                : redirect()->route('dashboard');
+            return $this->redirectByRole(Auth::user()->role);
         }
 
-        $roles = [
-            ['id' => 'teknisi', 'label' => 'Teknisi', 'email' => 'teknisi@adminpay.com'],
-            ['id' => 'admin', 'label' => 'Admin', 'email' => 'admin@adminpay.com'],
-            ['id' => 'atasan', 'label' => 'Atasan', 'email' => 'atasan@adminpay.com'],
-            ['id' => 'owner', 'label' => 'Owner', 'email' => 'owner@adminpay.com'],
-        ];
+        $roles = $this->loginRoles();
+        $selectedRole = $request->query('role');
 
-        return view('auth.login', compact('roles'));
+        if ($selectedRole && ! array_key_exists($selectedRole, self::LOGIN_ROLE_LABELS)) {
+            return redirect()->route('login')->withHeaders($this->noStoreHeaders());
+        }
+
+        return response()
+            ->view('auth.login', compact('roles', 'selectedRole'))
+            ->withHeaders($this->noStoreHeaders());
     }
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'role' => 'required|in:teknisi,admin,atasan,owner',
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'role' => ['required', Rule::in(array_keys(self::LOGIN_ROLE_LABELS))],
         ]);
 
-        $credentials = $request->only('email', 'password');
+        $credentials = [
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => $validated['role'],
+        ];
 
-        if (Auth::attempt($credentials, true)) {
-            // Verify the user's role matches the selected role
-            if (Auth::user()->role !== $request->role) {
-                Auth::logout();
-                return back()->withErrors([
-                    'email' => 'Akun ini tidak memiliki akses role ' . ucfirst($request->role) . '.',
-                ])->withInput()->with('role', $request->role);
-            }
-
-            $request->session()->regenerate();
-            return Auth::user()->role === 'teknisi' 
-                ? redirect()->route('transactions.create') 
-                : redirect()->route('dashboard');
+        if (! Auth::attempt($credentials, false)) {
+            return back()
+                ->withErrors([
+                    'email' => 'Email, password, atau role tidak sesuai.',
+                ])
+                ->onlyInput('email', 'role');
         }
 
-        return redirect()->route('login', ['role' => $request->role])
-            ->withErrors(['email' => 'Email atau password salah.'])
-            ->withInput();
+        $request->session()->regenerate();
+
+        return $this->redirectByRole(Auth::user()->role);
     }
 
     public function logout(Request $request)
@@ -61,6 +66,33 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route('login')->withHeaders($this->noStoreHeaders());
+    }
+
+    private function redirectByRole(string $role)
+    {
+        return $role === 'teknisi'
+            ? redirect()->route('transactions.create')
+            : redirect()->route('dashboard');
+    }
+
+    private function noStoreHeaders(): array
+    {
+        return [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0, private',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Fri, 01 Jan 1990 00:00:00 GMT',
+        ];
+    }
+
+    private function loginRoles(): array
+    {
+        return collect(self::LOGIN_ROLE_LABELS)
+            ->map(fn (string $label, string $id) => [
+                'id' => $id,
+                'label' => $label,
+            ])
+            ->values()
+            ->all();
     }
 }

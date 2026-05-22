@@ -11,7 +11,7 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
     <script src="https://unpkg.com/lucide@latest"></script>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css'])
 </head>
 
 <body class="font-sans antialiased text-slate-900 bg-white min-h-screen flex">
@@ -65,7 +65,7 @@
         <div class="w-full max-w-sm relative z-10">
 
             {{-- STEP 1: Pilihan Peran / Role Selection --}}
-            @if(!request('role'))
+            @if(! $selectedRole)
                 <div id="role-selection" class="animate-fade-in-up">
                     <h2 class="text-[28px] font-black text-slate-900 mb-2 tracking-tight">Pilih Akses Anda</h2>
                     <p class="text-slate-500 font-medium mb-10">Siapa Anda? Pilih peran untuk masuk ke sistem.</p>
@@ -112,9 +112,9 @@
             @endif
 
             {{-- STEP 2: Form Login --}}
-            @if(request('role'))
+            @if($selectedRole)
                 @php
-                    $selectedRole = collect($roles)->firstWhere('id', request('role'));
+                    $selectedRoleData = collect($roles)->firstWhere('id', $selectedRole);
                 @endphp
                 
                 <div id="login-form" class="animate-fade-in-up">
@@ -122,7 +122,7 @@
                         <i data-lucide="arrow-left" class="w-4 h-4"></i> Ganti Peran
                     </a>
 
-                    <h2 class="text-[32px] font-black text-slate-900 mb-2 tracking-tight">Login {{ $selectedRole['label'] ?? '' }}</h2>
+                    <h2 class="text-[32px] font-black text-slate-900 mb-2 tracking-tight">Login {{ $selectedRoleData['label'] ?? '' }}</h2>
                     <p class="text-slate-500 font-medium mb-10">Masuk ke akun Anda untuk melanjutkan.</p>
 
                     @if($errors->any())
@@ -134,7 +134,7 @@
 
                     <form method="POST" action="{{ route('login') }}" class="space-y-6" id="loginForm">
                         @csrf
-                        <input type="hidden" name="role" value="{{ request('role') }}">
+                        <input type="hidden" name="role" value="{{ $selectedRole }}">
 
                         {{-- Input Email --}}
                         <div class="space-y-2">
