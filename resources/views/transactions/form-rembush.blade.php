@@ -30,8 +30,7 @@
                 @endif
                 <input type="hidden" name="amount" id="form-total-amount" value="{{ old('amount', 0) }}">
                 
-                {{-- 0. MANAGEMENT: INPUT FOR TECHNICIAN --}}
-                @include('transactions.partials.forms.rembush.technician-section')
+
                 
                 {{-- 1. FOTO REFERENSI (Shared) --}}
                 @include('transactions.partials.forms.shared.photo-section')

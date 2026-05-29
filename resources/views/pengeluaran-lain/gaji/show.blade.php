@@ -29,14 +29,6 @@
             </span>
         </div>
 
-        {{-- Flash --}}
-        @if(session('notification'))
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-3.5 rounded-xl text-sm font-semibold flex items-center gap-3">
-            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
-            {{ session('notification') }}
-        </div>
-        @endif
-
         {{-- Approval Timeline --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Alur Persetujuan</h2>

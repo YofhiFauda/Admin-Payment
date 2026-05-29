@@ -44,6 +44,13 @@ class TransactionController extends Controller
         $this->compression = $compression;
     }
 
+    private function transactionPerPage(Request $request): int
+    {
+        $perPage = (int) $request->input('per_page', 20);
+
+        return in_array($perPage, [20, 50, 100], true) ? $perPage : 20;
+    }
+
     private function auditUploadFilename(Transaction $transaction, string $type, $file): string
     {
         $base = $transaction->upload_id ?: ($transaction->invoice_number ?: 'TRX-' . $transaction->id);
@@ -126,7 +133,8 @@ class TransactionController extends Controller
             });
         }]);
 
-        $transactions = $query->paginate(20);
+        $perPage = $this->transactionPerPage($request);
+        $transactions = $query->paginate($perPage)->withQueryString();
 
         // Fetch filter data
         $branches = Branch::orderBy('name')->get();
@@ -382,10 +390,21 @@ class TransactionController extends Controller
             ));
         }
 
+        // Pembelian (Gudang) — reuse edit-rembush view dengan flag khusus
+        if ($transaction->isPembelian()) {
+            $isReadOnly = false;
+            $rembushCategories = TransactionCategory::forRembush()->get();
+            $isPembelian = true;
+            return view('transactions.edit-rembush', compact(
+                'transaction', 'branches', 'itemCount', 'isReadOnly', 'rembushCategories', 'isPembelian'
+            ));
+        }
+
         // Rembush — semua management role bisa edit
         $isReadOnly = false;
         $rembushCategories = TransactionCategory::forRembush()->get();
-        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount', 'isReadOnly', 'rembushCategories'));
+        $isPembelian = false;
+        return view('transactions.edit-rembush', compact('transaction', 'branches', 'itemCount', 'isReadOnly', 'rembushCategories', 'isPembelian'));
     }
 
     public function update(Request $request, $id)
@@ -1016,6 +1035,18 @@ class TransactionController extends Controller
                 if ($transaction->submitter) {
                     $transaction->submitter->notify(new TransactionStatusNotification($transaction, $newStatus));
                 }
+
+                // 🔔 TELEGRAM: Notifikasi ke TEKNISI bahwa transaksi ditolak
+                if ($newStatus === 'rejected') {
+                    try {
+                        $this->telegram->notifyTransactionRejected($transaction, $user, $request->rejection_reason ?? '-');
+                    } catch (\Exception $e) {
+                        Log::error('[TELEGRAM] Failed to send rejection notification', [
+                            'transaction_id' => $transaction->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
 
             // Notify all owners when admin approves >= 1jt and it goes to 'approved' status (waiting owner).
@@ -1359,24 +1390,35 @@ class TransactionController extends Controller
             }
 
             $isCash = $request->input('payment_method') === 'cash';
+            $paymentType = $request->input('payment_type', 'lunas');
+            $isCicil = $paymentType === 'cicil';
 
             // Validasi conditional: Cash → proof & rekening opsional; Transfer → wajib
             $rules = [
                 'payment_method' => 'required|in:transfer,cash',
+                'payment_type'   => 'required|in:lunas,cicil',
                 'notes'          => 'nullable|string',
             ];
             $messages = [];
+
+            if ($isCicil) {
+                $rules['amount_paid'] = 'required|numeric|min:1|max:' . ($debt->amount - 1);
+                $messages['amount_paid.required'] = 'Nominal cicilan wajib diisi.';
+                $messages['amount_paid.numeric'] = 'Nominal cicilan harus berupa angka.';
+                $messages['amount_paid.min'] = 'Nominal cicilan minimal Rp 1.';
+                $messages['amount_paid.max'] = 'Nominal cicilan harus lebih kecil dari total hutang.';
+            }
 
             if (!$isCash) {
                 $rules['payment_proof']          = 'required|file|mimes:jpg,jpeg,png,pdf|max:10240';
                 $rules['bank_account_id']        = 'required|exists:branch_bank_accounts,id';
                 $rules['sender_bank_account_id'] = 'required|exists:branch_bank_accounts,id';
-                $messages = [
+                $messages = array_merge($messages, [
                     'payment_proof.required'          => 'Bukti transfer wajib diunggah.',
                     'payment_proof.max'               => 'Ukuran bukti transfer maksimal 10MB.',
                     'bank_account_id.required'        => 'Rekening tujuan wajib dipilih.',
                     'sender_bank_account_id.required' => 'Rekening pengirim wajib dipilih.',
-                ];
+                ]);
             } else {
                 // Cash: proof opsional tapi jika dikirim harus valid
                 $rules['payment_proof'] = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240';
@@ -1397,6 +1439,31 @@ class TransactionController extends Controller
             }
 
             $paymentMethod = $isCash ? 'cash' : 'transfer';
+            $originalAmount = $debt->amount;
+            $amountPaid = $isCicil ? (int) $request->amount_paid : $originalAmount;
+
+            if ($isCicil) {
+                // Create remainder debt record
+                $amountRemainder = $originalAmount - $amountPaid;
+                $remainderNotes = "Sisa cicilan dari pelunasan sebelumnya";
+                if ($debt->notes) {
+                    $remainderNotes = trim($debt->notes) . " (Sisa cicilan dari pelunasan sebelumnya)";
+                }
+
+                \App\Models\BranchDebt::create([
+                    'parent_id'          => $debt->parent_id ?? $debt->id,
+                    'transaction_id'     => $debt->transaction_id,
+                    'debtor_branch_id'   => $debt->debtor_branch_id,
+                    'creditor_branch_id' => $debt->creditor_branch_id,
+                    'amount'             => $amountRemainder,
+                    'status'             => 'pending',
+                    'notes'              => $remainderNotes,
+                ]);
+
+                // Update original debt amount to amount paid
+                $debt->amount = $amountPaid;
+                $debt->save();
+            }
 
             $debt->markAsPaid(
                 $request->notes,
@@ -1408,6 +1475,8 @@ class TransactionController extends Controller
             );
 
             $methodLabel = $isCash ? 'Tunai (Cash)' : 'Transfer';
+            $logLabel = $isCicil ? 'cicilan hutang' : 'hutang';
+            $formattedAmountPaid = 'Rp ' . number_format($amountPaid, 0, ',', '.');
 
             // Log activity
             ActivityLog::create([
@@ -1415,7 +1484,7 @@ class TransactionController extends Controller
                 'action'         => 'settle_debt',
                 'transaction_id' => $debt->transaction_id,
                 'target_id'      => $debt->transaction->invoice_number ?? '-',
-                'description'    => "Melunaskan hutang {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$debt->formatted_amount} via {$methodLabel}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
+                'description'    => "Melunaskan {$logLabel} {$debt->debtorBranch->name} ke {$debt->creditorBranch->name} sebesar {$formattedAmountPaid} via {$methodLabel}" . ($request->notes ? " (Catatan: {$request->notes})" : '') . " | Diproses oleh: " . auth()->user()->name,
             ]);
 
             // ✅ AUTO-COMPLETE TRANSACTION LOGIC
@@ -1456,7 +1525,9 @@ class TransactionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan via {$methodLabel}.",
+                'message' => $isCicil
+                    ? "Cicilan sebesar {$formattedAmountPaid} berhasil dibayarkan. Sisa hutang telah dibuat sebagai transaksi baru."
+                    : "Hutang {$debt->debtorBranch->name} → {$debt->creditorBranch->name} ({$debt->formatted_amount}) berhasil dilunaskan via {$methodLabel}.",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -1474,6 +1545,29 @@ class TransactionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal melunaskan hutang: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function branchDebtHistory(Request $request, $id)
+    {
+        try {
+            $debt = \App\Models\BranchDebt::findOrFail($id);
+            $ancestorId = $debt->parent_id ?? $debt->id;
+            $history = \App\Models\BranchDebt::with(['transaction', 'paidBy', 'debtorBranch', 'creditorBranch'])
+                ->where('parent_id', $ancestorId)
+                ->orWhere('id', $ancestorId)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $history,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil history: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -1624,8 +1718,8 @@ class TransactionController extends Controller
         }
 
         // Paginate
-        $perPage = min((int)$request->input('per_page', 20), 100); // ✅ Batasi max per_page
-        $result = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $perPage = $this->transactionPerPage($request);
+        $result = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
         // Transform dengan error handling
         $result->getCollection()->transform(function($t) {
@@ -1835,7 +1929,7 @@ class TransactionController extends Controller
     private function getStatusLabel($status, $type = null)
     {
         $labels = [
-            'pending' => $type === 'gudang' ? 'Review Management' : 'Pending',
+            'pending' => $type === 'pengajuan' ? 'Review Management' : 'Pending',
             'approved' => 'Menunggu Owner',
             'completed' => 'Selesai',
             'rejected' => 'Ditolak',

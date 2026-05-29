@@ -110,6 +110,7 @@ Security documentation:
 | [FLOWCHARTS.md](docs/features/FLOWCHARTS.md) | ✅ Complete | System flowcharts |
 | [PROFILE_PAGE_DESIGN.md](docs/features/PROFILE_PAGE_DESIGN.md) | ✅ Complete | Profile page design |
 | [IMPLEMENTATION_SUMMARY.md](docs/features/IMPLEMENTATION_SUMMARY.md) | ✅ Complete | Feature implementation summary |
+| [EXPORT_OPTIMIZATION.md](docs/features/EXPORT_OPTIMIZATION.md) | ✅ Complete | Excel export 3-layer optimization (OpenSpout + Async + Indexes) |
 
 **Note:** GEMINI.md remains in root directory for quick access.
 
@@ -245,6 +246,16 @@ All completed fixes and issue resolutions are now organized in [docs/fixes/](doc
 | **General Fixes** | [docs/fixes/](docs/fixes/) | Port conflicts, branch duplication, PR validation |
 
 📋 **Complete Index**: See [docs/fixes/README.md](docs/fixes/README.md) for detailed fix documentation index
+
+---
+
+### 🚨 Troubleshooting Guides
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [docs/troubleshooting/README.md](docs/troubleshooting/README.md) | ✅ Complete | Troubleshooting index |
+| [EXPORT_TROUBLESHOOTING.md](docs/troubleshooting/EXPORT_TROUBLESHOOTING.md) | ✅ Complete | Excel export issues (524, 500, 404, permissions) |
+| [503_ERROR_ANALYSIS.md](docs/troubleshooting/503_ERROR_ANALYSIS.md) | ✅ Complete | 503 Service Unavailable analysis |
 
 ---
 

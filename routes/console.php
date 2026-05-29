@@ -10,6 +10,9 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:clean-temp-uploads --hours=24')->dailyAt('02:00');
 
+// Export Cleanup — Hapus file export lama (>24 jam) untuk hemat disk
+Schedule::command('exports:clean --hours=24')->dailyAt('03:00');
+
 // Price Index — Incremental (ringan, harian): hanya item dengan transaksi approved baru
 Schedule::command('price-index:recalculate --mode=incremental')
     ->dailyAt('02:30')

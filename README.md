@@ -64,6 +64,7 @@
 | **Price Index System** | Referensi harga belanja otomatis dengan filter outlier (IQR), deteksi anomali real-time (AJAX), dan penanganan **Cold Start** untuk barang baru. |
 | **Hybrid Search** | Menjamin performa dengan switch otomatis antara Client-Side (< 5k data) dan Server-Side (≥ 5k data). |
 | **API Documentation** | Dokumentasi API interaktif dan otomatis menggunakan **Scramble** (OpenAPI/Swagger). |
+| **Export Excel Optimized** | Export Laporan Transaksi 40k+ baris dengan **3-Layer Optimization** (OpenSpout streaming + Async Job + keyset pagination). Memori konstan 30 MB, progress real-time via Reverb. |
 
 
 
@@ -792,6 +793,7 @@ Untuk dokumentasi yang lebih detail, silakan lihat:
 - 📋 **[Pengajuan Specification](PENGAJUAN_SYSTEM_SPECIFICATION_UPDATED.md)** - Sistem Dual-Version dan proteksi edit
 - 💰 **[Rembush Flow Detail](Flow%20Rembush.md)** - Alur reimbursement dan integrasi AI
 - 🔄 **[Realtime Migration](REALTIME_MIGRATION_REPORT.md)** - Migrasi ke Laravel Reverb
+- 📊 **[Export Excel Optimization](docs/features/EXPORT_OPTIMIZATION.md)** - Sistem export 3-lapis untuk dataset 40k+ rows
 
 ### 🌐 API Documentation
 - 📡 **[API Documentation v4.5](api_documentation_v4.5.md)** - Webhook n8n, Telegram, dan Endpoint Flow
@@ -808,6 +810,11 @@ Untuk dokumentasi yang lebih detail, silakan lihat:
 - 📈 **[Monitoring Setup](monitoring-setup.md)** - Setup monitoring tools
 - 📝 **[Logging Solution](LOGGING_COMPLETE_SOLUTION.md)** - Logging strategy lengkap
 - 🔍 **[Pulse & Log Viewer](PULSE_LOG_VIEWER_SETUP.md)** - Setup Pulse & Log Viewer
+
+### 🔧 Troubleshooting
+- 🚨 **[Export Troubleshooting](docs/troubleshooting/EXPORT_TROUBLESHOOTING.md)** - Diagnosa & fix masalah export Excel
+- 🩺 **[503 Error Analysis](docs/troubleshooting/503_ERROR_ANALYSIS.md)** - Diagnose 503 Service Unavailable
+- 🔧 **[Operations Troubleshooting](docs/operations/TROUBLESHOOTING.md)** - Masalah operasional umum
 
 ### 🧪 Testing
 - 🧪 **[Testing Realtime](TESTING_REALTIME_GUIDE.md)** - Testing fitur real-time

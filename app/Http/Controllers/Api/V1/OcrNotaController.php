@@ -978,7 +978,7 @@ class OcrNotaController extends Controller
         $transaction->update([
             'bukti_transfer' => $path,
             'status'         => $isPembelian ? 'completed' : 'waiting_payment',
-            'ai_status'      => $isPembelian ? null : 'processing', // Set immediately
+            'ai_status'      => $isPembelian ? 'completed' : 'processing', // Set immediately
             'expected_total' => $expectedTotal,
             'paid_by'        => auth()->id(),
             'paid_at'        => now(),

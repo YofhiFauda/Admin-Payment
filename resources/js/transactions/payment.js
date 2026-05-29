@@ -564,13 +564,16 @@ function renderPaymentModalDetails(d) {
     const statusCfg = Config.status[d.status] || { label: d.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
     const typeCfg = Config.types[d.type] || { label: d.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
+    const label = d.status === 'pending'
+        ? statusCfg.label(d.type)
+        : (d.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(d.status === 'approved' ? isLarge : isDebt) : statusCfg.label));
     const color = typeof statusCfg.color === 'function' ? statusCfg.color(d.status === 'pending' ? d.type : (d.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
     const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(d.status === 'pending' ? d.type : (d.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
 
     document.getElementById('p-badges').innerHTML = `
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${color}">
                 <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
-                ${d.status_label}
+                ${label}
             </span>
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeCfg.color}">
                 <i data-lucide="${typeCfg.icon}" class="w-3 h-3"></i> ${d.type_label}

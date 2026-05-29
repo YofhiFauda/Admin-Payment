@@ -31,13 +31,17 @@ $authorize = function ($channel, $condition, $user, $extra = []) {
     
     // Log detail untuk memecahkan misteri 403 (hanya jika denied agar log tidak penuh)
     if (!$allowed) {
-        Log::warning("📡 [BROADCAST AUTH] DENIED", [
-            'channel'     => $channel,
-            'user_id'     => $user->id ?? 'guest',
-            'role'        => $currentRole,
-            'condition'   => (bool)$condition,
-            'extra'       => $extra
-        ]);
+        try {
+            Log::warning("[BROADCAST AUTH] DENIED", [
+                'channel'     => $channel,
+                'user_id'     => $user->id ?? 'guest',
+                'role'        => $currentRole,
+                'condition'   => (bool)$condition,
+                'extra'       => $extra,
+            ]);
+        } catch (\Throwable) {
+            // Authorization must not become a 500 just because logging is unavailable.
+        }
     }
 
     return $allowed;
@@ -49,6 +53,17 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) use ($authorize
 
 Broadcast::channel('ocr.{id}', function ($user, $id) use ($authorize) {
     return $authorize("ocr.{$id}", (int) $user->id === (int) $id, $user);
+});
+
+Broadcast::channel('notifications.management', function ($user) use ($authorize) {
+    $allowedRoles = ['owner', 'atasan'];
+    $currentRole = strtolower(trim((string)($user->role ?? 'none')));
+    $isAllowed = in_array($currentRole, $allowedRoles);
+
+    return $authorize("notifications.management", $isAllowed, $user, [
+        'allowed' => $allowedRoles,
+        'current' => $currentRole
+    ]);
 });
 
 Broadcast::channel('notifications.{id}', function ($user, $id) use ($authorize) {
@@ -79,13 +94,6 @@ Broadcast::channel('activities', function ($user) use ($authorize) {
     ]);
 });
 
-Broadcast::channel('notifications.management', function ($user) use ($authorize) {
-    $allowedRoles = ['owner', 'atasan', 'admin'];
-    $currentRole = strtolower(trim((string)($user->role ?? 'none')));
-    $isAllowed = in_array($currentRole, $allowedRoles);
-
-    return $authorize("notifications.management", $isAllowed, $user, [
-        'allowed' => $allowedRoles,
-        'current' => $currentRole
-    ]);
+Broadcast::channel('exports.{id}', function ($user, $id) use ($authorize) {
+    return $authorize("exports.{$id}", (int) $user->id === (int) $id, $user);
 });

@@ -226,7 +226,7 @@
 
         @if ($anomalies->hasPages())
             <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                {{ $anomalies->links() }}
+                {{ $anomalies->withQueryString()->links('components.pagination.premium') }}
             </div>
         @endif
     </div>

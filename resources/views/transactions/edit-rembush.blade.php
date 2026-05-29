@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page-title', 'Edit Reimbursement')
+@section('page-title', isset($isPembelian) && $isPembelian ? 'Edit Pembelian' : 'Edit Reimbursement')
 
 @section('content')
     <div class="max-w-8xl mx-auto">
@@ -18,7 +18,7 @@
                     <i data-lucide="arrow-left" class="w-4 h-4"></i>
                 </a>
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Edit Reimbursement</h1>
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{{ isset($isPembelian) && $isPembelian ? 'Edit Pembelian' : 'Edit Reimbursement' }}</h1>
                     <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{{ $transaction->invoice_number }}</p>
                 </div>
             </div>
@@ -26,7 +26,7 @@
             <form method="POST" action="{{ route('transactions.update', $transaction->id) }}" id="transaction-form">
                 @csrf
                 @method('PUT')
-                <input type="hidden" name="type" value="rembush">
+                <input type="hidden" name="type" value="{{ isset($isPembelian) && $isPembelian ? 'gudang' : 'rembush' }}">
                 <input type="hidden" name="amount" id="form-total-amount" value="{{ old('amount', $transaction->amount) }}">
 
                 {{-- 1. FOTO NOTA --}}

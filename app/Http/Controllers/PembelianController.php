@@ -41,9 +41,6 @@ class PembelianController extends Controller
         $categories = TransactionCategory::forRembush()->get();
         
         $technicians = collect();
-        if (!Auth::user()->isTeknisi()) {
-            $technicians = \App\Models\User::where('role', 'teknisi')->with('bankAccounts')->get();
-        }
         
         return view('transactions.form-pembelian', compact('branches', 'categories', 'technicians'));
     }
@@ -127,23 +124,9 @@ class PembelianController extends Controller
                 $this->compression->compressUpload(Storage::disk('public')->path($filePath));
             }
 
-            // Determine submitter and description prefix
+            // Submitter defaults to the user performing the transaction
             $submittedBy = Auth::id();
-            $technicianName = null;
-            if ($request->technician_id) {
-                $tech = \App\Models\User::find($request->technician_id);
-                if ($tech) {
-                    $submittedBy = $tech->id;
-                    $technicianName = $tech->name;
-                }
-            }
-
-            // Combine descriptions
             $fullDescription = $request->description;
-            if ($technicianName) {
-                $prefix = "[Oleh: " . $technicianName . "]";
-                $fullDescription = $fullDescription ? $prefix . " " . $fullDescription : $prefix;
-            }
 
             // Bank details (specs)
             $specs = null;
@@ -175,7 +158,7 @@ class PembelianController extends Controller
                 'items'          => $request->items,
                 'date'           => $request->date,
                 'file_path'      => $filePath,
-                'status'         => 'pending', // Label: Review Management
+                'status'         => 'pending',
                 'payment_method' => $request->payment_method,
                 'technician_id'  => $request->technician_id,
                 'specs'          => $specs,

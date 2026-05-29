@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BranchDebt extends Model
 {
+    use HasFactory;
+
+    private ?array $paymentSummaryCache = null;
+
     protected $fillable = [
+        'parent_id',
         'transaction_id',
         'debtor_branch_id',
         'creditor_branch_id',
@@ -21,6 +27,16 @@ class BranchDebt extends Model
         'bank_account_id',
         'sender_bank_account_id',
     ];
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(BranchDebt::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(BranchDebt::class, 'parent_id');
+    }
 
     protected $casts = [
         'amount'  => 'integer',
@@ -117,5 +133,35 @@ class BranchDebt extends Model
     public function getFormattedAmountAttribute(): string
     {
         return 'Rp ' . number_format($this->amount, 0, ',', '.');
+    }
+
+    public function getPaymentSummaryAttribute(): array
+    {
+        if ($this->paymentSummaryCache !== null) {
+            return $this->paymentSummaryCache;
+        }
+
+        $ancestorId = $this->parent_id ?? $this->id;
+
+        $records = static::query()
+            ->where(function ($query) use ($ancestorId) {
+                $query->where('id', $ancestorId)
+                    ->orWhere('parent_id', $ancestorId);
+            })
+            ->get(['amount', 'status']);
+
+        $paid = $records
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $remaining = $records
+            ->where('status', 'pending')
+            ->sum('amount');
+
+        return $this->paymentSummaryCache = [
+            'paid' => (int) $paid,
+            'remaining' => (int) $remaining,
+            'total' => (int) ($paid + $remaining),
+        ];
     }
 }

@@ -6,6 +6,16 @@
  * and business logic constants.
  */
 
+function getInitialItemsPerPage() {
+    const fallback = 20;
+
+    if (typeof window === 'undefined') return fallback;
+
+    const urlPerPage = parseInt(new URLSearchParams(window.location.search).get('per_page'), 10);
+
+    return [20, 50, 100].includes(urlPerPage) ? urlPerPage : fallback;
+}
+
 export const Config = {
     // 1. Global Authentication & Context (Passed from Blade)
     csrfToken: window.AppConfig?.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
@@ -46,7 +56,8 @@ export const Config = {
     // 3. UI Settings & Thresholds
     ui: {
         searchThreshold: 5000,    // Switch to server-side search >= 5k records
-        itemsPerPage: 20,         // Rows per page
+        itemsPerPage: getInitialItemsPerPage(), // Rows per page
+        perPageOptions: [20, 50, 100], // Available per page options
         searchDebounce: 300,      // Debounce timer for server-side search (ms)
         maxVisibleBranches: 2,    // Max branch tags to show before tooltip
     },
@@ -54,9 +65,9 @@ export const Config = {
     // 4. Status Configurations (Colors, Icons, Labels)
     status: {
         pending: {
-            label: (type) => type === 'gudang' ? 'Review Management' : 'Pending',
-            color: (type) => type === 'gudang' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
-            icon: (type) => type === 'gudang' ? 'search' : 'clock'
+            label: (type) => type === 'pengajuan' ? 'Review Management' : 'Pending',
+            color: (type) => type === 'pengajuan' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+            icon: (type) => type === 'pengajuan' ? 'search' : 'clock'
         },
         approved: {
             label: (isLarge) => isLarge ? 'Menunggu Approve Owner' : 'Menunggu Owner',

@@ -225,7 +225,7 @@
         {{-- Pagination --}}
         @if ($priceIndexes->hasPages())
             <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-                {{ $priceIndexes->links() }}
+                {{ $priceIndexes->withQueryString()->links('components.pagination.premium') }}
             </div>
         @endif
     </div>

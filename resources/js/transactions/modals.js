@@ -342,9 +342,9 @@ function renderGudangFields(d) {
                     ${sumberDanaHtml}
                     <div class="mt-4 flex flex-col gap-2">
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Bukti Transfer / Cash</label>
-                        <a href="${d.invoice_file_url}" target="_blank" class="inline-flex items-center gap-2.5 px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm active:scale-95 w-fit">
+                        <button type="button" onclick="openImageViewer('${d.invoice_file_url}', 'Bukti Pembayaran')" class="inline-flex items-center gap-2.5 px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100 transition-all shadow-sm active:scale-95 w-fit">
                             <i data-lucide="image" class="w-4 h-4"></i> Lihat Bukti Bayar
-                        </a>
+                        </button>
                     </div>
                 </div>`;
     }
@@ -469,9 +469,9 @@ function renderPengajuanFields(d) {
                     ${d.invoice_file_url ? `
                     <div class="mt-3">
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">File Invoice</label>
-                        <a href="${d.invoice_file_url}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-teal-600 hover:bg-teal-50 transition-colors">
+                        <button type="button" onclick="openImageViewer('${d.invoice_file_url}', 'Invoice Pengajuan')" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-teal-600 hover:bg-teal-50 transition-colors">
                             <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Lihat Invoice
-                        </a>
+                        </button>
                     </div>
                     ` : ''}
                 </div>`;
@@ -487,6 +487,9 @@ function renderViewModal(d) {
     const statusCfg = Config.status[d.status] || { label: d.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
     const typeCfg = Config.types[d.type] || { label: d.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
+    const label = d.status === 'pending'
+        ? statusCfg.label(d.type)
+        : (d.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(d.status === 'approved' ? isLarge : isDebt) : statusCfg.label));
     const color = typeof statusCfg.color === 'function' ? statusCfg.color(d.status === 'pending' ? d.type : (d.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
     const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(d.status === 'pending' ? d.type : (d.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
 
@@ -500,7 +503,7 @@ function renderViewModal(d) {
     document.getElementById('v-badges').innerHTML = `
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${color}">
                 <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
-                ${d.status_label}
+                ${label}
             </span>
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${typeCfg.color}">
                 <i data-lucide="${typeCfg.icon}" class="w-3 h-3"></i> ${d.type_label}
@@ -836,7 +839,7 @@ export function toggleVersionInModal(version) {
 
     const payHistWrap = document.getElementById('v-payment-history-wrap');
 
-    if (window._modalVersionData?.d?.is_paid && (window._modalVersionData?.d?.type === 'rembush' || window._modalVersionData?.d?.type === 'pengajuan')) {
+    if (window._modalVersionData?.d?.is_paid && (window._modalVersionData?.d?.type === 'rembush' || window._modalVersionData?.d?.type === 'pengajuan' || window._modalVersionData?.d?.type === 'gudang')) {
         const hist = window._modalVersionData.d;
         if (payHistWrap) payHistWrap.classList.remove('hidden');
 

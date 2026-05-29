@@ -175,7 +175,7 @@ class TelegramBotService
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke SEMUA OWNER saat transaksi "Flagged"
      *  (Selisih nominal antara bukti transfer dan expected)
-     *  Uses $transaction->flagged_at for timestamp.
+     *  Uses $transaction->reviewed_at as fallback timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyFlaggedTransaction(Transaction $transaction): void
@@ -186,8 +186,8 @@ class TelegramBotService
         $invoiceNumber = $transaction->invoice_number;
         // Use nullsafe operator to prevent errors if submitter is null
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->flagged_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat status berubah) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -258,7 +258,7 @@ HTML;
     /**
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke ADMIN/OWNER/ATASAN saat Auto-Reject
-     *  Uses $transaction->rejected_at for timestamp.
+     *  Uses $transaction->reviewed_at as fallback timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyAutoReject(Transaction $transaction): void
@@ -266,8 +266,8 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $transaction->submitter?->name ?? 'Tidak diketahui';
         $reason        = $transaction->rejection_reason ?? '-';
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat status berubah) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
 ⛔ <b>AUTO-REJECT: Nota Ditolak Otomatis</b>
@@ -293,7 +293,7 @@ HTML;
      * ─────────────────────────────────────────────────────────
      *  Kirim notifikasi ke OWNER saat Force Approve dilakukan
      *  (Internal management confirmation)
-     *  Uses $transaction->force_approved_at for timestamp.
+     *  Uses $transaction->reviewed_at as fallback timestamp.
      * ─────────────────────────────────────────────────────────
      */
     public function notifyForceApproved(Transaction $transaction, User $approver, string $reason): void
@@ -304,8 +304,8 @@ HTML;
 
         $invoiceNumber  = $transaction->invoice_number;
         $teknisiName    = $transaction->submitter?->name ?? 'Tidak diketahui (ID: ' . $transaction->submitter_id . ')';
-        // Use specific event time instead of now()
-        $timestamp      = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat status berubah) sebagai timestamp event, fallback ke now()
+        $timestamp      = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Log a warning if submitter is null after loading
         if (!$transaction->submitter) {
@@ -385,7 +385,7 @@ HTML;
 
     /**
      * Notifikasi pembayaran CASH siap diambil (dengan tombol konfirmasi)
-     * Uses $transaction->cash_ready_at for timestamp.
+     * Uses $transaction->paid_at as timestamp (saat admin upload bukti cash).
      */
     public function notifyPaymentCash(Transaction $transaction): void
     {
@@ -397,47 +397,41 @@ HTML;
             return;
         }
 
+        $transaction->loadMissing('branches');
+
         $invoiceNumber = $transaction->invoice_number;
-        $kategori      = $transaction->category ?? '-';
+        $kategori      = $transaction->category_label ?: '-';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        $cabang        = $transaction->branch?->name ?? '-';
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->cash_ready_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        $cabang        = $transaction->branches->first()?->name ?? '-';
+        // Use paid_at (saat admin upload bukti cash) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->paid_at ?? now())->format('d/m/Y - H:i') . ' WIB';
         $catatanAdmin  = $transaction->description ?: 'Dana sudah diserahkan';
 
         $message = <<<HTML
-💵 <b>[PEMBERITAHUAN SISTEM: PENGAMBILAN DANA TUNAI]</b>
+💵 <b>UANG CASH SIAP DIAMBIL</b>
 
-Dana tunai untuk pengajuan operasional/reimbursement Anda telah disiapkan oleh Admin dan menunggu konfirmasi penerimaan.
+Uang tunai untuk transaksi Anda sudah disiapkan oleh Admin. Silakan ambil dan konfirmasi penerimaan.
 
-<b>Keterangan Transaksi:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Kategori      : {$kategori}
-▪️ Waktu Sistem  : {$timestamp}
-▪️ Lokasi        : {$cabang}
+<b>Detail:</b>
+▪️ Invoice  : <code>{$invoiceNumber}</code>
+▪️ Nominal  : {$nominal}
+▪️ Kategori : {$kategori}
+▪️ Cabang   : {$cabang}
+▪️ Waktu    : {$timestamp}
 
-<b>Rincian Dana & Status:</b>
-▫️ Nominal       : {$nominal}
-▫️ Status Bukti  : ✅ Telah diunggah oleh Admin
-▫️ Catatan Admin : {$catatanAdmin}
+📝 Catatan Admin: {$catatanAdmin}
 
-📌 <b>Tindakan Diperlukan:</b>
-Sebagai bukti audit yang sah, mohon konfirmasi apabila Anda telah menerima uang tunai tersebut secara fisik. 
-
-Silakan klik tombol di bawah ini untuk menyelesaikan proses administrasi:
+📌 <b>Yang perlu Anda lakukan:</b>
+Setelah menerima uang tunai, tekan tombol di bawah ini sebagai konfirmasi penerimaan:
 HTML;
 
-        // Inline Keyboard dengan tombol "Terima" & "Tolak"
+        // Inline Keyboard dengan tombol "Terima"
         $replyMarkup = [
             'inline_keyboard' => [
                 [
                     [
                         'text'          => '✅ Terima',
                         'callback_data' => "confirm_cash:{$transaction->id}",
-                    ],
-                    [
-                        'text'          => '❌ Tolak',
-                        'callback_data' => "report_issue:{$transaction->id}",
                     ],
                 ],
             ],
@@ -454,7 +448,7 @@ HTML;
 
     /**
      * Notifikasi pembayaran TRANSFER berhasil (tanpa tombol)
-     * Uses $transaction->transfer_completed_at for timestamp.
+     * Uses $transaction->paid_at as timestamp (saat pembayaran dilakukan).
      */
     public function notifyPaymentComplete(Transaction $transaction): void
     {
@@ -483,24 +477,21 @@ HTML;
             $rekening = '-';
         }
 
-        // Use specific event time instead of now()
-        $timestamp = $transaction->transfer_completed_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use paid_at (saat pembayaran dilakukan) sebagai timestamp event, fallback ke now()
+        $timestamp = ($transaction->paid_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-✅ <b>[BUKTI PENYELESAIAN: TRANSFER BERHASIL]</b>
+✅ <b>TRANSFER BERHASIL</b>
 
-Proses transfer dana telah berhasil diselesaikan. Dana saat ini seharusnya sudah diteruskan ke rekening tujuan.
+Dana sudah ditransfer ke rekening Anda.
 
-<b>Rincian Transfer:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Rek. Tujuan   : {$rekening}
-▪️ Waktu Transfer: {$timestamp}
+<b>Detail Transfer:</b>
+▪️ Invoice    : <code>{$invoiceNumber}</code>
+▪️ Nominal    : {$nominal}
+▪️ Rekening   : {$rekening}
+▪️ Waktu      : {$timestamp}
 
-<b>Rincian Nominal:</b>
-▫️ Total Ditransfer: {$nominal}
-
-Terima kasih atas kerja sama Anda.
-<b>Status Transaksi : SELESAI</b>
+Silakan cek mutasi rekening Anda. Terima kasih.
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
@@ -514,7 +505,7 @@ HTML;
     /**
      * Notifikasi setelah Force Approve (untuk teknisi)
      * Memberi tahu teknisi bahwa permintaan mereka telah disetujui setelah verifikasi.
-     * Uses $transaction->force_approved_at for timestamp.
+     * Uses $transaction->reviewed_at as timestamp (saat otorisasi dilakukan).
      */
     public function notifyForceApprovedToTechnician(Transaction $transaction): void
     {
@@ -527,22 +518,20 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->force_approved_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat otorisasi dilakukan) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-✅ <b>[STATUS TRANSAKSI: OTORISASI OWNER BERHASIL]</b>
+✅ <b>TRANSAKSI DISETUJUI OWNER</b>
 
-Pengajuan pembayaran Anda telah melalui tahap verifikasi akhir dan disetujui oleh Owner.
+Transaksi Anda sudah disetujui oleh Owner. Pembayaran akan segera diproses ke rekening Anda.
 
-<b>Keterangan Transaksi:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Nominal       : {$nominal}
-▪️ Waktu Otorisasi: {$timestamp}
+<b>Detail:</b>
+▪️ Invoice  : <code>{$invoiceNumber}</code>
+▪️ Nominal  : {$nominal}
+▪️ Waktu    : {$timestamp}
 
-Sistem akan segera menjadwalkan proses pencairan dana ke rekening Anda.
-
-<b>Status Otorisasi : SELESAI</b>
+Anda akan menerima notifikasi lagi setelah transfer selesai dilakukan.
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
@@ -555,7 +544,7 @@ HTML;
 
     /**
      * Notifikasi Transaksi Ditolak (Manual Reject oleh Otorisator)
-     * Uses $transaction->rejected_at for timestamp.
+     * Uses $transaction->reviewed_at as timestamp (saat penolakan dilakukan).
      */
     public function notifyTransactionRejected(Transaction $transaction, User $rejector, string $reason): void
     {
@@ -569,34 +558,29 @@ HTML;
         $invoiceNumber = $transaction->invoice_number;
         $teknisiName   = $teknisi->name ?? 'Tidak diketahui';
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->rejected_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat penolakan dilakukan) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         // Rejector info
         $rejectorName  = $rejector->name;
         $rejectorRole  = ucfirst($rejector->role);
 
         $message = <<<HTML
-❌ <b>[PEMBERITAHUAN SISTEM: TRANSAKSI DITOLAK]</b>
+❌ <b>TRANSAKSI DITOLAK</b>
 
-Mohon maaf, pengajuan pembayaran atau transaksi Anda tidak dapat diproses lebih lanjut dan telah dibatalkan oleh otorisator.
+Mohon maaf, transaksi Anda tidak dapat diproses dan telah ditolak.
 
-<b>Keterangan Transaksi:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Teknisi       : {$teknisiName}
-▪️ Waktu Sistem  : {$timestamp}
+<b>Detail:</b>
+▪️ Invoice  : <code>{$invoiceNumber}</code>
+▪️ Nominal  : {$nominal}
+▪️ Waktu    : {$timestamp}
 
-<b>Rincian Nominal:</b>
-▫️ Nilai Tagihan   : {$nominal}
+<b>Alasan Penolakan:</b>
+👤 Ditolak oleh : {$rejectorName} ({$rejectorRole})
+📝 Alasan       : {$reason}
 
-<b>Detail Penolakan:</b>
-👤 Ditolak Oleh  : {$rejectorName} ({$rejectorRole})
-📝 Alasan        : {$reason}
-
-📌 <b>Tindakan Diperlukan:</b> 
-Mohon periksa kembali detail transaksi berdasarkan alasan penolakan di atas. Silakan perbaiki data dan buat pengajuan ulang, atau hubungi pihak otorisator untuk klarifikasi lebih lanjut.
-
-<b>Status Transaksi : DIBATALKAN ❌</b>
+📌 <b>Yang perlu Anda lakukan:</b>
+Perbaiki data sesuai alasan di atas, lalu ajukan ulang. Jika ada pertanyaan, hubungi {$rejectorName} untuk klarifikasi.
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
@@ -609,7 +593,7 @@ HTML;
 
     /**
      * Notifikasi pembayaran sedang diproses
-     * Uses $transaction->transfer_initiated_at for timestamp.
+     * Uses $transaction->reviewed_at as timestamp (saat approval dilakukan).
      */
     public function notifyPaymentProcessing(Transaction $transaction): void
     {
@@ -622,20 +606,20 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->transfer_initiated_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat approval dilakukan) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-⏳ <b>[STATUS TRANSAKSI: DALAM PROSES PEMBAYARAN]</b>
+⏳ <b>PEMBAYARAN SEDANG DIPROSES</b>
 
-Pencairan dana untuk tagihan Anda telah disetujui dan saat ini sedang dalam antrean proses transfer oleh sistem.
+Transaksi Anda sudah disetujui dan sedang dalam proses transfer.
 
-<b>Keterangan Transaksi:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Nominal       : {$nominal}
-▪️ Waktu Sistem  : {$timestamp}
+<b>Detail:</b>
+▪️ Invoice  : <code>{$invoiceNumber}</code>
+▪️ Nominal  : {$nominal}
+▪️ Waktu    : {$timestamp}
 
-Mohon kesediaannya menunggu. Sistem akan mengirimkan notifikasi otomatis beserta bukti pemindahan dana setelah transfer berhasil dilakukan.
+Mohon tunggu. Anda akan menerima notifikasi otomatis setelah transfer berhasil.
 HTML;
 
         $this->sendMessage($teknisi->telegram_chat_id, $message);
@@ -643,7 +627,7 @@ HTML;
 
     /**
      * Notifikasi pengajuan menunggu otorisasi owner (khusus >= 1jt)
-     * Uses $transaction->waiting_owner_approval_at for timestamp.
+     * Uses $transaction->reviewed_at as timestamp (saat atasan approve gate 1).
      */
     public function notifyWaitingOwnerApproval(Transaction $transaction): void
     {
@@ -651,20 +635,20 @@ HTML;
 
         $invoiceNumber = $transaction->invoice_number;
         $nominal       = 'Rp ' . number_format($transaction->amount, 0, ',', '.');
-        // Use specific event time instead of now()
-        $timestamp     = $transaction->waiting_owner_approval_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // Use reviewed_at (saat atasan approve gate 1) sebagai timestamp event, fallback ke now()
+        $timestamp     = ($transaction->reviewed_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $message = <<<HTML
-⏳ <b>[STATUS TRANSAKSI: MENUNGGU OTORISASI OWNER]</b>
+⏳ <b>MENUNGGU PERSETUJUAN OWNER</b>
 
-Admin/Atasan telah menyetujui pengajuan Anda. Karena nominal transaksi Rp 1.000.000 atau lebih, saat ini sistem sedang menunggu verifikasi akhir dari Owner.
+Pengajuan Anda sudah disetujui oleh Atasan. Saat ini menunggu persetujuan akhir dari Owner karena nominal ≥ Rp 1.000.000.
 
-<b>Keterangan Transaksi:</b>
-▪️ No. Invoice   : <code>{$invoiceNumber}</code>
-▪️ Nominal       : {$nominal}
-▪️ Waktu Sistem  : {$timestamp}
+<b>Detail:</b>
+▪️ Invoice  : <code>{$invoiceNumber}</code>
+▪️ Nominal  : {$nominal}
+▪️ Waktu    : {$timestamp}
 
-Pengajuan Anda akan otomatis diproses ke tahap pembayaran setelah mendapatkan persetujuan dari Owner.
+Pembayaran akan otomatis diproses setelah Owner menyetujui. Mohon tunggu.
 HTML;
 
         if (!$teknisi || !$teknisi->telegram_chat_id) {
@@ -903,8 +887,8 @@ HTML;
         $teknisiName   = $transaction?->submitter?->name ?? 'Tidak diketahui';
         $invoiceNumber = $transaction?->invoice_number ?? '-';
         $itemName      = $anomaly->item_name;
-        // Use specific event time instead of now()
-        $timestamp     = $anomaly->created_at?->format('d/m/Y - H:i') . ' WIB' ?? now()->format('d/m/Y - H:i') . ' WIB';
+        // created_at selalu ada pada model yang sudah tersimpan, tapi gunakan pattern yang aman
+        $timestamp     = ($anomaly->created_at ?? now())->format('d/m/Y - H:i') . ' WIB';
 
         $inputFmt        = 'Rp ' . number_format($anomaly->input_price,         0, ',', '.');
         $refMaxFmt       = 'Rp ' . number_format($anomaly->reference_max_price, 0, ',', '.');

@@ -79,6 +79,7 @@ Security documentation:
 - [Price Index System](features/PRICE_INDEX_DOCS.md) - Price reference & anomaly detection
 - [Real-time Migration](features/REALTIME_MIGRATION_REPORT.md) - WebSocket migration
 - [Flowcharts](features/FLOWCHARTS.md) - System flowcharts
+- [Export Excel Optimization](features/EXPORT_OPTIMIZATION.md) - 3-layer export optimization (40k+ rows)
 
 ### 🚀 Deployment & Production
 - [Docker Production Guide](deployment/DOCKER_PRODUCTION_GUIDE.md) - Docker setup
@@ -97,6 +98,11 @@ Security documentation:
 
 ### 🔒 Security
 - [Security Checklist](security/SECURITY_CHECKLIST.md) - Security guidelines
+
+### 🚨 Troubleshooting
+- [Troubleshooting Index](troubleshooting/README.md) - All troubleshooting guides
+- [Export Troubleshooting](troubleshooting/EXPORT_TROUBLESHOOTING.md) - Excel export issues
+- [503 Error Analysis](troubleshooting/503_ERROR_ANALYSIS.md) - 503 Service Unavailable
 
 ### 🧪 Testing
 - [Testing Real-time Features](testing/TESTING_REALTIME_GUIDE.md) - Real-time testing

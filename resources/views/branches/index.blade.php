@@ -205,7 +205,7 @@
         {{-- Pagination --}}
         @if($branches->hasPages())
         <div class="px-5 py-4 border-t border-slate-100">
-            {{ $branches->links() }}
+            {{ $branches->withQueryString()->links('components.pagination.premium') }}
         </div>
         @endif
         @endif
@@ -271,7 +271,7 @@
 
         @if($branches->hasPages())
         <div class="pt-4">
-            {{ $branches->links() }}
+            {{ $branches->withQueryString()->links('components.pagination.premium') }}
         </div>
         @endif
     </div>

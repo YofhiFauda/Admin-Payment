@@ -674,7 +674,7 @@ function renderHutangRow(t) {
 
 function getStatusBadge(status, type = '', isDebt = false) {
     const map = {
-        'pending':            { cls: type === 'gudang' ? 'badge-pembelian' : 'badge-pending',    dot: type === 'gudang' ? 'bg-blue-500' : 'bg-yellow-500',    label: type === 'gudang' ? 'Review' : 'Pending' },
+        'pending':            { cls: type === 'pengajuan' ? 'badge-pembelian' : 'badge-pending', dot: type === 'pengajuan' ? 'bg-blue-500' : 'bg-amber-500', label: type === 'pengajuan' ? 'Review' : 'Pending' },
         'waiting_payment':    { cls: isDebt ? 'badge-debt' : (type === 'gudang' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'badge-waiting-payment'), dot: isDebt ? 'bg-amber-500' : (type === 'gudang' ? 'bg-slate-400' : 'bg-orange-500'), label: 'Belum Bayar' },
         'flagged':            { cls: 'badge-flagged', dot: 'bg-rose-500', label: 'Flagged' },
         'pending_technician': { cls: 'badge-siap-ambil', dot: 'bg-teal-500', label: 'Siap Ambil' },
@@ -872,7 +872,7 @@ async function loadAllHutangAmounts() {
         flex-shrink: 0;
     }
     .chart-container { position: relative; height: 260px; }
-    .badge-pending  { background: #fffbeb; color: #a16207; border: 1px solid #fef08a; }
+    .badge-pending  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
     .badge-approved { background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
     .badge-completed{ background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
     .badge-rejected { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -1224,10 +1224,11 @@ async function loadAllHutangAmounts() {
                                     $status = $t->status;
                                     $label  = $t->status_label;
                                     $isPembelian = $t->type === 'gudang';
+                                    $isPengajuan = $t->type === 'pengajuan';
                                     $isLargePengajuan = $t->type === 'pengajuan' && $t->effective_amount >= 1000000;
 
                                     $badgeClass = match($status) {
-                                        'pending'   => $isPembelian ? 'badge-pembelian' : 'badge-pending',
+                                        'pending'   => $isPengajuan ? 'badge-pembelian' : 'badge-pending',
                                         'approved'  => $isLargePengajuan ? 'badge-fuchsia' : 'badge-approved',
                                         'completed' => 'badge-completed',
                                         'rejected'  => 'badge-rejected',
@@ -1238,7 +1239,7 @@ async function loadAllHutangAmounts() {
                                         default     => 'bg-slate-100 text-slate-600',
                                     };
                                     $dotColor = match($status) {
-                                        'pending'   => $isPembelian ? 'bg-blue-500' : 'bg-yellow-500',
+                                        'pending'   => $isPengajuan ? 'bg-teal-500' : 'bg-yellow-500',
                                         'approved'  => $isLargePengajuan ? 'bg-fuchsia-500' : 'bg-purple-500',
                                         'completed' => 'bg-emerald-500',
                                         'rejected'  => 'bg-rose-500',

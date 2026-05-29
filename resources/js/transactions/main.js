@@ -281,6 +281,31 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Per Page dropdown selection change — uses SearchEngine.changePerPage() (no full reload)
+    document.addEventListener("change", function (e) {
+        const select = e.target.closest("#per-page-select");
+        if (select) {
+            const limit = parseInt(select.value, 10) || 20;
+            if (typeof NProgress !== 'undefined') NProgress.start();
+
+            SearchEngine.changePerPage(limit)
+                .finally(() => {
+                    if (typeof NProgress !== 'undefined') NProgress.done();
+                });
+        }
+    });
+
+    // Listen for window resize to dynamically update pagination layout and scale
+    let resizeTimer;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (typeof SearchEngine !== "undefined" && typeof SearchEngine.renderPagination === "function") {
+                SearchEngine.renderPagination();
+            }
+        }, 150); // Debounce 150ms
+    });
+
     // Initialize the Search Engine
     if (document.getElementById("search-results-container")) {
         SearchEngine.init();
@@ -677,7 +702,7 @@ function syncTypeUI(activeType) {
         const isActive = type === activeType;
         
         // Remove all possible active/inactive classes
-        btn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800', 'bg-indigo-600', 'bg-teal-600', 'bg-amber-600', 'shadow-lg');
+        btn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800', 'bg-indigo-600', 'bg-blue-600', 'bg-teal-600', 'bg-amber-600', 'shadow-lg');
         btn.classList.add('bg-white', 'text-slate-500', 'border-slate-200');
 
         if (isActive) {

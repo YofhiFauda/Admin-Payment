@@ -22,14 +22,6 @@
         </a>
     </div>
 
-    {{-- Flash --}}
-    @if(session('notification'))
-    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-3.5 rounded-xl text-sm font-semibold flex items-center gap-3">
-        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 flex-shrink-0"></i>
-        {{ session('notification') }}
-    </div>
-    @endif
-
     {{-- Stats summary --}}
     <div class="grid grid-cols-3 gap-4">
         @php
@@ -121,7 +113,7 @@
             </div>
             @if($salaries->hasPages())
             <div class="px-5 py-4 border-t border-slate-100">
-                {{ $salaries->links() }}
+                {{ $salaries->withQueryString()->links('components.pagination.premium') }}
             </div>
             @endif
         @endif

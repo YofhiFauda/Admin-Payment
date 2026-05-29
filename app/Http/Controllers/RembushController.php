@@ -216,9 +216,6 @@ class RembushController extends Controller
         $rembushCategories = TransactionCategory::forRembush()->get();
         
         $technicians = collect();
-        if (!Auth::user()->isTeknisi()) {
-            $technicians = \App\Models\User::where('role', 'teknisi')->with('bankAccounts')->get();
-        }
 
         return view('transactions.form-rembush', compact(
             'branches', 'base64', 'mime', 'uploadId', 'aiData', 'rembushCategories', 'technicians'
@@ -292,17 +289,6 @@ class RembushController extends Controller
                 'account_name' => strtoupper($request->account_name ?? ''),
                 'account_number' => $request->account_number,
             ];
-        } elseif ($request->payment_method === 'transfer_teknisi' && $request->technician_bank_account_id) {
-            // Jika management input atas nama teknisi dan memilih rekening teknisi
-            $bankAcc = \App\Models\UserBankAccount::find($request->technician_bank_account_id);
-            if ($bankAcc) {
-                $specs = [
-                    'bank_name'      => strtoupper($bankAcc->bank_name),
-                    'account_name'   => strtoupper($bankAcc->account_name),
-                    'account_number' => $bankAcc->account_number,
-                    'bank_account_id' => $bankAcc->id,
-                ];
-            }
         }
 
         $uploadId       = session('upload_id') ?? IdGeneratorService::buildUploadId(IdGeneratorService::nextSequence());
@@ -332,11 +318,8 @@ class RembushController extends Controller
                 $permanentPath = $uploadFilePath;
             }
 
-            // Determine submitter (on behalf of technician if provided)
+            // Submitter defaults to the user performing the transaction
             $submittedBy = Auth::id();
-            if (Auth::user()->role !== 'teknisi' && $request->technician_id) {
-                $submittedBy = $request->technician_id;
-            }
 
             $transaction = Transaction::create([
                 'type'           => Transaction::TYPE_REMBUSH,

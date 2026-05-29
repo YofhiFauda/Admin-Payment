@@ -15,12 +15,39 @@ export const SearchEngine = (function () {
     let allTransactions = [];
     let filteredTransactions = [];
     let currentPage = 1;
+    let perPage = Config.ui.itemsPerPage; // Dynamic per page value
     let totalRecords = 0;
     let totalPages = 0;
     let isLoading = false;
     let isFirstLoad = true;
     let searchTimer = null;
     let abortController = null;
+
+    function normalizePerPage(value) {
+        const parsed = parseInt(value, 10);
+        return Config.ui.perPageOptions.includes(parsed) ? parsed : Config.ui.perPageOptions[0];
+    }
+
+    function syncPerPageFromConfig() {
+        perPage = normalizePerPage(Config.ui.itemsPerPage);
+        Config.ui.itemsPerPage = perPage;
+
+        const select = document.getElementById('per-page-select');
+        if (select) select.value = perPage.toString();
+    }
+
+    function syncBrowserUrl() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', perPage);
+
+        if (currentPage > 1) {
+            url.searchParams.set('page', currentPage);
+        } else {
+            url.searchParams.delete('page');
+        }
+
+        window.history.pushState({ path: url.href }, '', url.href);
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // INITIAL LOAD - Auto-detect mode
@@ -32,6 +59,8 @@ export const SearchEngine = (function () {
         }
 
         isLoading = true;
+        syncPerPageFromConfig();
+
         if (!silent && typeof NProgress !== 'undefined') NProgress.start();
 
         if (isFirstLoad) {
@@ -86,6 +115,8 @@ export const SearchEngine = (function () {
      */
     async function applyFilters(resetPage = true) {
         if (resetPage) currentPage = 1;
+        syncPerPageFromConfig();
+        syncBrowserUrl();
 
         // console.log(`[SearchEngine] Applying filters (mode: ${mode || 'detecting'}, resetPage: ${resetPage})`);
 
@@ -152,7 +183,7 @@ export const SearchEngine = (function () {
             filterClientSide(currentQuery);
 
             // Adjust page if out of bounds
-            totalPages = Math.ceil(filteredTransactions.length / Config.ui.itemsPerPage);
+            totalPages = Math.ceil(filteredTransactions.length / perPage);
             if (currentPage > totalPages && totalPages > 0) {
                 currentPage = totalPages;
             }
@@ -196,7 +227,7 @@ export const SearchEngine = (function () {
 
         const url = buildUrl(Config.endpoints.transactions.search, {
             page: currentPage,
-            per_page: Config.ui.itemsPerPage,
+            per_page: perPage,
             search: searchVal
         });
 
@@ -312,7 +343,7 @@ export const SearchEngine = (function () {
             });
         }
 
-        totalPages = Math.ceil(filteredTransactions.length / Config.ui.itemsPerPage);
+        totalPages = Math.ceil(filteredTransactions.length / perPage);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -323,15 +354,15 @@ export const SearchEngine = (function () {
 
         if (mode === 'client') {
             // Slice from filtered array
-            const startIndex = (currentPage - 1) * Config.ui.itemsPerPage;
-            const endIndex = startIndex + Config.ui.itemsPerPage;
+            const startIndex = (currentPage - 1) * perPage;
+            const endIndex = startIndex + perPage;
             pageData = filteredTransactions.slice(startIndex, endIndex);
         } else {
             // Use data from server response
             pageData = filteredTransactions;
         }
 
-        const startIndex = (currentPage - 1) * Config.ui.itemsPerPage;
+        const startIndex = (currentPage - 1) * perPage;
 
         renderDesktopTable(pageData, startIndex);
         renderMobileCards(pageData, startIndex);
@@ -342,19 +373,17 @@ export const SearchEngine = (function () {
     }
 
     function updateShowingText() {
-        const startIndex = (currentPage - 1) * Config.ui.itemsPerPage;
+        const startIndex = (currentPage - 1) * perPage;
         const from = filteredTransactions.length > 0 ? startIndex + 1 : 0;
-        const to = Math.min(startIndex + Config.ui.itemsPerPage,
+        const to = Math.min(startIndex + perPage,
             mode === 'client' ? filteredTransactions.length : totalRecords);
         const total = mode === 'client' ? filteredTransactions.length : totalRecords;
 
-        const elFrom = document.getElementById('showing-from');
-        const elTo = document.getElementById('showing-to');
         const elTotal = document.getElementById('total-records');
+        const elPerPageSelect = document.getElementById('per-page-select');
 
-        if (elFrom) elFrom.textContent = from;
-        if (elTo) elTo.textContent = to;
-        if (elTotal) elTotal.textContent = total;
+        if (elTotal) elTotal.textContent = total.toLocaleString('id-ID');
+        if (elPerPageSelect) elPerPageSelect.value = perPage;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -416,39 +445,40 @@ export const SearchEngine = (function () {
         // Previous
         html += `<button onclick="SearchEngine.goToPage(${currentPage - 1})" 
                         ${currentPage === 1 ? 'disabled' : ''} 
-                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        <span class="hidden sm:inline">Prev</span>
-                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 sm:hidden"></i>
+                        class="flex items-center justify-center min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-2 rounded-lg border text-xs sm:text-sm font-medium transition-colors ${currentPage === 1 ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed' : 'border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 shadow-sm'}">
+                        <span class="hidden sm:inline mr-1">Prev</span>
+                        <i data-lucide="chevron-left" class="w-4 h-4 sm:w-4 sm:h-4"></i>
                     </button>`;
 
         // First page + ellipsis
         if (startPage > 1) {
             html += `<button onclick="SearchEngine.goToPage(1)" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">1</button>`;
-            if (startPage > 2) html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+                            class="flex items-center justify-center min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs sm:text-sm font-medium transition-colors hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 shadow-sm">1</button>`;
+            if (startPage > 2) html += `<span class="flex items-center justify-center min-w-[24px] sm:min-w-[28px] h-8 sm:h-9 text-gray-400 text-sm">…</span>`;
         }
 
         // Page numbers
         for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === currentPage;
             html += `<button onclick="SearchEngine.goToPage(${i})" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs sm:text-sm font-medium ${i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50'}">
+                            class="flex items-center justify-center min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-2 rounded-lg border text-xs sm:text-sm font-semibold transition-all duration-200 ${isActive ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-1 ring-blue-600 ring-offset-1' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 shadow-sm'}">
                             ${i}
                         </button>`;
         }
 
         // Last page + ellipsis
         if (endPage < pages) {
-            if (endPage < pages - 1) html += `<span class="text-xs text-gray-400 px-0.5">…</span>`;
+            if (endPage < pages - 1) html += `<span class="flex items-center justify-center min-w-[24px] sm:min-w-[28px] h-8 sm:h-9 text-gray-400 text-sm">…</span>`;
             html += `<button onclick="SearchEngine.goToPage(${pages})" 
-                            class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium hover:bg-gray-50">${pages}</button>`;
+                            class="flex items-center justify-center min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-2 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs sm:text-sm font-medium transition-colors hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 shadow-sm">${pages}</button>`;
         }
 
         // Next
         html += `<button onclick="SearchEngine.goToPage(${currentPage + 1})" 
                         ${currentPage === pages ? 'disabled' : ''} 
-                        class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 text-xs sm:text-sm font-medium ${currentPage === pages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}">
-                        <span class="hidden sm:inline">Next</span>
-                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 sm:hidden"></i>
+                        class="flex items-center justify-center min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-2 rounded-lg border text-xs sm:text-sm font-medium transition-colors ${currentPage === pages ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed' : 'border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 shadow-sm'}">
+                        <span class="hidden sm:inline mr-1">Next</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 sm:w-4 sm:h-4"></i>
                     </button>`;
 
         container.innerHTML = html;
@@ -460,6 +490,7 @@ export const SearchEngine = (function () {
         if (page < 1 || page > pages) return;
 
         currentPage = page;
+        syncBrowserUrl();
 
         if (mode === 'client') {
             renderPage();
@@ -543,12 +574,39 @@ export const SearchEngine = (function () {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // PER PAGE CHANGE HANDLER
+    // ═══════════════════════════════════════════════════════════════
+    function changePerPage(newPerPage) {
+        const parsedPerPage = normalizePerPage(newPerPage);
+
+        perPage = parsedPerPage;
+        Config.ui.itemsPerPage = parsedPerPage;
+        currentPage = 1; // Reset to first page
+        syncBrowserUrl();
+
+        if (mode === 'client') {
+            totalPages = Math.ceil(filteredTransactions.length / perPage);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+            renderPage();
+            return Promise.resolve();
+        } else if (mode === 'server') {
+            return loadServerSideData();
+        } else {
+            // mode belum terdeteksi, jalankan loadData() untuk auto-detect
+            return loadData();
+        }
+    }
+
     // Public API
     return {
         init: loadData,
         applyFilters: applyFilters,
         search: search,
         goToPage: goToPage,
+        changePerPage: changePerPage,
         refresh: loadData,
         getAll: () => mode === 'client' ? allTransactions : filteredTransactions,
         getFiltered: () => filteredTransactions,

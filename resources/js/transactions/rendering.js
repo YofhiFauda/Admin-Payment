@@ -123,7 +123,14 @@ export function generateAIBadge(t) {
     if (t.bukti_transfer || t.foto_penyerahan) {
         return ''; // Jangan tampilkan badge untuk verifikasi pembayaran
     }
-    
+
+    // ✅ FIX: Defensive guard — jika status_label menunjukkan state verifikasi pembayaran,
+    // jangan tampilkan badge OCR Nota meski field bukti_transfer belum ter-broadcast.
+    // Status badge utama sudah menunjukkan "Sedang Diverifikasi AI" / "Menunggu Konfirmasi".
+    if (t.status_label === 'Sedang Diverifikasi AI' || t.status_label === 'Menunggu Konfirmasi') {
+        return '';
+    }
+
     const aiBadge = Config.ai[t.ai_status];
     if (!aiBadge) return '';
 
@@ -205,10 +212,13 @@ export function generateInlineActions(t) {
     } else if (t.status === 'waiting_payment' && canManage) {
         // ✅ Only show Upload button if NO payment proof exists yet
         // AND there are no pending inter-branch debts
+        // AND not currently in AI verification state (Rembush after transfer upload)
         const hasPaymentProof = !!(t.invoice_file_path || t.bukti_transfer || t.foto_penyerahan);
         const isDebtPending = t.status_label === 'Menunggu Pelunasan';
+        const isAiVerifying = t.status_label === 'Sedang Diverifikasi AI';
+        const isAwaitingTechConfirm = t.status_label === 'Menunggu Konfirmasi';
 
-        if (!hasPaymentProof && !isDebtPending) {
+        if (!hasPaymentProof && !isDebtPending && !isAiVerifying && !isAwaitingTechConfirm) {
             html += `
                     <div class="flex items-center gap-1 ml-1">
                         <button type="button" onclick="openPaymentModal(${t.id})" title="Proses Pembayaran"
@@ -279,10 +289,13 @@ export function generateMobileActions(t) {
     } else if (t.status === 'waiting_payment' && canManage) {
         // ✅ Only show Upload button if NO payment proof exists yet
         // AND there are no pending inter-branch debts
+        // AND not currently in AI verification state (Rembush after transfer upload)
         const hasPaymentProof = !!(t.invoice_file_path || t.bukti_transfer || t.foto_penyerahan);
         const isDebtPending = t.status_label === 'Menunggu Pelunasan';
+        const isAiVerifying = t.status_label === 'Sedang Diverifikasi AI';
+        const isAwaitingTechConfirm = t.status_label === 'Menunggu Konfirmasi';
 
-        if (!hasPaymentProof && !isDebtPending) {
+        if (!hasPaymentProof && !isDebtPending && !isAiVerifying && !isAwaitingTechConfirm) {
             extraActionHtml = `
                     <button type="button" onclick="openPaymentModal(${t.id})" title="Upload Bukti"
                         class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold text-[11px] active:scale-95 transition-all border border-cyan-200 hover:border-cyan-600 outline-none">
@@ -328,16 +341,67 @@ export function generateMobileActions(t) {
         `;
 }
 
+/**
+ * Resolve display label, color, and icon for a transaction's status badge.
+ * Handles "virtual" sub-states like "Sedang Diverifikasi AI" and "Menunggu Konfirmasi"
+ * that aren't real status values but are derived from status_label on the backend.
+ *
+ * Returns { label, color, icon } tuned to the actual sub-state so the badge
+ * stays consistent with status_label (no orange "Menunggu Pembayaran" pill
+ * showing AI-verification text).
+ */
+function resolveStatusDisplay(t) {
+    const isDebt = t.status === 'waiting_payment' && t.status_label === 'Menunggu Pelunasan';
+    const isLarge = t.type === 'pengajuan' && t.effective_amount >= 1000000;
+
+    // ─── Virtual sub-states for Rembush in waiting_payment ────────────────
+    // Backend sets status_label to these strings via Transaction@getStatusLabelAttribute.
+    if (t.status === 'waiting_payment') {
+        if (t.status_label === 'Sedang Diverifikasi AI') {
+            return {
+                label: 'Sedang Diverifikasi AI',
+                color: 'bg-purple-50 text-purple-700 border-purple-200',
+                icon: 'loader-2',
+                spin: true,
+            };
+        }
+        if (t.status_label === 'Menunggu Konfirmasi') {
+            return {
+                label: 'Menunggu Konfirmasi',
+                color: 'bg-teal-50 text-teal-700 border-teal-200',
+                icon: 'package-check',
+                spin: false,
+            };
+        }
+    }
+
+    // ─── Default: use Config.status mapping ──────────────────────────────
+    const statusCfg = Config.status[t.status] || {
+        label: t.status,
+        color: 'bg-gray-50 text-gray-700 border-gray-200',
+        icon: 'info',
+    };
+
+    const arg = t.status === 'pending'
+        ? t.type
+        : (t.status === 'approved' ? isLarge : isDebt);
+
+    const label = t.status === 'pending'
+        ? statusCfg.label(t.type)
+        : (t.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(arg) : statusCfg.label));
+
+    const color = typeof statusCfg.color === 'function' ? statusCfg.color(arg) : statusCfg.color;
+    const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(arg) : statusCfg.icon;
+
+    return { label, color, icon, spin: false };
+}
+
 export function generateDesktopRow(t, rowNum = '') {
     const isDebt = t.status === 'waiting_payment' && t.status_label === 'Menunggu Pelunasan';
     const isLarge = t.type === 'pengajuan' && t.effective_amount >= 1000000;
-    
-    const statusCfg = Config.status[t.status] || { label: t.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
-    const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
-    const label = t.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label);
-    const color = typeof statusCfg.color === 'function' ? statusCfg.color(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
-    const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
+    const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
+    const { label, color, icon, spin } = resolveStatusDisplay(t);
 
     const aiBadgeHtml = generateAIBadge(t);
     const inlineActionsHtml = generateInlineActions(t);
@@ -375,7 +439,7 @@ export function generateDesktopRow(t, rowNum = '') {
                 <td class="px-5 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${color}">
-                            <i data-lucide="${icon}" class="w-3 h-3"></i>
+                            <i data-lucide="${icon}" class="w-3 h-3 ${spin ? 'animate-spin' : ''}"></i>
                             ${label}
                         </span>
                         ${aiBadgeHtml}
@@ -412,13 +476,9 @@ export function generateDesktopRow(t, rowNum = '') {
 export function generateMobileCard(t, rowNum = '') {
     const isDebt = t.status === 'waiting_payment' && t.status_label === 'Menunggu Pelunasan';
     const isLarge = t.type === 'pengajuan' && t.effective_amount >= 1000000;
-    
-    const statusCfg = Config.status[t.status] || { label: t.status, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'info' };
-    const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
 
-    const label = t.status_label || (typeof statusCfg.label === 'function' ? statusCfg.label(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.label);
-    const color = typeof statusCfg.color === 'function' ? statusCfg.color(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.color;
-    const icon = typeof statusCfg.icon === 'function' ? statusCfg.icon(t.status === 'pending' ? t.type : (t.status === 'approved' ? isLarge : isDebt)) : statusCfg.icon;
+    const typeCfg = Config.types[t.type] || { label: t.type, color: 'bg-gray-50 text-gray-700 border-gray-200', icon: 'file-text' };
+    const { label, color, icon, spin } = resolveStatusDisplay(t);
 
     const aiBadgeHtml = generateAIBadge(t);
     const mobileActionsHtml = generateMobileActions(t);
@@ -440,7 +500,7 @@ export function generateMobileCard(t, rowNum = '') {
                             </div>
                             <div class="flex flex-col items-end gap-0.5 shrink-0">
                                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide border ${color}">
-                                    <i data-lucide="${icon}" class="w-2 h-2"></i>
+                                    <i data-lucide="${icon}" class="w-2 h-2 ${spin ? 'animate-spin' : ''}"></i>
                                     ${label}
                                 </span>
                                 ${aiBadgeHtml}

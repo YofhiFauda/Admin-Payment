@@ -160,11 +160,8 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            // 3. Routing Aksi
             if ($action === 'confirm_cash') {
                 $this->handleConfirmCash($callbackId, $transaction, $user, $chatId, $messageId);
-            } elseif ($action === 'report_issue') {
-                $this->handleReportIssue($callbackId, $transaction, $user, $chatId, $messageId);
             } else {
                 $this->answerCallbackQuery($callbackId, '❓ Aksi tidak dikenali.');
             }
@@ -220,41 +217,7 @@ class TelegramWebhookController extends Controller
         );
     }
 
-    /**
-     * Logika Laporan Masalah (Tolak)
-     */
-    private function handleReportIssue(string $callbackId, Transaction $transaction, User $user, $chatId, $messageId): void
-    {
-        if (in_array($transaction->status, ['completed', 'approved', 'Ditolak Teknisi'])) {
-            $this->answerCallbackQuery($callbackId, 'ℹ️ Transaksi ini sudah diproses sebelumnya.', false);
-            return;
-        }
 
-        if ($user->id !== $transaction->submitted_by && $user->role === 'teknisi') {
-            $this->answerCallbackQuery($callbackId, '❌ Anda hanya bisa menolak pengajuan Anda sendiri.', true);
-            return;
-        }
-
-        $this->answerCallbackQuery($callbackId, '❌ Laporan diterima, membatalkan...');
-
-        $transaction->update([
-            'status'           => 'rejected',
-            'rejection_reason' => "Ditolak oleh {$user->name} via Telegram",
-            'konfirmasi_at'    => now(),
-            'konfirmasi_by'    => $user->id,
-        ]);
-
-        broadcast(new \App\Events\TransactionUpdated($transaction->fresh()));
-        $user->notify(new \App\Notifications\TransactionStatusNotification($transaction, 'rejected'));
-
-        $this->telegram->editMessageText($chatId, $messageId, 
-            "❌ <b>PEMBAYARAN DITOLAK</b>\n\n" .
-            "Transaksi <code>{$transaction->invoice_number}</code> telah dibatalkan oleh teknisi.\n" .
-            "👤 <b>Oleh:</b> {$user->name}\n" .
-            "📝 <b>Alasan:</b> Masalah fisik dana / nominal tidak sesuai.\n\n" .
-            "Status: <b>DITOLAK</b> ❌"
-        );
-    }
 
     /**
      * Kirim answer callback query (popup notification di Telegram)

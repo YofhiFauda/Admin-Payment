@@ -44,6 +44,12 @@ This folder contains detailed documentation for specific features and modules of
 #### 🖼️ Image Processing
 - **README_IMAGE_COMPRESSION.md** - Image compression feature
 
+#### 📊 Export & Reporting
+- **EXPORT_OPTIMIZATION.md** - Sistem export Excel 3-layer optimization (OpenSpout + Async Job + Indexes)
+  - Performa untuk dataset 40k+ rows
+  - Real-time progress tracking via Reverb
+  - Diagnostic commands & troubleshooting
+
 ---
 
 ## 🎯 Purpose

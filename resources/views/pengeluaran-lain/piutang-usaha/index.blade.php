@@ -24,28 +24,47 @@
 
     {{-- Table Utama --}}
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 class="font-bold text-slate-800">Riwayat Pencairan Piutang</h3>
-            
-            {{-- Filter Table Utama --}}
-            <form action="{{ route('pengeluaran-lain.piutang-usaha.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari No. INV..." 
-                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none w-32 md:w-40">
-                
-                <select name="branch_id" onchange="this.form.submit()" 
-                    class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
-                    <option value="">Semua Cabang</option>
-                    @foreach($branches as $b)
-                        <option value="{{ $b->id }}" {{ request('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
-                    @endforeach
-                </select>
+        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 class="font-bold text-slate-800">Riwayat Pencairan Piutang</h3>
 
-                @if(request('search') || request('branch_id'))
-                    <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}" class="text-slate-400 hover:text-blue-500 transition-colors">
-                        <i data-lucide="x-circle" class="w-4 h-4"></i>
-                    </a>
-                @endif
-            </form>
+                {{-- Filter Table Utama --}}
+                <form action="{{ route('pengeluaran-lain.piutang-usaha.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="record_status" value="{{ request('record_status') }}">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari No. INV..."
+                        class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none w-32 md:w-40">
+
+                    <select name="branch_id" onchange="this.form.submit()"
+                        class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
+                        <option value="">Semua Cabang</option>
+                        @foreach($branches as $b)
+                            <option value="{{ $b->id }}" {{ request('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                        @endforeach
+                    </select>
+
+                    @if(request('search') || request('branch_id') || request('record_status'))
+                        <a href="{{ route('pengeluaran-lain.piutang-usaha.index') }}" class="text-slate-400 hover:text-blue-500 transition-colors" title="Reset semua filter">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </a>
+                    @endif
+                </form>
+            </div>
+
+            {{-- Status Filter Pills --}}
+            <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                <a href="{{ request()->fullUrlWithQuery(['record_status' => null]) }}"
+                    class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ !request('record_status') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+                    Semua
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['record_status' => 'belum_lunas']) }}"
+                    class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('record_status') === 'belum_lunas' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+                    Belum Lunas
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['record_status' => 'sudah_lunas']) }}"
+                    class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ request('record_status') === 'sudah_lunas' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+                    Sudah Lunas
+                </a>
+            </div>
         </div>
         @if($items->isEmpty())
             <div class="flex flex-col items-center justify-center py-16 text-center">
@@ -54,49 +73,85 @@
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm whitespace-nowrap">
                     <thead>
-                        <tr class="bg-slate-50 border-b border-slate-200">
-                            <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">No. Invoice</th>
-                            <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Tanggal</th>
-                            <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Unit/Cabang</th>
-                            <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider">Nominal</th>
-                            <th class="px-5 py-3.5 text-left text-xs font-black text-slate-500 uppercase tracking-wider uppercase">Aksi</th>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs">
+                            <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">No. Invoice</th>
+                            <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Keterangan</th>
+                            <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Nominal</th>
+                            <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Status</th>
+                            <th class="px-5 py-3.5 text-center font-black text-slate-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-xs">
                         @foreach($items as $item)
-                        <tr class="hover:bg-slate-50 transition-colors" id="record-row-{{ $item->id }}">
-                            <td class="px-5 py-4"><span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span></td>
-                            <td class="px-5 py-4 font-semibold">
+                        @php
+                            $statusColor = 'slate';
+                            if ($item->status === 'approved') $statusColor = 'emerald';
+                            elseif ($item->status === 'rejected') $statusColor = 'red';
+                            elseif ($item->status === 'pending') $statusColor = 'amber';
+                        @endphp
+                        <tr class="hover:bg-slate-50 transition-colors {{ $item->status === 'approved' ? 'opacity-90' : ($item->status === 'rejected' ? 'opacity-70' : '') }}" id="record-row-{{ $item->id }}">
+                            <td class="px-5 py-4 align-center">
+                                <span class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">{{ $item->invoice_number }}</span>
+                            </td>
+                            <td class="px-5 py-4 align-center font-bold text-slate-700">
                                 {{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d F Y') : $item->tanggal }}
                             </td>
-                            <td class="px-5 py-4 font-semibold text-slate-700">{{ $item->branch->name ?? '-' }}</td>
-                            <td class="px-5 py-4 font-bold text-slate-800">{{ $item->formatted_nominal }}</td>
-                            <td class="px-5 py-4">
-                                <div class="flex items-center gap-2">
-                                    @if($item->bukti_transfer)
-                                    <button type="button" 
-                                        onclick='openViewProofModal("{{ asset('storage/' . $item->bukti_transfer) }}", "Bukti Pencairan {{ $item->invoice_number }}", {
-                                            amount: "{{ $item->formatted_nominal }}",
-                                            notes: "{{ $item->keterangan ?? '-' }}",
-                                            paid_by: "{{ $item->submitter->name ?? '-' }}",
-                                            paid_at: "{{ $item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d F Y') : $item->tanggal }}",
-                                            selected_account: null,
-                                            all_accounts: [],
-                                            sender_branch: "{{ $item->dariBranch->name ?? '-' }}",
-                                            receiver_branch: "{{ $item->branch->name ?? '-' }}"
-                                        })'
-                                        class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm">
-                                        <i data-lucide="image" class="w-4 h-4"></i>
-                                    </button>
+                            <td class="px-5 py-4 align-center">
+                                <div>
+                                    <span class="bg-{{ $statusColor }}-100 text-{{ $statusColor }}-700 font-bold px-2 py-0.5 mx-1 rounded-full border border-{{ $statusColor }}-200">
+                                        {{ $item->branch->name ?? '-' }}
+                                    </span>
+                                    <span class="text-slate-500"> ke </span>
+                                    <span class="font-bold text-slate-700">{{ $item->dariBranch->name ?? '-' }}</span>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4 align-center font-bold text-emerald-600">
+                                {{ $item->formatted_nominal }}
+                            </td>
+                            <td class="px-5 py-4 align-center">
+                                <span class="bg-{{ $statusColor }}-100 text-{{ $statusColor }}-700 text-[12px] font-bold px-2 py-0.5 mx-1 rounded-full border border-{{ $statusColor }}-200">
+                                    {{ $item->status_label }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-4 text-center align-top">
+                                <div class="flex items-center justify-center gap-2">
+                                    @if($item->status === 'approved')
+                                        @if($item->bukti_transfer)
+                                        <button type="button"
+                                            onclick='openViewProofModal("{{ asset('storage/' . $item->bukti_transfer) }}", "Bukti Pencairan {{ $item->invoice_number }}", {
+                                                amount: "{{ $item->formatted_nominal }}",
+                                                notes: "{{ $item->keterangan ?? '-' }}",
+                                                paid_by: "{{ $item->paidBy->name ?? ($item->submitter->name ?? '-') }}",
+                                                paid_at: "{{ $item->paid_at ? $item->paid_at->translatedFormat('d F Y H:i') : ($item->tanggal instanceof \Carbon\Carbon ? $item->tanggal->translatedFormat('d F Y') : $item->tanggal) }}",
+                                                selected_account: {{ $item->bankAccount ? json_encode($item->bankAccount) : 'null' }},
+                                                sender_account: {{ $item->senderBankAccount ? json_encode($item->senderBankAccount) : 'null' }},
+                                                all_accounts: {{ json_encode($item->branch->bankAccounts) }},
+                                                sender_branch: "{{ $item->dariBranch->name ?? '-' }}",
+                                                receiver_branch: "{{ $item->branch->name ?? '-' }}"
+                                            })'
+                                            class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm" title="Lihat Bukti">
+                                            <i data-lucide="image" class="w-4 h-4"></i>
+                                        </button>
+
+                                        <button type="button"
+                                                onclick="confirmDeleteRecord({{ $item->id }}, '{{ $item->invoice_number }}')"
+                                                class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all shadow-sm" title="Hapus">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                        @endif
+                                        @if($item->payment_method === 'cash')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold text-emerald-700">
+                                            <i data-lucide="banknote" class="w-3 h-3"></i>
+                                            Lunas (Cash)
+                                        </span>
+                                        @endif
                                     @endif
+
                                     @if($item->status === 'pending')
-                                    <button type="button" 
-                                            onclick="confirmDeleteRecord({{ $item->id }}, '{{ $item->invoice_number }}')"
-                                            class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-all" title="Hapus">
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                    </button>
+                                        <span class="text-[10px] font-base text-slate-400 italic">Menunggu pelunasan</span>
                                     @endif
                                 </div>
                             </td>
@@ -105,7 +160,7 @@
                     </tbody>
                 </table>
             </div>
-            @if($items->hasPages())<div class="px-5 py-4 border-t border-slate-100">{{ $items->links() }}</div>@endif
+            @if($items->hasPages())<div class="px-5 py-4 border-t border-slate-100">{{ $items->withQueryString()->links('components.pagination.premium') }}</div>@endif
         @endif
     </div>
 
@@ -162,7 +217,7 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm whitespace-nowrap">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="px-5 py-3.5 text-left font-black text-slate-500 uppercase tracking-wider">Terkait Transaksi</th>
@@ -181,13 +236,13 @@
                                     {{ $debt->created_at->translatedFormat('d F Y') }}
                                 </td>
                                 <td class="px-5 py-4">
-                                    <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->creditorBranch->name ?? '-' }}</span> 
-                                    <span class="text-slate-500">dari</span> 
+                                    <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 font-bold px-2 py-0.5 mx-1 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">{{ $debt->creditorBranch->name ?? '-' }}</span>
+                                    <span class="text-slate-500"> ke </span>
                                     <span class="font-bold text-slate-700">{{ $debt->debtorBranch->name ?? '-' }}</span>
                                 </td>
                                 <td class="px-5 py-4 font-bold text-emerald-600">{{ $debt->formatted_amount }}</td>
                                 <td class="px-5 py-4">
-                                    <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 text-[12px] font-bold px-2 py-0.5 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">
+                                    <span class="bg-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-100 text-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-700 text-[12px] font-bold px-2 py-0.5 mx-1 rounded-full border border-{{ $debt->status === 'paid' ? 'emerald' : 'red' }}-200">
                                         {{ $debt->status === 'paid' ? 'Sudah Lunas' : 'Belum Lunas' }}
                                     </span>
                                 </td>
@@ -226,7 +281,7 @@
                 </div>
                 @if($branchDebts->hasPages())
                 <div class="px-5 py-4 border-t border-slate-100">
-                    {{ $branchDebts->links('pagination::tailwind', ['pageName' => 'branch_debts']) }}
+                    {{ $branchDebts->withQueryString()->links('components.pagination.premium') }}
                 </div>
                 @endif
             @endif
@@ -235,6 +290,7 @@
     @endif
 </div>
 
+@push('modals')
 {{-- Modal View Proof --}}
 <div id="view-proof-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col md:flex-row" id="view-proof-modal-box">
@@ -290,6 +346,9 @@
     </div>
 </div>
 
+@endpush
+
+@push('scripts')
 <script>
     function openViewProofModal(url, title, data) {
         const modal = document.getElementById('view-proof-modal');
@@ -346,7 +405,7 @@
                 // If specific account selected, show only that. Else show the first one (legacy)
                 const displayAccounts = data.selected_account ? [data.selected_account] : (data.all_accounts && data.all_accounts.length > 0 ? [data.all_accounts[0]] : []);
                 const accountLabel = document.getElementById('account-label');
-                accountLabel.textContent = 'Rekening Tujuan';
+                accountLabel.textContent = 'Rekening Penerima';
                 accountLabel.classList.remove('hidden');
 
                 if (displayAccounts && displayAccounts.length > 0) {
@@ -387,6 +446,7 @@
             if (window.lucide) lucide.createIcons({ root: modal });
         }
     }
+
     function closeViewProofModal() {
         const modal = document.getElementById('view-proof-modal');
         const box = document.getElementById('view-proof-modal-box');
@@ -429,4 +489,9 @@
         });
     }
 </script>
+@endpush
+
+@push('modals')
+<x-confirm-modal id="globalConfirmModal" />
+@endpush
 @endsection

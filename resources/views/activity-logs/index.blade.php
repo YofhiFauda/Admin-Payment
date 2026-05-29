@@ -92,7 +92,7 @@
         
         @if($logs->hasPages())
             <div class="px-6 py-4 bg-slate-50/50 border-t border-slate-100">
-                {{ $logs->links() }}
+                {{ $logs->withQueryString()->links('components.pagination.premium') }}
             </div>
         @endif
     </div>

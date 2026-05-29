@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Services\IdGeneratorService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
+    use HasFactory;
     // ─── Type Constants ───────────────────────────────
     const TYPE_REMBUSH = 'rembush';
     const TYPE_PENGAJUAN = 'pengajuan';
@@ -330,12 +332,10 @@ class Transaction extends Model
             return 'Menunggu Pembayaran';
         }
 
-        if ($this->isPembelian()) {
-            if ($this->status === 'pending') {
-                return 'Review Management';
-            }
+        if ($this->isPengajuan() && $this->status === 'pending') {
+            return 'Review Management';
         }
-        
+
         if ($this->isPengajuan() && $this->status === 'approved') {
             return 'Menunggu Approve Owner';
         }
@@ -502,8 +502,8 @@ class Transaction extends Model
             'amount' => $this->amount,
             'formatted_amount' => number_format($this->amount ?? 0, 0, ',', '.'),
             'date' => $this->date ? \Carbon\Carbon::parse($this->date)->translatedFormat('d F Y') : null,
-            'created_at' => $this->created_at->translatedFormat('d F Y'),
-            'created_at_search' => $this->created_at->format('d-m-Y Y-m-d'),
+            'created_at' => $this->created_at ? $this->created_at->translatedFormat('d F Y') : null,
+            'created_at_search' => $this->created_at ? $this->created_at->format('d-m-Y Y-m-d') : null,
             'ai_status' => $this->ai_status,
             'payment_method' => $this->payment_method,
             'is_paid' => (bool) ($this->paid_at || $this->bukti_transfer || $this->foto_penyerahan || $this->invoice_file_path || $this->status === 'completed'),
@@ -540,7 +540,7 @@ class Transaction extends Model
                 $this->invoice_number . ' ' .
                 ($this->customer ?? '') . ' ' .
                 ($this->vendor ?? '') . ' ' .
-                $this->created_at->translatedFormat('d F Y d-m-Y Y-m-d')
+                ($this->created_at ? $this->created_at->translatedFormat('d F Y d-m-Y Y-m-d') : '')
             ),
             'has_price_anomaly' => false, // Implement your logic
             'invoice_file_path' => $this->invoice_file_path,

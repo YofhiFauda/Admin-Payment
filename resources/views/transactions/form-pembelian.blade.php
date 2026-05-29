@@ -33,8 +33,7 @@
                 {{-- Hidden Distribution Inputs (Populated by JS) --}}
                 <div id="distribution-hidden-inputs"></div>
                 
-                {{-- 0. MANAGEMENT: OTORITAS PEMBELIAN --}}
-                @include('transactions.partials.forms.pembelian.management-section')
+
 
                 {{-- 1. FOTO REFERENSI (Shared) --}}
                 @include('transactions.partials.forms.shared.photo-section', ['inputName' => 'nota'])

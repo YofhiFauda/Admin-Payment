@@ -15,6 +15,7 @@
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.10.1",
         "opcodesio/log-viewer": "^3.0",
+        "openspout/openspout": "*",
         "phpoffice/phpspreadsheet": "^5.7"
     },
     "require-dev": {
@@ -56,7 +57,35 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test"
+            "@php artisan test --env=testing"
+        ],
+        "test:coverage": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --coverage --min=80"
+        ],
+        "test:coverage-html": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --coverage-html coverage"
+        ],
+        "test:parallel": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --parallel"
+        ],
+        "test:critical": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing tests/Feature/PengajuanManagementTest.php tests/Feature/PembelianManagementTest.php tests/Feature/TransactionSearchTest.php tests/Feature/NotificationSystemTest.php tests/Feature/FileUploadTest.php"
+        ],
+        "test:feature": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --testsuite=Feature"
+        ],
+        "test:unit": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --testsuite=Unit"
+        ],
+        "test:fast": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --env=testing --parallel --stop-on-failure"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

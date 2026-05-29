@@ -132,9 +132,22 @@
             <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2.5">
                 <i data-lucide="info" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i>
                 <div class="text-[11px] font-medium text-blue-600 leading-relaxed">
-                    File <strong>Excel (.xlsx)</strong> akan langsung terdownload. Kolom kalkulasi seperti <em>Total
-                        Estimasi</em> dan <em>Grand Total</em> menggunakan <strong>rumus Excel</strong>—klik selnya
-                    untuk melihat formula. Pengajuan multi-item di-<em>expand</em> per baris.
+                    File <strong>Excel (.xlsx)</strong> akan diproses di background. Anda akan menerima notifikasi
+                    saat selesai dan file siap diunduh. Proses biasanya memakan waktu <strong>30-90 detik</strong>
+                    untuk 40k+ transaksi.
+                </div>
+            </div>
+
+            {{-- Progress Bar (hidden by default) --}}
+            <div id="export-progress-container" class="hidden">
+                <div class="bg-slate-50 rounded-xl p-4 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-semibold text-slate-600">
+                        <span id="export-progress-text">Memproses... 0%</span>
+                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-600"></i>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div id="export-progress-bar" class="bg-emerald-600 h-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                    </div>
                 </div>
             </div>
         </div>

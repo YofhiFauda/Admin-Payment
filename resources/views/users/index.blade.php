@@ -240,7 +240,7 @@
     @if($users->hasPages())
     <div class="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/20">
         <div class="flex justify-center">
-            {{ $users->links() }}
+            {{ $users->withQueryString()->links('components.pagination.premium') }}
         </div>
     </div>
     @endif

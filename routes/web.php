@@ -16,6 +16,7 @@ use App\Http\Controllers\RembushController;
 use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\TransactionCategoryController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionExportController;
 use App\Http\Controllers\UserBankAccountController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -246,6 +247,7 @@ Route::middleware('auth')->group(function () {
 
         // ── Hutang Antar Cabang (Branch Debt Settlement) ──
         Route::patch('/branch-debts/{id}/settle', [TransactionController::class, 'settleBranchDebt'])->name('branch-debts.settle');
+        Route::get('/branch-debts/{id}/history', [TransactionController::class, 'branchDebtHistory'])->name('branch-debts.history');
     });
 
     // ── User, Branch & Activity Management (admin, atasan, owner) ──
@@ -286,7 +288,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions/stats', [TransactionController::class, 'stats'])->name('transactions.stats');
 
     // ── Export CSV ──
-    Route::get('/transactions/export', [TransactionController::class, 'export'])->name('transactions.export');
+    // Endpoint lama (sync) — sudah dioptimasi pakai OpenSpout (Layer 1).
+    // Frontend lama yang masih cached akan otomatis dapat performa baru.
+    Route::get('/transactions/export', [TransactionExportController::class, 'sync'])->name('transactions.export');
+
+    // ── Export (Async + Sync) ──
+    Route::post('/transactions/export/queue', [TransactionExportController::class, 'queue'])->name('transactions.export.queue');
+    Route::get('/transactions/export/status/{exportId}', [TransactionExportController::class, 'status'])->name('transactions.export.status');
+    Route::get('/transactions/export/download/{exportId}', [TransactionExportController::class, 'download'])->name('transactions.export.download');
+    Route::get('/transactions/export/sync', [TransactionExportController::class, 'sync'])->name('transactions.export.sync');
 
     // ── User Bank Accounts ──
     Route::get('/user-bank-accounts/{user_id}', [UserBankAccountController::class, 'index'])->name('user-bank-accounts.index');
@@ -318,9 +328,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/prive/create', [OtherExpenditureController::class, 'create'])->name('prive.create')->defaults('jenis', 'prive');
         Route::post('/prive', [OtherExpenditureController::class, 'store'])->name('prive.store')->defaults('jenis', 'prive');
 
-        // Shared DELETE & IMAGE for Bayar Hutang / Piutang / Prive
+        // Shared DELETE, IMAGE & SETTLE for Bayar Hutang / Piutang / Prive
+        Route::get('/record/{id}/edit', [OtherExpenditureController::class, 'edit'])->name('record.edit');
+        Route::put('/record/{id}', [OtherExpenditureController::class, 'update'])->name('record.update');
         Route::delete('/record/{id}', [OtherExpenditureController::class, 'destroy'])->name('record.destroy');
         Route::get('/record/{id}/image', [OtherExpenditureController::class, 'image'])->name('record.image');
+        Route::patch('/record/{id}/settle', [OtherExpenditureController::class, 'settle'])->name('record.settle');
+        Route::get('/record/{id}/history', [OtherExpenditureController::class, 'history'])->name('record.history');
+        Route::patch('/record/{id}/approve-prive', [OtherExpenditureController::class, 'approvePrive'])->name('record.approve-prive');
+        Route::patch('/record/{id}/reject-prive', [OtherExpenditureController::class, 'rejectPrive'])->name('record.reject-prive');
 
         // Gaji
         Route::get('/gaji', [SalaryController::class, 'index'])->name('gaji.index');

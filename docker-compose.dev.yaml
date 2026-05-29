@@ -322,10 +322,57 @@ services:
       retries: 3
       start_period: 30s
 
+  # ─────────────────────────────────────────
+#  NODE — Vite / Frontend Builder (Staging)
+# ─────────────────────────────────────────
+  node:
+    image: node:20-alpine
+    container_name: whusnet-node
+    working_dir: /var/www
+
+    restart: unless-stopped
+
+    networks:
+      - coolify
+      - default
+
+    volumes:
+      - ./:/var/www
+      - node_modules:/var/www/node_modules
+      - app_public:/var/www/public
+
+    environment:
+      NODE_ENV: development
+
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.20'
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 volumes:
   storage_data:
     driver: local
   app_public:
+    driver: local
+  node_modules:
     driver: local
   # cache_data DIHAPUS — bootstrap/cache adalah bagian dari image, bukan persistent volume
   # Shared volume menyebabkan race condition saat app restart:

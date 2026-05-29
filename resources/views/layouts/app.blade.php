@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ rtrim(config('app.url'), '/') }}">
+    @auth
+        <meta name="user-id" content="{{ Auth::id() }}">
+    @endauth
     <title>FinanceOps</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
@@ -16,6 +19,7 @@
     <meta name="notif-unread-url" content="{{ route('notifications.unreadCount') }}">
     <link href="https://unpkg.com/nprogress@0.2.0/nprogress.css" rel="stylesheet">
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    @stack('styles')
     <style>
         /* NProgress Override */
         #nprogress .bar {
@@ -644,7 +648,7 @@
                             class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
                         {{ request()->routeIs('transactions.create') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                             <i data-lucide="file-up" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input
-                                Rembush</span>
+                                Rembush dan Pengajuan</span>
                         </a>
 
                         @if(in_array(Auth::user()->role, ['atasan', 'owner']))
@@ -652,7 +656,7 @@
                                 class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all shrink-0
                             {{ request()->routeIs('pembelian.*') ? 'bg-linear-to-r from-sky-600 to-sky-500 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-600' }}">
                                 <i data-lucide="package" class="w-5 h-5 shrink-0"></i> <span class="sidebar-text">Input
-                                    Pembelian</span>
+                                    Pembelian (Gudang) </span>
                             </a>
                         @endif
 
@@ -1066,15 +1070,6 @@
             </div>
         </div>
 
-        {{-- Flash Notification (shared) --}}
-        @if(session('notification'))
-            <div id="flash-notification"
-                class="fixed top-20 right-4 md:right-8 left-4 md:left-auto md:max-w-md bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 font-black border border-slate-700 text-sm">
-                <div class="w-2 h-2 rounded-full bg-blue-500 animate-ping flex-shrink-0"></div>
-                <span>{{ session('notification') }}</span>
-            </div>
-        @endif
-
         <script>
 
 
@@ -1218,15 +1213,6 @@
                     });
                 }
 
-                // Auto-dismiss initial flash notification
-                const notif = document.getElementById('flash-notification');
-                if (notif) {
-                    setTimeout(() => {
-                        notif.style.opacity = '0';
-                        notif.style.transition = 'opacity 0.5s';
-                        setTimeout(() => notif.remove(), 500);
-                    }, 3000);
-                }
             });
 
             window.addEventListener('beforeunload', () => {
@@ -1439,8 +1425,32 @@
 // ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.Echo !== 'undefined') {
-        const userId = {{ Auth::id() }};
-        const userRole = "{{ Auth::user()->role }}";
+        const userId = Number({{ Auth::id() ?? 'null' }});
+        const userRole = "{{ trim((string) Auth::user()->role) }}".toLowerCase();
+        const canSubscribeGlobal = {{ Auth::user()->canManageStatus() ? 'true' : 'false' }};
+        const canSubscribeManagementNotifications = ['owner', 'atasan'].includes(userRole);
+
+        if (!userId) {
+            console.warn('[Echo] Real-time subscription skipped: authenticated user id is missing.');
+            return;
+        }
+
+        const subscribePrivate = (channelName) => {
+            try {
+                const channel = window.Echo.private(channelName);
+
+                if (channel && typeof channel.error === 'function') {
+                    channel.error((error) => {
+                        console.warn(`[Echo] Private channel auth failed: ${channelName}`, error);
+                    });
+                }
+
+                return channel;
+            } catch (error) {
+                console.warn(`[Echo] Private channel subscription failed: ${channelName}`, error);
+                return null;
+            }
+        };
 
         // ── Toast Queue System ──
         const toastQueue = [];
@@ -1569,8 +1579,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showRealtimeToast(title, message, theme, iconName);
         };
 
+        @if(session('notification'))
+            window.showToast(@json(session('notification')), 'success');
+        @endif
+
+        @if(session('success'))
+            window.showToast(@json(session('success')), 'success');
+        @endif
+
+        @if(session('error'))
+            window.showToast(@json(session('error')), 'error');
+        @endif
+
         // ── Listener NOTIFIKASI SYSTEM ──
-        window.Echo.private(`notifications.${userId}`)
+        const notificationChannel = subscribePrivate(`notifications.${userId}`);
+        if (notificationChannel) {
+            notificationChannel
             .listen('.notification.received', (e) => {
                 // console.log('🔔 [NOTIF] Notification Received:', e);
                 if (typeof updateNotificationBadge === 'function') updateNotificationBadge();
@@ -1603,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 showRealtimeToast(e.title, e.message, theme, iconName);
             });
+        }
 
         // ── Define Realtime Handlers ──
         window.handleRealtimeTransactionCreation = function (transaction) {
@@ -1631,7 +1656,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Admin/Owner/Atasan: Both personal + global channel (transactions)
         
         // 1. Personal Channel - ALL ROLES (for their own transactions)
-        window.Echo.private(`transactions.${userId}`)
+        const personalTransactionChannel = subscribePrivate(`transactions.${userId}`);
+        if (personalTransactionChannel) {
+            personalTransactionChannel
             .listen('.transaction.created', (e) => {
                 // console.log('📥 [PERSONAL] Transaction Created:', e);
                 if (e.transaction) window.handleRealtimeTransactionCreation(e.transaction);
@@ -1640,17 +1667,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 // console.log('📥 [PERSONAL] Transaction Updated:', e);
                 if (e.transaction) window.handleRealtimeTransactionUpdate(e.transaction);
             });
+        }
 
         // 2. OCR Channel - ALL ROLES (for OCR processing updates)
-        window.Echo.private(`ocr.${userId}`)
+        const ocrChannel = subscribePrivate(`ocr.${userId}`);
+        if (ocrChannel) {
+            ocrChannel
             .listen('.ocr.updated', (e) => {
                 // console.log('📥 [OCR] Status Updated:', e);
                 if (e.payload && e.payload.transaction) window.handleRealtimeTransactionUpdate(e.payload.transaction);
             });
+        }
 
         // 3. Global Channel - ONLY for Admin/Owner/Atasan (to see all transactions)
-        if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
-            window.Echo.private(`transactions`)
+        if (canSubscribeGlobal) {
+            const globalTransactionChannel = subscribePrivate('transactions');
+            if (globalTransactionChannel) {
+                globalTransactionChannel
                 .listen('.transaction.created', (e) => {
                     // console.log('📡 [GLOBAL] Transaction Created:', e);
                     // Only add if it's NOT from current user (to avoid duplicate from personal channel)
@@ -1669,10 +1702,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     // console.log('📡 [GLOBAL] Transaction Deleted:', e);
                     if (e.id) window.handleRealtimeTransactionDeletion(e);
                 });
+            }
         }
 
-        if (['owner', 'atasan', 'admin'].includes(userRole.toLowerCase())) {
-            window.Echo.private(`notifications.management`)
+        if (canSubscribeManagementNotifications) {
+            const managementNotificationChannel = subscribePrivate('notifications.management');
+            if (managementNotificationChannel) {
+                managementNotificationChannel
                 .listen('PriceAnomalyDetected', (e) => {
                     // console.log('Price Anomaly Detected:', e);
                     const msg = `Item "${e.item_name}" melebihi harga referensi (+${e.excess_percentage}%). <br><a href="${e.url}" class="text-blue-600 font-bold hover:underline mt-1 inline-block">Review Sekarang →</a>`;
@@ -1681,6 +1717,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (typeof fetchNotifications === 'function') fetchNotifications();
                 });
+            }
         }
     }
 });

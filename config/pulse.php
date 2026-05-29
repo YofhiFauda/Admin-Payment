@@ -130,6 +130,9 @@ return [
             'sample_rate' => env('PULSE_CACHE_INTERACTIONS_SAMPLE_RATE', 1),
             'ignore' => [
                 '#^illuminate:pulse:#',
+                '#^laravel:pulse:#',
+                '#:pulse:#',
+                '#pulse#',
             ],
             'groups' => [
                 // AI AutoFill cache keys (OCR processing)

@@ -962,6 +962,19 @@ class AiAutoFillController extends Controller
                     aiStatus: $aiStatus
                 ));
 
+                // 🔔 Send Telegram Notification to Monitoring Group if auto-reject
+                if ($aiStatus === 'auto-reject') {
+                    try {
+                        $telegram = new TelegramBotService();
+                        $telegram->notifyAutoReject($transaction->load('submitter'));
+                    } catch (\Exception $e) {
+                        Log::channel('ai_autofill')->error('❌ [TELEGRAM] Failed to send auto-reject notification', [
+                            'transaction_id' => $transaction->id,
+                            'error'          => $e->getMessage(),
+                        ]);
+                    }
+                }
+
                 // 🔔 Trigger real-time grid update
                 broadcast(new OcrStatusUpdated($submitter->id, [
                     'transaction_id' => $transaction->id,
