@@ -40,7 +40,6 @@ services:
       # 3. Production best practice: immutable infrastructure
       #
       # File yang sebelumnya di-mount:
-      # - ./config/pulse.php:/var/www/config/pulse.php:ro
       # - ./config/log-viewer.php:/var/www/config/log-viewer.php:ro
       # - ./app/Http/Middleware/LogViewerAuth.php:/var/www/app/Http/Middleware/LogViewerAuth.php:ro
       # - ./bootstrap/app.php:/var/www/bootstrap/app.php:ro
@@ -276,50 +275,6 @@ services:
       retries: 3
       start_period: 30s
 
-  # ─────────────────────────────────────────
-  #  PULSE — Performance Monitoring Worker
-  # ─────────────────────────────────────────
-  pulse:
-    image: whusnet-app:${APP_VERSION:-latest}
-    container_name: whusnet-pulse
-    restart: unless-stopped
-    working_dir: /var/www
-    networks:
-      - coolify
-      - default
-    env_file:
-      - .env.production
-    volumes:
-      - storage_data:/var/www/storage
-      # bootstrap/cache dari image — tidak perlu shared volume
-    environment:
-      APP_ENV: production
-      APP_DEBUG: "false"
-      CONTAINER_ROLE: pulse
-    depends_on:
-      app:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '0.30'
-          memory: 512M
-        reservations:
-          cpus: '0.15'
-          memory: 64M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
-    healthcheck:
-      # pgrep lebih andal dari grep string — tidak fragile terhadap perubahan format ps
-      test: ["CMD-SHELL", "pgrep -f 'pulse:work' >/dev/null || exit 1"]
-      interval: 60s
-      timeout: 15s
-      retries: 3
-      start_period: 30s
-
 volumes:
   storage_data:
     driver: local
@@ -328,7 +283,7 @@ volumes:
   # cache_data DIHAPUS — bootstrap/cache adalah bagian dari image, bukan persistent volume
   # Shared volume menyebabkan race condition saat app restart:
   #   - rm -f cache/* bisa membunuh worker yang sedang berjalan
-  #   - horizon/scheduler/pulse bisa crash dengan behavior tak terduga
+  #   - horizon/scheduler bisa crash dengan behavior tak terduga
 
 networks:
   coolify:

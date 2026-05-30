@@ -619,7 +619,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"upload_id\": \"{{ $json.upload_id }}\",\n  \"transaksi_id\": \"{{ $json.transaksi_id }}\",\n  \"payment_method\": \"TRANSFER\",\n  \"status\": \"flagged\",\n  \"ocr_result\": \"MISMATCH\",\n  \"actual_total\": {{ $json.actual_total }},\n  \"expected_total\": {{ $json.expected_total }},\n  \"selisih\": {{ $json.selisih }},\n  \"flag_reason\": \"{{ $json.flag_reason }}\",\n  \"rekening_pengirim\": \"{{ $json.rekening_pengirim }}\",\n  \"ocr_confidence\": {{ $json.ocr_confidence }}\n}",
+        "jsonBody": "={\n  \"upload_id\": \"{{ $json.upload_id }}\",\n  \"transaksi_id\": \"{{ $json.transaksi_id }}\",\n  \"payment_method\": \"TRANSFER\",\n  \"status\": \"mismatch\",\n  \"ocr_result\": \"MISMATCH\",\n  \"actual_total\": {{ $json.actual_total }},\n  \"expected_total\": {{ $json.expected_total }},\n  \"selisih\": {{ $json.selisih }},\n  \"flag_reason\": \"{{ $json.flag_reason }}\",\n  \"rekening_pengirim\": \"{{ $json.rekening_pengirim }}\",\n  \"ocr_confidence\": {{ $json.ocr_confidence }}\n}",
         "options": {
           "timeout": 30000
         }
@@ -1748,6 +1748,79 @@
           "name": "Redis account"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://admin-payment.whusnet.com/api/payment/verify?upload_id={{ $json.upload_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-SECRET",
+              "value": "mySuperSecretKey123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"upload_id\": \"{{ $json.upload_id }}\",\n  \"transaksi_id\": \"{{ $json.transaksi_id }}\",\n  \"payment_method\": \"TRANSFER\",\n  \"status\": \"flagged\",\n  \"ocr_result\": \"MISMATCH\",\n  \"actual_total\": {{ $json.actual_total }},\n  \"expected_total\": {{ $json.expected_total }},\n  \"selisih\": {{ $json.selisih }},\n  \"flag_reason\": \"{{ $json.flag_reason }}\",\n  \"rekening_pengirim\": \"{{ $json.rekening_pengirim }}\",\n  \"ocr_confidence\": {{ $json.ocr_confidence }}\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e53aed46-5ba5-46fa-ac66-ae63bac8bb5c",
+      "name": "[TRANSFER] Callback MISMATCH - Flagged ⚠️",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2352,
+        2336
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://admin-payment.whusnet.com/api/payment/verify?upload_id={{ $json.upload_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-SECRET",
+              "value": "mySuperSecretKey123"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={\n  \"upload_id\": \"{{ $json.upload_id }}\",\n  \"transaksi_id\": \"{{ $json.transaksi_id }}\",\n  \"payment_method\": \"TRANSFER\",\n  \"status\": \"completed\",\n  \"ocr_result\": \"MATCH\",\n  \"actual_total\": {{ $json.actual_total }},\n  \"expected_total\": {{ $json.expected_total }},\n  \"selisih\": {{ $json.selisih }},\n  \"rekening_pengirim\": \"{{ $json.rekening_pengirim }}\",\n  \"nama_tujuan\": \"{{ $json.nama_tujuan }}\",\n  \"tanggal_transfer\": \"{{ $json.tanggal_transfer }}\",\n  \"ocr_confidence\": {{ $json.ocr_confidence }}\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "1ee545e2-f2f4-4232-81f5-4af402454ecc",
+      "name": "[TRANSFER] Callback MATCH - Status Selesai ✅",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2368,
+        2144
+      ],
+      "disabled": true
     }
   ],
   "pinData": {},
@@ -2513,7 +2586,7 @@
     "errorWorkflow": "DXPhkbLe3V0yAVXx",
     "timeSavedPerExecution": 10
   },
-  "versionId": "9b4fa911-49ee-40c9-ba5c-aea58163f843",
+  "versionId": "f504ac2b-7e7e-44fc-b998-8a6c52d7f44e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6672de6be9a021611d649c703923d50e3de0476f933674ccb63767615cccfa39"

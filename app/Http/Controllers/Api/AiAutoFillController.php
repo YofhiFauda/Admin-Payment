@@ -945,8 +945,7 @@ class AiAutoFillController extends Controller
             $transaction->update([
                 'ai_status' => $aiStatus,
                 'status'    => ($aiStatus === 'auto-reject') ? 'auto-reject' : $transaction->status,
-                // 'description' => $transaction->description . "⚠️ Validasi Otomatis: {$message}"
-                'description' => $transaction->description . "" . $message
+                'rejection_reason' => "⚠️ Validasi Otomatis: " . $message
             ]);
 
             Cache::put("ai_autofill:{$uploadId}", [

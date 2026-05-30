@@ -23,13 +23,30 @@ class BranchAllocation
     public static function toSyncData(array $branches, int|float $effectiveAmount): array
     {
         $syncData = [];
-        $totalAllocated = 0;
+        $totalAllocatedPercentAmount = 0;
+        
+        $normalizedBranches = self::normalize($branches);
+        
+        // Cek apakah total allocation_amount (dari mode Manual) sama persis dengan total transaksi
+        // Jika ya, kita percaya pada nominal tersebut agar tidak terjadi selisih pembulatan persentase.
+        $totalSubmittedAmount = collect($normalizedBranches)->sum('allocation_amount');
+        $trustSubmittedAmount = (intval($totalSubmittedAmount) === intval($effectiveAmount));
 
-        foreach (self::normalize($branches) as $branch) {
+        foreach ($normalizedBranches as $branch) {
             $branchId = (int) $branch['branch_id'];
-            $allocPercent = (float) $branch['allocation_percent'];
-            $allocAmount = (int) round(($effectiveAmount * $allocPercent) / 100);
-            $totalAllocated += $allocAmount;
+            
+            if ($trustSubmittedAmount) {
+                // Gunakan nominal manual yang sudah tepat
+                $allocAmount = (int) $branch['allocation_amount'];
+                // Hitung ulang persentase agar akurat, lalu batasi 2 desimal
+                $allocPercent = $effectiveAmount > 0 ? round(($allocAmount / $effectiveAmount) * 100, 2) : 0;
+            } else {
+                // Fallback: hitung dari persentase (untuk mode Bagi Rata / Persentase)
+                $allocPercent = (float) $branch['allocation_percent'];
+                $allocAmount = (int) round(($effectiveAmount * $allocPercent) / 100);
+            }
+            
+            $totalAllocatedPercentAmount += $allocAmount;
 
             $syncData[$branchId] = [
                 'allocation_percent' => $allocPercent,
@@ -37,10 +54,14 @@ class BranchAllocation
             ];
         }
 
-        $diff = (int) $effectiveAmount - $totalAllocated;
-        if ($syncData !== [] && $diff !== 0) {
-            $lastBranchId = array_key_last($syncData);
-            $syncData[$lastBranchId]['allocation_amount'] += $diff;
+        // Jika kita menghitung dari persentase, mungkin ada sisa pembulatan 1-2 perak.
+        // Tambahkan selisihnya ke cabang terakhir agar totalnya persis sama.
+        if (!$trustSubmittedAmount) {
+            $diff = (int) $effectiveAmount - $totalAllocatedPercentAmount;
+            if ($syncData !== [] && $diff !== 0) {
+                $lastBranchId = array_key_last($syncData);
+                $syncData[$lastBranchId]['allocation_amount'] += $diff;
+            }
         }
 
         return $syncData;

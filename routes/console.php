@@ -26,9 +26,9 @@ Schedule::command('price-index:recalculate --mode=full')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Pulse — Flush data dari storage buffer ke database (setiap menit via scheduler)
-Schedule::command('pulse:check')
-    ->everyMinute()
+// Auto-Complete Teknisi Cash Confirmation (> 2 hari)
+Schedule::command('app:auto-complete-technician-confirmation')
+    ->hourly()
     ->runInBackground()
     ->withoutOverlapping();
 

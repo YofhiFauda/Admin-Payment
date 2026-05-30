@@ -378,13 +378,8 @@ function openPaymentModal(id) {
     const isPengajuan = transaction.type === 'pengajuan';
     const isGudang = transaction.type === 'gudang';
 
-    if (!hasTelegram && !isPengajuan && !isGudang) {
-        submitBtn.disabled = true;
-        submitBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
-        submitBtn.classList.add('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
-        submitBtnText.textContent = 'Teknisi Belum Daftar Telegram';
-        showToast(`<div class="flex items-start gap-2"><i data-lucide="bell-off" class="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600"></i><div><strong class="text-rose-800">Peringatan!</strong><br><span class="text-[11px] opacity-90 text-rose-700">Teknisi belum mendaftarkan Telegram. Pembayaran Cash/Transfer tidak dapat diproses hingga teknisi mendaftar via bot.</span></div></div>`, 'error');
-    }
+    // Validasi blokir Telegram dihapus karena Telegram sekarang opsional
+    // if (!hasTelegram && !isPengajuan && !isGudang) { ... }
 
     let endpoint = Config.endpoints.payment.uploadCash;
 

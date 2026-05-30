@@ -78,7 +78,7 @@ class RecalculatePriceIndexes extends Command
 
         $query->orderBy('id')->chunk(100, function ($priceIndexes) use ($bar) {
             foreach ($priceIndexes as $pi) {
-                dispatch(new CalculatePriceIndexJob($pi->item_name, $pi->category))
+                dispatch(new CalculatePriceIndexJob($pi->item_name, 0, $pi->category))
                     ->onQueue('default')
                     ->delay(now()->addSeconds(rand(1, 30))); // Staggered untuk hindari spike
                 $bar->advance();

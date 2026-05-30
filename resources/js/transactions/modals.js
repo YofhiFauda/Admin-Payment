@@ -738,7 +738,7 @@ function renderViewModal(d) {
     }
 
     const rejWrap = document.getElementById('v-rejection-wrap');
-    if (d.status === 'rejected' && d.rejection_reason) {
+    if ((d.status === 'rejected' || d.status === 'auto-reject') && d.rejection_reason) {
         rejWrap.classList.remove('hidden');
         document.getElementById('v-rejection').textContent = d.rejection_reason;
     } else {

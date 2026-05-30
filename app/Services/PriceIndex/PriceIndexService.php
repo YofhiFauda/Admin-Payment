@@ -303,42 +303,46 @@ class PriceIndexService
         return DB::transaction(function () use ($priceIndex, $price) {
             $pi = PriceIndex::where('id', $priceIndex->id)->lockForUpdate()->first();
 
-            // 3. Cek Rentang Harga [Min, Max]
-            // Update AVG otomatis HANYA jika harga dalam range
-            if ($price >= $pi->min_price && $price <= $pi->max_price) {
-                
-                $oldTotal = $pi->total_transactions ?? 0;
-                $newTotal = $oldTotal + 1;
-                $oldAvg   = $pi->avg_price;
+            $oldTotal = $pi->total_transactions ?? 0;
+            $newTotal = $oldTotal + 1;
+            $oldAvg   = $pi->avg_price;
 
-                // Rumus Incremental Moving Average:
-                // new_avg = ((old_avg * n) + new_price) / (n + 1)
-                $newAvg = (($oldAvg * $oldTotal) + $price) / $newTotal;
+            // Rumus Incremental Moving Average:
+            // new_avg = ((old_avg * n) + new_price) / (n + 1)
+            $newAvg = (($oldAvg * $oldTotal) + $price) / $newTotal;
 
-                // ✅ PENTING: Update avg_price (otomatis), JANGAN sentuh avg_price_manual
-                $pi->update([
-                    'avg_price'          => round($newAvg, 2),
-                    'total_transactions' => $newTotal,
-                    'last_calculated_at' => now(),
-                    // avg_price_manual tetap tidak berubah (null atau nilai manual sebelumnya)
-                ]);
+            // ✅ FIX: Update min_price dan max_price secara dinamis
+            // Min/Max disesuaikan berdasarkan harga baru yang masuk
+            $newMin = min($pi->min_price, $price);
+            $newMax = max($pi->max_price, $price);
 
-                Log::info('📈 [PriceIndex] Adaptive Avg Updated (Auto)', [
-                    'item'         => $pi->item_name,
-                    'old_avg_auto' => $oldAvg,
-                    'new_avg_auto' => $newAvg,
-                    'avg_manual'   => $pi->avg_price_manual ? 'Set (tidak berubah)' : 'Tidak ada',
-                    'n'            => $newTotal
-                ]);
-            } else {
-                Log::info('⏭️ [PriceIndex] Outside range, skipping auto-update', [
-                    'item'  => $pi->item_name,
-                    'price' => $price,
-                    'range' => "[{$pi->min_price} - {$pi->max_price}]"
-                ]);
+            $updateData = [
+                'avg_price'          => round($newAvg, 2),
+                'total_transactions' => $newTotal,
+                'last_calculated_at' => now(),
+                // avg_price_manual tetap tidak berubah (null atau nilai manual sebelumnya)
+            ];
+
+            // Jika mode Auto (bukan manual override), update min/max juga
+            if (!$pi->is_manual) {
+                $updateData['min_price'] = $newMin;
+                $updateData['max_price'] = $newMax;
             }
 
-            return $pi;
+            $pi->update($updateData);
+
+            Log::info('📈 [PriceIndex] Adaptive Update (Auto)', [
+                'item'         => $pi->item_name,
+                'price'        => $price,
+                'old_avg_auto' => $oldAvg,
+                'new_avg_auto' => $newAvg,
+                'new_min'      => $newMin,
+                'new_max'      => $newMax,
+                'avg_manual'   => $pi->avg_price_manual ? 'Set (tidak berubah)' : 'Tidak ada',
+                'n'            => $newTotal
+            ]);
+
+            return $pi->fresh();
         });
     }
 
@@ -353,11 +357,12 @@ class PriceIndexService
      */
     public function recalculateFromHistory(string $itemName, ?string $category = null): ?PriceIndex
     {
-        // Ambil semua harga dari transaksi approved yang mengandung item ini
+        // Ambil semua harga dari transaksi completed/waiting_payment yang mengandung item ini
         $approvedPrices = $this->getApprovedPricesForItem($itemName);
 
-        if ($approvedPrices->count() < 3) {
-            Log::info('⚠️ [PriceIndex] Data tidak cukup untuk recalculate', [
+        // ✅ FIX: Turunkan threshold ke 1 (bukan 3) agar recalculation terjadi sejak data pertama
+        if ($approvedPrices->count() < 1) {
+            Log::info('⚠️ [PriceIndex] Belum ada data untuk recalculate', [
                 'item_name' => $itemName,
                 'count'     => $approvedPrices->count(),
             ]);
@@ -442,13 +447,20 @@ class PriceIndexService
      */
     private function getApprovedPricesForItem(string $itemName): \Illuminate\Support\Collection
     {
+        // ✅ FIX: Gunakan status yang benar.
+        // Dalam workflow Pengajuan:
+        //   pending → approved (menunggu owner, hanya >= 1jt) → waiting_payment → completed
+        // Status 'approved' hanyalah intermediate state "Menunggu Approve Owner".
+        // Data historis yang valid adalah transaksi yang sudah disetujui sepenuhnya:
+        //   'waiting_payment' (sudah disetujui, menunggu pembayaran)
+        //   'completed'       (sudah selesai)
         return Transaction::query()
             ->select('items')
-            ->where('status', 'approved')
+            ->whereIn('status', ['waiting_payment', 'completed'])
+            ->where('type', 'pengajuan') // Hanya dari Pengajuan (price index untuk pembelian)
             ->where('created_at', '>=', now()->subMonths(6))
             ->whereNotNull('items')
-            // Tambahkan hint index jika table sangat besar
-            ->cursor() 
+            ->cursor()
             ->flatMap(function (Transaction $t) use ($itemName) {
                 return collect($t->items ?? [])
                     ->filter(fn($item) => strtolower(trim($item['customer'] ?? '')) === strtolower(trim($itemName)))
