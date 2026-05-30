@@ -619,7 +619,7 @@
     class="hidden">
     @csrf
     <input type="hidden" name="jenis" id="formJenis" value="rembush">
-    <input type="file" id="file-input" name="file" accept="image/*" class="hidden">
+    <input type="file" id="file-input" name="file" accept="image/*,application/pdf" class="hidden">
 </form>
 
 <div class="ic-page">
@@ -880,14 +880,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     fileNameImg.src = e.target.result;
-                    uploadPreview.classList.add('show');
-                    uploadDefault.classList.add('hidden');
-                    submitWrap.classList.add('visible');
-                    
-                    // Add success effect to upload area
-                    uploadArea.classList.add(selectedType === 'rembush' ? 'active-rembush' : 'active-pengajuan');
+                    showFilePreview();
                 }
                 reader.readAsDataURL(file);
+            } else if (file.type === 'application/pdf') {
+                // PDF placeholder icon
+                fileNameImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dc2626' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'%3E%3C/path%3E%3Cpolyline points='14 2 14 8 20 8'%3E%3C/polyline%3E%3Cline x1='16' y1='13' x2='8' y2='13'%3E%3C/line%3E%3Cline x1='16' y1='17' x2='8' y2='17'%3E%3C/line%3E%3Cpolyline points='10 9 9 9 8 9'%3E%3C/polyline%3E%3C/svg%3E";
+                showFilePreview();
+            }
+
+            function showFilePreview() {
+                uploadPreview.classList.add('show');
+                uploadDefault.classList.add('hidden');
+                submitWrap.classList.add('visible');
+                
+                // Add success effect to upload area
+                uploadArea.classList.add(selectedType === 'rembush' ? 'active-rembush' : 'active-pengajuan');
             }
         } else {
             resetUploadUI();

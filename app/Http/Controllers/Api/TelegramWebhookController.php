@@ -251,7 +251,7 @@ class TelegramWebhookController extends Controller
             "Bot ini akan mengirimkan notifikasi real-time ketika:\n" .
             "• 🚨 Transfer berselisih (Flagged)\n" .
             "• ✅ Force Approve dilakukan\n" .
-            "• ⛔ Nota di-Auto Reject (Admin)\n" .
+            "• ⛔ Nota ditolak\n" .
             "• 💰 Pembayaran cash siap diambil (Teknisi)\n" .
             "• 💸 Transfer berhasil masuk (Teknisi)\n\n" .
             "─────────────────────\n" .
