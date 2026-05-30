@@ -137,7 +137,7 @@ class OcrProcessingJob implements ShouldQueue, ShouldBeUnique
                 'upload_id'        => $this->uploadId,
                 'original_size_kb' => round(filesize($fullPath) / 1024, 2),
             ]);
-            $fullPath = $compressionService->optimizeForOcr($fullPath);
+            $fullPath = $compressionService->compressUpload($fullPath);
             Log::channel('ocr')->info('✅ [OCR JOB] OPTIMIZATION DONE', [
                 'upload_id'      => $this->uploadId,
                 'final_size_kb'  => round(filesize($fullPath) / 1024, 2),

@@ -606,13 +606,11 @@ class OcrNotaController extends Controller
 
         $requiresTechnicianConfirmation = $this->submitterRequiresCashTelegram($transaction);
 
-        // Cash untuk teknisi tetap perlu tombol konfirmasi Telegram.
-        // Submitter internal (admin/atasan/owner) tidak wajib Telegram pribadi.
+        // Cash untuk teknisi: jika opsional dan belum mendaftar Telegram, kita bypass konfirmasinya
         if ($requiresTechnicianConfirmation && !$transaction->submitter->telegram_chat_id) {
-            return response()->json([
-                'success' => false,
-                'message' => '❌ Gagal: Teknisi (' . ($transaction->submitter->name ?? 'Unknown') . ') BELUM mendaftarkan akun Telegram. Pembayaran CASH tidak dapat diproses sampai teknisi mendaftar via bot.',
-            ], 422);
+            // Jika teknisi tidak punya Telegram, set false agar transaksi langsung berstatus 'completed' 
+            // dan tidak menunggu konfirmasi Telegram yang tidak akan pernah bisa mereka klik.
+            $requiresTechnicianConfirmation = false;
         }
 
         if ($transaction->status !== 'waiting_payment') {

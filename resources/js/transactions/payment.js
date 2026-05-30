@@ -63,7 +63,18 @@ export function initPaymentHandlers() {
             const id = this.action.split('/').at(-2); 
             const reason = this.querySelector('textarea[name="rejection_reason"]')?.value || '';
             const submitBtn = this.querySelector('button[type="submit"]');
-            if (submitBtn) { submitBtn.disabled = true; }
+            const submitText = submitBtn?.querySelector('span');
+            const loader = submitBtn?.querySelector('.animate-spin');
+            
+            if (submitBtn) { 
+                submitBtn.disabled = true; 
+                if (submitText && loader) {
+                    submitText.classList.add('opacity-0');
+                    loader.classList.remove('hidden');
+                } else {
+                    submitBtn.textContent = 'Memproses...';
+                }
+            }
             if (typeof NProgress !== 'undefined') NProgress.start();
 
             fetch(Config.endpoints.transactions.status(id), {
@@ -89,9 +100,17 @@ export function initPaymentHandlers() {
                 .catch(err => {
                     console.error(err);
                     showToast(`<div class="flex items-start gap-2"><i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600"></i><div><strong class="text-red-800">Gagal!</strong><br><span class="text-[11px] opacity-90 text-red-700">Gagal menolak transaksi. Coba lagi.</span></div></div>`, 'error');
-                    if (submitBtn) { submitBtn.disabled = false; }
                 })
                 .finally(() => {
+                    if (submitBtn) { 
+                        submitBtn.disabled = false; 
+                        if (submitText && loader) {
+                            submitText.classList.remove('opacity-0');
+                            loader.classList.add('hidden');
+                        } else {
+                            submitBtn.textContent = 'Konfirmasi Tolak';
+                        }
+                    }
                     if (typeof NProgress !== 'undefined') NProgress.done();
                 });
         });

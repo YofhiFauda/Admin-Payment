@@ -133,6 +133,15 @@ return [
                 '#^laravel:pulse:#',
                 '#:pulse:#',
                 '#pulse#',
+                '#^laravel:reverb:restart#',
+                '#^illuminate:queue:paused#',
+                '#^illuminate:queue:restart#',
+                '#^redis:notifications#',
+                '#^illuminate:queue:paused:redis:notifications#',
+                '#^illuminate:queue:paused:redis:ocr_high#',
+                '#^illuminate:queue:paused:redis:default#',
+                '#^illuminate:queue:paused:redis:ocr_normal#',
+                '#^illuminate:queue:paused:redis:ocr_low#',
             ],
             'groups' => [
                 // AI AutoFill cache keys (OCR processing)
