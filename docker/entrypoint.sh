@@ -10,6 +10,14 @@ ROLE=${CONTAINER_ROLE:-app}
 
 echo "🚀 Container starting as role: $ROLE"
 
+# Clear stale Laravel bootstrap cache before any artisan command runs.
+# A previous image can leave package providers here even after a package is removed.
+rm -f bootstrap/cache/config.php \
+      bootstrap/cache/events.php \
+      bootstrap/cache/packages.php \
+      bootstrap/cache/routes-*.php \
+      bootstrap/cache/services.php
+
 # ─────────────────────────────────────────
 #  APP — PHP-FPM + First-run setup
 # ─────────────────────────────────────────
@@ -76,7 +84,7 @@ if [ "$ROLE" = "app" ]; then
     # storage/framework/views/ ada di persistent volume (storage_data),
     # sehingga compiled Blade lama dari deploy sebelumnya bisa survive restart.
     # Ini menyebabkan error seperti "Undefined array key 'groups'" saat
-    # vendor package update struktur view-nya (misal: laravel/pulse).
+    # vendor package update struktur view-nya.
     # view:cache di Dockerfile build stage tidak efektif karena di-override volume.
     # ─────────────────────────────────────────
     echo "🗂️  Clearing stale compiled views from persistent storage volume..."
@@ -85,7 +93,6 @@ if [ "$ROLE" = "app" ]; then
     echo "📦 Publishing assets and discovering packages..."
     php artisan package:discover --ansi || true
     php artisan event:cache || true
-    php artisan vendor:publish --tag=pulse-assets --force || true
     php artisan vendor:publish --tag=log-viewer-assets --force || true
 
     echo "✅ App setup complete. Starting PHP-FPM..."
